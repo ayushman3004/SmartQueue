@@ -1,0 +1,77 @@
+import express from "express";
+import cors from "cors";
+import passport from "passport";
+import cookieParser from "cookie-parser";
+
+// Routes
+import authRoutes from "./src/modules/auth/auth.routes.js";
+import businessRoutes from "./src/modules/business/business.routes.js";
+import queueRoutes from "./src/queue/queue.routes.js";
+import bookingRoutes from "./src/booking/booking.routes.js";
+
+// Passport config
+import "./src/modules/Oauth/passport.config.js";
+
+const app = express();
+
+// ─── Middleware ──────────────────────────────────────────────
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+  })
+);
+app.use(express.json());
+app.use(cookieParser());
+app.use(passport.initialize());
+
+// ─── Routes ──────────────────────────────────────────────────
+app.use("/api/auth", authRoutes);
+app.use("/api/businesses", businessRoutes);
+app.use("/api/queue", queueRoutes);
+app.use("/api/bookings", bookingRoutes);
+
+// ─── Health Check ─────────────────────────────────────────────
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// ─── Global Error Handler ─────────────────────────────────────
+app.use((err, _req, res, _next) => {
+  let statusCode = err.statusCode || 500;
+  let message = err.message || "Internal Server Error";
+
+  // Mongoose validation error
+  if (err.name === "ValidationError") {
+    statusCode = 400;
+    const messages = Object.values(err.errors).map((e) => e.message);
+    message = messages.join(", ");
+  }
+
+  // Mongoose cast error (invalid ObjectId)
+  if (err.name === "CastError") {
+    statusCode = 400;
+    message = `Invalid ${err.path}: ${err.value}`;
+  }
+
+  // Mongoose duplicate key
+  if (err.code === 11000) {
+    statusCode = 409;
+    const field = Object.keys(err.keyValue)[0];
+    message = `Duplicate value for ${field}`;
+  }
+
+  // JWT errors
+  if (err.name === "JsonWebTokenError") { statusCode = 401; message = "Invalid token"; }
+  if (err.name === "TokenExpiredError") { statusCode = 401; message = "Token expired"; }
+
+  // Log only server errors
+  if (statusCode >= 500) console.error("🔥 Server Error:", err);
+
+  res.status(statusCode).json({
+    success: false,
+    message,
+  });
+});
+
+export default app;
