@@ -8,19 +8,19 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 export const predictServiceTime = async (context) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `You are a service time prediction AI for a queue management system.
     
-Predict the estimated service time in minutes for ONE customer based on:
-- Service Type: ${context.serviceType}
-- Customer Type: ${context.userType}
-- Hour of day (24h): ${context.timeOfDay}
-- Current queue length: ${context.queueLength} people
+    Predict the estimated service time in minutes for ONE customer based on:
+    - Service Type: ${context.serviceType}
+    - Customer Type: ${context.userType}
+    - Hour of day (24h): ${context.timeOfDay}
+    - Current queue length: ${context.queueLength} people
 
-Consider: peak hours (9-11am, 1-3pm, 5-7pm) increase times, complex service types take longer, larger queues may mean tired staff.
+    Consider: peak hours (9-11am, 1-3pm, 5-7pm) increase times, complex service types take longer, larger queues may mean tired staff.
 
-Return ONLY a single integer number (no text, no units). Example: 12`;
+    Return ONLY a single integer number (no text, no units). Example: 12`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
@@ -28,11 +28,15 @@ Return ONLY a single integer number (no text, no units). Example: 12`;
 
     // Sanity check
     if (!minutes || minutes < 3 || minutes > 120) {
-      console.log(`🧠 Gemini AI raw response: "${text}" → invalid, using fallback`);
+      console.log(
+        `🧠 Gemini AI raw response: "${text}" → invalid, using fallback`,
+      );
       return getFallback(context);
     }
 
-    console.log(`🧠 Gemini AI prediction: ${minutes} min (service: ${context.serviceType}, hour: ${context.timeOfDay}, queue: ${context.queueLength})`);
+    console.log(
+      `🧠 Gemini AI prediction: ${minutes} min (service: ${context.serviceType}, hour: ${context.timeOfDay}, queue: ${context.queueLength})`,
+    );
     return minutes;
   } catch (err) {
     console.error("⚠️ Gemini AI fallback triggered:", err.message);

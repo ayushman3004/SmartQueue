@@ -1,6 +1,6 @@
 import { Router } from "express";
 import passport from "passport";
-import { signup, signin, googleCallback, getMe, logout } from "./auth.controller.js";
+import { signup, signin, googleCallback, getMe, logout, updateMe } from "./auth.controller.js";
 import { protect } from "../../../middleware/auth.middleware.js";
 
 const router = Router();
@@ -10,6 +10,7 @@ router.post("/signup", signup);
 router.post("/signin", signin);
 router.post("/logout", logout);
 router.get("/me", protect, getMe);
+router.patch("/me", protect, updateMe);
 
 // Google OAuth
 router.get(

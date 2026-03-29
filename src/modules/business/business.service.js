@@ -10,7 +10,7 @@ export const createBusiness = async (ownerId, data) => {
 export const getAllBusinesses = async () => {
   // Use aggregation to fetch businesses with their current queue length and estimated wait
   const businesses = await Business.aggregate([
-    { $match: { isOpen: true } },
+    { $match: { isOpen: true, isActive: true } },
     {
       $lookup: {
         from: "queues",
@@ -97,9 +97,22 @@ export const updateBusiness = async (id, ownerId, data) => {
   return await b.save();
 };
 
-export const toggleOpen = async (id, ownerId) => {
+export const toggleOpen = async (id, ownerId, io) => {
   const b = await Business.findOne({ _id: id, owner: ownerId });
   if (!b) throw new ApiError(403, "Not your business or not found");
+  
   b.isOpen = !b.isOpen;
-  return await b.save();
+  await b.save();
+
+  if (io) {
+    io.emit("business:status", {
+      businessId: id,
+      isOpen: b.isOpen,
+      name: b.name,
+      category: b.category,
+      message: b.isOpen ? `Welcome! ${b.name} is now open.` : `Note: ${b.name} has closed for now.`
+    });
+  }
+
+  return b;
 };

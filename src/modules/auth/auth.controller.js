@@ -30,6 +30,11 @@ export const getMe = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { user }));
 });
 
+export const updateMe = asyncHandler(async (req, res) => {
+  const user = await authService.updateProfile(req.user._id, req.body);
+  res.json(new ApiResponse(200, { user }, "Profile updated successfully"));
+});
+
 export const logout = asyncHandler(async (_req, res) => {
   res.clearCookie("token");
   res.json(new ApiResponse(200, {}, "Logged out successfully"));

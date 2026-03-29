@@ -28,6 +28,14 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: "general",
     },
+    isGroupBooking: {
+      type: Boolean,
+      default: false,
+    },
+    guestCount: {
+      type: Number,
+      default: 1,
+    },
     status: {
       type: String,
       enum: ["scheduled", "in-progress", "completed", "cancelled"],
@@ -52,6 +60,14 @@ const bookingSchema = new mongoose.Schema(
     delayAccepted: {
       type: Boolean,
       default: null, // null = pending, true = accepted, false = cancelled
+    },
+    pricingLabel: {
+      type: String,
+      default: "",
+    },
+    paidAmount: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }

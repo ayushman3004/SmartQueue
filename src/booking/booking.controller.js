@@ -12,17 +12,19 @@ export const getSlots = asyncHandler(async (req, res) => {
 
 // POST /api/bookings
 export const book = asyncHandler(async (req, res) => {
-  const { businessId, startTime, serviceType, notes } = req.body;
+  const { businessId, startTime, serviceType, notes, pricingLabel } = req.body;
   if (!businessId || !startTime) throw new ApiError(400, "businessId and startTime are required");
   if (isNaN(new Date(startTime).getTime())) throw new ApiError(400, "Invalid startTime format");
 
+  const io = req.app.get("io");
   const result = await bookingService.createBooking({
     businessId,
     userId: req.user._id,
     startTime,
     serviceType,
     notes,
-  });
+    pricingLabel,
+  }, io);
   const message = result.adjusted
     ? `Booking confirmed (adjusted to ${new Date(result.booking.startTime).toLocaleTimeString()})`
     : "Booking confirmed!";
@@ -44,8 +46,10 @@ export const extend = asyncHandler(async (req, res) => {
 // POST /api/bookings/:id/respond
 export const respondDelay = asyncHandler(async (req, res) => {
   const { accept } = req.body;
-  const result = await bookingService.respondToDelay(req.params.id, req.user._id, accept);
-  res.json(new ApiResponse(200, result, `Delay ${result.action}`));
+  const io = req.app.get("io");
+  const result = await bookingService.respondToDelay(req.params.id, req.user._id, accept, io);
+  const msg = result.action === "cancelled" ? `Delay rejected & refunded ₹${result.refunded}` : `Delay accepted`;
+  res.json(new ApiResponse(200, result, msg));
 });
 
 // PATCH /api/bookings/:id/start

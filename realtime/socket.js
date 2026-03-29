@@ -18,10 +18,30 @@ export const initSocket = (io) => {
       }
     });
 
-    // Leave a business room
-    socket.on("leave:room", ({ businessId }) => {
+    // Special room for owners (includes sensitive customer names)
+    socket.on("join:admin", ({ businessId }) => {
+      if (businessId) {
+        socket.join(`business:${businessId}:admin`);
+        console.log(`  🔑 ${socket.id} joined admin room: business:${businessId}`);
+      }
+    });
+
+    // Private room for targeted user notifications
+    socket.on("join:user", ({ userId }) => {
+      if (userId) {
+        socket.join(`user:${userId}`);
+        console.log(`  👤 ${socket.id} joined private room: user:${userId}`);
+      }
+    });
+
+    // Leave rooms
+    socket.on("leave:room", ({ businessId, userId }) => {
       if (businessId) {
         socket.leave(`business:${businessId}`);
+        socket.leave(`business:${businessId}:admin`);
+      }
+      if (userId) {
+        socket.leave(`user:${userId}`);
       }
     });
 

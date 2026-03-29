@@ -28,6 +28,7 @@ export const update = asyncHandler(async (req, res) => {
 });
 
 export const toggle = asyncHandler(async (req, res) => {
-  const business = await businessService.toggleOpen(req.params.id, req.user._id);
+  const io = req.app.get("io");
+  const business = await businessService.toggleOpen(req.params.id, req.user._id, io);
   res.json(new ApiResponse(200, { business }, `Business is now ${business.isOpen ? "open" : "closed"}`));
 });

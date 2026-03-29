@@ -16,17 +16,17 @@ const router = Router();
 
 // User routes
 router.get("/mine", protect, myBookings);
-router.post("/", protect, allowRoles("user"), book);
+router.post("/", protect, allowRoles("customer", "admin"), book);
 router.patch("/:id/cancel", protect, cancel);
-router.post("/:id/respond", protect, allowRoles("user"), respondDelay);
+router.post("/:id/respond", protect, allowRoles("customer", "admin"), respondDelay);
 
 // Slots — authenticated users
 router.get("/slots/:businessId", protect, getSlots);
 
 // Owner routes
-router.get("/:businessId/all", protect, allowRoles("owner"), businessBookings);
-router.post("/extend/:id", protect, allowRoles("owner"), extend);
-router.patch("/:id/start", protect, allowRoles("owner"), startService);
-router.patch("/:id/complete", protect, allowRoles("owner"), completeService);
+router.get("/:businessId/all", protect, allowRoles("owner", "admin"), businessBookings);
+router.post("/extend/:id", protect, allowRoles("owner", "admin"), extend);
+router.patch("/:id/start", protect, allowRoles("owner", "admin"), startService);
+router.patch("/:id/complete", protect, allowRoles("owner", "admin"), completeService);
 
 export default router;

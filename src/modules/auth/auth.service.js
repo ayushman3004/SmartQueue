@@ -15,7 +15,7 @@ export const register = async ({ name, email, password, role }) => {
   const existing = await User.findOne({ email });
   if (existing) throw new ApiError(409, "Email already registered");
 
-  const userRole = ["user", "owner"].includes(role) ? role : "user";
+  const userRole = ["customer", "owner", "admin"].includes(role) ? role : "customer";
   const hashed = await hashPassword(password);
   const user = await User.create({ name: name.trim(), email, password: hashed, role: userRole });
 
@@ -71,6 +71,22 @@ export const getProfile = async (userId) => {
   return sanitize(user);
 };
 
+// ─── Update Profile ──────────────────────────────────────────
+export const updateProfile = async (userId, data) => {
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(404, "User not found");
+
+  // Prevent role updates
+  delete data.role;
+  delete data.walletBalance;
+  delete data._id;
+  delete data.email; // Usually emails shouldn't be changed this way for security
+
+  Object.assign(user, data);
+  await user.save();
+  return sanitize(user);
+};
+
 // ─── Private Helpers ─────────────────────────────────────────
 const sanitize = (user) => ({
   _id: user._id,
@@ -78,5 +94,9 @@ const sanitize = (user) => ({
   email: user.email,
   avatar: user.avatar,
   role: user.role,
+  walletBalance: user.walletBalance ?? 0,
   authProvider: user.authProvider,
+  phone: user.phone || "",
+  bio: user.bio || "",
+  location: user.location || "",
 });

@@ -36,6 +36,14 @@ const queueSchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+        pricingLabel: {
+          type: String,
+          default: "",
+        },
+        paidAmount: {
+          type: Number,
+          default: 0,
+        },
       },
     ],
   },

@@ -15,7 +15,7 @@ import {
 export default function BusinessDashboard() {
   const { businessId } = useParams()
   const { user } = useAuth()
-  const { joinRoom, leaveRoom, onQueueUpdate, socket } = useSocket()
+  const { joinRoom, joinAdmin, leaveRoom, onQueueUpdate, socket } = useSocket()
   const navigate = useNavigate()
 
   const [business, setBusiness] = useState(null)
@@ -47,10 +47,10 @@ export default function BusinessDashboard() {
       setQueue(qRes.data.data.queue)
     }).catch(() => navigate('/')).finally(() => setLoading(false))
 
-    joinRoom(businessId)
+    joinAdmin(businessId)
     const unsub = onQueueUpdate(setQueue)
     return () => { leaveRoom(businessId); unsub?.() }
-  }, [businessId, user, navigate, joinRoom, leaveRoom, onQueueUpdate])
+  }, [businessId, user, navigate, joinAdmin, leaveRoom, onQueueUpdate])
 
   const showToast = (msg, type = 'info') => {
     setToast({ message: msg, type })
@@ -105,7 +105,7 @@ export default function BusinessDashboard() {
   const waitingCount = users.filter(u => u.status === 'waiting').length
 
   return (
-    <div className="container py-8 max-w-7xl">
+    <div className="container max-w-7xl pt-12 pb-24">
       {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
@@ -241,7 +241,7 @@ export default function BusinessDashboard() {
                 <div>
                   <p className="text-[10px] font-black text-cyan-500 uppercase tracking-widest mb-1">Serving Now</p>
                   <h2 className="text-2xl font-black text-white uppercase">
-                    {serving ? `Customer #${users.indexOf(serving) + 1} - ${serving.serviceType}` : 'Ready for next customer'}
+                    {serving ? `${serving.userId?.name || 'Customer'} - ${serving.serviceType}` : 'Ready for next customer'}
                   </h2>
                 </div>
               </div>
@@ -304,8 +304,8 @@ export default function BusinessDashboard() {
                       >
                         <td className="py-6 px-8 font-black text-neutral-600 text-sm group-hover:text-cyan-500 transition-colors">#{i + 1}</td>
                         <td className="py-6 px-4">
-                          <p className="font-bold text-white text-sm">Customer {i + 1}</p>
-                          <p className="text-[10px] text-neutral-500 uppercase font-medium">{u.userId?._id?.toString()?.slice(-6) || u.userId?.toString()?.slice(-6)}</p>
+                          <p className="font-bold text-white text-sm">{u.userId?.name || 'Anonymous Patient'}</p>
+                          <p className="text-[10px] text-neutral-500 uppercase font-medium">#{u.userId?._id?.toString()?.slice(-6) || u.userId?.toString()?.slice(-6)}</p>
                         </td>
                         <td className="py-6 px-4">
                           <span className="text-xs font-bold text-white bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 group-hover:border-cyan-500/20 uppercase transition-all">

@@ -68,7 +68,9 @@ class QueueDS {
       this.tail = node;
     }
 
-    this.map.set(user.userId.toString(), node);
+    if (user.userId) {
+      this.map.set(user.userId.toString(), node);
+    }
     this.recalculate();
   }
 
@@ -141,7 +143,9 @@ class QueueDS {
         queue.tail = node;
       }
 
-      queue.map.set(u.userId.toString(), node);
+      if (u.userId) {
+        queue.map.set(u.userId.toString(), node);
+      }
     });
 
     queue.recalculate();

@@ -1,5 +1,6 @@
 import Booking from "./booking.model.js";
 import Business from "../modules/business/business.model.js";
+import User from "../modules/auth/auth.model.js";
 import ApiError from "../../utils/ApiError.js";
 
 const RATE_PER_MINUTE = 20; // ₹20 per extra minute
@@ -71,11 +72,20 @@ export const getAvailableSlots = async (businessId, date) => {
     cursor = new Date(cursor.getTime() + (avgTime + aiBuffer) * 60000);
   }
 
-  return { slots, avgServiceTime: avgTime, aiBuffer, ratePerMinute: RATE_PER_MINUTE };
+  return { slots, avgServiceTime: avgTime, aiBuffer, ratePerMinute: RATE_PER_MINUTE, maxCapacity: business.maxCapacity || 1 };
 };
 
 // ─── Create Booking ───────────────────────────────────────────
-export const createBooking = async ({ businessId, userId, startTime, serviceType, notes }) => {
+export const createBooking = async ({ 
+  businessId, 
+  userId, 
+  startTime, 
+  serviceType, 
+  notes, 
+  isGroupBooking, 
+  guestCount,
+  pricingLabel 
+}, io = null) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
@@ -92,45 +102,6 @@ export const createBooking = async ({ businessId, userId, startTime, serviceType
   });
 
   if (conflict) {
-    // Try flexible booking within ±10 minutes
-    const flexStart = new Date(reqStart.getTime() - FLEX_WINDOW * 60000);
-    const flexEnd = new Date(reqStart.getTime() + FLEX_WINDOW * 60000);
-
-    // Find the nearest available slot
-    const nearbyBookings = await Booking.find({
-      businessId,
-      status: { $nin: ["cancelled"] },
-      startTime: { $gte: flexStart, $lte: flexEnd },
-    }).sort({ endTime: 1 });
-
-    // Try right after the last conflicting booking
-    if (nearbyBookings.length > 0) {
-      const lastEnd = new Date(Math.max(...nearbyBookings.map((b) => new Date(b.endTime).getTime())));
-      if (lastEnd.getTime() - reqStart.getTime() <= FLEX_WINDOW * 60000) {
-        // Auto-adjust to right after the conflict
-        const adjustedStart = lastEnd;
-        const adjustedEnd = new Date(adjustedStart.getTime() + duration * 60000);
-
-        const booking = await Booking.create({
-          businessId,
-          userId,
-          startTime: adjustedStart,
-          endTime: adjustedEnd,
-          duration,
-          serviceType: serviceType || "general",
-          notes,
-        });
-
-        console.log(`📅 Booking auto-adjusted: ${adjustedStart.toLocaleTimeString()} (shifted from ${reqStart.toLocaleTimeString()})`);
-
-        return {
-          booking: await booking.populate("userId", "name email avatar"),
-          adjusted: true,
-          originalTime: reqStart,
-        };
-      }
-    }
-
     throw new ApiError(409, "This time slot is not available. Try another time.");
   }
 
@@ -143,6 +114,25 @@ export const createBooking = async ({ businessId, userId, startTime, serviceType
   });
   if (duplicate) throw new ApiError(409, "You already have a booking at this time");
 
+  // Wallet Integration: Dynamic Pricing
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(404, "User not found");
+
+  let totalCost = business.basePrice || 0;
+  if (pricingLabel) {
+    const specificPricing = business.pricing.find(p => p.label === pricingLabel);
+    if (specificPricing) totalCost = specificPricing.price;
+  }
+
+  if (user.walletBalance < totalCost) throw new ApiError(400, "Insufficient wallet balance for this booking");
+  
+  user.walletBalance -= totalCost;
+  await user.save();
+
+  if (io) {
+    io.to(`user:${user._id}`).emit("wallet:update", { balance: user.walletBalance });
+  }
+
   const booking = await Booking.create({
     businessId,
     userId,
@@ -150,14 +140,19 @@ export const createBooking = async ({ businessId, userId, startTime, serviceType
     endTime: reqEnd,
     duration,
     serviceType: serviceType || "general",
+    isGroupBooking: !!isGroupBooking,
+    guestCount: guestCount || 1,
     notes,
+    pricingLabel,
+    paidAmount: totalCost,
   });
 
-  console.log(`📅 Booking created: ${reqStart.toLocaleTimeString()} - ${reqEnd.toLocaleTimeString()}`);
+  console.log(`📅 Booking created: ${reqStart.toLocaleTimeString()} - ${reqEnd.toLocaleTimeString()} | Wallet -₹${totalCost}`);
 
   return {
     booking: await booking.populate("userId", "name email avatar"),
     adjusted: false,
+    newBalance: user.walletBalance,
   };
 };
 
@@ -177,19 +172,18 @@ export const extendBooking = async (bookingId, extraMinutes, io) => {
   const extraMs = mins * 60000;
   const extraCharge = mins * RATE_PER_MINUTE;
 
-  // ⚠️ Capture original endTime BEFORE mutation for correct future-booking query
+  // ⚠️ Capture original endTime BEFORE mutation
   const originalEndTime = new Date(booking.endTime);
 
   // Update current booking
   booking.endTime = new Date(booking.endTime.getTime() + extraMs);
   booking.extendedTime += mins;
-  booking.extraCharge += extraCharge;
   booking.duration += mins;
   await booking.save();
 
-  console.log(`⏱️ Booking extended: +${mins}min, charge: ₹${extraCharge}`);
+  console.log(`⏱️ Booking extended: +${mins}min`);
 
-  // Shift all future bookings — use ORIGINAL endTime to find them
+  // Shift all future bookings
   const futureBookings = await Booking.find({
     businessId: booking.businessId,
     startTime: { $gte: originalEndTime },
@@ -201,11 +195,16 @@ export const extendBooking = async (bookingId, extraMinutes, io) => {
   for (const fb of futureBookings) {
     fb.startTime = new Date(fb.startTime.getTime() + extraMs);
     fb.endTime = new Date(fb.endTime.getTime() + extraMs);
-    fb.delayMinutes += extraMinutes;
+    fb.delayMinutes += mins;
 
-    // If delay exceeds threshold, mark as pending confirmation
-    if (fb.delayMinutes >= MAX_DELAY_THRESHOLD) {
-      fb.delayAccepted = null; // needs user action
+    // 💰 COMPENSATION REWARD (Add directly to wallet)
+    const rewardAmount = 15; // ₹15 for appointment delay
+    const affectedUser = await User.findById(fb.userId._id);
+    affectedUser.walletBalance += rewardAmount;
+    await affectedUser.save();
+    
+    if (io) {
+      io.to(`user:${fb.userId._id}`).emit("wallet:update", { balance: affectedUser.walletBalance });
     }
 
     await fb.save();
@@ -216,39 +215,33 @@ export const extendBooking = async (bookingId, extraMinutes, io) => {
       newStartTime: fb.startTime,
       newEndTime: fb.endTime,
       totalDelay: fb.delayMinutes,
-      needsConfirmation: fb.delayMinutes >= MAX_DELAY_THRESHOLD,
+      reward: rewardAmount,
     });
   }
 
-  console.log(`📊 ${affectedUsers.length} bookings shifted by ${mins} min`);
+  console.log(`📊 ${affectedUsers.length} bookings shifted and users rewarded.`);
 
   // Emit Socket.IO notifications to affected users
   if (io && affectedUsers.length > 0) {
     for (const affected of affectedUsers) {
       io.emit("booking:delayed", {
         userId: affected.userId,
-        message: `Your service is delayed by ${affected.totalDelay} minutes due to an extended service ahead of you`,
+        message: `Your booking is delayed by ${mins} minutes. We've credited ₹${affected.reward} to your wallet as a reward!`,
         newStartTime: affected.newStartTime,
         newEndTime: affected.newEndTime,
-        totalDelay: affected.totalDelay,
-        needsConfirmation: affected.needsConfirmation,
+        reward: affected.reward,
       });
     }
-    // Also broadcast timeline update to the business room
-    io.to(`business:${booking.businessId}`).emit("bookings:updated");
   }
 
   return {
     booking,
-    extraCharge,
-    totalExtraCharge: booking.extraCharge,
     affectedUsers,
-    ratePerMinute: RATE_PER_MINUTE,
   };
 };
 
 // ─── Accept / Cancel Delay ────────────────────────────────────
-export const respondToDelay = async (bookingId, userId, accept) => {
+export const respondToDelay = async (bookingId, userId, accept, io = null) => {
   const booking = await Booking.findOne({ _id: bookingId, userId });
   if (!booking) throw new ApiError(404, "Booking not found");
 
@@ -258,11 +251,27 @@ export const respondToDelay = async (bookingId, userId, accept) => {
     console.log(`✅ Delay accepted for booking ${bookingId}`);
     return { booking, action: "accepted" };
   } else {
+    // 💰 Refund directly to wallet
+    const refundAmount = booking.paidAmount || 0;
+    const compensation = 25; // Extra 25 for appointment delay cancellation
+    const totalRefund = refundAmount + compensation;
+
+    const user = await User.findById(userId);
+    if (user) {
+      user.walletBalance += totalRefund;
+      await user.save();
+      
+      if (io) {
+        io.to(`user:${userId}`).emit("wallet:update", { balance: user.walletBalance });
+      }
+    }
+
     booking.status = "cancelled";
     booking.delayAccepted = false;
     await booking.save();
-    console.log(`❌ Booking ${bookingId} cancelled due to delay`);
-    return { booking, action: "cancelled" };
+    
+    console.log(`❌ Booking ${bookingId} cancelled due to delay | Refunded ₹${totalRefund}`);
+    return { booking, action: "cancelled", refunded: totalRefund };
   }
 };
 

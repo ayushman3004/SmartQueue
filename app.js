@@ -8,6 +8,11 @@ import authRoutes from "./src/modules/auth/auth.routes.js";
 import businessRoutes from "./src/modules/business/business.routes.js";
 import queueRoutes from "./src/queue/queue.routes.js";
 import bookingRoutes from "./src/booking/booking.routes.js";
+import chatbotRoutes from "./src/modules/chatbot/chatbot.routes.js";
+import walletRoutes from "./src/modules/wallet/wallet.routes.js";
+import adminRoutes from "./src/modules/admin/admin.routes.js";
+import chatRoutes from "./src/modules/chat/chat.routes.js";
+import User from "./src/modules/auth/auth.model.js";
 
 // Passport config
 import "./src/modules/Oauth/passport.config.js";
@@ -30,10 +35,20 @@ app.use("/api/auth", authRoutes);
 app.use("/api/businesses", businessRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/chat", chatRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// ─── TEMP MIGRATION ──────────────────────────────────────────
+app.get("/api/migrate", async (req, res) => {
+  const result = await User.updateMany({ role: "user" }, { $set: { role: "customer" } });
+  res.json({ success: true, modifiedCount: result.modifiedCount });
 });
 
 // ─── Global Error Handler ─────────────────────────────────────

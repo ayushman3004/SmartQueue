@@ -4,18 +4,49 @@ import { predictServiceTime } from "../../ai/gemini.service.js";
 import Business from "../modules/business/business.model.js";
 
 // ➕ JOIN QUEUE
-export const joinQueue = async (businessId, userData) => {
+export const joinQueue = async (businessId, userData, io = null) => {
   let queueDoc = await Queue.findOne({ businessId });
 
   if (!queueDoc) {
     queueDoc = new Queue({ businessId, users: [] });
   }
 
+  const business = await Business.findById(businessId);
+  if (!business) throw new Error("Business not found");
+
   const queueDS = QueueDS.fromArray(queueDoc.users);
 
   // 🚫 Prevent duplicate joins
   if (queueDoc.users.some(u => (u.userId?._id || u.userId)?.toString() === userData.userId?.toString())) {
-    throw new Error("You are already in this queue");
+    const error = new Error("You are already in this queue");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // 💰 Wallet Integration
+  const User = (await import("../modules/auth/auth.model.js")).default;
+  const user = await User.findById(userData.userId);
+  if (!user) throw new Error("User not found");
+
+  // Determine price
+  let price = business.basePrice || 0;
+  if (userData.pricingLabel) {
+    const specificPricing = business.pricing.find(p => p.label === userData.pricingLabel);
+    if (specificPricing) price = specificPricing.price;
+  }
+
+  if (user.walletBalance < price) {
+    const error = new Error(`Insufficient wallet balance. This hub requires ₹${price} to join.`);
+    error.statusCode = 402;
+    throw error;
+  }
+
+  // Deduct from wallet
+  user.walletBalance -= price;
+  await user.save();
+
+  if (io) {
+    io.to(`user:${user._id}`).emit("wallet:update", { balance: user.walletBalance });
   }
 
   // 🧠 AI prediction
@@ -29,6 +60,8 @@ export const joinQueue = async (businessId, userData) => {
   queueDS.enqueue({
     userId: userData.userId,
     serviceTime,
+    pricingLabel: userData.pricingLabel || "",
+    paidAmount: price || 0,
   });
 
   queueDoc.users = queueDS.toArray();
@@ -57,8 +90,7 @@ export const callNext = async (businessId, io) => {
   if (!queue) throw new Error("Queue not found");
 
   const queueDS = QueueDS.fromArray(queue.users);
-  queueDS.dequeue(); // remove the serving user
-  queueDS.callNext(); // make next user serving
+  queueDS.dequeue(); // remove the serving user. next user becomes head and is set to 'serving' automatically.
 
   queue.users = queueDS.toArray();
   await queue.save();
@@ -81,8 +113,8 @@ export const callNext = async (businessId, io) => {
 };
 
 // 📊 GET QUEUE
-export const getQueue = async (businessId, io = null) => {
-  const queue = await Queue.findOne({ businessId });
+export const getQueue = async (businessId, io = null, requesterId = null) => {
+  let queue = await Queue.findOne({ businessId });
   if (!queue) throw new Error("Queue not found");
 
   // Logic: check for auto-exit before returning
@@ -98,6 +130,15 @@ export const getQueue = async (businessId, io = null) => {
     if (io) {
       io.to(`business:${businessId}`).emit("queue:update", queue);
     }
+  }
+
+  // Check if requester is the owner
+  const business = await Business.findById(businessId);
+  const isOwner = requesterId && (business?.owner?.toString() === requesterId.toString());
+
+  if (isOwner) {
+    // Populate user names for owner
+    queue = await Queue.findOne({ businessId }).populate("users.userId", "name email");
   }
 
   return queue;
@@ -163,14 +204,69 @@ export const extendTime = async (businessId, userId, minutes = 5, io = null) => 
   const queue = await Queue.findOne({ businessId });
   if (!queue) throw new Error("Queue not found");
 
-  const userRes = queue.users.find(u => (u.userId?._id || u.userId)?.toString() === userId?.toString());
-  if (!userRes) throw new Error("User not found as serving");
+  const queueDS = QueueDS.fromArray(queue.users);
+  const node = queueDS.map.get(userId.toString());
+  if (!node) throw new Error("User not found in queue");
 
-  userRes.serviceTime = (userRes.serviceTime || 10) + Number(minutes);
+  node.serviceTime = (node.serviceTime || 10) + Number(minutes);
+  queueDS.recalculate();
+  queue.users = queueDS.toArray();
   await queue.save();
 
   if (io) {
     io.to(`business:${businessId}`).emit("queue:update", queue);
+    let reachedTarget = false;
+    
+    // Compensation Logic
+    const User = (await import("../modules/auth/auth.model.js")).default;
+    
+    for (const u of queue.users) {
+      const uId = (u.userId?._id || u.userId)?.toString();
+      if (reachedTarget) {
+        // Add reward to wallet for delay
+        const rewardAmount = 10; 
+        await User.findByIdAndUpdate(uId, { $inc: { walletBalance: rewardAmount } });
+
+        io.to(`user:${uId}`).emit("queue:delay", {
+          message: `Your appointment is delayed by ${minutes} minutes. We've added ₹${rewardAmount} to your wallet!`,
+          delay: minutes,
+          reward: rewardAmount
+        });
+      }
+      if (uId === userId.toString()) reachedTarget = true;
+    }
   }
   return queue;
+};
+
+// 🎟️ HANDLE CANCEL WITH REFUND
+export const handleCancelDelay = async (businessId, userId, io = null) => {
+  const queueDoc = await Queue.findOne({ businessId });
+  if (!queueDoc) throw new Error("Queue not found");
+
+  const queueDS = QueueDS.fromArray(queueDoc.users);
+  const userData = queueDoc.users.find(u => (u.userId?._id || u.userId)?.toString() === userId.toString());
+  if (!userData) throw new Error("You are not in this queue.");
+
+  const refundAmount = userData.paidAmount || 0;
+  const compensationReward = 20; // Extra 20 for the trouble
+  const totalCredited = refundAmount + compensationReward;
+
+  queueDS.remove(userId);
+  queueDoc.users = queueDS.toArray();
+  await queueDoc.save();
+
+  // Refund directly to wallet
+  const User = (await import("../modules/auth/auth.model.js")).default;
+  const user = await User.findById(userId);
+  if (user) {
+    user.walletBalance += totalCredited;
+    await user.save();
+    
+    if (io) {
+      io.to(`user:${userId}`).emit("wallet:update", { balance: user.walletBalance });
+    }
+  }
+
+  return { queue: queueDoc, totalCredited };
 };

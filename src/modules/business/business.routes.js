@@ -8,10 +8,10 @@ const router = Router();
 router.get("/", getAll);
 
 // Owner only — must be before /:id to prevent "mine" matching as an id
-router.get("/mine", protect, allowRoles("owner"), getMine);
-router.post("/", protect, allowRoles("owner"), create);
-router.put("/:id", protect, allowRoles("owner"), update);
-router.patch("/:id/toggle", protect, allowRoles("owner"), toggle);
+router.get("/mine", protect, allowRoles("owner", "admin"), getMine);
+router.post("/", protect, allowRoles("owner", "admin"), create);
+router.put("/:id", protect, allowRoles("owner", "admin"), update);
+router.patch("/:id/toggle", protect, allowRoles("owner", "admin"), toggle);
 
 // Public — single business (after /mine)
 router.get("/:id", getOne);

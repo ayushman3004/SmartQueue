@@ -1,31 +1,61 @@
 import * as queueService from "./queue.service.js";
 import asyncHandler from "../../utils/asyncHandler.js";
 import ApiResponse from "../../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
-const emitQueueUpdate = (req, businessId, queueDoc) => {
+const emitQueueUpdate = async (req, businessId, queueDoc) => {
   const io = req.app.get("io");
-  if (io) {
-    io.to(`business:${businessId}`).emit("queue:update", queueDoc);
+  if (!io) return;
+
+  // 1. Send standard update to public room (privacy preserved)
+  io.to(`business:${businessId}`).emit("queue:update", queueDoc);
+
+  // 2. Send detailed update to admin room (populated with customer names)
+  try {
+    const adminQueue = await queueDoc.constructor.findById(queueDoc._id)
+      .populate("users.userId", "name email");
+    if (adminQueue) {
+      io.to(`business:${businessId}:admin`).emit("queue:update", adminQueue);
+    }
+  } catch (err) {
+    console.error("❌ Admin socket emission failed:", err.message);
   }
 };
 
 // GET /api/queue/:businessId
 export const getQueue = asyncHandler(async (req, res) => {
   const io = req.app.get("io");
-  const queue = await queueService.getQueue(req.params.businessId, io);
+  let requesterId = null;
+
+  // Manual token extraction for public/private view toggle
+  const token = (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) 
+    ? req.headers.authorization.split(" ")[1] 
+    : req.cookies?.token;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      requesterId = decoded.id;
+    } catch (err) {
+      // Token invalid, treat as public
+    }
+  }
+
+  const queue = await queueService.getQueue(req.params.businessId, io, requesterId);
   res.json(new ApiResponse(200, { queue }));
 });
 
 // POST /api/queue/:businessId/join
 export const join = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
-  const { serviceType, userType } = req.body;
+  const { serviceType, userType, pricingLabel } = req.body;
 
   const queue = await queueService.joinQueue(businessId, {
     userId: req.user._id,
     serviceType: serviceType || "general",
     userType: userType || "normal",
-  });
+    pricingLabel,
+  }, req.app.get("io"));
 
   emitQueueUpdate(req, businessId, queue);
   res.status(200).json(new ApiResponse(200, { queue }, "Joined queue"));
@@ -64,4 +94,13 @@ export const extend = asyncHandler(async (req, res) => {
   const io = req.app.get("io");
   const queue = await queueService.extendTime(businessId, userId, minutes, io);
   res.json(new ApiResponse(200, { queue }, "Extended service time"));
+});
+
+// POST /api/queue/:businessId/cancel-delay (user only)
+export const cancelDelay = asyncHandler(async (req, res) => {
+  const { businessId } = req.params;
+  const io = req.app.get("io");
+
+  const { queue, totalCredited } = await queueService.handleCancelDelay(businessId, req.user._id, io);
+  res.status(200).json(new ApiResponse(200, { queue }, `Cancelled and refunded ₹${totalCredited} to your wallet`));
 });

@@ -28,13 +28,29 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "owner"],
-      default: "user",
+      enum: ["customer", "owner", "admin"],
+      default: "customer",
+    },
+    walletBalance: {
+      type: Number,
+      default: 0,
     },
     authProvider: {
       type: String,
       enum: ["local", "google", "both"],
       default: "local",
+    },
+    phone: {
+      type: String,
+      default: "",
+    },
+    bio: {
+      type: String,
+      default: "",
+    },
+    location: {
+      type: String,
+      default: "",
     },
   },
   { timestamps: true }

@@ -33,6 +33,10 @@ const businessSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
     logo: {
       type: String,
       default: "",
@@ -41,6 +45,16 @@ const businessSchema = new mongoose.Schema(
       type: [String],
       default: ["general"],
     },
+    basePrice: {
+      type: Number,
+      default: 0,
+    },
+    pricing: [
+      {
+        label: { type: String, required: true },
+        price: { type: Number, required: true },
+      },
+    ],
   },
   { timestamps: true }
 );

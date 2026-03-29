@@ -6,7 +6,7 @@ import { signup, signin } from '../api/auth.api'
 
 export default function LoginPage() {
   const [tab, setTab] = useState('signin')
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'customer' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { logIn } = useAuth()
@@ -82,15 +82,15 @@ export default function LoginPage() {
                 >
                   <div className="group">
                     <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2 block group-focus-within:text-cyan-500 transition-colors">Identity</label>
-                    <input className="input !bg-black/30 !py-4" name="name" placeholder="Full Name" value={form.name} onChange={onChange} required />
+                    <input className="input w-full" name="name" placeholder="Full Name" value={form.name} onChange={onChange} required />
                   </div>
                   
                   <div>
                     <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-3 block text-center">Your Role</label>
                     <div className="grid grid-cols-2 gap-3 p-1 bg-black/30 rounded-2xl">
                       {[
-                        { v: 'user', l: 'Customer' },
-                        { v: 'owner', l: 'Merchant' }
+                        { v: 'customer', l: 'Customer' },
+                        { v: 'owner', l: 'Hub Owner' }
                       ].map(r => (
                         <button
                           key={r.v}
@@ -111,12 +111,12 @@ export default function LoginPage() {
 
             <div className="group">
               <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2 block group-focus-within:text-cyan-500 transition-colors">Email</label>
-              <input className="input !bg-black/30 !py-4" type="email" name="email" placeholder="name@hub.com" value={form.email} onChange={onChange} required />
+              <input className="input w-full" type="email" name="email" placeholder="name@hub.com" value={form.email} onChange={onChange} required />
             </div>
 
             <div className="group">
               <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2 block group-focus-within:text-cyan-500 transition-colors">Credential</label>
-              <input className="input !bg-black/30 !py-4" type="password" name="password" placeholder="••••••••" value={form.password} onChange={onChange} required />
+              <input className="input w-full" type="password" name="password" placeholder="••••••••" value={form.password} onChange={onChange} required />
             </div>
 
             {error && (
