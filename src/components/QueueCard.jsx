@@ -7,77 +7,75 @@ export default function QueueCard({ user, position, isMe, totalUsers }) {
     ? new Date(user.estimatedStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '--:--'
 
+  const endTime = user.estimatedStartTime && user.serviceTime
+    ? new Date(new Date(user.estimatedStartTime).getTime() + user.serviceTime * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '--:--'
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+      initial={{ opacity: 0, scale: 0.98, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95, x: 20 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className={`relative flex items-center gap-5 p-5 rounded-[2rem] border transition-all duration-300 ${
+      exit={{ opacity: 0, scale: 0.98, x: -10 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      className={`relative flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 ${
         isMe 
-          ? 'bg-cyan-500/10 border-cyan-500/30 shadow-[0_10px_30px_-10px_rgba(6,182,212,0.2)]' 
+          ? 'bg-teal-500/10 border-teal-500/30' 
           : isServing 
             ? 'bg-emerald-500/10 border-emerald-500/30' 
-            : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
+            : 'bg-zinc-900 border-white/5 hover:bg-zinc-800'
       }`}
     >
       {/* Visual Indicator for 'Me' */}
-      {isMe && <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-10 bg-cyan-500 rounded-full blur-[2px]" />}
+      {isMe && <div className="absolute left-0 top-0 bottom-0 w-1 bg-teal-500 rounded-l-xl" />}
 
       {/* Position indicator */}
       <div
-        className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm flex-shrink-0 border transition-all ${
+        className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors ${
           isServing 
-            ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
+            ? 'bg-emerald-500/20 text-emerald-500' 
             : isMe 
-              ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' 
-              : 'bg-neutral-900 text-neutral-500 border-white/5'
+              ? 'bg-teal-500 text-white' 
+              : 'bg-zinc-800 text-zinc-500'
         }`}
       >
-        {isServing ? (
-          <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-            ⚡
-          </motion.span>
-        ) : (
-          `#0${position}`.slice(-3)
-        )}
+        {isServing ? '⚡' : position}
       </div>
 
       {/* User Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-3 mb-1">
-          <span className={`font-black tracking-tight truncate ${isMe ? 'text-cyan-400 text-lg' : 'text-neutral-300 text-sm'}`}>
-            {isMe ? 'My Session' : `Customer Hub #${position}`}
+          <span className={`font-bold tracking-tight truncate ${isMe ? 'text-teal-400 text-base' : 'text-zinc-200 text-sm'}`}>
+            {isMe ? 'Your Position' : `Queue Ticket #${position}`}
           </span>
           {isServing && (
-            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] font-black uppercase tracking-widest text-emerald-500 border border-emerald-500/20">
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded border bg-emerald-500/10 text-[10px] font-bold uppercase tracking-wider text-emerald-500 border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Active
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
-             {user.serviceType || 'General'} Service 
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="text-xs font-medium text-zinc-500 truncate max-w-[150px] sm:max-w-auto">
+             {user.serviceType || 'General Service'} 
           </p>
-          <span className="w-1 h-1 rounded-full bg-neutral-800" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-neutral-600">
-            {user.serviceTime}m duration
+          <span className="w-1 h-1 rounded-full bg-zinc-700" />
+          <p className="text-xs font-medium text-zinc-500">
+            {user.serviceTime}m limit
           </p>
         </div>
       </div>
 
-      {/* Live ETA */}
       <div className="text-right flex-shrink-0 pl-4 border-l border-white/5">
-        <p className="text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-1">Target Slot</p>
-        <p className={`text-sm font-black font-mono transition-colors ${
-          isServing ? 'text-emerald-400' : isMe ? 'text-cyan-400' : 'text-neutral-400'
+        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">
+          {isServing ? 'Ends At' : 'Target'}
+        </p>
+        <p className={`text-sm font-bold tabular-nums transition-colors ${
+          isServing ? 'text-emerald-400' : isMe ? 'text-teal-400' : 'text-zinc-300'
         }`}>
-          {isServing ? 'NOW' : eta}
+          {isServing ? endTime : eta}
         </p>
       </div>
     </motion.div>
   )
 }
-

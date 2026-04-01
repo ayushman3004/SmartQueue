@@ -22,19 +22,23 @@ class QueueDS {
 
   // 🧪 Auto-remove finished services
   cleanup() {
-    if (!this.head || this.head.status !== "serving") return false;
+    let wasCleaned = false;
+    // Loop until the head is not serving or the current head still has time left
+    while (this.head && this.head.status === "serving") {
+      const now = new Date();
+      const endTime = new Date(
+        this.head.estimatedStartTime.getTime() + this.head.serviceTime * 60000
+      );
 
-    const now = new Date();
-    const endTime = new Date(
-      this.head.estimatedStartTime.getTime() + this.head.serviceTime * 60000
-    );
-
-    if (now > endTime) {
-      console.log(`🕒 Auto-removing finished service for user: ${this.head.userId}`);
-      this.dequeue();
-      return true; // something was removed
+      if (now > endTime) {
+        console.log(`🕒 Auto-removing finished service for user: ${this.head.userId}`);
+        this.dequeue();
+        wasCleaned = true;
+      } else {
+        break; // head still has time, stop checking
+      }
     }
-    return false;
+    return wasCleaned;
   }
 
   // 🔁 Recalculate ETA for whole queue
@@ -42,11 +46,18 @@ class QueueDS {
     let current = this.head;
     let time = new Date();
 
+    // The serving user's start time is fixed to when they actually started.
+    // We only recalculate for waiting users relative to the serving user's end time.
+    if (current && current.status === "serving" && current.estimatedStartTime) {
+      time = new Date(current.estimatedStartTime);
+    }
+
+    const BUFFER = 15; // 15-minute buffer between slots as requested
+
     while (current) {
-      // If someone is already serving, their start time is fixed to when they started
-      // But for this simple DS, we'll just use current time for head
       current.estimatedStartTime = new Date(time);
-      time = new Date(time.getTime() + current.serviceTime * 60000);
+      // Next person starts after current person ends + 15 min buffer
+      time = new Date(time.getTime() + (current.serviceTime + BUFFER) * 60000);
       current = current.next;
     }
   }
@@ -58,10 +69,13 @@ class QueueDS {
     }
 
     const node = new QueueNode(user);
+    node.estimatedStartTime = user.estimatedStartTime || null;
 
     if (!this.head) {
       this.head = this.tail = node;
       node.status = "serving";
+      // If just starting, set to now
+      if (!node.estimatedStartTime) node.estimatedStartTime = new Date();
     } else {
       this.tail.next = node;
       node.prev = this.tail;
@@ -85,6 +99,8 @@ class QueueDS {
     if (this.head) {
       this.head.prev = null;
       this.head.status = "serving";
+      // New head starts now
+      this.head.estimatedStartTime = new Date();
     } else {
       this.tail = null;
     }
@@ -100,7 +116,13 @@ class QueueDS {
     if (node.prev) node.prev.next = node.next;
     if (node.next) node.next.prev = node.prev;
 
-    if (node === this.head) this.head = node.next;
+    if (node === this.head) {
+      this.head = node.next;
+      if (this.head) {
+        this.head.status = "serving";
+        this.head.estimatedStartTime = new Date();
+      }
+    }
     if (node === this.tail) this.tail = node.prev;
 
     this.map.delete(userId.toString());
@@ -131,9 +153,10 @@ class QueueDS {
   static fromArray(users) {
     const queue = new QueueDS();
 
-    users.forEach((u, index) => {
+    users.forEach((u) => {
       const node = new QueueNode(u);
       node.status = u.status;
+      node.estimatedStartTime = u.estimatedStartTime ? new Date(u.estimatedStartTime) : null;
 
       if (!queue.head) {
         queue.head = queue.tail = node;
@@ -144,7 +167,8 @@ class QueueDS {
       }
 
       if (u.userId) {
-        queue.map.set(u.userId.toString(), node);
+        const idStr = (u.userId._id || u.userId).toString();
+        queue.map.set(idStr, node);
       }
     });
 

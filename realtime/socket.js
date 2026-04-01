@@ -1,3 +1,5 @@
+import { getQueue } from "../src/queue/queue.service.js";
+
 /**
  * Socket.IO event handler initialization
  * 
@@ -7,6 +9,21 @@
  *  server emits:  "queue:update" <queueDoc>
  */
 export const initSocket = (io) => {
+  // 🕒 Auto-cleanup for active rooms every 30 seconds
+  setInterval(async () => {
+    const rooms = Array.from(io.sockets.adapter.rooms.keys())
+      .filter(r => r.startsWith("business:") && !r.endsWith(":admin"));
+    
+    for (const room of rooms) {
+      const businessId = room.split(":")[1];
+      try {
+        await getQueue(businessId, io); 
+      } catch (err) {
+        // Silently fail if business not found or other issues
+      }
+    }
+  }, 30000);
+
   io.on("connection", (socket) => {
     console.log(`🔌 Socket connected: ${socket.id}`);
 

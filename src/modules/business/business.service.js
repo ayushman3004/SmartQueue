@@ -27,13 +27,19 @@ export const getAllBusinesses = async () => {
     {
       $addFields: {
         queueLength: { $size: { $ifNull: ["$queueData.users", []] } },
-        estimatedWait: {
-          $multiply: [
-            { $size: { $ifNull: ["$queueData.users", []] } },
-            "$averageServiceTime",
-          ],
-        },
+        totalServiceTime: { $sum: "$queueData.users.serviceTime" },
       },
+    },
+    {
+      $addFields: {
+        estimatedWait: {
+          $cond: [
+            { $gt: ["$queueLength", 0] },
+            { $add: ["$totalServiceTime", { $multiply: ["$queueLength", 15] }] },
+            0
+          ]
+        }
+      }
     },
     {
       $lookup: {
@@ -67,8 +73,18 @@ export const getBusinessById = async (id) => {
   // Also get queue info
   const queue = await mongoose.model("Queue").findOne({ businessId: id });
   const bObj = b.toObject();
-  bObj.queueLength = queue?.users?.length || 0;
-  bObj.estimatedWait = (queue?.users?.length || 0) * (b.averageServiceTime || 10);
+  const users = queue?.users || [];
+  bObj.queueLength = users.length;
+  
+  if (users.length > 0) {
+    const lastUser = users[users.length - 1];
+    const buffer = 15;
+    const lastEndTime = new Date(new Date(lastUser.estimatedStartTime).getTime() + (lastUser.serviceTime + buffer) * 60000);
+    const waitMins = Math.max(0, Math.round((lastEndTime - new Date()) / 60000));
+    bObj.estimatedWait = waitMins;
+  } else {
+    bObj.estimatedWait = 0;
+  }
   
   return bObj;
 };

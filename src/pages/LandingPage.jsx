@@ -3,24 +3,24 @@ import { useNavigate } from 'react-router-dom'
 
 const FEATURES = [
   {
-    icon: '🔮',
-    title: 'AI Wait Forecasting',
-    desc: 'Our proprietary Gemini-powered models analyze live hub traffic to provide down-to-the-minute ETA predictions.'
+    icon: '⏱️',
+    title: 'Live System Positioning',
+    desc: 'Monitor real-time hub traffic to track exact wait times and queue flow with pinpoint precision.'
   },
   {
     icon: '💳',
-    title: 'Smart Wallet Sync',
-    desc: 'Seamlessly reserve slots with our integrated Rupee wallet. Secure refunds and compensation are processed in real-time.'
+    title: 'Seamless Payments',
+    desc: 'Reserve slots instantly with integrated payments. Secure refunds process automatically if plans change.'
   },
   {
     icon: '⚡',
-    title: 'Zero-Latency Updates',
-    desc: 'Experience lightning-fast queue synchronization across all your devices using advanced WebSocket infrastructure.'
+    title: 'Zero-Latency Sync',
+    desc: 'Built on high-performance WebSockets to ensure your status immediately syncs across all devices.'
   },
   {
     icon: '🏢',
-    title: 'Enterprise Dashboard',
-    desc: 'Business owners get full control over their operations with live traffic insights and customer flow management tools.'
+    title: 'Business Infrastructure',
+    desc: 'Equip your team with an enterprise-grade dashboard to completely manage and optimize customer flow.'
   }
 ]
 
@@ -30,82 +30,78 @@ export default function LandingPage() {
   return (
     <div className="container overflow-x-hidden pt-12">
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] flex flex-col items-center justify-center text-center space-y-12">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-500/10 rounded-full blur-[160px] pointer-events-none -z-10" />
-        
+      <section className="min-h-[75vh] flex flex-col items-start justify-center text-left space-y-8 relative">
         <motion.div
-           initial={{ opacity: 0, scale: 0.9 }}
-           animate={{ opacity: 1, scale: 1 }}
-           className="px-6 py-2 rounded-full glass border-white/5 text-[10px] font-black uppercase tracking-[0.5em] text-cyan-400"
+           initial={{ opacity: 0, y: 10 }}
+           animate={{ opacity: 1, y: 0 }}
+           className="px-4 py-2 rounded-md bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-widest text-teal-400"
         >
-          Redefining the Waiting Experience
+          Productivity Infrastructure
         </motion.div>
 
         <motion.h1 
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-6xl md:text-9xl font-black text-white tracking-tighter italic leading-[0.8] mb-4"
+          className="text-5xl md:text-8xl font-black text-white tracking-tight leading-[1.1] max-w-4xl"
         >
-          SMART <br />
-          <span className="gradient-text italic">QUEUE 2.0</span>
+          Eliminate the Wait. <br />
+          Optimize the <span className="text-teal-500">Flow.</span>
         </motion.h1>
 
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl md:text-2xl text-neutral-400 font-medium max-w-3xl leading-relaxed"
+          className="text-lg md:text-xl text-zinc-400 font-medium max-w-2xl leading-relaxed"
         >
-          The ultimate liquid infrastructure for physical hubs. Skip the line, track your status in real-time, and reclaim your most valuable asset: <span className="text-white font-black italic">Time</span>.
+          A seamless SaaS platform designed to completely modernise your operations. Give your customers real-time updates and eliminate physical bottlenecks instantly.
         </motion.p>
 
         <motion.div 
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="flex flex-col sm:flex-row items-center gap-6 pt-8"
+          className="flex flex-col sm:flex-row items-center gap-4 pt-4"
         >
           <button 
             onClick={() => navigate('/login')}
-            className="btn-primary py-6 px-16 text-xs shadow-[0_0_50px_rgba(6,182,212,0.3)]"
+            className="btn-primary py-4 px-10 text-sm w-full sm:w-auto"
           >
-            Launch Your Hub →
+            Start for Free
           </button>
           <button 
              onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
-             className="px-12 py-6 rounded-2xl glass border-white/10 text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/5 transition-all"
+             className="px-10 py-4 rounded-lg bg-zinc-800/50 border border-white/10 text-sm font-bold text-white hover:bg-white/10 transition-colors w-full sm:w-auto"
           >
-            Discover Tech Stack
+            View Features
           </button>
         </motion.div>
       </section>
 
       {/* Value Prop Section */}
-      <section id="features" className="py-32 space-y-24">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
+      <section id="features" className="py-24 space-y-16">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-white/10 pb-8">
            <div className="space-y-4 max-w-2xl">
-             <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">Why Choose <br/> <span className="gradient-text italic">SmartQueue?</span></h2>
-             <p className="text-neutral-500 text-lg font-medium">We bridge the gap between digital convenience and physical presence.</p>
+             <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">Platform <span className="text-teal-500">Capabilities</span></h2>
+             <p className="text-zinc-400 text-lg font-medium">Everything you need to virtualize your physical waiting rooms.</p>
            </div>
-           <div className="hidden md:block w-32 h-px bg-white/10 mb-8" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {FEATURES.map((f, i) => (
             <motion.div 
               key={i}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="glass p-10 group hover:border-cyan-500/30 transition-all rounded-[3rem] relative overflow-hidden"
+              className="glass p-8 group hover:border-teal-500/50 transition-colors rounded-2xl"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="text-5xl mb-8 grayscale group-hover:grayscale-0 transition-all transform group-hover:scale-110 active:rotate-12 duration-500">
+              <div className="text-4xl mb-6 grayscale group-hover:grayscale-0 transition-all opacity-80 group-hover:opacity-100">
                 {f.icon}
               </div>
-              <h3 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter italic">{f.title}</h3>
-              <p className="text-neutral-500 font-medium leading-relaxed group-hover:text-neutral-300 transition-colors">
+              <h3 className="text-xl font-bold text-white mb-2">{f.title}</h3>
+              <p className="text-zinc-400 font-medium leading-relaxed group-hover:text-zinc-300 transition-colors">
                 {f.desc}
               </p>
             </motion.div>
@@ -114,14 +110,15 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Footer */}
-      <section className="py-32 text-center">
-         <div className="glass p-16 md:p-32 rounded-[4rem] space-y-12 relative overflow-hidden">
-            <div className="absolute inset-0 bg-linear-to-br from-cyan-500/10 to-transparent pointer-events-none" />
-            <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter italic leading-tight">Ready to <br/> reclaim your day?</h2>
-            <p className="text-neutral-400 text-xl font-medium max-w-xl mx-auto">Join thousands of users who are already skipping the line at their favorite restaurants, clinics, and banks.</p>
+      <section className="py-24 text-left">
+         <div className="glass p-12 md:p-20 rounded-3xl space-y-8 flex flex-col md:flex-row items-center justify-between gap-12 border-teal-500/10">
+            <div className="space-y-6">
+              <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight leading-tight">Ready to launch?</h2>
+              <p className="text-zinc-400 text-lg font-medium max-w-lg">Join forward-thinking businesses upgrading their operational infrastructure.</p>
+            </div>
             <button 
               onClick={() => navigate('/login')}
-              className="btn-primary py-7 px-20 text-xs"
+              className="btn-primary py-5 px-12 text-sm whitespace-nowrap"
             >
               Create Free Account
             </button>
