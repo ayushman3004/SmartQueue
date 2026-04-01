@@ -13,7 +13,7 @@ const businessSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["healthcare", "banking", "retail", "restaurant", "government", "other"],
+      enum: ["healthcare", "banking", "retail", "salon", "restaurant", "government", "other"],
       default: "other",
     },
     owner: {
@@ -44,6 +44,16 @@ const businessSchema = new mongoose.Schema(
     serviceTypes: {
       type: [String],
       default: ["general"],
+    },
+    services: {
+      type: [
+        {
+          name: { type: String, required: true },
+          duration: { type: Number, required: true },
+          price: { type: Number, default: 0 },
+        }
+      ],
+      default: [{ name: "general", duration: 10 }]
     },
     basePrice: {
       type: Number,

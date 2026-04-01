@@ -30,7 +30,11 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   // Determine price
   let price = business.basePrice || 0;
-  if (userData.pricingLabel) {
+  const selectedServiceObj = business.services?.find(s => s.name === userData.serviceType);
+  
+  if (selectedServiceObj && selectedServiceObj.price !== undefined) {
+    price = selectedServiceObj.price;
+  } else if (userData.pricingLabel) {
     const specificPricing = business.pricing.find(p => p.label === userData.pricingLabel);
     if (specificPricing) price = specificPricing.price;
   }
@@ -50,11 +54,14 @@ export const joinQueue = async (businessId, userData, io = null) => {
   }
 
   // 🧠 AI prediction
+  const baseServiceTime = selectedServiceObj ? selectedServiceObj.duration : (business.averageServiceTime || 10);
+
   const serviceTime = await predictServiceTime({
     serviceType: userData.serviceType,
     userType: userData.userType || "normal",
     timeOfDay: new Date().getHours(),
     queueLength: queueDS.map.size,
+    baseDuration: baseServiceTime,
   });
 
   queueDS.enqueue({

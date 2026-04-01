@@ -4,6 +4,10 @@ import ApiResponse from "../../../utils/ApiResponse.js";
 
 export const create = asyncHandler(async (req, res) => {
   const business = await businessService.createBusiness(req.user._id, req.body);
+  const io = req.app.get("io");
+  if (io) {
+    io.emit("service:created", { businessId: business._id, business });
+  }
   res.status(201).json(new ApiResponse(201, { business }, "Business created"));
 });
 
@@ -24,6 +28,10 @@ export const getMine = asyncHandler(async (req, res) => {
 
 export const update = asyncHandler(async (req, res) => {
   const business = await businessService.updateBusiness(req.params.id, req.user._id, req.body);
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`business:${business._id}`).emit("service:updated", { businessId: business._id, business });
+  }
   res.json(new ApiResponse(200, { business }, "Updated"));
 });
 

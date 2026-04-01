@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', category: 'other', averageServiceTime: 10, basePrice: 0, pricing: [] })
+  const [form, setForm] = useState({ name: '', description: '', category: 'other', averageServiceTime: 10, basePrice: 0, pricing: [], services: [{ name: 'General Consultation', duration: 15, price: 0 }] })
   const [creating, setCreating] = useState(false)
 
   const isOwner = user?.role === 'owner'
@@ -105,16 +105,18 @@ export default function DashboardPage() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center gap-4 pt-4"
           >
-            <button 
-              onClick={() => document.getElementById('explore').scrollIntoView({ behavior: 'smooth' })}
-              className="btn-primary py-5 px-10 text-xs w-full sm:w-auto"
-            >
-              🚀 Explore Hubs
-            </button>
+            {!isOwner && (
+              <button 
+                onClick={() => document.getElementById('explore').scrollIntoView({ behavior: 'smooth' })}
+                className="btn-primary py-5 px-10 text-xs w-full sm:w-auto"
+              >
+                🚀 Explore Hubs
+              </button>
+            )}
             {isOwner && (
               <button 
                 onClick={() => setShowCreate(true)}
-                className="px-10 py-5 rounded-2xl glass border-white/10 text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/5 hover:border-white/20 transition-all active:scale-95 w-full sm:w-auto"
+                className="btn-primary py-5 px-10 text-xs w-full sm:w-auto"
               >
                 + Launch New Hub
               </button>
@@ -135,25 +137,24 @@ export default function DashboardPage() {
             <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase italic">Your Centers</h2>
             <div className="flex-1 h-px bg-linear-to-r from-white/10 to-transparent" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             {myBusinesses.map((b, i) => (
               <motion.div
                 key={b._id}
                 whileHover={{ y: -5 }}
                 onClick={() => navigate(`/business/${b._id}/manage`)}
-                className="glass p-8 cursor-pointer group space-y-6"
+                className="glass p-12 lg:p-16 rounded-[3rem] cursor-pointer group flex flex-col justify-between shadow-2xl min-h-[350px] border-white/5 hover:border-cyan-500/20"
               >
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xl grayscale group-hover:grayscale-0 transition-all">🏢</div>
-                  <div className={`w-2.5 h-2.5 rounded-full ${b.isOpen ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-rose-500'} shadow-[0_0_10px_currentColor]`} />
+                <div className="flex items-center justify-between mb-8">
+                  <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-3xl grayscale group-hover:grayscale-0 transition-all shadow-xl">🏢</div>
+                  <div className={`w-3.5 h-3.5 rounded-full ${b.isOpen ? 'bg-emerald-500 shadow-[0_0_15px_1px_#10b981]' : 'bg-rose-500 shadow-[0_0_15px_1px_#f43f5e]'}`} />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white group-hover:text-cyan-400 transition-colors uppercase truncate">{b.name}</h3>
-                  <p className="text-[9px] font-black tracking-widest text-neutral-500 uppercase">Live Queue: {b.queueLength || 0}</p>
+                <div className="mb-8">
+                  <h3 className="text-3xl md:text-5xl font-black text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tighter truncate">{b.name}</h3>
+                  <p className="text-xs md:text-sm font-black tracking-[0.4em] text-neutral-500 uppercase mt-4">Live Queue: <span className="text-white">{b.queueLength || 0}</span></p>
                 </div>
-                <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-cyan-500 uppercase tracking-widest">Manage →</span>
-                  <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                <div className="pt-8 border-t border-white/10 flex items-center justify-between opacity-80 group-hover:opacity-100 transition-opacity">
+                  <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">Manage Dashboard →</span>
                 </div>
               </motion.div>
             ))}
@@ -162,7 +163,8 @@ export default function DashboardPage() {
       )}
 
       {/* Exploration Section */}
-      <section id="explore" className="space-y-16 pb-20">
+      {!isOwner && (
+        <section id="explore" className="space-y-16 pb-20">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-12">
           <div className="space-y-4 max-w-xl">
             <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase leading-[0.8] italic">Explore <br /> <span className="gradient-text italic">Live Hubs</span></h2>
@@ -215,6 +217,7 @@ export default function DashboardPage() {
           )}
         </div>
       </section>
+      )}
 
       {/* Launch Hub Modal */}
       <AnimatePresence>
@@ -232,12 +235,13 @@ export default function DashboardPage() {
                 e.preventDefault();
                 setCreating(true);
                 try {
-                  const res = await createBusiness({ ...form, averageServiceTime: Number(form.averageServiceTime) })
+                  const payload = { ...form, averageServiceTime: Number(form.averageServiceTime) }
+                  const res = await createBusiness(payload)
                   const newBiz = res.data.data.business
                   setBusinesses(prev => [newBiz, ...prev])
                   setMyBusinesses(prev => [newBiz, ...prev])
                   setShowCreate(false)
-                  setForm({ name: '', description: '', category: 'other', averageServiceTime: 10, basePrice: 0, pricing: [] })
+                  setForm({ name: '', description: '', category: 'other', averageServiceTime: 10, basePrice: 0, pricing: [], services: [{ name: 'General Consultation', duration: 15, price: 0 }] })
                   navigate(`/business/${newBiz._id}/manage`)
                 } catch (err) { alert(err.response?.data?.message || 'Failed') } finally { setCreating(false) }
               }} className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
@@ -250,7 +254,43 @@ export default function DashboardPage() {
                   </select>
                 </div>
                 <div><label className="text-[10px] font-black uppercase text-neutral-500 mb-3 block tracking-widest ml-1">Base Price (₹)</label>
-                  <input className="input h-16 text-lg font-bold" type="number" value={form.basePrice} onChange={e => setForm({...form, basePrice: Number(e.target.value)})} />
+                  <input className="input h-16 text-lg font-bold" type="text" inputMode="numeric" placeholder="0" value={form.basePrice === 0 ? '' : form.basePrice} onChange={e => {
+                    const v = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                    setForm({...form, basePrice: v === '' ? 0 : Number(v)});
+                  }} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-3 block tracking-widest ml-1">Services</label>
+                  <div className="space-y-2">
+                    {form.services.map((svc, idx) => (
+                      <div key={idx} className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-center">
+                        <input className="input h-14 text-sm font-bold" placeholder="Service Name (e.g. Haircut)" value={svc.name} onChange={e => {
+                          const newSvcs = [...form.services];
+                          newSvcs[idx].name = e.target.value;
+                          setForm({...form, services: newSvcs});
+                        }} required />
+                        <input className="input h-14 text-sm font-bold text-center px-1" type="text" inputMode="numeric" placeholder="Mins" value={svc.duration} onChange={e => {
+                          const v = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                          const newSvcs = [...form.services];
+                          newSvcs[idx].duration = v === '' ? '' : Number(v);
+                          setForm({...form, services: newSvcs});
+                        }} required />
+                        <input className="input h-14 text-sm font-bold text-center px-1" type="text" inputMode="numeric" placeholder="₹ Price" value={svc.price !== undefined && svc.price !== 0 ? svc.price : ''} onChange={e => {
+                          const v = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                          const newSvcs = [...form.services];
+                          newSvcs[idx].price = v === '' ? 0 : Number(v);
+                          setForm({...form, services: newSvcs});
+                        }} />
+                        {form.services.length > 1 ? (
+                          <button type="button" onClick={() => {
+                            const newSvcs = form.services.filter((_, i) => i !== idx);
+                            setForm({...form, services: newSvcs});
+                          }} className="w-12 h-14 rounded-2xl bg-rose-500/10 text-rose-500 font-bold hover:bg-rose-500/20 transition-colors flex items-center justify-center border border-rose-500/20">✕</button>
+                        ) : <div className="w-12 h-14"></div>}
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setForm({...form, services: [...form.services, {name: '', duration: 15, price: 0}]})} className="text-[10px] text-cyan-500 font-black uppercase tracking-widest mt-4 px-2 hover:text-cyan-400 block">+ Add Another Service</button>
+                  </div>
                 </div>
                 <div className="md:col-span-2 pt-6">
                   <button type="submit" disabled={creating} className="w-full py-7 rounded-[2rem] bg-linear-to-r from-cyan-400 via-blue-500 to-indigo-600 text-black font-black uppercase tracking-[0.3em] text-xs shadow-2xl shadow-cyan-500/20 active:scale-95 transition-all overflow-hidden relative group">

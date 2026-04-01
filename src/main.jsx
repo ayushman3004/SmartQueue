@@ -11,8 +11,8 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <AuthContext.Consumer>
-          {({ setUser }) => (
-            <SocketProvider setUser={setUser}>
+          {({ setUser, user }) => (
+            <SocketProvider setUser={setUser} user={user}>
               <App />
             </SocketProvider>
           )}

@@ -9,6 +9,8 @@ const emitQueueUpdate = async (req, businessId, queueDoc) => {
 
   // 1. Send standard update to public room (privacy preserved)
   io.to(`business:${businessId}`).emit("queue:update", queueDoc);
+  io.to(`business:${businessId}`).emit("queue:updated", { queueId: queueDoc._id, businessId, queue: queueDoc });
+  io.to(`business:${businessId}`).emit("queue:etaUpdated", { queueId: queueDoc._id, businessId, queue: queueDoc });
 
   // 2. Send detailed update to admin room (populated with customer names)
   try {
@@ -50,14 +52,18 @@ export const join = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
   const { serviceType, userType, pricingLabel } = req.body;
 
+  const io = req.app.get("io");
   const queue = await queueService.joinQueue(businessId, {
     userId: req.user._id,
     serviceType: serviceType || "general",
     userType: userType || "normal",
     pricingLabel,
-  }, req.app.get("io"));
+  }, io);
 
   emitQueueUpdate(req, businessId, queue);
+  if (io) {
+    io.to(`business:${businessId}`).emit("queue:joined", { businessId, queueId: queue._id, userId: req.user._id, queue });
+  }
   res.status(200).json(new ApiResponse(200, { queue }, "Joined queue"));
 });
 
@@ -65,7 +71,11 @@ export const join = asyncHandler(async (req, res) => {
 export const leave = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
   const queue = await queueService.leaveQueue(businessId, req.user._id);
+  const io = req.app.get("io");
   emitQueueUpdate(req, businessId, queue);
+  if (io) {
+    io.to(`business:${businessId}`).emit("queue:left", { businessId, queueId: queue._id, userId: req.user._id, queue });
+  }
   res.json(new ApiResponse(200, { queue }, "Left queue"));
 });
 
@@ -74,6 +84,10 @@ export const callNext = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
   const io = req.app.get("io");
   const queue = await queueService.callNext(businessId, io);
+  if (io) {
+    io.to(`business:${businessId}`).emit("queue:serviceStarted", { businessId, queueId: queue._id, queue });
+    io.to(`business:${businessId}`).emit("queue:serviceCompleted", { businessId, queueId: queue._id, queue });
+  }
   res.json(new ApiResponse(200, { queue }, "Called next user"));
 });
 
@@ -93,6 +107,12 @@ export const extend = asyncHandler(async (req, res) => {
   const { userId, minutes } = req.body;
   const io = req.app.get("io");
   const queue = await queueService.extendTime(businessId, userId, minutes, io);
+  
+  if (io) {
+    const eventName = Number(minutes) > 15 ? "extension:paid" : "extension:free";
+    io.to(`business:${businessId}`).emit(eventName, { businessId, queueId: queue._id, userId, minutes, queue });
+  }
+
   res.json(new ApiResponse(200, { queue }, "Extended service time"));
 });
 

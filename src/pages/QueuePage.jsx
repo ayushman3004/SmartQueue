@@ -6,12 +6,12 @@ import { useSocket } from '../context/SocketContext'
 import { getQueue, leaveQueue, getWaitEstimate, cancelDelay } from '../api/queue.api'
 import { getBusiness } from '../api/business.api'
 import QueueCard from '../components/QueueCard'
-import toast, { Toaster } from 'react-hot-toast'
+import { toast } from 'react-hot-toast'
 
 export default function QueuePage() {
   const { businessId } = useParams()
   const { user } = useAuth()
-  const { joinRoom, joinUser, leaveRoom, onQueueUpdate, onQueueDelay, onBusinessStatus } = useSocket()
+  const { joinRoom, joinUser, leaveRoom, onQueueUpdate, onQueueDelay, onBusinessStatus, connected } = useSocket()
   const navigate = useNavigate()
 
   const [business, setBusiness] = useState(null)
@@ -54,7 +54,9 @@ export default function QueuePage() {
   }, [businessId])
 
   useEffect(() => {
-    fetchData()
+    if (connected) {
+      fetchData()
+    }
     joinRoom(businessId)
     if (user?._id) joinUser(user._id)
     
@@ -106,7 +108,7 @@ export default function QueuePage() {
       unsubDelay?.()
       unsubStatus?.()
     }
-  }, [businessId, fetchData])
+  }, [businessId, fetchData, connected])
 
   useEffect(() => {
     if (loading) return
@@ -194,21 +196,10 @@ export default function QueuePage() {
 
   const progressPercent = myPosition > 0 ? Math.max(0, 100 - (myPosition * 10)) : 100
 
-  if (!myQueueData && !showFeedback) {
-    return (
-      <div className="container max-w-xl text-center py-20">
-        <Toaster />
-        <p className="text-8xl mb-8">🏙️</p>
-        <h2 className="text-4xl font-black text-white mb-4 uppercase tracking-tighter">Not in line</h2>
-        <p className="text-neutral-500 mb-8">Explore businesses to join a virtual pool and skip the physical wait.</p>
-        <button onClick={() => navigate('/')} className="btn-primary">Browse All Hubs</button>
-      </div>
-    )
-  }
+  // Removed full-screen block to allow live exploring for unqueued consumers
 
   return (
     <div className="container lg:max-w-7xl relative pb-20 pt-8">
-      <Toaster />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-cyan-500/5 blur-[120px] pointer-events-none -z-10" />
 
       {/* Feedback Modal Overlay */}
@@ -231,7 +222,7 @@ export default function QueuePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-5 xl:col-span-4 space-y-8">
-          {myQueueData && (
+          {myQueueData ? (
             <motion.div layout className="glass-bright p-8 md:p-12 relative overflow-hidden flex flex-col items-center text-center shadow-2xl border-white/10 rounded-[3rem]">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-neutral-900/50">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} className="h-full bg-linear-to-r from-cyan-500 via-blue-500 to-indigo-600 shadow-[0_0_15px_currentColor]" />
@@ -269,15 +260,6 @@ export default function QueuePage() {
                       </p>
                     </div>
                   </div>
-
-                  <button
-                    onClick={handleEstimate}
-                    disabled={estimating}
-                    className="w-full py-5 rounded-[2rem] bg-linear-to-r from-neutral-900 to-black border border-white/10 font-black uppercase tracking-[0.2em] text-[10px] text-cyan-400 hover:text-black hover:bg-cyan-500 transition-all active:scale-[0.98] relative overflow-hidden group"
-                  >
-                    <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                    {estimating ? 'Analyzing Feed...' : '🧠 AI Smart Predictor'}
-                  </button>
                 </div>
               )}
 
@@ -285,36 +267,15 @@ export default function QueuePage() {
                 Cancel My Entry
               </button>
             </motion.div>
+          ) : (
+            <motion.div layout className="glass-bright p-8 md:p-12 relative overflow-hidden flex flex-col items-center text-center shadow-2xl border-white/10 rounded-[3rem]">
+              <p className="text-7xl mb-6 grayscale opacity-80">👀</p>
+              <h2 className="text-3xl md:text-4xl font-black text-white mb-2 uppercase tracking-tighter italic">Observing</h2>
+              <p className="text-neutral-500 mb-8 text-xs max-w-[200px] leading-relaxed font-bold">You are viewing this Hub's live feed but are currently not participating.</p>
+              <button onClick={() => navigate('/')} className="w-full py-5 rounded-[2rem] glass border-white/10 font-black uppercase tracking-[0.2em] text-[10px] text-white hover:bg-white/5 hover:border-white/20 transition-all active:scale-[0.98]">Return to Dashboard</button>
+            </motion.div>
           )}
 
-          <AnimatePresence>
-            {estimation && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-bright p-8 bg-neutral-950 border-cyan-500/20 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-                 <div className="flex items-center gap-2 mb-6">
-                  <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                  <span className="text-[10px] font-black text-cyan-500 tracking-[0.3em] uppercase">Intelligence Report</span>
-                </div>
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-5xl font-black text-white tracking-tighter">{estimation.estimatedWait}m</p>
-                    <p className="text-xs text-neutral-400 mt-2 italic font-medium">"{estimation.message}"</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/5">
-                    <div>
-                      <p className="text-[10px] font-black text-neutral-500 uppercase mb-1">Ahead</p>
-                      <p className="text-xl font-black text-white">{estimation.peopleAhead}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-neutral-500 uppercase mb-1">Flow</p>
-                      <p className={`text-xl font-black italic ${estimation.isPeakHour ? 'text-amber-500' : 'text-emerald-500'}`}>
-                        {estimation.isPeakHour ? 'HIGH' : 'LOW'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
         <div className="lg:col-span-7 xl:col-span-8">

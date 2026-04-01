@@ -24,6 +24,7 @@ export default function BusinessCard({ business: initialBusiness, index }) {
   const [booking, setBooking] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [selectedPricing, setSelectedPricing] = useState(business.pricing?.[0]?.label || "")
+  const [selectedService, setSelectedService] = useState(business.services?.[0]?.name || "general")
 
   const isOwner = user?.role === 'owner' && (business.owner?._id || business.owner)?.toString() === user._id?.toString()
 
@@ -35,7 +36,7 @@ export default function BusinessCard({ business: initialBusiness, index }) {
         setBusiness(prev => ({
           ...prev,
           queueLength: updatedQueue.users.length,
-          estimatedWait: updatedQueue.users.length * (prev.averageServiceTime || 10)
+          estimatedWait: updatedQueue.users.reduce((acc, curr) => acc + (curr.serviceTime || prev.averageServiceTime || 10), 0)
         }))
       }
     }
@@ -70,7 +71,7 @@ export default function BusinessCard({ business: initialBusiness, index }) {
     setBooking(true)
     try {
       const response = await api.post(`/queue/${business._id}/join`, {
-        serviceType: 'general',
+        serviceType: selectedService,
         pricingLabel: selectedPricing
       })
       if (response.data.success) {
@@ -153,6 +154,29 @@ export default function BusinessCard({ business: initialBusiness, index }) {
           </div>
         </div>
 
+        {/* Dynamic Services */}
+        {!isOwner && business.isOpen && business.services?.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-[9px] font-black uppercase text-neutral-500 tracking-widest">Select Service</span>
+            <div className="flex flex-wrap gap-2">
+              {business.services.map((svc, i) => (
+                <button
+                  key={`svc-${i}`}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setSelectedService(svc.name) }}
+                  className={`px-3 py-2 rounded-2xl text-[9px] font-black uppercase border transition-all ${
+                    selectedService === svc.name 
+                      ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-400 shadow-xl shadow-cyan-500/10' 
+                      : 'border-white/5 bg-white/5 text-neutral-500 hover:border-white/20 hover:text-white'
+                  }`}
+                >
+                  {svc.name} · {svc.duration}m {svc.price !== undefined && svc.price >= 0 ? `· ₹${svc.price}` : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Dynamic Pricing */}
         {!isOwner && business.isOpen && business.pricing?.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
@@ -202,7 +226,18 @@ export default function BusinessCard({ business: initialBusiness, index }) {
         >
           <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
           <span className="relative z-10">
-            {booking ? 'Processing...' : isOwner ? 'Manage Hub' : `Join Queue · ₹${business.pricing?.find(p => p.label === selectedPricing)?.price || business.basePrice || 0}`}
+            {(() => {
+              if (booking) return 'Processing...';
+              if (isOwner) return 'Manage Hub';
+              const sObj = business.services?.find(s => s.name === selectedService);
+              let p = business.basePrice || 0;
+              if (sObj && sObj.price !== undefined && sObj.price >= 0) {
+                 p = sObj.price;
+              } else {
+                 p = business.pricing?.find(px => px.label === selectedPricing)?.price || business.basePrice || 0;
+              }
+              return `Join Queue · ₹${p}`;
+            })()}
           </span>
         </button>
       </div>

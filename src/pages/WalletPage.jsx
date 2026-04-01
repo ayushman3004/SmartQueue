@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { toast, Toaster } from 'react-hot-toast'
+import { toast } from 'react-hot-toast'
 import * as walletApi from '../api/wallet.api'
 import { useAuth } from '../context/AuthContext'
 
@@ -30,7 +30,6 @@ export default function WalletPage() {
 
   return (
     <div className="container max-w-2xl px-4 sm:px-6">
-      <Toaster />
       <motion.div 
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -83,7 +82,7 @@ export default function WalletPage() {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full py-7 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] bg-linear-to-r from-cyan-400 to-blue-600 text-black shadow-2xl shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-all hover:-translate-y-1 active:scale-[0.98] relative overflow-hidden group"
+            className="w-full py-7 rounded-4xl text-[10px] font-black uppercase tracking-[0.3em] bg-linear-to-r from-cyan-400 to-blue-600 text-black shadow-2xl shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-all hover:-translate-y-1 active:scale-[0.98] relative overflow-hidden group"
           >
             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
             <span className="relative z-10">{loading ? "Synchronizing..." : "Initialize Transfer"}</span>

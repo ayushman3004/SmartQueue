@@ -10,10 +10,10 @@ export const predictServiceTime = async (context) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `You are a service time prediction AI for a queue management system.
+    const prompt = `You are a service time prediction AI for a queue management management system.
     
     Predict the estimated service time in minutes for ONE customer based on:
-    - Service Type: ${context.serviceType}
+    - Service Type: ${context.serviceType} (Base expected time is ${context.baseDuration} minutes)
     - Customer Type: ${context.userType}
     - Hour of day (24h): ${context.timeOfDay}
     - Current queue length: ${context.queueLength} people
@@ -47,7 +47,8 @@ export const predictServiceTime = async (context) => {
 /**
  * Intelligent fallback when Gemini API fails
  */
-const getFallback = ({ serviceType, timeOfDay, queueLength }) => {
+const getFallback = (context) => {
+  const { serviceType, timeOfDay, queueLength } = context;
   const baseTimes = {
     banking: 12,
     healthcare: 20,
@@ -57,7 +58,7 @@ const getFallback = ({ serviceType, timeOfDay, queueLength }) => {
     general: 10,
   };
 
-  const base = baseTimes[serviceType?.toLowerCase()] ?? 10;
+  const base = context.baseDuration || baseTimes[context.serviceType?.toLowerCase()] || 10;
 
   // Peak hour multiplier
   const isPeak = [9, 10, 11, 13, 14, 17, 18].includes(Number(timeOfDay));
