@@ -149,7 +149,7 @@ export default function LoginPage() {
 
           <div className="mt-10 pt-8 border-t border-slate-100 text-center">
             <button
-              onClick={() => window.location.href = '/api/auth/google'}
+              onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`}
               className="flex items-center justify-center gap-3 w-full py-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-[11px] font-bold hover:bg-slate-100 transition-all uppercase tracking-wider"
             >
               <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M12.48 10.92v3.28h4.78c-.19 1.06-.9 1.95-1.78 2.53v2.13h2.87c1.68-1.55 2.65-3.83 2.65-6.53 0-.62-.06-1.22-.16-1.81H12.48z" /><path fill="currentColor" d="M12 23c3.13 0 5.75-1.04 7.67-2.81l-2.87-2.13c-.79.53-1.8.85-2.8.85-2.15 0-3.96-1.45-4.62-3.41H6.18v2.24C8.06 20.9 12 23 12 23z" /><path fill="currentColor" d="M7.38 15.5a6.6 6.6 0 0 1 0-4.14V9.12H6.18C5.43 10.59 5 12.24 5 14s.43 3.41 1.18 4.88l1.2-1.38z" /><path fill="currentColor" d="M12 4.14c1.7 0 3.22.58 4.42 1.73l3.31-3.31C17.75 1.04 15.13 0 12 0 8.06 0 4.14 2.1 2.18 5.48l3.66 2.84c.66-1.96 2.47-3.41 4.62-3.41z" /></svg>

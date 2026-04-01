@@ -6,134 +6,159 @@ import {
   useState,
   useCallback,
 } from "react";
-import { io } from "socket.io-client";
-
+import socket from "../lib/socket";
 import toast from "react-hot-toast";
 
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children, setUser, user }) => {
-  const socketRef = useRef(null);
+  const socketRef = useRef(socket);
   const userRef = useRef(user);
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(socket.connected);
 
   useEffect(() => {
     userRef.current = user;
   }, [user]);
 
   useEffect(() => {
-    const socket = io({
-      withCredentials: true,
-      transports: ["websocket", "polling"], // allow fallback for proxy compatibility
-    });
+    // Sync connection state if already connected
+    if (socket.connected) setConnected(true);
 
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
+    const onConnect = () => {
       console.log("✅ Socket connected:", socket.id);
       setConnected(true);
-    });
+    };
 
-    socket.on("disconnect", () => {
+    const onDisconnect = () => {
       console.log("❌ Socket disconnected");
       setConnected(false);
-    });
+    };
 
-    socket.on("connect_error", (err) => {
+    const onConnectError = (err) => {
       console.error("🚨 Socket connection error:", err.message);
-    });
+    };
 
-    socket.on("wallet:update", ({ balance }) => {
+    const onWalletUpdate = ({ balance }) => {
       console.log("💰 Wallet update received:", balance);
       setUser(prev => prev ? { ...prev, walletBalance: balance } : prev);
-    });
+    };
 
-    socket.on("queue:joined", (data) => {
+    const onQueueJoined = (data) => {
       if (data.userId === userRef.current?._id) toast.success("You joined the queue successfully", { id: "q-join" });
       else toast.info("Someone joined the queue", { id: "q-join-other" });
-    });
+    };
 
-    socket.on("queue:left", (data) => {
+    const onQueueLeft = (data) => {
       if (data.userId === userRef.current?._id) toast.success("You left the queue", { id: "q-left" });
       else toast.info("Someone left the queue", { id: "q-left-other" });
-    });
+    };
 
-    socket.on("queue:updated", () => {
+    const onQueueUpdated = () => {
       toast.success("Your position has been updated", { id: "q-update" });
-    });
+    };
 
-    socket.on("queue:etaUpdated", () => {
+    const onQueueEtaUpdated = () => {
       toast.info("Your ETA has been updated", { id: "q-eta" });
-    });
+    };
 
-    socket.on("queue:serviceStarted", () => {
+    const onQueueServiceStarted = () => {
       toast.success("Service started for the next user", { id: "q-started" });
-    });
+    };
 
-    socket.on("queue:serviceCompleted", () => {
+    const onQueueServiceCompleted = () => {
       toast.success("Service completed", { id: "q-completed" });
-    });
+    };
 
-    socket.on("extension:free", (data) => {
+    const onExtensionFree = (data) => {
       toast.info(`Service delayed: Time extended by ${data.minutes} mins`, { id: "ext-free" });
-    });
+    };
 
-    socket.on("extension:paid", (data) => {
+    const onExtensionPaid = (data) => {
       toast.info(`Service delayed due to extension: ${data.minutes} mins`, { id: "ext-paid" });
-    });
+    };
 
-    socket.on("service:created", () => {
+    const onServiceCreated = () => {
       toast.success("New business service created", { id: "s-created" });
-    });
+    };
 
-    socket.on("service:updated", () => {
+    const onServiceUpdated = () => {
       toast.success("Business service updated", { id: "s-updated" });
-    });
+    };
 
-    socket.on("service:deleted", () => {
+    const onServiceDeleted = () => {
       toast.success("Business service deleted", { id: "s-deleted" });
-    });
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
+    socket.on("wallet:update", onWalletUpdate);
+    socket.on("queue:joined", onQueueJoined);
+    socket.on("queue:left", onQueueLeft);
+    socket.on("queue:updated", onQueueUpdated);
+    socket.on("queue:etaUpdated", onQueueEtaUpdated);
+    socket.on("queue:serviceStarted", onQueueServiceStarted);
+    socket.on("queue:serviceCompleted", onQueueServiceCompleted);
+    socket.on("extension:free", onExtensionFree);
+    socket.on("extension:paid", onExtensionPaid);
+    socket.on("service:created", onServiceCreated);
+    socket.on("service:updated", onServiceUpdated);
+    socket.on("service:deleted", onServiceDeleted);
 
     return () => {
-      socket.disconnect();
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
+      socket.off("wallet:update", onWalletUpdate);
+      socket.off("queue:joined", onQueueJoined);
+      socket.off("queue:left", onQueueLeft);
+      socket.off("queue:updated", onQueueUpdated);
+      socket.off("queue:etaUpdated", onQueueEtaUpdated);
+      socket.off("queue:serviceStarted", onQueueServiceStarted);
+      socket.off("queue:serviceCompleted", onQueueServiceCompleted);
+      socket.off("extension:free", onExtensionFree);
+      socket.off("extension:paid", onExtensionPaid);
+      socket.off("service:created", onServiceCreated);
+      socket.off("service:updated", onServiceUpdated);
+      socket.off("service:deleted", onServiceDeleted);
     };
-  }, []);
+  }, [setUser]);
 
   const joinRoom = useCallback((businessId) => {
-    socketRef.current?.emit("join:room", { businessId });
+    socket.emit("join:room", { businessId });
   }, []);
 
   const joinAdmin = useCallback((businessId) => {
-    socketRef.current?.emit("join:admin", { businessId });
+    socket.emit("join:admin", { businessId });
   }, []);
 
   const joinUser = useCallback((userId) => {
-    socketRef.current?.emit("join:user", { userId });
+    socket.emit("join:user", { userId });
   }, []);
 
   const leaveRoom = useCallback((businessId, userId) => {
-    socketRef.current?.emit("leave:room", { businessId, userId });
+    socket.emit("leave:room", { businessId, userId });
   }, []);
 
   const onQueueUpdate = useCallback((cb) => {
-    socketRef.current?.on("queue:update", cb);
-    return () => socketRef.current?.off("queue:update", cb);
+    socket.on("queue:update", cb);
+    return () => socket.off("queue:update", cb);
   }, []);
 
   const onQueueDelay = useCallback((cb) => {
-    socketRef.current?.on("queue:delay", cb);
-    return () => socketRef.current?.off("queue:delay", cb);
+    socket.on("queue:delay", cb);
+    return () => socket.off("queue:delay", cb);
   }, []);
 
   const onBusinessStatus = useCallback((cb) => {
-    socketRef.current?.on("business:status", cb);
-    return () => socketRef.current?.off("business:status", cb);
+    socket.on("business:status", cb);
+    return () => socket.off("business:status", cb);
   }, []);
 
   return (
     <SocketContext.Provider
       value={{
-        socket: socketRef.current,
+        socket,
         connected,
         joinRoom,
         joinAdmin,
