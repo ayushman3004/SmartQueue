@@ -4,7 +4,7 @@ import axios from '../api/axios'
 
 export default function AIDesistant() {
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState([{ role: 'bot', text: 'Hello! I am your SmartQueue assistant. How can I help you book today?' }])
+  const [messages, setMessages] = useState([{ role: 'bot', text: 'Hello! I am your serveQ assistant. How can I help you book today?' }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const chatRef = useRef(null)
@@ -44,7 +44,7 @@ export default function AIDesistant() {
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-zinc-950 flex items-center justify-center text-xl shadow-lg">🤖</div>
                 <div className="space-y-0.5">
-                  <h4 className="text-sm font-black text-zinc-950 tracking-tight uppercase italic">Neural Core</h4>
+                  <h4 className="text-sm font-black text-zinc-950 tracking-tight uppercase">Neural Core</h4>
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Signal Stable</span>

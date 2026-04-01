@@ -6,7 +6,7 @@ export const processMessage = async (message, businessInfo) => {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const prompt = `
-    You are an AI assistant for the SmartQueue platform.
+    You are an AI assistant for the serveQ platform.
     Platform Context: A multi-industry queue and booking management SaaS.
     
     Current Business: ${JSON.stringify(businessInfo)}

@@ -150,22 +150,22 @@ export default function BookingPage() {
           {business && (
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full blur-[40px] pointer-events-none" />
-              <h1 className="text-2xl font-black mb-1 text-zinc-950 tracking-tight leading-none italic uppercase">
+              <h1 className="text-2xl font-black mb-1 text-zinc-950 tracking-tight leading-none uppercase">
                 {business.name.split(' ')[0]}<span className="text-teal-600">{business.name.split(' ').slice(1).join(' ')}</span>
               </h1>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-slate-400">{business.category} Hub Operations</p>
               
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-zinc-100 text-center shadow-xs">
-                  <p className="text-lg font-black text-teal-700 italic leading-none mb-1.5">{meta.avgServiceTime}m</p>
+                  <p className="text-lg font-black text-teal-700 leading-none mb-1.5">{meta.avgServiceTime}m</p>
                   <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Avg Time</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-zinc-100 text-center shadow-xs">
-                  <p className="text-lg font-black text-indigo-700 italic leading-none mb-1.5">{meta.aiBuffer}m</p>
+                  <p className="text-lg font-black text-indigo-700 leading-none mb-1.5">{meta.aiBuffer}m</p>
                   <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Safety</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-zinc-100 text-center shadow-xs">
-                  <p className="text-lg font-black text-rose-700 italic leading-none mb-1.5">₹{meta.ratePerMinute}</p>
+                  <p className="text-lg font-black text-rose-700 leading-none mb-1.5">₹{meta.ratePerMinute}</p>
                   <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Extra</p>
                 </div>
               </div>
@@ -176,7 +176,7 @@ export default function BookingPage() {
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-xl">
             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] mb-6 text-zinc-950">Active Registrations</h3>
             {myBookings.length === 0 ? (
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest italic py-8 text-center border border-dashed border-zinc-100 rounded-2xl">Null entries detected.</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest py-8 text-center border border-dashed border-zinc-100 rounded-2xl">Null entries detected.</p>
             ) : (
               <div className="space-y-4">
                 {myBookings.map((b) => (
@@ -220,7 +220,7 @@ export default function BookingPage() {
             
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10 relative z-10">
               <div>
-                <h2 className="text-3xl font-black text-zinc-950 uppercase italic tracking-tighter leading-none mb-1.5">Reserve<span className="text-teal-600">Space</span></h2>
+                <h2 className="text-3xl font-black text-zinc-950 uppercase tracking-tighter leading-none mb-1.5">Reserve<span className="text-teal-600">Space</span></h2>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Select target temporal vector</p>
               </div>
               <div className="relative">
@@ -299,7 +299,7 @@ export default function BookingPage() {
               <div className="text-center py-20 bg-slate-50/50 rounded-[2.5rem] mt-4 border border-dashed border-zinc-200">
                 <p className="text-5xl mb-6 opacity-20">🏜️</p>
                 <p className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">Temporal Vacuum Detected</p>
-                <p className="text-[10px] mt-2 font-bold text-slate-300 uppercase italic">Try shifting target date.</p>
+                <p className="text-[10px] mt-2 font-bold text-slate-300 uppercase">Try shifting target date.</p>
               </div>
             )}
 

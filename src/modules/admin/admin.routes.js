@@ -9,5 +9,6 @@ router.use(allowRoles("admin"));
 
 router.get("/stats", adminController.getStats);
 router.patch("/business/:id/toggle", adminController.toggleBusinessStatus);
+router.delete("/business/:id", adminController.deleteBusiness);
 
 export default router;

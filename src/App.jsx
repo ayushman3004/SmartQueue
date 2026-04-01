@@ -63,7 +63,7 @@ export default function App() {
         duration: 5000,
       })
       if (Notification.permission === 'granted') {
-        new Notification("SmartQueue", { body: data.message })
+        new Notification("serveQ", { body: data.message })
       }
     }
     socket.on('notification:near', handleNear)
@@ -92,8 +92,12 @@ export default function App() {
         }}
       />
       <Navbar />
-      <BackButton />
-      <AIDesistant />
+      {user && (
+        <>
+          <BackButton />
+          <AIDesistant />
+        </>
+      )}
       <main className="main-content">
         <Routes>
           <Route path="/login" element={<LoginPage />} />

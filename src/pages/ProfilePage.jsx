@@ -64,7 +64,7 @@ export default function ProfilePage() {
            <div className="absolute -top-24 -right-24 w-64 h-64 bg-teal-500/10 rounded-full blur-[80px]" />
            <div className="absolute top-10 left-10">
              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-500 mb-2 block opacity-80">User Identity Hub</span>
-             <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic leading-none">Security Center</h1>
+             <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">Security Center</h1>
            </div>
         </div>
 

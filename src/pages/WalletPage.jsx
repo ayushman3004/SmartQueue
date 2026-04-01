@@ -41,14 +41,14 @@ export default function WalletPage() {
         
         <div className="text-center space-y-2 relative z-10">
           <span className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-600">Secure Environment</span>
-          <h1 className="text-4xl font-black tracking-tight text-zinc-950 uppercase italic leading-none">Smart<span className="text-teal-600 italic">Pay</span> Hub</h1>
+          <h1 className="text-4xl font-black tracking-tight text-zinc-950 uppercase leading-none">Smart<span className="text-teal-600">Pay</span> Hub</h1>
         </div>
 
         <div className="bg-teal-600 rounded-[2.5rem] p-8 md:p-10 border border-teal-500 relative overflow-hidden group shadow-xl shadow-teal-600/20">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] group-hover:opacity-40 transition-opacity duration-700" />
           <div className="relative space-y-4">
             <span className="text-[10px] font-black text-teal-100 uppercase tracking-widest">Global Liquid Balance</span>
-            <div className="text-5xl md:text-7xl font-black text-white tracking-tighter italic leading-none">
+            <div className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none">
               <span className="text-3xl text-teal-200 mr-2 not-italic">₹</span>
               {(user?.walletBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
@@ -92,7 +92,7 @@ export default function WalletPage() {
           </button>
         </form>
 
-        <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed italic opacity-80">
+        <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed opacity-80">
           Transactions secured via AES-256 liquid encryption layer.<br/>
           Mock gateway active for environment validation.
         </p>

@@ -23,12 +23,12 @@ export default function Navbar() {
     navigate('/login')
   }
 
-  const navLinks = [
+  const navLinks = user ? [
     { name: 'Dashboard', path: '/' },
     { name: 'Wallet', path: '/wallet' },
     { name: 'Profile', path: '/profile' },
     ...(user?.role === 'admin' ? [{ name: 'Admin', path: '/admin' }] : []),
-  ]
+  ] : []
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -42,13 +42,11 @@ export default function Navbar() {
         }`}>
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 no-underline group">
-            <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shadow-md shadow-teal-600/20 group-hover:scale-110 transition-transform duration-500">
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-md shadow-teal-600/10 group-hover:scale-110 transition-transform duration-500 overflow-hidden border border-zinc-100">
+              <img src="/logo.png" alt="serveQ" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tighter text-zinc-950 leading-none">SmartQueue</span>
+              <span className="text-xl font-black tracking-tighter text-zinc-950 leading-none">serveQ</span>
               <span className="text-[9px] font-black uppercase tracking-[0.3em] text-teal-600">Enterprise</span>
             </div>
           </Link>

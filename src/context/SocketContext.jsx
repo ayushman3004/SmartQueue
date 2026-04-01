@@ -22,9 +22,9 @@ export const SocketProvider = ({ children, setUser, user }) => {
   }, [user]);
 
   useEffect(() => {
-    const socket = io("http://localhost:3001", {
+    const socket = io({
       withCredentials: true,
-      transports: ["websocket"], // prevents polling issues
+      transports: ["websocket", "polling"], // allow fallback for proxy compatibility
     });
 
     socketRef.current = socket;

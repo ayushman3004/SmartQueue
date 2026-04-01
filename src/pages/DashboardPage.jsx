@@ -9,6 +9,7 @@ import { getGreeting } from '../utils/helpers'
 
 const CATEGORIES = ['healthcare', 'banking', 'retail', 'salon', 'restaurant', 'government', 'other']
 
+
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -63,65 +64,7 @@ export default function DashboardPage() {
   })
 
   return (
-    <div className="container space-y-24 md:space-y-32">
-      {/* Hero Section */}
-      <section className="relative pt-12 md:pt-16">
-        <div className="flex flex-col items-start text-left space-y-6 max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="px-4 py-1.5 rounded-lg bg-teal-50 border border-teal-100 text-xs font-bold uppercase tracking-widest text-teal-700"
-          >
-            System Dashboard
-          </motion.div>
-          
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl md:text-7xl font-black text-zinc-950 tracking-tight leading-[1.1]"
-          >
-            Operational <br />
-            <span className="text-teal-600">Overview</span>
-          </motion.h1>
-          
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-base md:text-xl text-slate-500 font-medium leading-relaxed max-w-2xl px-1"
-          >
-            {isOwner 
-              ? `Good ${getGreeting()}, owner. Your infrastructure is active and ready to scale customer flow.`
-              : `Access our network of high-efficiency hubs. Secure your slot dynamically without the physical wait.`}
-          </motion.p>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center gap-4 pt-4"
-          >
-            {!isOwner && (
-              <button 
-                onClick={() => document.getElementById('explore').scrollIntoView({ behavior: 'smooth' })}
-                className="btn-primary"
-              >
-                Browse Hubs
-              </button>
-            )}
-            {isOwner && (
-              <button 
-                onClick={() => setShowCreate(true)}
-                className="btn-primary"
-              >
-                Deploy New Hub
-              </button>
-            )}
-          </motion.div>
-        </div>
-      </section>
-
+    <div className="container space-y-16 md:space-y-24 pt-12">
       {/* Owner Section */}
       {isOwner && myBusinesses.length > 0 && (
         <motion.section 

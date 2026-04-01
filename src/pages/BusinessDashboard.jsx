@@ -142,14 +142,16 @@ export default function BusinessDashboard() {
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <button
             onClick={handleToggle}
-            disabled={toggling}
+            disabled={toggling || !business?.isActive}
             className={`px-6 py-3 rounded-xl font-bold text-xs transition-all w-full sm:w-auto border shadow-xs ${
-              business?.isOpen 
-                ? 'bg-white border-zinc-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100' 
-                : 'bg-teal-600 border-teal-500 hover:bg-teal-700 text-white shadow-teal-600/10 shadow-lg'
+              !business?.isActive
+                ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed opacity-60'
+                : business?.isOpen 
+                  ? 'bg-white border-zinc-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100' 
+                  : 'bg-teal-600 border-teal-500 hover:bg-teal-700 text-white shadow-teal-600/10 shadow-lg'
             }`}
           >
-            {toggling ? 'Updating...' : business?.isOpen ? 'Deactivate Hub' : 'Activate Hub'}
+            {toggling ? 'Updating...' : !business?.isActive ? 'SUSPENDED BY ADMIN' : business?.isOpen ? 'Deactivate Hub' : 'Activate Hub'}
           </button>
           <button
             onClick={handleCallNext}

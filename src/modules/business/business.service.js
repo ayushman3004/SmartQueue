@@ -98,7 +98,7 @@ export const updateBusiness = async (id, ownerId, data) => {
   if (!b) throw new ApiError(403, "Not your business or not found");
 
   // Prevent overwriting protected fields
-  const { owner, _id, __v, createdAt, updatedAt, ...safeData } = data;
+  const { owner, _id, __v, createdAt, updatedAt, isActive, ...safeData } = data;
 
   // Validate averageServiceTime if provided
   if (safeData.averageServiceTime != null) {
@@ -113,9 +113,24 @@ export const updateBusiness = async (id, ownerId, data) => {
   return await b.save();
 };
 
+export const deleteBusiness = async (id) => {
+  const b = await Business.findByIdAndDelete(id);
+  if (!b) throw new ApiError(404, "Business not found");
+  
+  // Clean up related queues and bookings (optional but recommended)
+  await mongoose.model("Queue").deleteMany({ businessId: id });
+  await mongoose.model("Appointment").deleteMany({ businessId: id });
+  
+  return b;
+};
+
 export const toggleOpen = async (id, ownerId, io) => {
   const b = await Business.findOne({ _id: id, owner: ownerId });
   if (!b) throw new ApiError(403, "Not your business or not found");
+  
+  if (!b.isActive) {
+    throw new ApiError(403, "Access Revoked. Your business has been deactivated by administration.");
+  }
   
   b.isOpen = !b.isOpen;
   await b.save();

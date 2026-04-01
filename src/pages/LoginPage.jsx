@@ -47,11 +47,11 @@ export default function LoginPage() {
         className="w-full max-w-md z-10"
       >
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-xl font-black text-teal-600 mx-auto mb-4 shadow-xs">
-            Q
+          <div className="w-14 h-14 rounded-2xl bg-white border border-zinc-200 flex items-center justify-center mx-auto mb-6 shadow-sm overflow-hidden p-1">
+            <img src="/logo.png" alt="serveQ" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-3xl font-black text-zinc-950 tracking-tight leading-none mb-2">SmartQueue</h1>
-          <p className="text-zinc-500 text-sm font-medium tracking-tight">Enterprise Queue Management Platform</p>
+          <h1 className="text-3xl font-black text-zinc-950 tracking-tight leading-none mb-2">serveQ</h1>
+          <p className="text-zinc-500 text-sm font-medium tracking-tight">Enterprise Operational Infrastructure</p>
         </div>
 
         <div className="bg-white border border-zinc-200 p-8 rounded-2xl shadow-xl">
@@ -61,9 +61,8 @@ export default function LoginPage() {
               <button
                 key={t}
                 onClick={() => { setTab(t) }}
-                className={`flex-1 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  tab === t ? 'bg-white text-zinc-950 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`flex-1 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${tab === t ? 'bg-white text-zinc-950 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'
+                  }`}
               >
                 {t === 'signin' ? 'Sign In' : 'Sign Up'}
               </button>
@@ -84,7 +83,7 @@ export default function LoginPage() {
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Full Identity</label>
                     <input className="input" name="name" placeholder="John Doe" value={form.name} onChange={onChange} required />
                   </div>
-                  
+
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block text-center">Operational Role</label>
                     <div className="grid grid-cols-2 gap-2 p-1 bg-slate-50 rounded-xl border border-slate-200">
@@ -96,9 +95,8 @@ export default function LoginPage() {
                           key={r.v}
                           type="button"
                           onClick={() => setForm(f => ({ ...f, role: r.v }))}
-                          className={`py-2.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                            form.role === r.v ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
-                          }`}
+                          className={`py-2.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${form.role === r.v ? 'bg-teal-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700'
+                            }`}
                         >
                           {r.l}
                         </button>
@@ -117,14 +115,14 @@ export default function LoginPage() {
             <div>
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Security Credential</label>
               <div className="relative">
-                <input 
-                  className="input pr-12" 
-                  type={showPassword ? "text" : "password"} 
-                  name="password" 
-                  placeholder="••••••••" 
-                  value={form.password} 
-                  onChange={onChange} 
-                  required 
+                <input
+                  className="input pr-12"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={onChange}
+                  required
                 />
                 <button
                   type="button"
@@ -150,11 +148,11 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-10 pt-8 border-t border-slate-100 text-center">
-            <button 
-              onClick={() => window.location.href = '/api/auth/google'} 
+            <button
+              onClick={() => window.location.href = '/api/auth/google'}
               className="flex items-center justify-center gap-3 w-full py-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-[11px] font-bold hover:bg-slate-100 transition-all uppercase tracking-wider"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M12.48 10.92v3.28h4.78c-.19 1.06-.9 1.95-1.78 2.53v2.13h2.87c1.68-1.55 2.65-3.83 2.65-6.53 0-.62-.06-1.22-.16-1.81H12.48z"/><path fill="currentColor" d="M12 23c3.13 0 5.75-1.04 7.67-2.81l-2.87-2.13c-.79.53-1.8.85-2.8.85-2.15 0-3.96-1.45-4.62-3.41H6.18v2.24C8.06 20.9 12 23 12 23z"/><path fill="currentColor" d="M7.38 15.5a6.6 6.6 0 0 1 0-4.14V9.12H6.18C5.43 10.59 5 12.24 5 14s.43 3.41 1.18 4.88l1.2-1.38z"/><path fill="currentColor" d="M12 4.14c1.7 0 3.22.58 4.42 1.73l3.31-3.31C17.75 1.04 15.13 0 12 0 8.06 0 4.14 2.1 2.18 5.48l3.66 2.84c.66-1.96 2.47-3.41 4.62-3.41z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M12.48 10.92v3.28h4.78c-.19 1.06-.9 1.95-1.78 2.53v2.13h2.87c1.68-1.55 2.65-3.83 2.65-6.53 0-.62-.06-1.22-.16-1.81H12.48z" /><path fill="currentColor" d="M12 23c3.13 0 5.75-1.04 7.67-2.81l-2.87-2.13c-.79.53-1.8.85-2.8.85-2.15 0-3.96-1.45-4.62-3.41H6.18v2.24C8.06 20.9 12 23 12 23z" /><path fill="currentColor" d="M7.38 15.5a6.6 6.6 0 0 1 0-4.14V9.12H6.18C5.43 10.59 5 12.24 5 14s.43 3.41 1.18 4.88l1.2-1.38z" /><path fill="currentColor" d="M12 4.14c1.7 0 3.22.58 4.42 1.73l3.31-3.31C17.75 1.04 15.13 0 12 0 8.06 0 4.14 2.1 2.18 5.48l3.66 2.84c.66-1.96 2.47-3.41 4.62-3.41z" /></svg>
               Neural Sync (Google)
             </button>
           </div>
