@@ -70,23 +70,23 @@ export default function QueuePage() {
       setDelayInfo(delayData)
       toast.dismiss('queue-delay')
       toast.custom((t) => (
-        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-zinc-900 border border-white/10 rounded-2xl shadow-xl overflow-hidden pointer-events-auto`}>
-          <div className="bg-rose-500/10 p-5 pb-3 border-b border-rose-500/20">
-            <p className="text-xs font-bold text-rose-500 uppercase tracking-widest mb-1">Queue Delay</p>
-            <p className="text-xl font-bold text-white">Wait extended by {delayData.delay}m</p>
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-white border border-rose-100 rounded-2xl shadow-2xl overflow-hidden pointer-events-auto`}>
+          <div className="bg-rose-50 p-5 pb-3 border-b border-rose-100">
+            <p className="text-xs font-bold text-rose-600 uppercase tracking-widest mb-1">Queue Delay</p>
+            <p className="text-xl font-bold text-zinc-950">Wait extended by {delayData.delay}m</p>
           </div>
           <div className="p-5">
-            <p className="text-sm text-zinc-400 mb-5">Receive ₹{delayData.compensation} in your wallet as compensation?</p>
+            <p className="text-sm text-slate-500 mb-5">Receive ₹{delayData.compensation} in your wallet as compensation?</p>
             <div className="flex flex-col gap-2">
               <button 
                 onClick={() => { toast.dismiss(t.id); }}
-                className="w-full py-3 rounded-lg bg-white text-zinc-900 text-xs font-bold uppercase tracking-wider shadow-md active:scale-95 transition-all"
+                className="w-full py-3 rounded-lg bg-teal-600 text-white text-xs font-bold uppercase tracking-wider shadow-md active:scale-95 transition-all"
               >
                 Continue Waiting
               </button>
               <button 
                 onClick={() => { handleHandleDelay('cancel'); toast.dismiss(t.id); }}
-                className="w-full py-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all"
+                className="w-full py-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all"
               >
                 Cancel & Get Refund
               </button>
@@ -98,8 +98,8 @@ export default function QueuePage() {
 
     const unsubStatus = onBusinessStatus((statusData) => {
       setBusiness(prev => prev ? ({ ...prev, isOpen: statusData.isOpen }) : null)
-      if (statusData.isOpen) toast.success(statusData.message, { icon: '🔓', style: { borderRadius: '12px', background: '#18181b', color: '#fff', border: '1px solid #14b8a6' } })
-      else toast.error(statusData.message, { icon: '🔒', duration: 6000, style: { borderRadius: '12px', background: '#18181b', color: '#fff', border: '1px solid #f43f5e' } })
+      if (statusData.isOpen) toast.success(statusData.message, { icon: '🔓', style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #f4f4f5' } })
+      else toast.error(statusData.message, { icon: '🔒', duration: 6000, style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #fef2f2' } })
     })
 
     return () => {
@@ -144,7 +144,7 @@ export default function QueuePage() {
     try {
       const res = await leaveQueue(businessId)
       setQueue(res.data.data.queue)
-      toast.success('Successfully left the queue.', { style: { borderRadius: '12px', background: '#18181b', color: '#fff', border: '1px solid #14b8a6' } })
+      toast.success('Successfully left the queue.', { style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #f4f4f5' } })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to leave')
     } finally {
@@ -172,7 +172,7 @@ export default function QueuePage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
@@ -183,13 +183,13 @@ export default function QueuePage() {
       {/* Feedback Modal Overlay */}
       <AnimatePresence>
         {showFeedback && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-zinc-900 p-8 max-w-sm w-full text-center border border-white/10 rounded-2xl shadow-2xl">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6 border border-emerald-500/20 text-emerald-500">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/20 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white p-8 max-w-sm w-full text-center border border-zinc-200 rounded-2xl shadow-2xl">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6 border border-emerald-200 text-emerald-600">
                 <span className="text-2xl">✓</span>
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Finished!</h2>
-              <p className="text-zinc-400 text-sm mb-8">Your session was successfully completed.</p>
+              <h2 className="text-2xl font-bold text-zinc-950 mb-2 tracking-tight">Finished!</h2>
+              <p className="text-slate-500 text-sm mb-8">Your session was successfully completed.</p>
               <button onClick={() => navigate('/')} className="w-full btn-primary py-4">
                 Return to Home
               </button>
@@ -201,39 +201,39 @@ export default function QueuePage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-5 space-y-6">
           {myQueueData ? (
-            <motion.div layout className="bg-zinc-900 border border-white/5 p-8 relative overflow-hidden flex flex-col items-center text-center shadow-lg rounded-2xl">
-              <div className="absolute top-0 left-0 w-full h-1 bg-zinc-800">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} className="h-full bg-teal-500 transition-all duration-1000 ease-out" />
+            <motion.div layout className="bg-white border border-zinc-200 p-8 relative overflow-hidden flex flex-col items-center text-center shadow-lg rounded-2xl">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-100">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} className="h-full bg-teal-600 shadow-[0_0_10px_rgba(13,148,136,0.3)] transition-all duration-1000 ease-out" />
               </div>
 
               {isServing ? (
                 <div className="py-8">
                   <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: [1, 1.05, 1], opacity: 1 }} transition={{ repeat: Infinity, duration: 2 }} className="text-6xl mb-6 opacity-80">🎯</motion.div>
-                  <h2 className="text-3xl font-black mb-2 text-white tracking-tight">Your Turn!</h2>
-                  <p className="text-teal-500 font-bold mb-8 uppercase tracking-widest text-xs">Please proceed to service area</p>
+                  <h2 className="text-3xl font-black mb-2 text-zinc-950 tracking-tight leading-none">Your Turn!</h2>
+                  <p className="text-teal-700 font-bold mb-8 uppercase tracking-widest text-xs">Please proceed to service area</p>
                 </div>
               ) : (
                 <div className="w-full">
                   <div className="flex justify-between items-center mb-10">
-                    <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">My Tracker</span>
-                    <span className="px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-amber-500/20 bg-amber-500/10 text-amber-500">
+                    <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">My Tracker</span>
+                    <span className="px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-amber-200 bg-amber-50 text-amber-700">
                       {myQueueData.status}
                     </span>
                   </div>
 
-                  <div className="relative mb-10 py-6 text-center shadow-inner rounded-xl bg-zinc-950/20 border border-white/[0.02]">
-                    <p className="text-7xl font-black text-white leading-none tracking-tighter">#{myPosition}</p>
-                    <p className="text-xs font-bold text-zinc-500 mt-4 uppercase tracking-widest">Current Position</p>
+                  <div className="relative mb-10 py-8 text-center rounded-2xl bg-slate-50 border border-zinc-100 shadow-inner">
+                    <p className="text-7xl font-black text-zinc-950 leading-none tracking-tighter">#{myPosition}</p>
+                    <p className="text-xs font-bold text-slate-400 mt-4 uppercase tracking-widest">Current Position</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mb-8">
-                    <div className="bg-zinc-900 border border-white/5 rounded-xl p-5 shadow-sm">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 text-left">ETA</p>
-                      <p className="text-2xl font-black text-white tracking-tight text-left">{timer || '--:--'}</p>
+                    <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 text-left">ETA</p>
+                      <p className="text-2xl font-black text-zinc-950 tracking-tight text-left">{timer || '--:--'}</p>
                     </div>
-                    <div className="bg-zinc-900 border border-white/5 rounded-xl p-5 shadow-sm">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 text-left">Time Slot</p>
-                      <p className="text-lg font-black text-white text-left uppercase whitespace-nowrap overflow-hidden text-ellipsis">
+                    <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 text-left">Time Slot</p>
+                      <p className="text-lg font-black text-zinc-950 text-left uppercase whitespace-nowrap overflow-hidden text-ellipsis">
                         {myQueueData.estimatedStartTime ? new Date(myQueueData.estimatedStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ASAP'}
                       </p>
                     </div>
@@ -241,16 +241,16 @@ export default function QueuePage() {
                 </div>
               )}
 
-              <button onClick={handleLeave} className="mt-4 text-[11px] text-zinc-500 hover:text-rose-500 font-bold uppercase tracking-widest transition-colors p-2 rounded-lg hover:bg-rose-500/10">
+              <button onClick={handleLeave} className="mt-4 text-[11px] text-slate-400 hover:text-rose-600 font-bold uppercase tracking-widest transition-colors py-2 px-4 rounded-xl hover:bg-rose-50 border border-transparent hover:border-rose-100">
                 Cancel Registration
               </button>
             </motion.div>
           ) : (
-            <motion.div layout className="bg-zinc-900 border border-white/5 p-10 relative overflow-hidden flex flex-col items-center text-center shadow-lg rounded-2xl opacity-90">
-              <p className="text-4xl mb-6 opacity-40">👀</p>
-              <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Observing Feed</h2>
-              <p className="text-zinc-500 mb-8 text-sm leading-relaxed font-medium">You are viewing this Hub's live feed but are not currently participating.</p>
-              <button onClick={() => navigate('/')} className="w-full py-4 rounded-lg bg-zinc-800 border border-white/5 font-bold uppercase tracking-wider text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white transition-all">
+            <motion.div layout className="bg-white border border-zinc-200 p-10 relative overflow-hidden flex flex-col items-center text-center shadow-lg rounded-2xl">
+              <p className="text-4xl mb-6 opacity-30">👀</p>
+              <h2 className="text-2xl font-black text-zinc-950 mb-2 tracking-tight">Observing Feed</h2>
+              <p className="text-slate-500 mb-8 text-sm leading-relaxed font-medium">You are viewing this Hub's live feed but are not currently participating.</p>
+              <button onClick={() => navigate('/')} className="w-full py-4 rounded-xl bg-slate-50 border border-zinc-200 font-bold uppercase tracking-wider text-[10px] text-slate-500 hover:bg-slate-100 hover:text-zinc-950 transition-all shadow-xs">
                 Return to Dashboard
               </button>
             </motion.div>
@@ -258,31 +258,31 @@ export default function QueuePage() {
         </div>
 
         <div className="lg:col-span-7">
-          <div className="bg-zinc-900 p-8 rounded-2xl border border-white/5 shadow-lg min-h-[500px]">
+          <div className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-xl min-h-[500px]">
              {business && (
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-8 pb-8 border-b border-white/5">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-8 pb-8 border-b border-zinc-100">
                 <div>
-                  <h1 className="text-3xl font-black text-white tracking-tight leading-none mb-2">{business.name}</h1>
-                  <p className="text-sm text-zinc-500 font-medium">Virtual Pool Operations</p>
+                  <h1 className="text-3xl font-black text-zinc-950 tracking-tight leading-none mb-2">{business.name}</h1>
+                  <p className="text-sm text-slate-400 font-bold uppercase tracking-widest px-0.5">Virtual Pool Operations</p>
                 </div>
-                <div className="flex items-center gap-6 bg-zinc-950/50 p-3 px-5 rounded-lg border border-white/5">
+                <div className="flex items-center gap-6 bg-slate-50 p-4 rounded-2xl border border-zinc-100">
                   <div className="text-center">
-                    <p className="text-2xl font-black text-white leading-none mb-1">{users.length}</p>
-                    <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">In Live Pool</p>
+                    <p className="text-2xl font-black text-zinc-950 leading-none mb-1">{users.length}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">In Live Pool</p>
                   </div>
-                  <div className="w-px h-8 bg-white/10" />
+                  <div className="w-px h-8 bg-zinc-200" />
                   <div className="text-center">
-                    <p className="text-2xl font-black text-teal-500 leading-none mb-1">{business.averageServiceTime}m</p>
-                    <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Avg Session</p>
+                    <p className="text-2xl font-black text-teal-700 leading-none mb-1">{business.averageServiceTime}m</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Avg Session</p>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
               {users.length === 0 ? (
-                <div className="py-20 text-center rounded-xl border border-dashed border-white/10">
-                  <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest">Queue is clear</p>
+                <div className="py-24 text-center rounded-2xl border-2 border-dashed border-zinc-100">
+                  <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.2em]">Queue is currently clear</p>
                 </div>
               ) : (
                 users.map((u, i) => (

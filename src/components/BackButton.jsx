@@ -13,13 +13,13 @@ export default function BackButton() {
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       onClick={() => navigate(-1)}
-      className="fixed top-24 left-6 z-40 p-3 rounded-2xl glass-bright text-neutral-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all active:scale-95 group shadow-2xl"
+      className="fixed top-28 left-8 z-40 p-4 rounded-2xl bg-white border border-zinc-200 text-slate-400 hover:text-teal-600 hover:border-teal-200 hover:bg-slate-50 transition-all active:scale-95 group shadow-xl"
     >
-      <div className="flex items-center gap-2">
-        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <div className="flex items-center gap-3">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
-        <span className="text-[10px] font-black uppercase tracking-widest hidden group-hover:inline-block transition-all">Back</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] hidden group-hover:inline-block transition-all">Previous Node</span>
       </div>
     </motion.button>
   )

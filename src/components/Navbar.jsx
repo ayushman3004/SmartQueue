@@ -31,38 +31,38 @@ export default function Navbar() {
   ]
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled ? 'py-4' : 'py-6'
     }`}>
       <div className="container">
         <div className={`relative flex items-center justify-between p-2 pl-6 pr-2 rounded-[22px] transition-all duration-500 border ${
           isScrolled 
-            ? 'glass border-white/10 shadow-2xl' 
+            ? 'bg-white/80 backdrop-blur-md border-zinc-200 shadow-lg' 
             : 'bg-transparent border-transparent'
         }`}>
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 no-underline group">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-110 transition-transform duration-500">
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="black" strokeWidth={3}>
+            <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shadow-md shadow-teal-600/20 group-hover:scale-110 transition-transform duration-500">
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tighter text-white leading-none">SmartQueue</span>
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-cyan-500">AI Powered</span>
+              <span className="text-xl font-black tracking-tighter text-zinc-950 leading-none">SmartQueue</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-teal-600">Enterprise</span>
             </div>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-2 ml-12 mr-auto">
+          <div className="hidden md:flex items-center gap-1 ml-12 mr-auto">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 to={link.path}
-                className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all no-underline ${
+                className={`px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all no-underline ${
                   location.pathname === link.path 
-                    ? 'bg-white/10 text-cyan-400 border border-white/5' 
-                    : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-teal-50 text-teal-700 border border-teal-100' 
+                    : 'text-slate-500 hover:text-zinc-950 hover:bg-slate-50'
                 }`}
               >
                 {link.name}
@@ -74,34 +74,34 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             {user ? (
               <>
-                <div className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/5 mr-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Wallet</span>
-                  <Link to="/wallet" className="text-sm font-black text-cyan-400 hover:scale-105 transition-transform">
+                <div className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-50 border border-zinc-100 mr-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Wallet</span>
+                  <Link to="/wallet" className="text-sm font-black text-teal-700 hover:scale-105 transition-transform">
                     ₹{(user.walletBalance ?? 0).toLocaleString()}
                   </Link>
                 </div>
 
                 <div className="flex items-center gap-2 pr-1">
-                  <Link to="/profile" className="flex items-center gap-3 p-1 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all no-underline group pr-4">
+                  <Link to="/profile" className="flex items-center gap-3 p-1 rounded-2xl bg-slate-50 border border-zinc-100 hover:border-zinc-200 transition-all no-underline group pr-4">
                     <div className="relative">
                       {user.avatar ? (
-                        <img src={user.avatar} className="w-9 h-9 rounded-xl object-cover border border-white/10" alt="Avatar" />
+                        <img src={user.avatar} className="w-9 h-9 rounded-xl object-cover border border-zinc-200" alt="Avatar" />
                       ) : (
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black text-black bg-linear-to-br from-cyan-400 to-blue-500">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white bg-teal-600">
                           {user.name?.[0]?.toUpperCase()}
                         </div>
                       )}
-                      {connected && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#080B0F] rounded-full" />}
+                      {connected && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />}
                     </div>
                     <div className="hidden sm:flex flex-col">
-                      <span className="text-xs font-bold text-white leading-tight">{user.name?.split(' ')[0]}</span>
-                      <span className="text-[9px] font-black text-neutral-400 uppercase tracking-widest">{user.role}</span>
+                      <span className="text-xs font-bold text-zinc-950 leading-tight">{user.name?.split(' ')[0]}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{user.role}</span>
                     </div>
                   </Link>
 
                   <button 
                     onClick={handleLogout}
-                    className="p-3 rounded-2xl bg-white/5 border border-white/5 text-neutral-500 hover:text-rose-500 hover:border-rose-500/20 transition-all active:scale-95"
+                    className="p-3 rounded-2xl bg-slate-50 border border-zinc-100 text-slate-400 hover:text-rose-600 hover:border-rose-200 transition-all active:scale-95"
                     title="Logout"
                   >
                     <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -119,7 +119,7 @@ export default function Navbar() {
             {/* Mobile Toggle */}
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-3 rounded-xl bg-white/5 text-neutral-400"
+              className="md:hidden p-3 rounded-xl bg-slate-50 text-slate-500 border border-zinc-100"
             >
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
@@ -138,13 +138,13 @@ export default function Navbar() {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden container mt-2 overflow-hidden"
           >
-            <div className="glass p-6 rounded-3xl space-y-4">
+            <div className="bg-white border border-zinc-200 p-6 rounded-[22px] shadow-2xl space-y-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block py-4 text-sm font-bold border-b border-white/5 text-neutral-400 no-underline"
+                  className="block py-4 text-sm font-bold border-b border-zinc-50 text-slate-500 no-underline"
                 >
                   {link.name}
                 </Link>
@@ -152,10 +152,10 @@ export default function Navbar() {
               {user && (
                 <div className="pt-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-white">Wallet</span>
-                    <span className="text-cyan-400 font-black">₹{user.walletBalance}</span>
+                    <span className="text-sm font-bold text-zinc-950">Wallet</span>
+                    <span className="text-teal-700 font-black">₹{user.walletBalance}</span>
                   </div>
-                  <button onClick={handleLogout} className="text-rose-500 font-black uppercase text-[10px] tracking-widest">Logout</button>
+                  <button onClick={handleLogout} className="text-rose-600 font-black uppercase text-[10px] tracking-widest">Logout</button>
                 </div>
               )}
             </div>

@@ -70,7 +70,7 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="px-4 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-widest text-teal-500"
+            className="px-4 py-1.5 rounded-lg bg-teal-50 border border-teal-100 text-xs font-bold uppercase tracking-widest text-teal-700"
           >
             System Dashboard
           </motion.div>
@@ -79,17 +79,17 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-4xl md:text-7xl font-black text-white tracking-tight leading-[1.1]"
+            className="text-4xl md:text-7xl font-black text-zinc-950 tracking-tight leading-[1.1]"
           >
             Operational <br />
-            <span className="text-teal-500">Overview</span>
+            <span className="text-teal-600">Overview</span>
           </motion.h1>
           
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-base md:text-xl text-zinc-400 font-medium leading-relaxed max-w-2xl"
+            className="text-base md:text-xl text-slate-500 font-medium leading-relaxed max-w-2xl px-1"
           >
             {isOwner 
               ? `Good ${getGreeting()}, owner. Your infrastructure is active and ready to scale customer flow.`
@@ -130,16 +130,16 @@ export default function DashboardPage() {
           transition={{ delay: 0.4 }}
           className="space-y-8"
         >
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-6">
-            <h2 className="text-3xl font-black text-white tracking-tight">Your Infrastructure</h2>
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="glass px-6 py-4 rounded-xl flex flex-col min-w-[140px]">
-                <span className="text-2xl font-black text-white">{myBusinesses.length}</span>
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Active Hubs</span>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-zinc-200 pb-6">
+            <h2 className="text-3xl font-black text-zinc-950 tracking-tight">Your Infrastructure</h2>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="bg-white border border-zinc-200 px-6 py-4 rounded-2xl flex flex-col min-w-[140px] shadow-xs">
+                <span className="text-2xl font-black text-zinc-950">{myBusinesses.length}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Active Hubs</span>
               </div>
-              <div className="glass px-6 py-4 rounded-xl flex flex-col min-w-[140px] border-teal-500/20">
-                <span className="text-2xl font-black text-teal-500">{myBusinesses.reduce((acc, b) => acc + (b.queueLength || 0), 0)}</span>
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Total Queue</span>
+              <div className="bg-white border border-teal-200 px-6 py-4 rounded-2xl flex flex-col min-w-[140px] shadow-xs bg-teal-50/30">
+                <span className="text-2xl font-black text-teal-700">{myBusinesses.reduce((acc, b) => acc + (b.queueLength || 0), 0)}</span>
+                <span className="text-[10px] font-bold text-teal-700/60 uppercase tracking-widest mt-1">Total Queue</span>
               </div>
             </div>
           </div>
@@ -150,23 +150,23 @@ export default function DashboardPage() {
                 key={b._id}
                 whileHover={{ y: -4 }}
                 onClick={() => navigate(`/business/${b._id}/manage`)}
-                className="glass p-8 lg:p-10 rounded-2xl cursor-pointer flex flex-col justify-between min-h-[280px] hover:border-teal-500/30 transition-all shadow-lg"
+                className="bg-white border border-zinc-200 p-8 lg:p-10 rounded-2xl cursor-pointer flex flex-col justify-between min-h-[280px] hover:border-teal-300 transition-all shadow-md group"
               >
                 <div className="flex items-start justify-between mb-8">
-                  <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center text-2xl shadow-sm border border-white/5">🏢</div>
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${b.isOpen ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'} text-xs font-bold`}>
-                    <div className={`w-2 h-2 rounded-full ${b.isOpen ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  <div className="w-14 h-14 rounded-xl bg-slate-50 flex items-center justify-center text-2xl shadow-xs border border-zinc-100">🏢</div>
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${b.isOpen ? 'bg-emerald-100 border-emerald-200 text-emerald-700' : 'bg-rose-100 border-rose-200 text-rose-700'} text-xs font-bold`}>
+                    <div className={`w-2 h-2 rounded-full ${b.isOpen ? 'bg-emerald-600' : 'bg-rose-600'}`} />
                     {b.isOpen ? 'LIVE' : 'CLOSED'}
                   </div>
                 </div>
                 <div className="mb-8">
-                  <h3 className="text-2xl md:text-3xl font-black text-white hover:text-teal-400 transition-colors tracking-tight truncate">{b.name}</h3>
-                  <div className="flex items-center gap-4 mt-4 text-sm font-bold text-zinc-500">
-                    <span className="bg-white/5 px-3 py-1 rounded-md">Queue: <span className="text-white ml-1">{b.queueLength || 0}</span></span>
-                    <span className="bg-white/5 px-3 py-1 rounded-md capitalize">{b.category}</span>
+                  <h3 className="text-2xl md:text-3xl font-black text-zinc-950 group-hover:text-teal-700 transition-colors tracking-tight truncate">{b.name}</h3>
+                  <div className="flex items-center gap-4 mt-4 text-sm font-bold text-slate-500">
+                    <span className="bg-slate-50 border border-zinc-100 px-3 py-1.5 rounded-lg">Queue: <span className="text-zinc-950 ml-1">{b.queueLength || 0}</span></span>
+                    <span className="bg-slate-50 border border-zinc-100 px-3 py-1.5 rounded-lg capitalize">{b.category}</span>
                   </div>
                 </div>
-                <div className="pt-6 border-t border-white/5 flex items-center justify-between text-zinc-400 hover:text-teal-400 transition-colors">
+                <div className="pt-6 border-t border-zinc-100 flex items-center justify-between text-slate-400 group-hover:text-teal-700 transition-colors">
                   <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">Manage Dashboard <span className="text-lg">→</span></span>
                 </div>
               </motion.div>
@@ -178,15 +178,15 @@ export default function DashboardPage() {
       {/* Exploration Section */}
       {!isOwner && (
         <section id="explore" className="space-y-12 pb-20">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-white/5 pb-8">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-zinc-200 pb-8">
             <div className="space-y-3 max-w-xl">
-              <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">Active Hubs</h2>
-              <p className="text-zinc-500 font-medium text-sm">Real-time status synchronized via low-latency sockets.</p>
+              <h2 className="text-3xl md:text-4xl font-black text-zinc-950 tracking-tight">Active Hubs</h2>
+              <p className="text-slate-500 font-medium text-sm">Real-time status synchronized via low-latency sockets.</p>
             </div>
             
             <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto">
               <div className="relative w-full md:w-64">
-                <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 <input 
                   className="input pl-11 h-12 rounded-xl" 
                   placeholder="Search hubs..." 
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                     key={c}
                     onClick={() => setCategory(c)}
                     className={`px-5 h-12 rounded-xl text-xs font-bold uppercase tracking-wide transition-all whitespace-nowrap ${
-                      category === c ? 'bg-white text-zinc-900 shadow-md' : 'glass text-zinc-400 hover:text-white border-white/5'
+                      category === c ? 'bg-zinc-950 text-white shadow-lg' : 'bg-white text-slate-500 border border-zinc-200 hover:bg-zinc-50'
                     }`}
                   >
                     {c}
@@ -213,12 +213,12 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
                [...Array(6)].map((_, i) => (
-                <div key={i} className="glass p-8 h-[300px] rounded-2xl animate-pulse flex flex-col" />
+                <div key={i} className="bg-white border border-zinc-200 p-8 h-[300px] rounded-2xl animate-pulse flex flex-col shadow-xs" />
               ))
             ) : filtered.length === 0 ? (
-              <div className="col-span-full py-24 glass rounded-3xl text-center space-y-4 border-dashed border-white/10">
+              <div className="col-span-full py-24 bg-white border border-dashed border-zinc-300 rounded-3xl text-center space-y-4">
                 <span className="text-4xl block opacity-40">🔎</span>
-                <h3 className="text-xl font-bold text-zinc-400 tracking-tight">Zero Hubs Found</h3>
+                <h3 className="text-xl font-bold text-slate-400 tracking-tight">Zero Hubs Found</h3>
               </div>
             ) : (
               filtered.map((b, i) => <BusinessCard key={b._id} business={b} index={i} />)
@@ -230,15 +230,15 @@ export default function DashboardPage() {
       {/* Launch Hub Modal */}
       <AnimatePresence>
         {isOwner && showCreate && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-sm overflow-y-auto">
-            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="glass p-8 md:p-10 max-w-2xl w-full border-white/10 rounded-2xl my-8 relative">
-              <button onClick={() => setShowCreate(false)} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-950/20 backdrop-blur-sm overflow-y-auto">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }} className="bg-white border border-zinc-200 p-8 md:p-10 max-w-2xl w-full rounded-[22px] my-8 relative shadow-2xl">
+              <button onClick={() => setShowCreate(false)} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 border border-zinc-100 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
               
               <div className="mb-10 text-left">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-teal-500 mb-2 block">Terminal</span>
-                <h2 className="text-3xl font-black text-white tracking-tight">Deploy Hub</h2>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-teal-600 mb-2 block">Terminal</span>
+                <h2 className="text-3xl font-black text-zinc-950 tracking-tight leading-none">Deploy Hub</h2>
               </div>
 
               <form onSubmit={async (e) => {
@@ -258,17 +258,17 @@ export default function DashboardPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
-                    <label className="text-xs font-bold text-zinc-400 mb-2 block">Identity</label>
-                    <input className="input" placeholder="Hub Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
+                    <label className="text-xs font-bold text-slate-500 mb-2 block">Hub Identity</label>
+                    <input className="input" placeholder="Business Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-zinc-400 mb-2 block">Category</label>
-                    <select className="input appearance-none" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
-                      {CATEGORIES.map(c => <option key={c} value={c} className="bg-zinc-900">{c.toUpperCase()}</option>)}
+                    <label className="text-xs font-bold text-slate-500 mb-2 block">Category</label>
+                    <select className="input appearance-none bg-slate-50" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                      {CATEGORIES.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-zinc-400 mb-2 block">Base Price (₹)</label>
+                    <label className="text-xs font-bold text-slate-500 mb-2 block">Base Rate (₹)</label>
                     <input className="input" type="text" inputMode="numeric" placeholder="0" value={form.basePrice === 0 ? '' : form.basePrice} onChange={e => {
                       const v = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
                       setForm({...form, basePrice: v === '' ? 0 : Number(v)});
@@ -276,12 +276,12 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/5">
-                  <label className="text-xs font-bold text-zinc-400 mb-4 block">Services Offered</label>
+                <div className="pt-4 border-t border-zinc-100">
+                  <label className="text-xs font-bold text-slate-500 mb-4 block">Services & Capacity</label>
                   <div className="space-y-3">
                     {form.services.map((svc, idx) => (
                       <div key={idx} className="grid grid-cols-[2fr_1fr_1fr_auto] gap-3 items-center">
-                        <input className="input" placeholder="Service (e.g. Haircut)" value={svc.name} onChange={e => {
+                        <input className="input" placeholder="Service Name" value={svc.name} onChange={e => {
                           const newSvcs = [...form.services];
                           newSvcs[idx].name = e.target.value;
                           setForm({...form, services: newSvcs});
@@ -302,17 +302,17 @@ export default function DashboardPage() {
                           <button type="button" onClick={() => {
                             const newSvcs = form.services.filter((_, i) => i !== idx);
                             setForm({...form, services: newSvcs});
-                          }} className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 flex items-center justify-center transition-colors">✕</button>
+                          }} className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors border border-rose-200">✕</button>
                         ) : <div className="w-10"></div>}
                       </div>
                     ))}
-                    <button type="button" onClick={() => setForm({...form, services: [...form.services, {name: '', duration: 15, price: 0}]})} className="text-xs text-teal-500 font-bold hover:text-teal-400 mt-2 block">+ Add Service</button>
+                    <button type="button" onClick={() => setForm({...form, services: [...form.services, {name: '', duration: 15, price: 0}]})} className="text-xs text-teal-600 font-bold hover:text-teal-700 mt-2 block w-fit">+ Add New Service Column</button>
                   </div>
                 </div>
 
                 <div className="pt-8">
-                  <button type="submit" disabled={creating} className="w-full btn-primary py-4 text-sm flex justify-center items-center">
-                    {creating ? 'Initializing...' : 'Deploy Hub'}
+                  <button type="submit" disabled={creating} className="w-full btn-primary py-4 text-xs">
+                    {creating ? 'Deploying Infrastructure...' : 'Launch Hub Instance'}
                   </button>
                 </div>
               </form>

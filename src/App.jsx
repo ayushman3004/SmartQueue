@@ -81,9 +81,13 @@ export default function App() {
       <Toaster 
         position="top-right"
         toastOptions={{
-          className: 'glass-bright',
           style: {
-            background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px'
+            background: '#ffffff',
+            color: '#09090b',
+            border: '1px solid #f4f4f5',
+            borderRadius: '12px',
+            fontSize: '14px',
+            fontWeight: '600'
           },
         }}
       />
