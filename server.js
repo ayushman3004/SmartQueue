@@ -26,7 +26,7 @@ app.set("io", io);
   credentials: true
 }));
 
-app.options("/*", cors());
+// app.options("/*", cors());
 
 initSocket(io);
 
