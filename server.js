@@ -20,6 +20,12 @@ const io = new Server(httpServer, {
 
 // Attach io to app so controllers can access it
 app.set("io", io);
+ app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
+app.options("*", cors());
 
 initSocket(io);
 
