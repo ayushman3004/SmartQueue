@@ -1,13 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import * as walletApi from '../api/wallet.api'
 import { useAuth } from '../context/AuthContext'
+import { useSocket } from '../context/SocketContext'
 
 export default function WalletPage() {
   const { user, setUser } = useAuth()
+  const { socket, joinUser } = useSocket()
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Fetch latest balance on mount
+  useEffect(() => {
+    walletApi.getBalance()
+      .then(res => {
+        setUser(prev => prev ? { ...prev, walletBalance: res.data.data.balance } : prev)
+      })
+      .catch(() => {})
+  }, [])
+
+  // Ensure user is in their private socket room for wallet:update events
+  useEffect(() => {
+    if (user?._id) joinUser(user._id)
+  }, [user?._id])
 
   const handleAddMoney = async (e) => {
     e.preventDefault()

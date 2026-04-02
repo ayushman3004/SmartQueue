@@ -50,7 +50,14 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 export default function App() {
   const { user } = useAuth()
-  const { socket } = useSocket()
+  const { socket, joinUser } = useSocket()
+
+  // Join user's private socket room for wallet:update and notifications
+  useEffect(() => {
+    if (user?._id) {
+      joinUser(user._id)
+    }
+  }, [user?._id, joinUser])
   
   useEffect(() => {
     if (!socket) return

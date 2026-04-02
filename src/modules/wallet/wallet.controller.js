@@ -10,6 +10,13 @@ export const getBalance = asyncHandler(async (req, res) => {
 export const addMoney = asyncHandler(async (req, res) => {
   const { amount } = req.body;
   const user = await User.findByIdAndUpdate(req.user._id, { $inc: { walletBalance: amount } }, { new: true });
+
+  // Emit real-time wallet update via Socket.IO
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`user:${req.user._id}`).emit("wallet:update", { balance: user.walletBalance });
+  }
+
   res.json(new ApiResponse(200, { balance: user.walletBalance }, "Money added to wallet successfully"));
 });
 
@@ -21,5 +28,12 @@ export const deductMoney = asyncHandler(async (req, res) => {
   }
   user.walletBalance -= amount;
   await user.save();
+
+  // Emit real-time wallet update via Socket.IO
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`user:${req.user._id}`).emit("wallet:update", { balance: user.walletBalance });
+  }
+
   res.json(new ApiResponse(200, { balance: user.walletBalance }, "Money deducted successfully"));
 });

@@ -232,8 +232,9 @@ export const extendTime = async (businessId, userId, minutes = 5, io = null) => 
       if (reachedTarget) {
         // Add reward to wallet for delay
         const rewardAmount = 10; 
-        await User.findByIdAndUpdate(uId, { $inc: { walletBalance: rewardAmount } });
+        const updatedUser = await User.findByIdAndUpdate(uId, { $inc: { walletBalance: rewardAmount } }, { new: true });
 
+        io.to(`user:${uId}`).emit("wallet:update", { balance: updatedUser.walletBalance });
         io.to(`user:${uId}`).emit("queue:delay", {
           message: `Your appointment is delayed by ${minutes} minutes. We've added ₹${rewardAmount} to your wallet!`,
           delay: minutes,
