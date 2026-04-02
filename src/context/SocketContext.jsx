@@ -45,12 +45,12 @@ export const SocketProvider = ({ children, setUser, user }) => {
 
     const onQueueJoined = (data) => {
       if (data.userId === userRef.current?._id) toast.success("You joined the queue successfully", { id: "q-join" });
-      else toast.info("Someone joined the queue", { id: "q-join-other" });
+      else toast("Someone joined the queue", { id: "q-join-other", icon: "ℹ️" });
     };
 
     const onQueueLeft = (data) => {
       if (data.userId === userRef.current?._id) toast.success("You left the queue", { id: "q-left" });
-      else toast.info("Someone left the queue", { id: "q-left-other" });
+      else toast("Someone left the queue", { id: "q-left-other", icon: "ℹ️" });
     };
 
     const onQueueUpdated = () => {
@@ -58,7 +58,7 @@ export const SocketProvider = ({ children, setUser, user }) => {
     };
 
     const onQueueEtaUpdated = () => {
-      toast.info("Your ETA has been updated", { id: "q-eta" });
+      toast("Your ETA has been updated", { id: "q-eta", icon: "ℹ️" });
     };
 
     const onQueueServiceStarted = () => {
@@ -70,11 +70,11 @@ export const SocketProvider = ({ children, setUser, user }) => {
     };
 
     const onExtensionFree = (data) => {
-      toast.info(`Service delayed: Time extended by ${data.minutes} mins`, { id: "ext-free" });
+      toast(`Service delayed: Time extended by ${data.minutes} mins`, { id: "ext-free", icon: "⏱️" });
     };
 
     const onExtensionPaid = (data) => {
-      toast.info(`Service delayed due to extension: ${data.minutes} mins`, { id: "ext-paid" });
+      toast(`Service delayed due to extension: ${data.minutes} mins`, { id: "ext-paid", icon: "⏱️" });
     };
 
     const onServiceCreated = () => {
