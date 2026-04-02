@@ -13,7 +13,7 @@ import {
 
 export default function BookingPage() {
   const { businessId } = useParams()
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const { socket } = useSocket()
   const navigate = useNavigate()
 
@@ -86,6 +86,12 @@ export default function BookingPage() {
       })
       const msg = res.data.message
       console.log('📅 Booking response:', res.data.data)
+
+      // Update wallet balance from booking response
+      if (res.data.data.newBalance !== undefined) {
+        setUser(prev => prev ? { ...prev, walletBalance: res.data.data.newBalance } : prev)
+      }
+
       showToast(`✅ ${msg}`, 'success')
       fetchData()
     } catch (err) {
