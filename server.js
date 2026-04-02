@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import app from "./app.js";
 import connectDB from "./config/db.js";
 import { initSocket } from "./realtime/socket.js";
+import cors from 'cors';
 
 const PORT = process.env.PORT || 3001;
 
