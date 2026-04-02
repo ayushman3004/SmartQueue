@@ -41,7 +41,7 @@ app.use(cors({
   allowedHeaders: "*"
 }));
 
-app.options("*", cors()); // 🔥 VERY IMPORTANT
+app.options("/*", cors()); // 🔥 VERY IMPORTANT
 
 // app.use(
 //   cors({
