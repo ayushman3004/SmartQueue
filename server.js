@@ -12,7 +12,7 @@ const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: (origin, callback) => callback(null, true), // Allow everything while satisfying credentials: true
+    origin: "https://smart-queue-blond.vercel.app",
     methods: ["GET", "POST"],
     credentials: true,
   },
