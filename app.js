@@ -21,6 +21,7 @@ const app = express();
 
 // ─── Middleware ──────────────────────────────────────────────
 const allowedOrigins = [
+  "http://localhost:5173",
   "https://smart-queue-blond.vercel.app",
   "https://smart-queue-git-main-ayushman3004s-projects.vercel.app",
   process.env.CLIENT_URL,
@@ -30,7 +31,9 @@ app.use(cors({
   origin: function(origin, callback) {
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
+
+    if (isAllowed) {
       return callback(null, true);
     }
 
@@ -38,10 +41,10 @@ app.use(cors({
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: "*"
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.options("/*", cors()); // 🔥 VERY IMPORTANT
+app.options("*", cors()); // Use * instead of /* to avoid PathError in Express 5+
 
 // app.use(
 //   cors({
