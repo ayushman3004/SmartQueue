@@ -44,8 +44,6 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.options("*", cors()); // Use * instead of /* to avoid PathError in Express 5+
-
 // app.use(
 //   cors({
 //     origin: (origin, callback) => {
