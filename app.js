@@ -20,10 +20,36 @@ import "./src/modules/Oauth/passport.config.js";
 const app = express();
 
 // ─── Middleware ──────────────────────────────────────────────
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://smart-queue-blond.vercel.app",
+  "https://smart-queue-git-main-ayushman3004s-projects.vercel.app",
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      
+      const isAllowed = allowedOrigins.some(allowedOrigin => {
+        if (allowedOrigin.includes('*')) {
+          const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '.*') + '$');
+          return regex.test(origin);
+        }
+        return allowedOrigin === origin;
+      });
+
+      if (isAllowed || origin.endsWith('.vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 app.use(express.json());
