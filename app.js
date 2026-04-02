@@ -43,31 +43,31 @@ app.use(cors({
 
 app.options("*", cors()); // 🔥 VERY IMPORTANT
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
+// app.use(
+//   cors({
+//     origin: (origin, callback) => {
+//       // Allow requests with no origin (like mobile apps or curl)
+//       if (!origin) return callback(null, true);
       
-      const isAllowed = allowedOrigins.some(allowedOrigin => {
-        if (allowedOrigin.includes('*')) {
-          const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '.*') + '$');
-          return regex.test(origin);
-        }
-        return allowedOrigin === origin;
-      });
+//       const isAllowed = allowedOrigins.some(allowedOrigin => {
+//         if (allowedOrigin.includes('*')) {
+//           const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '.*') + '$');
+//           return regex.test(origin);
+//         }
+//         return allowedOrigin === origin;
+//       });
 
-      if (isAllowed || origin.endsWith('.vercel.app')) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["*"]
-  })
-);
+//       if (isAllowed || origin.endsWith('.vercel.app')) {
+//         callback(null, true);
+//       } else {
+//         callback(new Error('Not allowed by CORS'));
+//       }
+//     },
+//     credentials: true,
+//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+//     allowedHeaders: ["*"]
+//   })
+// );
 
 app.use(express.json());
 app.use(cookieParser());
