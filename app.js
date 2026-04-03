@@ -12,6 +12,7 @@ import chatbotRoutes from "./src/modules/chatbot/chatbot.routes.js";
 import walletRoutes from "./src/modules/wallet/wallet.routes.js";
 import adminRoutes from "./src/modules/admin/admin.routes.js";
 import chatRoutes from "./src/modules/chat/chat.routes.js";
+import otpRoutes from "./src/modules/auth/otp.routes.js";
 import User from "./src/modules/auth/auth.model.js";
 
 // Passport config
@@ -83,6 +84,7 @@ app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/otp", otpRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────
 app.get("/api/health", (_req, res) => {
