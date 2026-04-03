@@ -124,7 +124,7 @@ export default function LoginPage() {
               required 
             />
           </div>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col items-center gap-6">
             <button
               type="submit"
               disabled={loading}
@@ -132,14 +132,47 @@ export default function LoginPage() {
             >
               {loading ? 'Verifying...' : 'Verify & Continue'}
             </button>
-            <button
-              type="button"
-              disabled={countdown > 0 || loading}
-              onClick={handleSendOtp}
-              className="text-[10px] font-bold text-teal-600 uppercase tracking-widest disabled:text-zinc-400"
-            >
-              {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
-            </button>
+            
+            <div className="flex flex-col items-center gap-3">
+              {countdown > 0 ? (
+                <div className="relative w-12 h-12 flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90">
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="20"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      fill="transparent"
+                      className="text-zinc-100"
+                    />
+                    <motion.circle
+                      cx="24"
+                      cy="24"
+                      r="20"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      fill="transparent"
+                      strokeDasharray="125.6"
+                      initial={{ strokeDashoffset: 0 }}
+                      animate={{ strokeDashoffset: 125.6 * (1 - countdown / 30) }}
+                      transition={{ duration: 1, ease: "linear" }}
+                      className="text-teal-600"
+                    />
+                  </svg>
+                  <span className="absolute text-[10px] font-black text-zinc-900">{countdown}s</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleSendOtp}
+                  className="text-[10px] font-bold text-teal-600 uppercase tracking-widest hover:underline decoration-2 underline-offset-4"
+                >
+                  Resend Code
+                </button>
+              )}
+            </div>
           </div>
           <button 
             type="button" 
