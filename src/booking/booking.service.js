@@ -170,7 +170,7 @@ export const extendBooking = async (bookingId, extraMinutes, io) => {
   }
 
   const extraMs = mins * 60000;
-  const extraCharge = mins * RATE_PER_MINUTE;
+  // const extraCharge = mins * RATE_PER_MINUTE;
 
   // ⚠️ Capture original endTime BEFORE mutation
   const originalEndTime = new Date(booking.endTime);

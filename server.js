@@ -1,3 +1,4 @@
+/* global process */
 import "dotenv/config";
 import http from "http";
 import { Server } from "socket.io";
