@@ -7,7 +7,7 @@ import {
   useCallback,
 } from "react";
 import socket from "../lib/socket";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 
 const SocketContext = createContext(null);
 
