@@ -54,7 +54,12 @@ export default function QueuePage() {
     }
   }, [businessId])
 
-  // ✅ SOCKET SETUP
+  // ✅ INITIAL DATA FETCH (runs regardless of socket state)
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // ✅ SOCKET SETUP (re-fetches when socket connects for freshest data)
   useEffect(() => {
     if (connected) fetchData()
 

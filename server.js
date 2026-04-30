@@ -16,6 +16,8 @@ const io = new Server(httpServer, {
     origin: (origin, callback) => {
       const allowedOrigins = [
         "http://localhost:5173",
+        "https://serveq.tech",
+        "https://www.serveq.tech",
         "https://smart-queue-blond.vercel.app",
         "https://smart-queue-git-main-ayushman3004s-projects.vercel.app",
         process.env.CLIENT_URL,
