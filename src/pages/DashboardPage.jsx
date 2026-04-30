@@ -43,14 +43,34 @@ export default function DashboardPage() {
     fetchData()
 
     const unsub = onBusinessStatus((data) => {
+      // Business was deactivated by admin — remove from customer list
+      if (data.isActive === false) {
+        setBusinesses(prev => prev.filter(b => b._id !== data.businessId && b._id !== data.businessId?.toString()));
+        setMyBusinesses(prev => prev.map(b => (b._id === data.businessId || b._id === data.businessId?.toString()) ? { ...b, ...data } : b));
+        return;
+      }
+
+      // Business was reactivated — re-fetch full list so it re-appears
+      if (data.isActive === true) {
+        getAllBusinesses().then(res => setBusinesses(res.data.data.businesses)).catch(() => {});
+        setMyBusinesses(prev => prev.map(b => (b._id === data.businessId || b._id === data.businessId?.toString()) ? { ...b, ...data } : b));
+        return;
+      }
+
+      // Normal status update (open/closed toggle by owner)
       setBusinesses(prev => {
-        const isDeactivated = data.isActive === false || data.isOpen === false;
-        if (isDeactivated) {
+        // If business closed, remove from customer list (they only see open hubs)
+        if (data.isOpen === false) {
           return prev.filter(b => b._id !== data.businessId && b._id !== data.businessId?.toString());
+        }
+        // If business opened, it may not be in the list — re-fetch
+        if (data.isOpen === true) {
+          getAllBusinesses().then(res => setBusinesses(res.data.data.businesses)).catch(() => {});
+          return prev;
         }
         return prev.map(b => (b._id === data.businessId || b._id === data.businessId?.toString()) ? { ...b, ...data } : b);
       });
-      setMyBusinesses(prev => prev.map(b => (b._id === data.businessId || b._id === data.businessId?.toString()) ? { ...b, ...data } : b))
+      setMyBusinesses(prev => prev.map(b => (b._id === data.businessId || b._id === data.businessId?.toString()) ? { ...b, ...data } : b));
     })
     return () => unsub?.()
   }, [isOwner, onBusinessStatus])

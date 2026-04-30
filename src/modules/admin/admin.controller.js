@@ -33,6 +33,8 @@ export const toggleBusinessStatus = asyncHandler(async (req, res) => {
   business.isActive = !business.isActive;
   if (!business.isActive) {
     business.isOpen = false; // Force close if deactivated
+  } else {
+    business.isOpen = true; // Restore visibility when reactivated
   }
   await business.save();
 
