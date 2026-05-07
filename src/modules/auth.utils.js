@@ -17,11 +17,26 @@ export const generateToken = (user) => {
   );
 };
 
+/**
+ * Set JWT as an HTTP-only cookie.
+ * 
+ * Production (cross-domain Vercel→Render) requirements:
+ *   - secure: true   (HTTPS only)
+ *   - sameSite: "none" (allow cross-origin cookie sending)
+ *   - trust proxy must be set on Express app
+ * 
+ * Development:
+ *   - secure: false
+ *   - sameSite: "lax" (same-origin is fine for localhost)
+ */
 export const setTokenCookie = (res, token) => {
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: "/",
   });
 };

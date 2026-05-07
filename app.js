@@ -20,9 +20,17 @@ import "./src/modules/Oauth/passport.config.js";
 
 const app = express();
 
-// ─── Middleware ──────────────────────────────────────────────
+// ─── Trust Proxy (CRITICAL for Render/Heroku/any reverse proxy) ──
+// This is required for:
+//   1. secure cookies to work behind HTTPS-terminating proxies
+//   2. req.protocol to correctly return 'https'
+//   3. rate limiting to get the real client IP
+app.set("trust proxy", 1);
+
+// ─── CORS Middleware ──────────────────────────────────────────────
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:3000",
   "https://serveq.tech",
   "https://www.serveq.tech",
   "https://smart-queue-blond.vercel.app",
@@ -34,15 +42,19 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
+      // Allow requests with no origin (server-to-server, mobile apps, curl)
       if (!origin) return callback(null, true);
 
       const isAllowed =
-        allowedOrigins.includes(origin) || origin.endsWith(".vercel.app");
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".vercel.app") ||
+        origin.endsWith(".onrender.com");
 
       if (isAllowed) {
         return callback(null, true);
       }
 
+      console.warn(`🚫 CORS rejected origin: ${origin}`);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -50,32 +62,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       // Allow requests with no origin (like mobile apps or curl)
-//       if (!origin) return callback(null, true);
-
-//       const isAllowed = allowedOrigins.some(allowedOrigin => {
-//         if (allowedOrigin.includes('*')) {
-//           const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '.*') + '$');
-//           return regex.test(origin);
-//         }
-//         return allowedOrigin === origin;
-//       });
-
-//       if (isAllowed || origin.endsWith('.vercel.app')) {
-//         callback(null, true);
-//       } else {
-//         callback(new Error('Not allowed by CORS'));
-//       }
-//     },
-//     credentials: true,
-//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-//     allowedHeaders: ["*"]
-//   })
-// );
 
 app.use(express.json());
 app.use(cookieParser());
