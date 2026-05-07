@@ -32,7 +32,7 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["websocket", "polling"], // Allow both for better proxy compatibility
+  transports: ["websocket"], // Polling causes 400s on Render; websocket alone is reliable
 });
 
 // Attach io to app so controllers can access it
