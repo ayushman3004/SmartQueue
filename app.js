@@ -27,32 +27,36 @@ const allowedOrigins = [
   "https://www.serveq.tech",
   "https://smart-queue-blond.vercel.app",
   "https://smart-queue-git-main-ayushman3004s-projects.vercel.app",
+  "https://smartqueue-p629.onrender.com",
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
 
-    const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
+      const isAllowed =
+        allowedOrigins.includes(origin) || origin.endsWith(".vercel.app");
 
-    if (isAllowed) {
-      return callback(null, true);
-    }
+      if (isAllowed) {
+        return callback(null, true);
+      }
 
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 // app.use(
 //   cors({
 //     origin: (origin, callback) => {
 //       // Allow requests with no origin (like mobile apps or curl)
 //       if (!origin) return callback(null, true);
-      
+
 //       const isAllowed = allowedOrigins.some(allowedOrigin => {
 //         if (allowedOrigin.includes('*')) {
 //           const regex = new RegExp('^' + allowedOrigin.replace(/\*/g, '.*') + '$');
@@ -95,7 +99,10 @@ app.get("/api/health", (_req, res) => {
 
 // ─── TEMP MIGRATION ──────────────────────────────────────────
 app.get("/api/migrate", async (req, res) => {
-  const result = await User.updateMany({ role: "user" }, { $set: { role: "customer" } });
+  const result = await User.updateMany(
+    { role: "user" },
+    { $set: { role: "customer" } },
+  );
   res.json({ success: true, modifiedCount: result.modifiedCount });
 });
 
@@ -125,8 +132,14 @@ app.use((err, _req, res, _next) => {
   }
 
   // JWT errors
-  if (err.name === "JsonWebTokenError") { statusCode = 401; message = "Invalid token"; }
-  if (err.name === "TokenExpiredError") { statusCode = 401; message = "Token expired"; }
+  if (err.name === "JsonWebTokenError") {
+    statusCode = 401;
+    message = "Invalid token";
+  }
+  if (err.name === "TokenExpiredError") {
+    statusCode = 401;
+    message = "Token expired";
+  }
 
   // Log only server errors
   if (statusCode >= 500) console.error("🔥 Server Error:", err);

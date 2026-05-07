@@ -20,6 +20,7 @@ const io = new Server(httpServer, {
         "https://www.serveq.tech",
         "https://smart-queue-blond.vercel.app",
         "https://smart-queue-git-main-ayushman3004s-projects.vercel.app",
+        "https://smartqueue-p629.onrender.com",
         process.env.CLIENT_URL,
       ].filter(Boolean);
 
