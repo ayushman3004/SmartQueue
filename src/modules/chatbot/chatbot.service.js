@@ -47,6 +47,8 @@ export const processMessage = async (message, businessInfo) => {
     }
   } catch (err) {
     console.error("❌ Gemini API error:", err.message);
+    console.error("   API key present:", !!process.env.GEMINI_API_KEY);
+    console.error("   Full error:", err);
     return {
       reply: "I'm currently experiencing connection issues. Please try again in a moment!",
       intent: "error",
