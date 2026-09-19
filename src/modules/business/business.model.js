@@ -25,6 +25,27 @@ const businessSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    phone: {
+      type: String,
+      default: "",
+    },
+    location: {
+      type: String,
+      default: "",
+    },
+    coordinates: {
+      lat: { type: Number, default: 0 },
+      lng: { type: Number, default: 0 },
+    },
+    timings: {
+      open: { type: String, default: "09:00" },
+      close: { type: String, default: "18:00" },
+    },
+    approvalStatus: {
+      type: String,
+      enum: ["pending", "approved", "suspended"],
+      default: "approved",
+    },
     averageServiceTime: {
       type: Number,
       default: 10, // minutes

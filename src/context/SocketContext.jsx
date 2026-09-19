@@ -12,18 +12,14 @@ import { toast } from "react-hot-toast";
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children, setUser, user }) => {
-  const socketRef = useRef(socket);
   const userRef = useRef(user);
-  const [connected, setConnected] = useState(socket.connected);
+  const [connected, setConnected] = useState(() => socket.connected);
 
   useEffect(() => {
     userRef.current = user;
   }, [user]);
 
   useEffect(() => {
-    // Sync connection state if already connected
-    if (socket.connected) setConnected(true);
-
     const onConnect = () => {
       console.log("✅ Socket connected:", socket.id);
       setConnected(true);

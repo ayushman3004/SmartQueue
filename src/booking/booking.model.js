@@ -38,8 +38,20 @@ const bookingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["scheduled", "in-progress", "completed", "cancelled"],
-      default: "scheduled",
+      enum: [
+        "pending_payment",
+        "confirmed",
+        "waiting",
+        "serving",
+        "completed",
+        "cancelled",
+        "refunded",
+        "delayed",
+        // Backward-compatibility aliases
+        "scheduled",
+        "in-progress",
+      ],
+      default: "confirmed",
     },
     extendedTime: {
       type: Number, // total extra minutes added
@@ -80,5 +92,8 @@ bookingSchema.index({ businessId: 1, status: 1, startTime: 1 }); // for filtered
 bookingSchema.index({ businessId: 1, extendedTime: 1, createdAt: 1 }); // for AI buffer history
 bookingSchema.index({ userId: 1, status: 1 }); // for getMyBookings
 
-const Booking = mongoose.model("Booking", bookingSchema);
+const Booking = mongoose.models.Booking || mongoose.model("Booking", bookingSchema);
+if (!mongoose.models.Appointment) {
+  mongoose.model("Appointment", bookingSchema);
+}
 export default Booking;

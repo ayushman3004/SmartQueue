@@ -10,6 +10,9 @@ import {
   getMyBookings,
   cancelBooking,
 } from '../api/booking.api'
+import { validateCoupon } from '../api/coupon.api'
+import { submitReview } from '../api/review.api'
+import { toast } from 'react-hot-toast'
 
 export default function BookingPage() {
   const { businessId } = useParams()
@@ -22,10 +25,23 @@ export default function BookingPage() {
   const [myBookings, setMyBookings] = useState([])
   const [meta, setMeta] = useState({ avgServiceTime: 10, aiBuffer: 0, ratePerMinute: 20 })
   const [loading, setLoading] = useState(true)
-  const [booking, setBooking] = useState(false)
+
+  // Booking Form State
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
   const [selectedSlot, setSelectedSlot] = useState(null)
-  const [toast, setToast] = useState(null)
+  const [selectedService, setSelectedService] = useState(null)
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState(null)
+  const [validatingCoupon, setValidatingCoupon] = useState(false)
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [bookingInProgress, setBookingInProgress] = useState(false)
+
+  // Review Modal State
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null)
+  const [rating, setRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -34,8 +50,14 @@ export default function BookingPage() {
         getAvailableSlots(businessId, selectedDate),
         getMyBookings(),
       ])
-      setBusiness(bRes.data.data.business)
-      setSlots(sRes.data.data.slots)
+
+      const biz = bRes.data.data.business
+      setBusiness(biz)
+      if (biz.services?.length > 0 && !selectedService) {
+        setSelectedService(biz.services[0])
+      }
+
+      setSlots(sRes.data.data.slots || [])
       setMeta({
         avgServiceTime: sRes.data.data.avgServiceTime,
         aiBuffer: sRes.data.data.aiBuffer,
@@ -47,17 +69,20 @@ export default function BookingPage() {
     } finally {
       setLoading(false)
     }
-  }, [businessId, selectedDate])
+  }, [businessId, selectedDate, selectedService])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
-  // Socket: listen for delay notifications
+  // Socket updates
   useEffect(() => {
     if (!socket) return
+
     const handleDelay = (data) => {
       if (data.userId === user?._id) {
-        showToast(`⏱️ ${data.message}`, 'warning')
-        fetchData() // refresh bookings
+        toast(data.message, { icon: '⏱️' })
+        fetchData()
       }
     }
     const handleUpdate = () => fetchData()
@@ -70,45 +95,92 @@ export default function BookingPage() {
     }
   }, [socket, user, fetchData])
 
-  const showToast = (message, type = 'info') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 5000)
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return
+    setValidatingCoupon(true)
+    try {
+      const res = await validateCoupon(couponCode.trim(), businessId)
+      setAppliedCoupon(res.data.data)
+      toast.success(`Coupon applied! Saved ₹${res.data.data.discountAmount}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid coupon')
+      setAppliedCoupon(null)
+    } finally {
+      setValidatingCoupon(false)
+    }
   }
 
-  const handleBook = async (slot) => {
-    setBooking(true)
+  const handleSlotSelect = (slot) => {
     setSelectedSlot(slot)
+    setPaymentModalOpen(true)
+  }
+
+  const handleConfirmBooking = async () => {
+    if (!selectedSlot) return
+    setBookingInProgress(true)
     try {
       const res = await createBooking({
         businessId,
-        startTime: slot.startTime,
-        serviceType: 'general',
+        startTime: selectedSlot.startTime,
+        serviceType: selectedService?.name || 'general',
+        pricingLabel: selectedService?.name || 'standard',
+        couponCode: appliedCoupon?.coupon?.code,
       })
-      const msg = res.data.message
-      console.log('📅 Booking response:', res.data.data)
 
-      // Update wallet balance from booking response
-      if (res.data.data.newBalance !== undefined) {
-        setUser(prev => prev ? { ...prev, walletBalance: res.data.data.newBalance } : prev)
+      const newBal = res.data.data.newBalance
+      if (newBal !== undefined) {
+        setUser(prev => prev ? { ...prev, walletBalance: newBal } : prev)
       }
 
-      showToast(`✅ ${msg}`, 'success')
+      toast.success(res.data.message || 'Booking confirmed!')
+      setPaymentModalOpen(false)
+      setSelectedSlot(null)
       fetchData()
     } catch (err) {
-      showToast(`❌ ${err.response?.data?.message || 'Booking failed'}`, 'error')
+      toast.error(err.response?.data?.message || 'Booking failed')
     } finally {
-      setBooking(false)
-      setSelectedSlot(null)
+      setBookingInProgress(false)
     }
   }
 
   const handleCancel = async (id) => {
+    if (!window.confirm("Cancel this booking? Amount will be refunded to your wallet.")) return
     try {
-      await cancelBooking(id)
-      showToast('Booking cancelled', 'info')
+      const res = await cancelBooking(id)
+      toast.success(res.data.message || 'Booking cancelled')
+      if (res.data.data?.refunded) {
+        setUser(prev => prev ? { ...prev, walletBalance: (prev.walletBalance || 0) + res.data.data.refunded } : prev)
+      }
       fetchData()
     } catch (err) {
-      showToast(`❌ ${err.response?.data?.message || 'Cancel failed'}`, 'error')
+      toast.error(err.response?.data?.message || 'Cancel failed')
+    }
+  }
+
+  const handleOpenReview = (booking) => {
+    setSelectedBookingForReview(booking)
+    setRating(5)
+    setReviewComment('')
+    setReviewModalOpen(true)
+  }
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault()
+    if (!selectedBookingForReview) return
+    setSubmittingReview(true)
+    try {
+      await submitReview({
+        bookingId: selectedBookingForReview._id,
+        businessId: selectedBookingForReview.businessId?._id || selectedBookingForReview.businessId,
+        rating,
+        comment: reviewComment,
+      })
+      toast.success("Review submitted! Thank you.")
+      setReviewModalOpen(false)
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to submit review")
+    } finally {
+      setSubmittingReview(false)
     }
   }
 
@@ -116,217 +188,366 @@ export default function BookingPage() {
     return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
   }
 
+  // Price calculations
+  const servicePrice = selectedService?.price ?? (business?.basePrice || 0)
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0
+  const finalPrice = Math.max(0, servicePrice - discountAmount)
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-      <div className="w-10 h-10 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+      <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
   return (
-    <div className="container py-12 px-4 sm:px-6">
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -30, x: '-50%' }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            className="fixed top-24 left-1/2 z-50 px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl border"
-            style={{
-              background: toast.type === 'success' ? '#f0fdf4' : toast.type === 'error' ? '#fef2f2' : toast.type === 'warning' ? '#fffbeb' : '#ffffff',
-              color: toast.type === 'success' ? '#15803d' : toast.type === 'error' ? '#b91c1c' : toast.type === 'warning' ? '#b45309' : '#09090b',
-              borderColor: toast.type === 'success' ? '#dcfce7' : toast.type === 'error' ? '#fee2e2' : toast.type === 'warning' ? '#fef3c7' : '#f4f4f5',
-            }}
-          >
-            {toast.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="container max-w-7xl py-10 px-4 sm:px-6 space-y-8">
+      {/* Top Header */}
+      <div className="flex items-center justify-between border-b border-zinc-200 pb-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-zinc-950 px-4 py-2 rounded-xl bg-slate-50 border border-zinc-200 hover:bg-white transition-all"
+        >
+          ← Back to Directory
+        </button>
+        <button
+          onClick={() => navigate(`/queue/${businessId}`)}
+          className="flex items-center gap-2 text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 px-4 py-2 rounded-xl hover:bg-teal-100 transition-all"
+        >
+          View Live Queue ({business?.queueLength || 0} waiting) →
+        </button>
+      </div>
 
-      {/* Back */}
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-10 text-slate-400 hover:text-zinc-950 transition-all px-4 py-2 rounded-xl bg-slate-50 border border-zinc-100 hover:bg-white hover:border-zinc-200">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-        Back to Directory
-      </button>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Left Column: Business + My Bookings */}
-        <div className="lg:col-span-4 space-y-8">
-          {/* Business Info */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Venue Info, Service Selection & My Bookings */}
+        <div className="lg:col-span-4 space-y-6">
           {business && (
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full blur-[40px] pointer-events-none" />
-              <h1 className="text-2xl font-black mb-1 text-zinc-950 tracking-tight leading-none uppercase">
-                {business.name.split(' ')[0]}<span className="text-teal-600">{business.name.split(' ').slice(1).join(' ')}</span>
-              </h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-slate-400">{business.category} Hub Operations</p>
-              
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-4 rounded-2xl bg-slate-50 border border-zinc-100 text-center shadow-xs">
-                  <p className="text-lg font-black text-teal-700 leading-none mb-1.5">{meta.avgServiceTime}m</p>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Avg Time</p>
+            <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h1 className="text-2xl font-black text-zinc-950 tracking-tight">{business.name}</h1>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${business.isOpen ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                    {business.isOpen ? 'OPEN' : 'CLOSED'}
+                  </span>
                 </div>
-                <div className="p-4 rounded-2xl bg-slate-50 border border-zinc-100 text-center shadow-xs">
-                  <p className="text-lg font-black text-indigo-700 leading-none mb-1.5">{meta.aiBuffer}m</p>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Safety</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-slate-50 border border-zinc-100 text-center shadow-xs">
-                  <p className="text-lg font-black text-rose-700 leading-none mb-1.5">₹{meta.ratePerMinute}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Extra</p>
+                <p className="text-xs text-slate-500 capitalize">{business.category} • {business.address || business.location || 'Local Hub'}</p>
+                {business.phone && <p className="text-xs text-slate-400 mt-0.5">📞 {business.phone}</p>}
+              </div>
+
+              {/* Service Selection */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">Select Service</label>
+                <div className="space-y-2">
+                  {(business.services || [{ name: 'General Consultation', duration: 15, price: business.basePrice || 0 }]).map((svc, i) => {
+                    const isSelected = selectedService?.name === svc.name
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => setSelectedService(svc)}
+                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                          isSelected ? 'bg-teal-50 border-teal-500 shadow-xs' : 'bg-slate-50 border-zinc-200 hover:bg-white'
+                        }`}
+                      >
+                        <div>
+                          <p className="text-sm font-bold text-zinc-900 leading-none">{svc.name}</p>
+                          <p className="text-xs text-slate-400 mt-1">{svc.duration} minutes</p>
+                        </div>
+                        <span className="text-sm font-black text-teal-800">₹{svc.price ?? business.basePrice ?? 0}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
-            </motion.div>
+
+              {/* Coupon Section */}
+              <div className="space-y-2 pt-4 border-t border-zinc-100">
+                <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">Have a coupon?</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter code (e.g. SERVEQ15)"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 text-xs uppercase font-bold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={validatingCoupon || !couponCode}
+                    className="px-4 py-2 bg-zinc-900 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    Apply
+                  </button>
+                </div>
+                {appliedCoupon && (
+                  <p className="text-xs text-emerald-700 font-bold">✓ Coupon active: -₹{appliedCoupon.discountAmount}</p>
+                )}
+              </div>
+            </div>
           )}
 
-          {/* My Bookings */}
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-xl">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] mb-6 text-zinc-950">Active Registrations</h3>
+          {/* User's Existing Bookings for this business */}
+          <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm space-y-4">
+            <h3 className="text-xs font-black uppercase text-zinc-950 tracking-wider">Your Bookings at this Venue</h3>
             {myBookings.length === 0 ? (
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest py-8 text-center border border-dashed border-zinc-100 rounded-2xl">Null entries detected.</p>
+              <p className="text-xs text-slate-400 text-center py-4 border border-dashed border-zinc-200 rounded-2xl">
+                No past or pending bookings here yet.
+              </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {myBookings.map((b) => (
-                  <div key={b._id} className="p-5 rounded-3xl relative overflow-hidden bg-slate-50 border border-zinc-200 group hover:border-teal-200 transition-all shadow-xs" style={{ borderLeftWidth: b.delayMinutes > 0 ? '4px' : '1px', borderLeftColor: b.delayMinutes > 0 ? '#f59e0b' : '#e4e4e7' }}>
-                    <div className="flex items-center justify-between mb-3 relative z-10">
-                      <span className="text-[11px] font-black text-zinc-950 tabular-nums">
-                        {formatTime(b.startTime)} — {formatTime(b.endTime)}
-                      </span>
-                      <span className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest border transition-all ${
-                        b.status === 'in-progress' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.1)]' :
-                        b.status === 'completed' ? 'bg-slate-100 text-slate-500 border-zinc-200' : 'bg-white text-teal-600 border-teal-100'
+                  <div key={b._id} className="p-4 rounded-2xl bg-slate-50 border border-zinc-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-900">{formatTime(b.startTime)}</span>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                        b.status === 'completed' ? 'bg-slate-200 text-slate-700' :
+                        b.status === 'serving' ? 'bg-emerald-100 text-emerald-700' :
+                        b.status === 'cancelled' || b.status === 'refunded' ? 'bg-rose-100 text-rose-700' :
+                        'bg-teal-100 text-teal-800'
                       }`}>
                         {b.status}
                       </span>
                     </div>
-                    {b.delayMinutes > 0 && (
-                      <div className="flex items-center gap-1.5 mb-2 relative z-10">
-                        <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">⚠️ {b.delayMinutes}M Extension Added</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between mt-4 relative z-10">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Token ID: {b._id.slice(-8)}</p>
-                      {b.status === 'scheduled' && (
+                    <p className="text-xs text-slate-500">{b.serviceType} • Paid ₹{b.paidAmount}</p>
+                    <div className="flex items-center gap-2 pt-2 border-t border-zinc-200">
+                      {b.status === 'completed' ? (
+                        <button
+                          onClick={() => handleOpenReview(b)}
+                          className="text-xs font-bold text-teal-700 hover:underline"
+                        >
+                          ⭐ Leave Review
+                        </button>
+                      ) : b.status === 'scheduled' || b.status === 'confirmed' ? (
                         <button
                           onClick={() => handleCancel(b._id)}
-                          className="text-[8px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-700 transition-colors bg-rose-50 px-2 py-1 rounded-md"
-                        >Delete Record</button>
-                      )}
+                          className="text-xs font-bold text-rose-600 hover:underline"
+                        >
+                          Cancel Booking
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </motion.div>
+          </div>
         </div>
 
-        {/* Right Column: Available Slots */}
-        <div className="lg:col-span-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-zinc-200 p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-[120px] pointer-events-none" />
-            
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10 relative z-10">
+        {/* Right Column: Date Selection & Available Slots */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-white border border-zinc-200 p-8 rounded-3xl shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 pb-6">
               <div>
-                <h2 className="text-3xl font-black text-zinc-950 uppercase tracking-tighter leading-none mb-1.5">Reserve<span className="text-teal-600">Space</span></h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Select target temporal vector</p>
+                <h2 className="text-2xl font-black text-zinc-950">Select Time Slot</h2>
+                <p className="text-xs text-slate-500 font-medium">Slots calculated dynamically with AI extension buffering.</p>
               </div>
-              <div className="relative">
-                <input
-                  id="booking-date-picker"
-                  type="date"
-                  className="input w-auto bg-slate-50 border-zinc-200 text-sm font-black py-4 px-6 rounded-2xl focus:bg-white transition-all shadow-xs"
-                  value={selectedDate}
-                  onChange={(e) => { setSelectedDate(e.target.value); setLoading(true) }}
-                  min={new Date().toISOString().split('T')[0]}
-                />
-              </div>
+              <input
+                type="date"
+                value={selectedDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => { setSelectedDate(e.target.value); setLoading(true) }}
+                className="px-4 py-2.5 rounded-xl border border-zinc-200 text-sm font-bold bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
             </div>
 
-            {/* AI Buffer indicator */}
             {meta.aiBuffer > 0 && (
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mb-8 p-5 rounded-2xl flex items-center gap-4 bg-teal-50 border border-teal-100 relative z-10 shadow-xs">
-                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-xl shadow-xs">🧠</div>
-                <div>
-                  <p className="text-[10px] font-black text-teal-700 uppercase tracking-widest mb-0.5">Predictive Buffer Active</p>
-                  <p className="text-[10px] font-bold text-teal-600 leading-relaxed uppercase opacity-80">
-                    AI optimized network latency by {meta.aiBuffer}m based on recent node activity.
-                  </p>
-                </div>
-              </motion.div>
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-900 flex items-center gap-2">
+                <span>🧠</span>
+                <span><strong>AI Pacing Active:</strong> +{meta.aiBuffer} mins safety buffer added based on historical extensions.</span>
+              </div>
             )}
 
-            {/* Slot Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 relative z-10">
+            {/* Slots Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {slots.map((slot, i) => {
                 const isPast = new Date(slot.startTime) < new Date()
                 const isAvailable = slot.available && !isPast
-                const isSelected = selectedSlot?.startTime === slot.startTime
 
                 return (
-                  <motion.button
+                  <button
                     key={i}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.01 }}
-                    disabled={!isAvailable || booking}
-                    onClick={() => handleBook(slot)}
-                    className="p-6 rounded-[1.75rem] text-center transition-all duration-300 relative overflow-hidden group border shadow-xs"
-                    style={{
-                      background: isSelected ? '#09090b' : isAvailable ? '#f8fafc' : '#ffffff',
-                      borderColor: isSelected ? '#09090b' : isAvailable ? '#f1f5f9' : '#f4f4f5',
-                      opacity: isAvailable ? 1 : 0.5,
-                      color: isSelected ? '#ffffff' : isAvailable ? '#09090b' : '#94a3b8',
-                      cursor: isAvailable ? 'pointer' : 'not-allowed',
-                    }}
-                    whileHover={isAvailable ? { scale: 1.05, y: -4, borderColor: '#cbd5e1' } : {}}
-                    whileTap={isAvailable ? { scale: 0.95 } : {}}
+                    type="button"
+                    disabled={!isAvailable}
+                    onClick={() => handleSlotSelect(slot)}
+                    className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-h-[90px] ${
+                      isAvailable
+                        ? 'bg-slate-50 border-zinc-200 hover:border-teal-500 hover:bg-teal-50/40 cursor-pointer shadow-xs'
+                        : 'bg-zinc-50 border-zinc-100 text-slate-300 cursor-not-allowed opacity-60'
+                    }`}
                   >
-                    {isSelected && !booking && <div className="absolute inset-0 bg-teal-500/10 animate-pulse" />}
-                    <p className="text-sm font-black tabular-nums tracking-tight mb-1">{formatTime(slot.startTime)}</p>
-                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">
-                      {slot.duration}m Limit
-                    </p>
-                    {!isAvailable && !isPast && (
-                      <div className="mt-3 text-[7px] font-black px-2 py-0.5 rounded-md bg-rose-50 text-rose-500 border border-rose-100 uppercase tracking-[0.2em] w-fit mx-auto">Occupied</div>
-                    )}
-                    {isPast && (
-                      <div className="mt-3 text-[7px] font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-400 border border-zinc-100 uppercase tracking-[0.2em] w-fit mx-auto">Expired</div>
-                    )}
-                    {isSelected && booking && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/90 backdrop-blur-sm">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    )}
-                  </motion.button>
+                    <span className="text-sm font-black text-zinc-900">{formatTime(slot.startTime)}</span>
+                    <span className="text-[10px] text-slate-400 font-bold">{slot.duration} mins</span>
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md mt-1 ${
+                      isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {isAvailable ? 'Available' : 'Booked'}
+                    </span>
+                  </button>
                 )
               })}
             </div>
 
             {slots.length === 0 && (
-              <div className="text-center py-20 bg-slate-50/50 rounded-[2.5rem] mt-4 border border-dashed border-zinc-200">
-                <p className="text-5xl mb-6 opacity-20">🏜️</p>
-                <p className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">Temporal Vacuum Detected</p>
-                <p className="text-[10px] mt-2 font-bold text-slate-300 uppercase">Try shifting target date.</p>
+              <div className="py-16 text-center text-slate-400 border border-dashed border-zinc-200 rounded-3xl">
+                No slots available on this date. Please try another day.
               </div>
             )}
-
-            {/* Legend */}
-            <div className="mt-10 pt-10 border-t border-zinc-100 flex flex-wrap items-center gap-8 justify-center sm:justify-start" style={{ color: '#94a3b8' }}>
-              <div className="flex items-center gap-3">
-                <span className="w-4 h-4 rounded-lg bg-slate-100 border border-slate-200" />
-                <span className="text-[9px] font-black uppercase tracking-widest">Available Nodes</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-4 h-4 rounded-lg bg-white border border-zinc-100 opacity-50" />
-                <span className="text-[9px] font-black uppercase tracking-widest">Restricted Space</span>
-              </div>
-              <div className="flex items-center gap-3 ml-auto">
-                <span className="text-sm">⚡</span>
-                <span className="text-[9px] font-black uppercase tracking-widest text-teal-600">±10M Flexibility Window Adaptive</span>
-              </div>
-            </div>
-          </motion.div>
+          </div>
         </div>
       </div>
+
+      {/* Payment Confirmation Modal */}
+      <AnimatePresence>
+        {paymentModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-6"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
+                <div>
+                  <h3 className="text-xl font-black text-zinc-950">Payment Confirmation</h3>
+                  <p className="text-xs text-slate-400">Order Summary & Confirmation</p>
+                </div>
+                <button onClick={() => setPaymentModalOpen(false)} className="text-slate-400 hover:text-zinc-900 font-bold">✕</button>
+              </div>
+
+              <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-zinc-100 text-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span>Venue</span>
+                  <span className="font-bold text-zinc-900">{business?.name}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Service</span>
+                  <span className="font-bold text-zinc-900">{selectedService?.name}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Time Slot</span>
+                  <span className="font-bold text-zinc-900">{formatTime(selectedSlot?.startTime)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Base Price</span>
+                  <span className="font-bold text-zinc-900">₹{servicePrice}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-bold">
+                    <span>Coupon ({appliedCoupon?.coupon?.code})</span>
+                    <span>-₹{discountAmount}</span>
+                  </div>
+                )}
+                <div className="pt-2 border-t border-zinc-200 flex justify-between text-sm font-black text-zinc-950">
+                  <span>Total Payable</span>
+                  <span className="text-teal-700">₹{finalPrice}</span>
+                </div>
+              </div>
+
+              {/* Provider Notice */}
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-[11px] text-teal-900">
+                <p className="font-bold mb-0.5">🔒 Payment Provider: Mock Payment Gateway (Test Mode)</p>
+                <p className="text-teal-700 opacity-90">Safe financial ledger check. Wallet balance: ₹{user?.walletBalance ?? 0}</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-zinc-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBooking}
+                  disabled={bookingInProgress}
+                  className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 disabled:opacity-50"
+                >
+                  {bookingInProgress ? 'Processing...' : `Confirm & Pay ₹${finalPrice}`}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Review Modal */}
+      <AnimatePresence>
+        {reviewModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-zinc-950">Review Service</h3>
+                  <p className="text-xs text-slate-500">{business?.name}</p>
+                </div>
+                <button onClick={() => setReviewModalOpen(false)} className="text-slate-400 hover:text-zinc-900 font-bold">✕</button>
+              </div>
+
+              <form onSubmit={handleSubmitReview} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Rating</label>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        type="button"
+                        key={star}
+                        onClick={() => setRating(star)}
+                        className={`text-2xl transition-transform hover:scale-110 ${star <= rating ? 'text-amber-400' : 'text-slate-200'}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                    <span className="text-xs font-bold text-slate-600 ml-2">{rating} / 5 Stars</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Comments</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Share details of your experience..."
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setReviewModalOpen(false)}
+                    className="flex-1 py-3 rounded-xl border border-zinc-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingReview}
+                    className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 disabled:opacity-50"
+                  >
+                    {submittingReview ? 'Submitting...' : 'Submit Review'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

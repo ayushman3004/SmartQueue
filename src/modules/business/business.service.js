@@ -3,14 +3,67 @@ import Business from "./business.model.js";
 import ApiError from "../../../utils/ApiError.js";
 
 export const createBusiness = async (ownerId, data) => {
-  const business = await Business.create({ ...data, owner: ownerId });
+  const payload = { ...data, owner: ownerId };
+  if (Array.isArray(payload.services) && payload.services.length > 0) {
+    payload.services = payload.services
+      .map(s => ({
+        name: String(s.name || '').trim(),
+        duration: Math.max(1, Number(s.duration) || 10),
+        price: Math.max(0, Number(s.price) || 0),
+      }))
+      .filter(s => s.name);
+    payload.serviceTypes = payload.services.map(s => s.name);
+  } else if (!payload.services || payload.services.length === 0) {
+    payload.services = [{ name: "General Service", duration: payload.averageServiceTime || 15, price: payload.basePrice || 0 }];
+    payload.serviceTypes = ["General Service"];
+  }
+
+  const business = await Business.create(payload);
+
+  // Initialize a Queue document for the new business
+  const Queue = mongoose.model("Queue");
+  const existingQueue = await Queue.findOne({ businessId: business._id });
+  if (!existingQueue) {
+    await Queue.create({ businessId: business._id, users: [] });
+  }
+
   return business;
 };
 
-export const getAllBusinesses = async () => {
-  // Use aggregation to fetch businesses with their current queue length and estimated wait
+export const getAllBusinesses = async (filters = {}) => {
+  const match = {};
+
+  if (!filters.includeAll) {
+    match.isActive = true;
+    if (filters.onlyOpen !== false) {
+      match.isOpen = true;
+    }
+  }
+
+  if (filters.category && filters.category !== "all") {
+    match.category = filters.category;
+  }
+
+  if (filters.location) {
+    match.$or = [
+      { location: { $regex: filters.location, $options: "i" } },
+      { address: { $regex: filters.location, $options: "i" } },
+    ];
+  }
+
+  if (filters.search) {
+    const searchRegex = { $regex: filters.search, $options: "i" };
+    match.$or = [
+      { name: searchRegex },
+      { description: searchRegex },
+      { category: searchRegex },
+      { location: searchRegex },
+      { address: searchRegex },
+    ];
+  }
+
   const businesses = await Business.aggregate([
-    { $match: { isOpen: true, isActive: true } },
+    { $match: match },
     {
       $lookup: {
         from: "queues",
@@ -36,10 +89,10 @@ export const getAllBusinesses = async () => {
           $cond: [
             { $gt: ["$queueLength", 0] },
             { $add: ["$totalServiceTime", { $multiply: ["$queueLength", 15] }] },
-            0
-          ]
-        }
-      }
+            0,
+          ],
+        },
+      },
     },
     {
       $lookup: {
@@ -69,13 +122,12 @@ export const getAllBusinesses = async () => {
 export const getBusinessById = async (id) => {
   const b = await Business.findById(id).populate("owner", "name avatar");
   if (!b) throw new ApiError(404, "Business not found");
-  
-  // Also get queue info
+
   const queue = await mongoose.model("Queue").findOne({ businessId: id });
   const bObj = b.toObject();
   const users = queue?.users || [];
   bObj.queueLength = users.length;
-  
+
   if (users.length > 0) {
     const lastUser = users[users.length - 1];
     const buffer = 15;
@@ -85,7 +137,7 @@ export const getBusinessById = async (id) => {
   } else {
     bObj.estimatedWait = 0;
   }
-  
+
   return bObj;
 };
 
@@ -93,12 +145,18 @@ export const getMyBusinesses = async (ownerId) => {
   return await Business.find({ owner: ownerId });
 };
 
-export const updateBusiness = async (id, ownerId, data) => {
-  const b = await Business.findOne({ _id: id, owner: ownerId });
+export const updateBusiness = async (id, ownerId, data, userRole = null) => {
+  const query = userRole === "admin" ? { _id: id } : { _id: id, owner: ownerId };
+  const b = await Business.findOne(query);
   if (!b) throw new ApiError(403, "Not your business or not found");
 
   // Prevent overwriting protected fields
-  const { owner, _id, __v, createdAt, updatedAt, isActive, ...safeData } = data;
+  const { owner: _owner, _id: _idField, __v: _version, createdAt: _createdAt, updatedAt: _updatedAt, ...safeData } = data;
+
+  if (userRole !== "admin") {
+    delete safeData.isActive;
+    delete safeData.approvalStatus;
+  }
 
   // Validate averageServiceTime if provided
   if (safeData.averageServiceTime != null) {
@@ -109,6 +167,18 @@ export const updateBusiness = async (id, ownerId, data) => {
     safeData.averageServiceTime = t;
   }
 
+  // Validate and sync services if provided
+  if (Array.isArray(safeData.services)) {
+    safeData.services = safeData.services
+      .map(s => ({
+        name: String(s.name || '').trim(),
+        duration: Math.max(1, Number(s.duration) || 10),
+        price: Math.max(0, Number(s.price) || 0),
+      }))
+      .filter(s => s.name);
+    safeData.serviceTypes = safeData.services.map(s => s.name);
+  }
+
   Object.assign(b, safeData);
   return await b.save();
 };
@@ -117,9 +187,9 @@ export const deleteBusiness = async (id) => {
   const b = await Business.findByIdAndDelete(id);
   if (!b) throw new ApiError(404, "Business not found");
   
-  // Clean up related queues and bookings (optional but recommended)
+  // Clean up related queues and bookings
   await mongoose.model("Queue").deleteMany({ businessId: id });
-  await mongoose.model("Appointment").deleteMany({ businessId: id });
+  await mongoose.model("Booking").deleteMany({ businessId: id });
   
   return b;
 };

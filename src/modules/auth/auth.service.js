@@ -15,7 +15,8 @@ export const register = async ({ name, email, password, role }) => {
   const existing = await User.findOne({ email });
   if (existing) throw new ApiError(409, "Email already registered");
 
-  const userRole = ["customer", "owner", "admin"].includes(role) ? role : "customer";
+  // Disallow admin self-registration: only customer or owner permitted
+  const userRole = role === "owner" ? "owner" : "customer";
   const hashed = await hashPassword(password);
   const user = await User.create({ name: name.trim(), email, password: hashed, role: userRole });
 

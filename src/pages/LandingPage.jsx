@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import React from 'react'
 
 const FEATURES = [
   {
@@ -87,145 +87,172 @@ export default function LandingPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="w-full overflow-x-hidden bg-white">
-      {/* Background blobs */}
+    <div className="w-full overflow-x-hidden bg-[#fafaf9]">
+      {/* Ambient background mesh */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
-        <div className="absolute top-[10%] right-[10%] w-[500px] h-[500px] bg-teal-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[10%] left-[10%] w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px]" />
+        <div className="absolute top-[5%] right-[12%] w-[550px] h-[550px] bg-teal-500/8 rounded-full blur-[140px]" />
+        <div className="absolute bottom-[15%] left-[8%] w-[500px] h-[500px] bg-indigo-500/6 rounded-full blur-[130px]" />
       </div>
 
       {/* Hero Section */}
-      <section className="relative pt-4 md:pt-4 pb-24 lg:pb-40">
-        <div className="container mx-auto px-6 sm:px-10 lg:px-24">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 items-center">
+      <section className="relative pt-6 pb-20 lg:pb-32">
+        <div className="container mx-auto px-4 sm:px-8 lg:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
             {/* Content Left */}
-            <div className="flex flex-col items-start text-left space-y-12 lg:col-span-7">
+            <div className="flex flex-col items-start text-left space-y-8 lg:col-span-7">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="px-8 py-3 rounded-[1.25rem] bg-teal-50 border border-teal-100 text-[11px] font-black uppercase tracking-[0.4em] text-teal-700 shadow-sm"
+                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                className="badge-eyebrow"
               >
-                Productivity Infrastructure
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-600 animate-pulse" />
+                Virtual Queue Infrastructure
               </motion.div>
               
               <motion.h1
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-6xl md:text-7xl lg:text-7xl xl:text-8xl 2xl:text-[9rem] font-black text-zinc-950 tracking-tighter leading-[1.0] uppercase"
+                transition={{ delay: 0.08, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-zinc-950 tracking-tight leading-[0.96]"
               >
                 Eliminate <br />
-                the <span className="text-teal-600">Wait.</span>
+                the <span className="text-teal-600 underline decoration-teal-500/30 decoration-wavy decoration-2">Waiting Room.</span>
               </motion.h1>
               
               <motion.p
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-lg md:text-xl text-slate-500 font-bold leading-relaxed max-w-xl uppercase tracking-tight opacity-80"
+                transition={{ delay: 0.16, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="text-base sm:text-lg text-zinc-600 font-medium leading-relaxed max-w-xl"
               >
-                A seamless SaaS platform designed to completely modernise your operations. Give your customers real-time updates and eliminate physical bottlenecks instantly.
+                Zero-friction virtual waiting queues, live AI pacing, and instant Express Slot bookings designed for healthcare, banking, and high-volume operations.
               </motion.p>
               
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="flex flex-col sm:flex-row items-center gap-6 pt-6 w-full sm:w-auto"
+                transition={{ delay: 0.24, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                className="flex flex-wrap items-center gap-4 pt-2 w-full sm:w-auto"
               >
                 <button 
                   onClick={() => navigate('/login')}
-                  className="w-full sm:w-auto px-16 py-8 rounded-[2.5rem] bg-zinc-950 text-white text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl hover:bg-zinc-800 transition-all hover:-translate-y-2 active:scale-[0.98]"
+                  className="btn-island py-3.5 px-6 text-xs sm:text-sm"
                 >
-                  Start Deployment
+                  <span>Start Deployment</span>
+                  <span className="btn-bubble">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                  </span>
                 </button>
+
                 <button 
-                   onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
-                   className="w-full sm:w-auto px-16 py-8 rounded-[2.5rem] bg-white border border-zinc-200 text-[11px] font-black uppercase tracking-[0.3em] text-zinc-950 shadow-xl hover:bg-slate-50 transition-all hover:-translate-y-1 active:scale-[0.98]"
+                  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="px-6 py-3.5 rounded-full bg-white border border-zinc-200/90 text-zinc-800 text-xs sm:text-sm font-extrabold uppercase tracking-wider shadow-sm hover:bg-zinc-50 hover:border-zinc-300 transition-all active:scale-[0.97]"
                 >
-                  View Specs
+                  Explore Capabilities
                 </button>
               </motion.div>
             </div>
 
-            {/* Viz Right */}
+            {/* Visual Right (Double-Bezel Frame) */}
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, x: 50 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              transition={{ delay: 0.4, duration: 1.2, ease: [0.19, 1, 0.22, 1] }}
-              className="relative group hidden lg:block lg:col-span-5"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+              className="lg:col-span-5"
             >
-              <div className="absolute inset-x-[-10%] inset-y-[-10%] bg-teal-500/10 blur-[120px] -z-10 group-hover:bg-teal-500/20 transition-all duration-1000" />
-              <div className="relative rounded-[4rem] overflow-hidden shadow-[0_60px_120px_-20px_rgba(0,0,0,0.35)] border border-zinc-100">
-                <img src="/hero-viz.png" className="w-full h-auto object-cover transform transition-transform duration-1000 group-hover:scale-110" alt="Platform Visualization" />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/40 via-transparent to-transparent pointer-events-none" />
+              <div className="bezel-shell">
+                <div className="bezel-core overflow-hidden relative group">
+                  <img 
+                    src="/hero-viz.png" 
+                    className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-105" 
+                    alt="Platform Visualization" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/40 via-transparent to-transparent pointer-events-none" />
+                </div>
               </div>
             </motion.div>
           </div>
         </div>
 
-        <div className="mt-24 mb-24">
+        <div className="mt-16 mb-16">
           <ImageMarquee />
         </div>
 
         <Marquee />
       </section>
 
-      {/* Value Prop Section */}
-      <section id="features" className="py-40 space-y-24 relative overflow-hidden bg-white">
-        <div className="absolute inset-0 z-0 opacity-[0.15] pointer-events-none transition-opacity duration-1000">
-          <img src="/features-bg.png" className="w-full h-full object-cover" alt="" />
-        </div>
-        <div className="container mx-auto px-6 sm:px-10 lg:px-24 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 border-b border-zinc-100 pb-16">
-           <div className="space-y-6 max-w-3xl">
-             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-600">Core Engine</span>
-             <h2 className="text-5xl md:text-7xl font-black text-zinc-950 tracking-tighter uppercase leading-none">Platform <span className="text-teal-600">Capabilities</span></h2>
-             <p className="text-slate-400 text-lg md:text-xl font-bold uppercase tracking-tight">Everything you need to virtualize your physical waiting rooms.</p>
-           </div>
+      {/* Capabilities Section (Double-Bezel Bento Grid) */}
+      <section id="features" className="py-24 space-y-16 relative overflow-hidden bg-white border-t border-zinc-200/60">
+        <div className="container mx-auto px-4 sm:px-8 lg:px-12 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-12 border-b border-zinc-100">
+            <div className="space-y-3 max-w-2xl text-left">
+              <div className="badge-eyebrow">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+                Core Technology
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black text-zinc-950 tracking-tight leading-tight">
+                Architected for <span className="text-teal-600">Zero-Friction</span> Flow.
+              </h2>
+              <p className="text-zinc-500 text-sm sm:text-base font-medium">
+                Everything required to transform physical waiting rooms into synchronous real-time digital queues.
+              </p>
+            </div>
           </div>
- 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
             {FEATURES.map((f, i) => (
               <motion.div 
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white border border-zinc-200 p-12 group hover:border-teal-500/30 transition-all rounded-[3rem] shadow-xl hover:shadow-2xl hover:-translate-y-2"
+                transition={{ delay: i * 0.08, duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                className="bezel-shell text-left group"
               >
-                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-zinc-100 flex items-center justify-center text-3xl mb-8 grayscale group-hover:grayscale-0 transition-all opacity-80 group-hover:opacity-100 shadow-inner">
-                  {f.icon}
+                <div className="bezel-core p-8 sm:p-10 space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-center text-2xl shadow-xs group-hover:scale-105 transition-transform duration-200">
+                    {f.icon}
+                  </div>
+                  <h3 className="text-xl font-black text-zinc-950 tracking-tight">{f.title}</h3>
+                  <p className="text-sm text-zinc-600 leading-relaxed font-medium">
+                    {f.desc}
+                  </p>
                 </div>
-                <h3 className="text-2xl font-black text-zinc-950 mb-4 uppercase tracking-tight">{f.title}</h3>
-                <p className="text-slate-500 font-bold leading-relaxed uppercase text-xs tracking-widest opacity-80 group-hover:text-zinc-950 transition-colors">
-                  {f.desc}
-                </p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Footer */}
-      <section className="py-40 px-6">
+      {/* CTA Section */}
+      <section className="py-24 px-4 sm:px-8">
         <div className="container mx-auto">
-          <div className="bg-zinc-950 p-16 md:p-32 rounded-[5rem] space-y-12 flex flex-col xl:flex-row items-center justify-between gap-16 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.4)] relative overflow-hidden text-left">
-            <div className="absolute inset-0 opacity-30 pointer-events-none mix-blend-overlay">
-              <img src="/cta-bg.png" className="w-full h-full object-cover" alt="" />
+          <div className="bg-zinc-950 p-10 sm:p-16 md:p-20 rounded-[2.5rem] flex flex-col xl:flex-row items-start xl:items-center justify-between gap-10 shadow-2xl relative overflow-hidden text-left border border-zinc-800">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-500/15 rounded-full blur-[140px] pointer-events-none" />
+            
+            <div className="space-y-4 relative z-10 max-w-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-[10px] font-extrabold uppercase tracking-widest border border-teal-500/30">
+                <span>⚡</span> Enterprise Ready
+              </div>
+              <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none">
+                Ready to transform <br />your venue?
+              </h2>
+              <p className="text-zinc-400 text-sm sm:text-base font-medium">
+                Equip your team with automated real-time queuing, digital booking, and AI wait predictions.
+              </p>
             </div>
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-teal-500/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="space-y-8 relative z-10 max-w-2xl">
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-500">Genesis Point</span>
-              <h2 className="text-6xl md:text-9xl font-black text-white tracking-tighter uppercase leading-[0.85]">Ready to <br />launch?</h2>
-              <p className="text-slate-300 text-xl font-bold uppercase tracking-tight opacity-70">Join forward-thinking businesses upgrading their operational infrastructure.</p>
-            </div>
+
             <button 
               onClick={() => navigate('/login')}
-              className="relative z-10 px-20 py-10 rounded-[2.5rem] bg-white text-zinc-950 text-sm font-black uppercase tracking-[0.5em] shadow-2xl hover:scale-105 active:scale-95 transition-all whitespace-nowrap"
+              className="relative z-10 group px-8 py-4 rounded-full bg-white text-zinc-950 text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-zinc-100 active:scale-[0.97] transition-all flex items-center gap-3"
             >
-              Sign Up Genesis
+              <span>Launch Now</span>
+              <span className="w-7 h-7 rounded-full bg-zinc-950 text-white flex items-center justify-center transition-transform group-hover:translate-x-1">
+                →
+              </span>
             </button>
           </div>
         </div>

@@ -3,31 +3,19 @@ import cors from "cors";
 import passport from "passport";
 import cookieParser from "cookie-parser";
 
-// Routes
-import authRoutes from "./src/modules/auth/auth.routes.js";
-import businessRoutes from "./src/modules/business/business.routes.js";
-import queueRoutes from "./src/queue/queue.routes.js";
-import bookingRoutes from "./src/booking/booking.routes.js";
-import chatbotRoutes from "./src/modules/chatbot/chatbot.routes.js";
-import walletRoutes from "./src/modules/wallet/wallet.routes.js";
-import adminRoutes from "./src/modules/admin/admin.routes.js";
-import chatRoutes from "./src/modules/chat/chat.routes.js";
-import otpRoutes from "./src/modules/auth/otp.routes.js";
-import User from "./src/modules/auth/auth.model.js";
+// API Gateway router & error handler
+import createGatewayRouter from "./src/gateway/gateway.router.js";
+import { gatewayErrorHandler } from "./src/gateway/gateway.middleware.js";
 
 // Passport config
 import "./src/modules/Oauth/passport.config.js";
 
 const app = express();
 
-// ─── Trust Proxy (CRITICAL for Render/Heroku/any reverse proxy) ──
-// This is required for:
-//   1. secure cookies to work behind HTTPS-terminating proxies
-//   2. req.protocol to correctly return 'https'
-//   3. rate limiting to get the real client IP
+// ─── Trust Proxy (Required for reverse proxy, HTTPS detection & client IP) ──
 app.set("trust proxy", 1);
 
-// ─── CORS Middleware ──────────────────────────────────────────────
+// ─── CORS Configuration ──────────────────────────────────────────
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
@@ -42,7 +30,6 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (server-to-server, mobile apps, curl)
       if (!origin) return callback(null, true);
 
       const isAllowed =
@@ -59,81 +46,19 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
+  })
 );
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(passport.initialize());
 
-// ─── Routes ──────────────────────────────────────────────────
-app.use("/api/auth", authRoutes);
-app.use("/api/businesses", businessRoutes);
-app.use("/api/queue", queueRoutes);
-app.use("/api/bookings", bookingRoutes);
-app.use("/api/chatbot", chatbotRoutes);
-app.use("/api/wallet", walletRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/otp", otpRoutes);
+// ─── API Gateway Boundary ─────────────────────────────────────────
+// All domain routes and gateway middleware are encapsulated here:
+app.use("/api", createGatewayRouter());
 
-// ─── Health Check ─────────────────────────────────────────────
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-// ─── TEMP MIGRATION ──────────────────────────────────────────
-app.get("/api/migrate", async (req, res) => {
-  const result = await User.updateMany(
-    { role: "user" },
-    { $set: { role: "customer" } },
-  );
-  res.json({ success: true, modifiedCount: result.modifiedCount });
-});
-
-// ─── Global Error Handler ─────────────────────────────────────
-app.use((err, _req, res, _next) => {
-  let statusCode = err.statusCode || 500;
-  let message = err.message || "Internal Server Error";
-
-  // Mongoose validation error
-  if (err.name === "ValidationError") {
-    statusCode = 400;
-    const messages = Object.values(err.errors).map((e) => e.message);
-    message = messages.join(", ");
-  }
-
-  // Mongoose cast error (invalid ObjectId)
-  if (err.name === "CastError") {
-    statusCode = 400;
-    message = `Invalid ${err.path}: ${err.value}`;
-  }
-
-  // Mongoose duplicate key
-  if (err.code === 11000) {
-    statusCode = 409;
-    const field = Object.keys(err.keyValue)[0];
-    message = `Duplicate value for ${field}`;
-  }
-
-  // JWT errors
-  if (err.name === "JsonWebTokenError") {
-    statusCode = 401;
-    message = "Invalid token";
-  }
-  if (err.name === "TokenExpiredError") {
-    statusCode = 401;
-    message = "Token expired";
-  }
-
-  // Log only server errors
-  if (statusCode >= 500) console.error("🔥 Server Error:", err);
-
-  res.status(statusCode).json({
-    success: false,
-    message,
-  });
-});
+// ─── Centralized Gateway Error Handler ─────────────────────────────
+app.use(gatewayErrorHandler);
 
 export default app;

@@ -121,64 +121,76 @@ export default function BusinessCard({ business: initialBusiness, index }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      whileHover={{ y: -4 }}
+      transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
       onClick={() => navigate(isOwner ? `/business/${business._id}/manage` : `/queue/${business._id}`)}
-      className="glass-card flex flex-col relative overflow-hidden rounded-2xl cursor-pointer bg-white border border-zinc-200 shadow-md group"
+      className="bezel-shell flex flex-col relative cursor-pointer group text-left"
     >
-      <div className="h-24 bg-slate-50 flex items-center justify-between px-6 border-b border-zinc-100 relative">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-white border border-zinc-200 flex items-center justify-center text-2xl shadow-xs">
-            {CATEGORY_ICONS[business.category] || '🏢'}
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-zinc-900 tracking-tight truncate max-w-[180px] group-hover:text-teal-700 transition-colors">
-              {business.name}
-            </h3>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">
-              {business.category}
-            </p>
-          </div>
-        </div>
-        
-        <div className={`px-3 py-1 rounded-full border text-[10px] font-bold uppercase ${
-          business.isOpen ? 'bg-emerald-100 border-emerald-200 text-emerald-700' : 'bg-rose-100 border-rose-200 text-rose-700'
-        }`}>
-          {business.isOpen ? 'Open' : 'Closed'}
-        </div>
-      </div>
-
-      <div className="p-6 flex flex-col flex-1 gap-6">
-        {/* Core Stats */}
-        <div className="flex bg-slate-100/50 rounded-lg p-4 border border-zinc-100 items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase text-slate-500 tracking-wider mb-1">Queue Size</p>
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-zinc-900">{business.queueLength || 0}</span>
-              <span className="text-xs text-slate-400 font-bold">PPL</span>
+      <div className="bezel-core flex flex-col flex-1 p-5 md:p-6 overflow-hidden">
+        {/* Header with Machined Tile Icon & Status */}
+        <div className="flex items-center justify-between gap-3 pb-5 border-b border-zinc-100">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-center text-2xl shadow-xs group-hover:scale-105 transition-transform duration-200 flex-shrink-0">
+              {CATEGORY_ICONS[business.category] || '🏢'}
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-black text-zinc-950 tracking-tight truncate group-hover:text-teal-700 transition-colors">
+                {business.name}
+              </h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400 truncate">
+                  {business.category} Hub
+                </span>
+                {business.location && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-zinc-300" />
+                    <span className="text-[10px] font-medium text-zinc-400 truncate max-w-[110px]">
+                      {business.location}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-          <div className="w-px h-10 bg-zinc-200" />
-          <div className="text-right">
-            <p className="text-xs font-bold uppercase text-slate-500 tracking-wider mb-1">Est. Delay</p>
-            <div className="flex items-baseline justify-end gap-1">
-              <span className="text-3xl font-black text-teal-600">{business.estimatedWait || 0}</span>
-              <span className="text-xs text-slate-400 font-bold">MIN</span>
+          
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex-shrink-0 border ${
+            business.isOpen 
+              ? 'bg-emerald-50 border-emerald-200/80 text-emerald-700 shadow-xs' 
+              : 'bg-zinc-100 border-zinc-200 text-zinc-500'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${business.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
+            {business.isOpen ? 'Live' : 'Closed'}
+          </div>
+        </div>
+
+        {/* Core Stats (Double-Bezel Sub-Card) */}
+        <div className="my-5 grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-zinc-50/80 border border-zinc-200/60 shadow-inner">
+          <div className="px-2">
+            <p className="text-[10px] font-extrabold uppercase text-zinc-500 tracking-wider mb-0.5">Live Waiting</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-zinc-950 tracking-tight">{business.queueLength || 0}</span>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Patrons</span>
+            </div>
+          </div>
+          <div className="px-2 border-l border-zinc-200/80 text-right">
+            <p className="text-[10px] font-extrabold uppercase text-zinc-500 tracking-wider mb-0.5">Est. Turnaround</p>
+            <div className="flex items-baseline justify-end gap-1.5">
+              <span className="text-2xl font-black text-teal-600 tracking-tight">{business.estimatedWait || 0}</span>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Mins</span>
             </div>
           </div>
         </div>
 
         {/* Multi-Select Services UI */}
         {!isOwner && business.isOpen && business.services?.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase text-slate-500 tracking-wider">Select Services</span>
-              <span className="text-xs font-bold text-teal-600 opacity-80">{totalDuration} min block</span>
+          <div className="flex flex-col gap-2.5 mb-5">
+            <div className="flex items-center justify-between text-[11px] font-bold">
+              <span className="uppercase text-zinc-500 tracking-wider">Available Services</span>
+              <span className="text-teal-700 font-extrabold">{totalDuration} min block</span>
             </div>
             
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
               {business.services.map((svc, i) => {
                 const isSelected = selectedServices.includes(svc.name)
                 return (
@@ -186,22 +198,30 @@ export default function BusinessCard({ business: initialBusiness, index }) {
                     key={`svc-${i}`}
                     type="button"
                     onClick={(e) => toggleService(svc.name, e)}
-                    className={`flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-all text-left ${
+                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-xs transition-all text-left active:scale-[0.99] ${
                       isSelected 
-                        ? 'border-teal-200 bg-teal-50 text-teal-900' 
-                        : 'border-zinc-100 bg-slate-50 text-slate-600 hover:border-zinc-300 hover:text-slate-900'
+                        ? 'border-teal-300 bg-teal-50/70 text-teal-950 font-bold shadow-xs' 
+                        : 'border-zinc-200/80 bg-white text-zinc-600 hover:border-zinc-300'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'border-teal-600 bg-teal-600' : 'border-zinc-300'}`}>
-                        {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors flex-shrink-0 ${
+                        isSelected ? 'border-teal-600 bg-teal-600 text-white' : 'border-zinc-300 bg-zinc-50'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-2.5 h-2.5 stroke-current stroke-3" fill="none" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </div>
-                      <span className="font-medium truncate max-w-[120px] sm:max-w-auto flex-1">{svc.name}</span>
+                      <span className="truncate">{svc.name}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs font-bold">
-                      <span className={isSelected ? "text-teal-700" : "text-slate-400"}>{svc.duration}m</span>
+                    <div className="flex items-center gap-2 font-bold flex-shrink-0 ml-2">
+                      <span className="text-[10px] text-zinc-400">{svc.duration}m</span>
                       {svc.price !== undefined && svc.price >= 0 && (
-                        <span className="bg-slate-200 px-2 py-1 rounded">₹{svc.price}</span>
+                        <span className="text-xs font-black text-teal-800 bg-teal-100/60 px-2 py-0.5 rounded-md">
+                          ₹{svc.price}
+                        </span>
                       )}
                     </div>
                   </button>
@@ -211,27 +231,36 @@ export default function BusinessCard({ business: initialBusiness, index }) {
           </div>
         )}
 
-        <div className="mt-auto pt-6 flex flex-col gap-4">
+        {/* Pricing Summary & Action CTA Button */}
+        <div className="mt-auto pt-4 border-t border-zinc-100 flex flex-col gap-3">
           {!isOwner && business.isOpen && (
-            <div className="flex justify-between items-center text-sm font-bold text-slate-400">
-               <span>Total Price: <span className="text-zinc-900 ml-1">₹{totalPrice}</span></span>
-               <span>Slot: <span className="text-teal-700 ml-1">{predictedSlot}</span></span>
+            <div className="flex justify-between items-center text-xs font-bold text-zinc-500">
+              <span>Total: <strong className="text-zinc-950 font-black text-sm ml-1">₹{totalPrice}</strong></span>
+              <span>Next Ready: <strong className="text-teal-700 font-extrabold ml-1">{predictedSlot}</strong></span>
             </div>
           )}
+
           <button
             onClick={handleBookNow}
             disabled={!business.isOpen || booking}
-            className={`w-full py-4 rounded-xl font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:ring-offset-2 focus:ring-offset-white ${
+            className={`w-full group/btn relative flex items-center justify-between p-1.5 pl-5 rounded-full font-bold text-xs transition-all active:scale-[0.97] ${
               !business.isOpen 
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-teal-600 text-white hover:bg-teal-700 active:scale-95 shadow-md shadow-teal-600/10'
+                ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed border border-zinc-200'
+                : isOwner
+                  ? 'bg-zinc-950 text-white hover:bg-zinc-900 shadow-md'
+                  : 'bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-600/20'
             }`}
           >
-            {(() => {
-              if (booking) return 'Processing...';
-              if (isOwner) return 'Manage Hub Config';
-              return 'Reserve Slot & Join Queue';
-            })()}
+            <span className="tracking-wide">
+              {booking ? 'Joining Room...' : isOwner ? 'Open Operations Console' : 'Reserve & Join Live Queue'}
+            </span>
+            <span className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-200 group-hover/btn:translate-x-0.5 ${
+              !business.isOpen ? 'bg-zinc-200 text-zinc-400' : 'bg-white/20 text-white'
+            }`}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </span>
           </button>
         </div>
       </div>

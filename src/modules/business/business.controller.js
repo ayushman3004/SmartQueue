@@ -11,8 +11,14 @@ export const create = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, { business }, "Business created"));
 });
 
-export const getAll = asyncHandler(async (_req, res) => {
-  const businesses = await businessService.getAllBusinesses();
+export const getAll = asyncHandler(async (req, res) => {
+  const { search, category, location, onlyOpen } = req.query;
+  const businesses = await businessService.getAllBusinesses({
+    search,
+    category,
+    location,
+    onlyOpen: onlyOpen !== "false",
+  });
   res.json(new ApiResponse(200, { businesses }));
 });
 
@@ -27,7 +33,12 @@ export const getMine = asyncHandler(async (req, res) => {
 });
 
 export const update = asyncHandler(async (req, res) => {
-  const business = await businessService.updateBusiness(req.params.id, req.user._id, req.body);
+  const business = await businessService.updateBusiness(
+    req.params.id,
+    req.user._id,
+    req.body,
+    req.user.role
+  );
   const io = req.app.get("io");
   if (io) {
     io.to(`business:${business._id}`).emit("service:updated", { businessId: business._id, business });

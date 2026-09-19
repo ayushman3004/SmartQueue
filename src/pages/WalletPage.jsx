@@ -7,7 +7,7 @@ import { useSocket } from '../context/SocketContext'
 
 export default function WalletPage() {
   const { user, setUser } = useAuth()
-  const { socket, joinUser } = useSocket()
+  const { joinUser } = useSocket()
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -45,74 +45,86 @@ export default function WalletPage() {
       setLoading(false)
     }
   }
-
   return (
-    <div className="container max-w-2xl px-4 sm:px-6 pt-12 pb-20">
-      <motion.div 
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-white border border-zinc-200 p-8 md:p-12 space-y-10 rounded-[3rem] shadow-2xl relative overflow-hidden"
-      >
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-[100px] pointer-events-none" />
-        
-        <div className="text-center space-y-2 relative z-10">
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-600">Secure Environment</span>
-          <h1 className="text-4xl font-black tracking-tight text-zinc-950 uppercase leading-none">Smart<span className="text-teal-600">Pay</span> Hub</h1>
-        </div>
-
-        <div className="bg-teal-600 rounded-[2.5rem] p-8 md:p-10 border border-teal-500 relative overflow-hidden group shadow-xl shadow-teal-600/20">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] group-hover:opacity-40 transition-opacity duration-700" />
-          <div className="relative space-y-4">
-            <span className="text-[10px] font-black text-teal-100 uppercase tracking-widest">Global Liquid Balance</span>
-            <div className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none">
-              <span className="text-3xl text-teal-200 mr-2 not-italic">₹</span>
-              {(user?.walletBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+    <div className="container max-w-xl px-4 sm:px-6 pt-8 pb-20 text-left">
+      <div className="bezel-shell">
+        <div className="bezel-core p-6 sm:p-10 space-y-8 relative overflow-hidden">
+          <div className="text-center space-y-2">
+            <div className="badge-eyebrow mx-auto">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-600 animate-pulse" />
+              Secure Liquid Vault
             </div>
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950">
+              serveQ <span className="text-teal-600">Wallet</span>
+            </h1>
+            <p className="text-xs text-zinc-500 font-medium">Instant automated refunds and zero-wait checkout ledger.</p>
           </div>
-        </div>
 
-        <form onSubmit={handleAddMoney} className="space-y-8 relative z-10">
-          <div className="space-y-4">
-            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-2">Injection Amount (INR)</label>
-            <div className="relative group">
-              <input 
-                type="number"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="input pl-10 text-2xl font-black py-7 border-zinc-200 focus:border-teal-600/30 rounded-[1.75rem] transition-all bg-slate-50"
-              />
+          {/* Machined Metal / Liquid Teal Vault Card */}
+          <div className="rounded-3xl p-7 md:p-8 bg-gradient-to-br from-teal-700 via-teal-800 to-zinc-950 text-white shadow-xl shadow-teal-900/20 border border-teal-600/50 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-teal-400/20 rounded-full blur-[70px] pointer-events-none" />
+            <div className="relative space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-teal-200">Verified Balance</span>
+                <span className="text-[10px] font-bold text-teal-300/80 uppercase tracking-widest">Instant Settlement</span>
+              </div>
+              <div className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-none flex items-baseline">
+                <span className="text-2xl sm:text-3xl text-teal-300 mr-2 font-normal">₹</span>
+                {(user?.walletBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[10, 50, 100, 500].map(val => (
-              <button 
-                key={val}
-                type="button"
-                onClick={() => setAmount(val)}
-                className="py-4 rounded-2xl bg-slate-50 border border-zinc-100 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-teal-600 hover:text-white hover:border-teal-500 transition-all active:scale-95 shadow-xs"
-              >
-                +₹{val}
-              </button>
-            ))}
-          </div>
+          <form onSubmit={handleAddMoney} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-500 block">
+                Deposit Amount (INR)
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-zinc-400">₹</span>
+                <input 
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="input pl-10 text-xl font-black py-4 rounded-2xl bg-white border-zinc-200 focus:border-teal-500"
+                />
+              </div>
+            </div>
 
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full py-7 rounded-4xl text-[10px] font-black uppercase tracking-[0.3em] bg-zinc-950 text-white shadow-xl shadow-zinc-950/10 hover:bg-zinc-800 transition-all hover:-translate-y-1 active:scale-[0.98] relative overflow-hidden group"
-          >
-            <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-            <span className="relative z-10">{loading ? "Synchronizing..." : "Initialize Transfer"}</span>
-          </button>
-        </form>
+            {/* Tactile Quick Add Pills */}
+            <div className="grid grid-cols-4 gap-2">
+              {[50, 100, 200, 500].map(val => (
+                <button 
+                  key={val}
+                  type="button"
+                  onClick={() => setAmount(val.toString())}
+                  className="py-3 rounded-xl bg-zinc-50 border border-zinc-200/90 text-xs font-extrabold text-zinc-700 hover:border-teal-500 hover:bg-teal-50/50 hover:text-teal-900 transition-all active:scale-[0.96] shadow-xs"
+                >
+                  +₹{val}
+                </button>
+              ))}
+            </div>
 
-        <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed opacity-80">
-          Transactions secured via AES-256 liquid encryption layer.<br/>
-          Mock gateway active for environment validation.
-        </p>
-      </motion.div>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full btn-island py-4 text-xs tracking-wider"
+            >
+              <span>{loading ? "Processing Deposit..." : "Add Funds to Wallet"}</span>
+              <span className="btn-bubble">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </span>
+            </button>
+          </form>
+
+          <p className="text-[10px] text-center text-zinc-400 font-medium leading-relaxed">
+            Funds deposited are instantly credited and automatically drawn for slot bookings and express queue passes.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import api from "./axios.js";
 
-export const getAllBusinesses = () => api.get("/businesses");
+export const getAllBusinesses = (params = {}) => api.get("/businesses", { params });
 export const getMyBusinesses  = () => api.get("/businesses/mine");
 export const getBusiness      = (id) => api.get(`/businesses/${id}`);
 export const createBusiness   = (data) => api.post("/businesses", data);
