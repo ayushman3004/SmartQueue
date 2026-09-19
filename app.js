@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import passport from "passport";
 import cookieParser from "cookie-parser";
+import mongoose from "mongoose";
 
 // API Gateway router & error handler
 import createGatewayRouter from "./src/gateway/gateway.router.js";
@@ -49,6 +50,26 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
   })
 );
+
+// ─── Health Check Endpoint (For Uptime Monitors & Load Balancers) ──
+// Placed before express.json() & rate-limiters so monitoring probes are fast and never rate-limited
+app.get(["/health", "/api/health"], (_req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatusMap = {
+    0: "disconnected",
+    1: "connected",
+    2: "connecting",
+    3: "disconnecting",
+  };
+
+  res.status(200).json({
+    status: "ok",
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    database: dbStatusMap[dbState] || "unknown",
+    environment: process.env.NODE_ENV || "development",
+  });
+});
 
 app.use(express.json());
 app.use(cookieParser());

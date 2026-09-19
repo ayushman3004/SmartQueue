@@ -10,27 +10,33 @@ const getServerUrl = () => {
   return `http://localhost:${process.env.PORT || 3001}`;
 };
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${getServerUrl()}/api/auth/google/callback`,
-    },
-    async (_accessToken, _refreshToken, profile, done) => {
-      try {
-        const user = await findOrCreateGoogleUser({
-          googleId: profile.id,
-          email: profile.emails?.[0]?.value,
-          name: profile.displayName,
-          avatar: profile.photos?.[0]?.value,
-        });
-        done(null, user);
-      } catch (err) {
-        done(err, null);
-      }
-    },
-  ),
-);
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: `${getServerUrl()}/api/auth/google/callback`,
+      },
+      async (_accessToken, _refreshToken, profile, done) => {
+        try {
+          const user = await findOrCreateGoogleUser({
+            googleId: profile.id,
+            email: profile.emails?.[0]?.value,
+            name: profile.displayName,
+            avatar: profile.photos?.[0]?.value,
+          });
+          done(null, user);
+        } catch (err) {
+          done(err, null);
+        }
+      },
+    ),
+  );
+} else {
+  console.warn(
+    "⚠️ Google OAuth credentials missing (GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET). Google login will be disabled until configured."
+  );
+}
 
 export default passport;
