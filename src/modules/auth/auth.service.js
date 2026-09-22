@@ -40,10 +40,19 @@ export const login = async ({ email, password }) => {
 };
 
 // ─── Google OAuth (called by Passport) ───────────────────────
-export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar }) => {
+export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, role }) => {
+  const selectedRole = role === "owner" ? "owner" : "customer";
+
   // Check if user already exists by googleId
   let user = await User.findOne({ googleId });
-  if (user) return user;
+  if (user) {
+    // If an existing customer explicitly chooses owner, upgrade their role
+    if (selectedRole === "owner" && user.role === "customer") {
+      user.role = "owner";
+      await user.save();
+    }
+    return user;
+  }
 
   // Check if email matches an existing local account → merge
   user = await User.findOne({ email });
@@ -51,6 +60,9 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar }) 
     user.googleId = googleId;
     user.authProvider = "both";
     if (!user.avatar) user.avatar = avatar;
+    if (selectedRole === "owner" && user.role === "customer") {
+      user.role = "owner";
+    }
     await user.save();
     return user;
   }
@@ -61,6 +73,7 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar }) 
     email,
     googleId,
     avatar,
+    role: selectedRole,
     authProvider: "google",
   });
 };

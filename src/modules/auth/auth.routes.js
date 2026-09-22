@@ -19,7 +19,12 @@ router.get("/google", (req, res, next) => {
       error: "Google OAuth is not configured on this server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
     });
   }
-  passport.authenticate("google", { scope: ["profile", "email"], session: false })(req, res, next);
+  const role = req.query.role === "owner" ? "owner" : "customer";
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    state: role,
+    session: false,
+  })(req, res, next);
 });
 
 router.get("/google/callback", (req, res, next) => {

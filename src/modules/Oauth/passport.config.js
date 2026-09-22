@@ -17,14 +17,17 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         callbackURL: `${getServerUrl()}/api/auth/google/callback`,
+        passReqToCallback: true,
       },
-      async (_accessToken, _refreshToken, profile, done) => {
+      async (req, _accessToken, _refreshToken, profile, done) => {
         try {
+          const role = req.query?.state === "owner" ? "owner" : "customer";
           const user = await findOrCreateGoogleUser({
             googleId: profile.id,
             email: profile.emails?.[0]?.value,
             name: profile.displayName,
             avatar: profile.photos?.[0]?.value,
+            role,
           });
           done(null, user);
         } catch (err) {

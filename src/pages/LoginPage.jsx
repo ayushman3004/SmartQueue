@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [countdown, setCountdown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showGoogleRoleModal, setShowGoogleRoleModal] = useState(false)
   const { logIn } = useAuth()
   const navigate = useNavigate()
 
@@ -272,9 +273,15 @@ export default function LoginPage() {
     </form>
   )
 
+  const handleGoogleAuth = (role) => {
+    const apiUrl = import.meta.env.VITE_API_URL || ''
+    window.location.href = `${apiUrl}/api/auth/google?role=${role}`
+  }
+
   const GoogleBtn = () => (
     <button
-      onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || ''}/api/auth/google`}
+      type="button"
+      onClick={() => setShowGoogleRoleModal(true)}
       className="flex items-center justify-center gap-3 w-full py-3.5 rounded-full bg-zinc-50 border border-zinc-200/90 text-zinc-700 text-xs font-bold hover:bg-zinc-100 hover:text-zinc-950 transition-all uppercase tracking-wider active:scale-[0.98] shadow-xs"
     >
       <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M12.48 10.92v3.28h4.78c-.19 1.06-.9 1.95-1.78 2.53v2.13h2.87c1.68-1.55 2.65-3.83 2.65-6.53 0-.62-.06-1.22-.16-1.81H12.48z" /><path fill="currentColor" d="M12 23c3.13 0 5.75-1.04 7.67-2.81l-2.87-2.13c-.79.53-1.8.85-2.8.85-2.15 0-3.96-1.45-4.62-3.41H6.18v2.24C8.06 20.9 12 23 12 23z" /><path fill="currentColor" d="M7.38 15.5a6.6 6.6 0 0 1 0-4.14V9.12H6.18C5.43 10.59 5 12.24 5 14s.43 3.41 1.18 4.88l1.2-1.38z" /><path fill="currentColor" d="M12 4.14c1.7 0 3.22.58 4.42 1.73l3.31-3.31C17.75 1.04 15.13 0 12 0 8.06 0 4.14 2.1 2.18 5.48l3.66 2.84c.66-1.96 2.47-3.41 4.62-3.41z" /></svg>
@@ -359,6 +366,103 @@ export default function LoginPage() {
           End-to-End Encrypted Session &bull; v2.4.0
         </p>
       </motion.div>
+
+      {/* Role Selection Modal for Google Login */}
+      <AnimatePresence>
+        {showGoogleRoleModal && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-sm"
+            onClick={() => setShowGoogleRoleModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+              className="bezel-shell w-full max-w-md shadow-2xl text-left"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bezel-core p-6 sm:p-7 bg-white border border-zinc-200/90 rounded-3xl space-y-5">
+                {/* Modal Header */}
+                <div className="flex items-start justify-between border-b border-zinc-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center justify-center shadow-xs">
+                      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.1 8.8 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/><path fill="#FBBC05" d="M5.3 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.6 7.4C.6 9.4 0 10.6 0 12s.6 2.6 1.6 4.6l3.7-1.8z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.2 0-5.8-2.1-6.7-5.2L1.6 16c1.9 3.8 5.8 7 10.4 7z"/></svg>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-zinc-950 tracking-tight">Continue with Google</h3>
+                      <p className="text-[11px] text-zinc-500 font-medium">Select your account role to proceed</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleRoleModal(false)}
+                    className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 flex items-center justify-center font-bold text-sm transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Role Choice Cards */}
+                <div className="space-y-3">
+                  {/* Customer Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleGoogleAuth('customer')}
+                    className="w-full text-left p-4 rounded-2xl border border-zinc-200 hover:border-teal-500 bg-zinc-50/60 hover:bg-teal-50/30 transition-all group flex items-start gap-4 active:scale-[0.99]"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-xl shrink-0 group-hover:border-teal-500 group-hover:shadow-xs transition-colors">
+                      🛍️
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black text-zinc-950 uppercase tracking-wider group-hover:text-teal-700 transition-colors">
+                          Customer
+                        </span>
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-200 text-zinc-700 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                          Personal
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 font-medium leading-relaxed mt-1">
+                        Book services, join live queues, manage wallet, and track estimated wait times in real time.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Business Owner Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleGoogleAuth('owner')}
+                    className="w-full text-left p-4 rounded-2xl border border-zinc-200 hover:border-teal-500 bg-zinc-50/60 hover:bg-teal-50/30 transition-all group flex items-start gap-4 active:scale-[0.99]"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-xl shrink-0 group-hover:border-teal-500 group-hover:shadow-xs transition-colors">
+                      🏢
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black text-zinc-950 uppercase tracking-wider group-hover:text-teal-700 transition-colors">
+                          Business Owner
+                        </span>
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                          Hub Owner
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 font-medium leading-relaxed mt-1">
+                        Register business hubs, configure service menus and pricing, and manage live counters & waitlists.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Footer note */}
+                <p className="text-[10px] text-center text-zinc-400 font-medium pt-1">
+                  You will be securely authenticated with your Google account.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
