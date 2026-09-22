@@ -30,6 +30,8 @@ export default function Navbar() {
     ...(user?.role === 'admin' ? [{ name: 'Admin', path: '/admin' }] : []),
   ] : []
 
+  if (!user) return null
+
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled ? 'py-3' : 'py-5'

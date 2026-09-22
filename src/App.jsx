@@ -98,14 +98,14 @@ export default function App() {
           },
         }}
       />
-      <Navbar />
+      {user && <Navbar />}
       {user && (
         <>
           <BackButton />
           <AIDesistant />
         </>
       )}
-      <main className="main-content">
+      <main className={user ? "main-content" : ""}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />

@@ -1,27 +1,80 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import React from 'react'
+import MetroHero from '../components/MetroHero'
+import ImageStreamHero from '../components/ImageStreamHero'
+import SqueezeCarousel from '../components/SqueezeCarousel'
 
-const FEATURES = [
+const FEATURE_SLIDES = [
   {
-    icon: '⏱️',
-    title: 'Live System Positioning',
-    desc: 'Monitor real-time hub traffic to track exact wait times and queue flow with pinpoint precision.'
+    id: 'positioning',
+    title: 'Live System Positioning.',
+    description: 'Monitor real-time hub traffic to track exact wait times and queue flow with pinpoint precision.',
+    image: '/hero-viz.png',
+    overlay: (
+      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
+        <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+        Live Geo-Queue Radar
+      </div>
+    ),
+    action: 'Start Queue',
+    href: '/login'
   },
   {
-    icon: '💳',
-    title: 'Seamless Payments',
-    desc: 'Reserve slots instantly with integrated payments. Secure refunds process automatically if plans change.'
+    id: 'payments',
+    title: 'Seamless Payments.',
+    description: 'Reserve slots instantly with integrated payments. Secure refunds process automatically if plans change.',
+    image: '/hubs/bank.png',
+    overlay: (
+      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
+        <span className="text-teal-300">💳</span>
+        Automated Escrow Checkout
+      </div>
+    ),
+    action: 'Reserve Priority',
+    href: '/login'
   },
   {
-    icon: '⚡',
-    title: 'Zero-Latency Sync',
-    desc: 'Built on high-performance WebSockets to ensure your status immediately syncs across all devices.'
+    id: 'sync',
+    title: 'Zero-Latency Sync.',
+    description: 'Built on high-performance WebSockets to ensure your status immediately syncs across all devices.',
+    image: '/dash-dark-bg.png',
+    overlay: (
+      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
+        <span className="text-amber-400">⚡</span>
+        Sub-10ms WebSocket Mesh
+      </div>
+    ),
+    action: 'View System State',
+    href: '/login'
   },
   {
-    icon: '🏢',
-    title: 'Business Infrastructure',
-    desc: 'Equip your team with an enterprise-grade dashboard to completely manage and optimize customer flow.'
+    id: 'infrastructure',
+    title: 'Business Infrastructure.',
+    description: 'Equip your team with an enterprise-grade dashboard to completely manage and optimize customer flow.',
+    image: '/cta-bg.png',
+    overlay: (
+      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
+        <span className="text-cyan-300">🏢</span>
+        Enterprise Command Center
+      </div>
+    ),
+    action: 'Deploy Venue',
+    href: '/login'
+  },
+  {
+    id: 'forecasting',
+    title: 'Predictive Wait-Time AI.',
+    description: 'Heuristic forecasting estimates patient and customer turnaround based on live counter velocity.',
+    image: '/hubs/clinic.png',
+    overlay: (
+      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
+        <span className="text-teal-300">🧠</span>
+        Neural Wait Forecasting
+      </div>
+    ),
+    action: 'Explore AI Engine',
+    href: '/login'
   }
 ]
 
@@ -34,196 +87,108 @@ const HUB_IMAGES = [
   { url: '/hubs/gov.png', title: 'Government', desc: 'Civilian-first architecture for modern public services.' }
 ]
 
-function Marquee() {
-  const slogans = [
-    "70% REDUCTION IN PHYSICAL WAIT TIMES",
-    "ENTERPRISE SCALABILITY",
-    "LIVE GLOBAL OPS",
-    "SEAMLESS PAYMENTS",
-    "ZERO-LATENCY SYNC",
-    "AI-POWERED OPTIMIZATION"
-  ]
-  
-  return (
-    <div className="w-full bg-teal-600 py-8 overflow-hidden border-y border-teal-500 shadow-[0_20px_50px_rgba(13,148,136,0.2)]">
-      <motion.div 
-        animate={{ x: [0, -1500] }}
-        transition={{ repeat: Infinity, duration: 40, ease: "linear" }}
-        className="flex whitespace-nowrap gap-20 items-center"
-      >
-        {[...slogans, ...slogans, ...slogans].map((s, i) => (
-          <span key={i} className="text-white text-[10px] md:text-sm font-black uppercase tracking-[0.5em] flex items-center gap-8">
-            {s} <div className="w-2 h-2 rounded-full bg-white/20" />
-          </span>
-        ))}
-      </motion.div>
-    </div>
-  )
-}
 
-function ImageMarquee() {
-  return (
-    <div className="w-full py-12 overflow-hidden bg-white">
-      <motion.div 
-        animate={{ x: [0, -2500] }}
-        transition={{ repeat: Infinity, duration: 80, ease: "linear" }}
-        className="flex whitespace-nowrap gap-8 items-center"
-      >
-        {[...HUB_IMAGES, ...HUB_IMAGES, ...HUB_IMAGES].map((img, i) => (
-          <div key={i} className="relative w-[450px] md:w-[600px] h-[350px] md:h-[450px] rounded-[3rem] overflow-hidden flex-shrink-0 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] border border-zinc-100 group">
-             <img src={img.url} className="w-full h-full object-cover grayscale-[0.3] transition-all duration-1000 group-hover:grayscale-0 group-hover:scale-105" alt={img.title} />
-             <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/20 to-transparent flex flex-col justify-end p-10">
-               <span className="text-teal-400 text-[10px] font-black uppercase tracking-[0.4em] mb-3">{img.title}</span>
-               <p className="text-white text-base font-bold uppercase tracking-tight opacity-90 leading-tight max-w-sm">{img.desc}</p>
-             </div>
-          </div>
-        ))}
-      </motion.div>
-    </div>
-  )
-}
+
+
 
 export default function LandingPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="w-full overflow-x-hidden bg-[#fafaf9]">
+    <div className="w-full overflow-x-hidden bg-[#05070d] text-white">
       {/* Ambient background mesh */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
-        <div className="absolute top-[5%] right-[12%] w-[550px] h-[550px] bg-teal-500/8 rounded-full blur-[140px]" />
-        <div className="absolute bottom-[15%] left-[8%] w-[500px] h-[500px] bg-indigo-500/6 rounded-full blur-[130px]" />
+        <div className="absolute top-[5%] right-[12%] w-[550px] h-[550px] bg-teal-500/10 rounded-full blur-[140px]" />
+        <div className="absolute bottom-[15%] left-[8%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[130px]" />
       </div>
 
-      {/* Hero Section */}
-      <section className="relative pt-6 pb-20 lg:pb-32">
-        <div className="container mx-auto px-4 sm:px-8 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-            {/* Content Left */}
-            <div className="flex flex-col items-start text-left space-y-8 lg:col-span-7">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                className="badge-eyebrow"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-600 animate-pulse" />
-                Virtual Queue Infrastructure
-              </motion.div>
-              
-              <motion.h1
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-zinc-950 tracking-tight leading-[0.96]"
-              >
-                Eliminate <br />
-                the <span className="text-teal-600 underline decoration-teal-500/30 decoration-wavy decoration-2">Waiting Room.</span>
-              </motion.h1>
-              
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.16, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                className="text-base sm:text-lg text-zinc-600 font-medium leading-relaxed max-w-xl"
-              >
-                Zero-friction virtual waiting queues, live AI pacing, and instant Express Slot bookings designed for healthcare, banking, and high-volume operations.
-              </motion.p>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.24, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                className="flex flex-wrap items-center gap-4 pt-2 w-full sm:w-auto"
-              >
-                <button 
-                  onClick={() => navigate('/login')}
-                  className="btn-island py-3.5 px-6 text-xs sm:text-sm"
-                >
-                  <span>Start Deployment</span>
-                  <span className="btn-bubble">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                    </svg>
-                  </span>
-                </button>
+      {/* Cinematic Locked Scroll-Scrub Video Hero */}
+      <MetroHero 
+        title="ELIMINATE THE WAITING ROOM"
+        tagline="Zero-friction virtual waiting queues. Every door in the city is open without the wait."
+        scrollHint="SCROLL TO EXPLORE"
+        signature={false}
+      >
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+          <button 
+            type="button"
+            onClick={() => navigate('/login')}
+            className="btn-island py-3.5 px-6 text-xs bg-teal-500 hover:bg-teal-400 text-zinc-950 font-black tracking-wider uppercase shadow-xl shadow-teal-500/25"
+          >
+            <span>Start Free Deployment</span>
+            <span className="btn-bubble">→</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+            className="px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 text-white text-xs font-bold uppercase tracking-wider transition-all"
+          >
+            Explore Platform ↓
+          </button>
+        </div>
+      </MetroHero>
 
-                <button 
-                  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="px-6 py-3.5 rounded-full bg-white border border-zinc-200/90 text-zinc-800 text-xs sm:text-sm font-extrabold uppercase tracking-wider shadow-sm hover:bg-zinc-50 hover:border-zinc-300 transition-all active:scale-[0.97]"
-                >
-                  Explore Capabilities
-                </button>
-              </motion.div>
-            </div>
-
-            {/* Visual Right (Double-Bezel Frame) */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-              className="lg:col-span-5"
+      {/* Live Venue 3D Perspective Stream Corridor */}
+      <section className="relative py-12 sm:py-16 bg-[#05070d] text-white overflow-hidden border-b border-zinc-800/80">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative rounded-[2rem] sm:rounded-[2.5rem] bg-black border border-white/10 overflow-hidden shadow-2xl">
+            <ImageStreamHero
+              images={HUB_IMAGES}
+              cards={10}
+              speed={22}
+              axis={56}
+              className="w-full h-[500px] sm:h-[600px] md:h-[680px] lg:h-[740px]"
             >
-              <div className="bezel-shell">
-                <div className="bezel-core overflow-hidden relative group">
-                  <img 
-                    src="/hero-viz.png" 
-                    className="w-full h-auto object-cover transform transition-transform duration-700 group-hover:scale-105" 
-                    alt="Platform Visualization" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/40 via-transparent to-transparent pointer-events-none" />
-                </div>
+              {/* Edge Gradient Fades */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-28 bg-gradient-to-r from-black to-transparent z-10" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-28 bg-gradient-to-l from-black to-transparent z-10" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/70 to-transparent z-10" />
+
+              {/* Text Above */}
+              <div className="absolute inset-x-0 top-8 sm:top-12 md:top-14 z-20 flex flex-col items-center text-center px-4 pointer-events-none">
+                <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-[1.08] max-w-3xl">
+                  Deployable Across, <br />
+                  Every High-Volume Venue.
+                </h2>
               </div>
-            </motion.div>
+
+              {/* Caption Below */}
+              <div className="absolute inset-x-0 bottom-5 sm:bottom-7 z-20 flex justify-center text-center px-4 pointer-events-none">
+                <p className="text-zinc-400 text-xs sm:text-sm font-normal tracking-wide max-w-xl">
+                  Dining, clinical care, financial branches, luxury retail, and public services moving with zero physical wait times.
+                </p>
+              </div>
+            </ImageStreamHero>
           </div>
         </div>
-
-        <div className="mt-16 mb-16">
-          <ImageMarquee />
-        </div>
-
-        <Marquee />
       </section>
 
-      {/* Capabilities Section (Double-Bezel Bento Grid) */}
-      <section id="features" className="py-24 space-y-16 relative overflow-hidden bg-white border-t border-zinc-200/60">
+      {/* Capabilities Section (Interactive Squeeze Carousel) */}
+      <section id="features" className="py-24 relative overflow-hidden bg-[#05070d] text-white border-t border-zinc-800/80">
         <div className="container mx-auto px-4 sm:px-8 lg:px-12 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-12 border-b border-zinc-100">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-zinc-800/80 mb-8">
             <div className="space-y-3 max-w-2xl text-left">
-              <div className="badge-eyebrow">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 text-teal-300 text-xs font-bold border border-teal-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
                 Core Technology
               </div>
-              <h2 className="text-3xl sm:text-5xl font-black text-zinc-950 tracking-tight leading-tight">
-                Architected for <span className="text-teal-600">Zero-Friction</span> Flow.
+              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
+                Architected for <span className="text-teal-400">Zero-Friction</span> Flow.
               </h2>
-              <p className="text-zinc-500 text-sm sm:text-base font-medium">
+              <p className="text-zinc-400 text-sm sm:text-base font-medium">
                 Everything required to transform physical waiting rooms into synchronous real-time digital queues.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
-            {FEATURES.map((f, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                className="bezel-shell text-left group"
-              >
-                <div className="bezel-core p-8 sm:p-10 space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-center text-2xl shadow-xs group-hover:scale-105 transition-transform duration-200">
-                    {f.icon}
-                  </div>
-                  <h3 className="text-xl font-black text-zinc-950 tracking-tight">{f.title}</h3>
-                  <p className="text-sm text-zinc-600 leading-relaxed font-medium">
-                    {f.desc}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <SqueezeCarousel 
+            slides={FEATURE_SLIDES}
+            height="clamp(280px, 34cqi, 440px)"
+            radius={20}
+            autoplay={true}
+            interval={5000}
+            hoverGrow={true}
+          />
         </div>
       </section>
 
