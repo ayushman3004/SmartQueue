@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from "react"
+import { usePerfMode } from "../utils/cookiePerf"
 
 // ─────────────────────────────────────────────────────────────
-// THE CITY OPENS — locked scroll-scrub video hero
-// The page cannot move while this is active — body is pinned
-// with position:fixed (the same bulletproof technique modal
-// libraries use; plain overflow:hidden alone isn't reliable
-// across browsers). Wheel/touch input is captured and used
-// purely to drive video.currentTime, forward and backward. Once
-// the video reaches the end and the user keeps pushing forward,
-// the page unlocks and continues normally — and re-locks if they
-// scroll back up into it. No dependencies, system fonts only.
+// THE CITY OPENS — adaptive video hero
+// Supports both high-performance desktop scroll-scrubbing and
+// zero-jank hardware-accelerated autoplay for Android & Windows.
 // ─────────────────────────────────────────────────────────────
 
 const DEFAULT_VIDEO = "https://cdn.21st.dev/assets/mirror/21/21a77eac28eacbb7e142016eefeaa0b4a766619e51113629a3bc6df6af066c0f.mp4"
@@ -35,6 +30,9 @@ export default function MetroHero({
   onExplore,
   children,
 }) {
+  const { isOptimized, isAndroid, isWindows, isMobile, isLowPower } = usePerfMode()
+  const disableScrollLock = isOptimized || isAndroid || isMobile || isLowPower
+
   const sectionRef = useRef(null)
   const videoRef = useRef(null)
   const titleRef = useRef(null)
@@ -48,6 +46,46 @@ export default function MetroHero({
     const section = sectionRef.current
     if (!video || !section) return
 
+    // ── Optimized Mode for Android, Windows, Mobile & Low-Power ──
+    if (disableScrollLock) {
+      video.loop = true
+      video.muted = true
+      video.playsInline = true
+      const playPromise = video.play()
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {})
+      }
+      setReady(true)
+
+      const onWindowScroll = () => {
+        const y = window.scrollY
+        const h = window.innerHeight || 700
+        const p = clamp(y / (h * 0.7), 0, 1)
+
+        if (titleRef.current) {
+          titleRef.current.style.opacity = String(1 - p * 1.4)
+          titleRef.current.style.transform = `translateY(${p * -28}px) translateZ(0)`
+        }
+        if (taglineRef.current) {
+          const t = clamp((p - 0.25) / 0.5, 0, 1)
+          taglineRef.current.style.opacity = String(t)
+          taglineRef.current.style.transform = `translateY(${(1 - t) * 20}px) translateZ(0)`
+          taglineRef.current.style.pointerEvents = t > 0.5 ? "auto" : "none"
+        }
+        if (hintRef.current) {
+          hintRef.current.style.opacity = y > 40 ? "0" : "1"
+        }
+      }
+
+      window.addEventListener("scroll", onWindowScroll, { passive: true })
+      onWindowScroll()
+
+      return () => {
+        window.removeEventListener("scroll", onWindowScroll)
+      }
+    }
+
+    // ── Full Cinematic Scroll Scrub for High-Power Desktops ──
     const reduceMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -62,6 +100,7 @@ export default function MetroHero({
     let locked = false
     let lockedScrollY = 0
     let touchStartY = 0
+    let lastSeekTime = 0
 
     const onLoadedData = () => {
       duration = video.duration || 0
@@ -72,11 +111,6 @@ export default function MetroHero({
     }
     video.addEventListener("loadeddata", onLoadedData)
 
-    // iOS Safari often won't buffer any video data — even with
-    // preload="auto" — until playback actually starts, to save mobile
-    // data. Since we only ever seek (never call play() elsewhere), the
-    // video can stay permanently blank on iPhone. Force a silent
-    // play-then-immediately-pause on mount to kick off real loading.
     const kickstartLoad = () => {
       const p = video.play()
       if (p && typeof p.then === "function") {
@@ -99,6 +133,12 @@ export default function MetroHero({
     video.addEventListener("seeked", onSeeked)
 
     function seekTo(t) {
+      const now = performance.now()
+      if (now - lastSeekTime < 33) {
+        pendingTime = t
+        return
+      }
+      lastSeekTime = now
       if (isSeeking) {
         pendingTime = t
         return
@@ -107,7 +147,6 @@ export default function MetroHero({
       video.currentTime = t
     }
 
-    // Scroll locking & release valve
     function engageLock() {
       if (locked || typeof document === "undefined") return
       locked = true
@@ -137,7 +176,6 @@ export default function MetroHero({
       window.scrollTo(0, y)
     }
 
-    // Start locked initially when at the top of page
     if (typeof window !== "undefined" && window.scrollY <= 10) {
       engageLock()
     }
@@ -156,7 +194,6 @@ export default function MetroHero({
     function addDelta(deltaY) {
       if (locked) {
         if (deltaY > 0 && targetProgress >= 1) {
-          // Video reached the end and user continues pushing forward -> unlock!
           releaseLock()
           window.scrollBy({ top: Math.max(deltaY, 80), behavior: "smooth" })
           onExplore?.()
@@ -171,7 +208,6 @@ export default function MetroHero({
         if (targetProgress > 0.001) hasStartedScrolling = true
         return true
       } else {
-        // When unlocked: if user scrolls back to the very top and pulls up, re-engage lock
         if (window.scrollY <= 5 && deltaY < 0) {
           engageLock()
           targetProgress = 1
@@ -225,7 +261,6 @@ export default function MetroHero({
     section.addEventListener("touchstart", onTouchStart, { passive: true, capture: true })
     section.addEventListener("touchmove", onTouchMove, { passive: false, capture: true })
 
-    // If user clicks the scroll hint or skip button, unlock cleanly
     const hintElement = hintRef.current
     if (hintElement) {
       hintElement.addEventListener("click", unlockAndScrollNext)
@@ -240,24 +275,20 @@ export default function MetroHero({
 
       if (videoRef.current) {
         const scale = 1 + currentProgress * 0.06
-        videoRef.current.style.transform = `scale(${scale})`
+        videoRef.current.style.transform = `scale(${scale}) translateZ(0)`
       }
       if (titleRef.current) {
         const t = 1 - clamp(currentProgress / 0.35, 0, 1)
         titleRef.current.style.opacity = String(t)
-        titleRef.current.style.transform = `translateY(${(1 - t) * -24}px) scale(${0.96 + t * 0.04})`
-        titleRef.current.style.filter = `blur(${(1 - t) * 10}px)`
+        titleRef.current.style.transform = `translateY(${(1 - t) * -24}px) scale(${0.96 + t * 0.04}) translateZ(0)`
       }
       if (hintRef.current) {
         hintRef.current.style.opacity = hasStartedScrolling ? "0" : "1"
       }
       if (taglineRef.current) {
-        // Mirrors the title's blur-focus treatment, timed as the payoff
-        // once the reveal is nearly complete — not a background afterthought.
         const t = clamp((currentProgress - 0.82) / 0.18, 0, 1)
         taglineRef.current.style.opacity = String(t)
-        taglineRef.current.style.transform = `translateY(${(1 - t) * 20}px) scale(${0.97 + t * 0.03})`
-        taglineRef.current.style.filter = `blur(${(1 - t) * 8}px)`
+        taglineRef.current.style.transform = `translateY(${(1 - t) * 20}px) scale(${0.97 + t * 0.03}) translateZ(0)`
         taglineRef.current.style.pointerEvents = t > 0.5 ? "auto" : "none"
       }
       if (progressBarRef.current) {
@@ -285,7 +316,7 @@ export default function MetroHero({
       cancelAnimationFrame(rafId)
       releaseLock()
     }
-  }, [scrubDistance, onExplore])
+  }, [scrubDistance, onExplore, disableScrollLock])
 
   return (
     <div
@@ -298,7 +329,7 @@ export default function MetroHero({
         width: "100%",
         overflow: "hidden",
         background: COL_BG,
-        touchAction: "none",
+        touchAction: disableScrollLock ? "pan-y" : "none",
         ...style,
       }}
     >
@@ -318,7 +349,7 @@ export default function MetroHero({
           transformOrigin: "center center",
           willChange: "transform",
           transition: "opacity 0.6s ease",
-          touchAction: "none",
+          touchAction: disableScrollLock ? "pan-y" : "none",
           pointerEvents: "none",
         }}
       />

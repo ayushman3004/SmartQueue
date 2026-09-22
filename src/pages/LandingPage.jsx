@@ -4,6 +4,7 @@ import React from 'react'
 import MetroHero from '../components/MetroHero'
 import ImageStreamHero from '../components/ImageStreamHero'
 import SqueezeCarousel from '../components/SqueezeCarousel'
+import PerfToggle from '../components/PerfToggle'
 
 const FEATURE_SLIDES = [
   {
@@ -222,6 +223,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Floating Adaptive Performance & Cookie Settings */}
+      <PerfToggle />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { usePerfMode } from "../utils/cookiePerf";
 
 /* ── the corridor ────────────────────────────────────────────────
  * Two rails of cards ride from far behind the screen toward the
@@ -82,19 +83,20 @@ export function ImageStreamHero({
   className,
   ...props
 }) {
+  const { isOptimized } = usePerfMode();
+  const effectiveCards = isOptimized ? Math.min(cards, 6) : cards;
+  const effectiveStops = isOptimized ? 12 : (path?.stops || PATH.stops);
+
   const id = React.useId().replace(/[^a-zA-Z0-9]/g, "");
   const right = `ish-r-${id}`;
   const left = `ish-l-${id}`;
   const card = `ish-c-${id}`;
 
-  const p = React.useMemo(() => ({ ...PATH, ...path }), [path]);
+  const p = React.useMemo(() => ({ ...PATH, ...path, stops: effectiveStops }), [path, effectiveStops]);
 
   const css = React.useMemo(
     () =>
       `${keyframes(1, right, p)}${keyframes(-1, left, p)}` +
-      // Pausing rather than disabling keeps the corridor whole: every card is
-      // already dropped mid-flight by its negative delay, so it freezes as a
-      // finished still instead of collapsing onto the axis.
       `@media(prefers-reduced-motion:reduce){.${card}{animation-play-state:paused}}`,
     [right, left, card, p],
   );
@@ -103,7 +105,7 @@ export function ImageStreamHero({
     <div
       className={cn("relative overflow-hidden", className)}
       {...props}
-      style={{ containerType: "inline-size", ...props.style }}
+      style={{ containerType: "inline-size", contain: "paint layout", ...props.style }}
     >
       <style>{css}</style>
 
@@ -113,16 +115,15 @@ export function ImageStreamHero({
         style={{
           perspective: `${p.perspective}cqw`,
           perspectiveOrigin: `50% ${axis}%`,
+          willChange: "transform",
         }}
       >
         <div
           className="absolute inset-0"
-          style={{ transformStyle: "preserve-3d" }}
+          style={{ transformStyle: "preserve-3d", transform: "translateZ(0)" }}
         >
           {[right, left].map((name) =>
-            Array.from({ length: cards }, (_, i) => {
-              // Both rails walk the same sequence, so the left side mirrors
-              // the right at every depth.
+            Array.from({ length: effectiveCards }, (_, i) => {
               const img = images[i % Math.max(images.length, 1)];
               if (!img) return null;
 
@@ -142,11 +143,11 @@ export function ImageStreamHero({
                     marginTop: `${-p.cardHeight / 2}cqw`,
                     borderRadius: `${p.cardRadius}cqw`,
                     animation: `${name} ${speed}s linear infinite`,
-                    // Negative delay drops each card mid-flight, so the
-                    // corridor is already full on the first frame.
-                    animationDelay: `${-(i * speed) / cards}s`,
+                    animationDelay: `${-(i * speed) / effectiveCards}s`,
                     backfaceVisibility: "hidden",
                     backgroundColor: "#09090b",
+                    willChange: "transform",
+                    transform: "translateZ(0)",
                   }}
                 >
                   <div className="relative w-full h-full">
