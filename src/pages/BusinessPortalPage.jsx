@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { signup, signin, upgradeToOwner } from '../api/auth.api'
-import { sendOtp, verifyOtp } from '../api/otp.api'
 import { getMyBusinesses } from '../api/business.api'
 import { toast } from 'react-hot-toast'
 import RegisterHubModal from '../components/RegisterHubModal'
@@ -18,16 +17,9 @@ export default function BusinessPortalPage() {
 
   // Auth form states
   const [authTab, setAuthTab] = useState('signin') // 'signin' or 'signup'
-  const [authMethod, setAuthMethod] = useState('email') // 'email' or 'otp'
   const [form, setForm] = useState({ name: '', businessName: '', email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-
-  // OTP states
-  const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
-  const [otpStep, setOtpStep] = useState('phone')
-  const [countdown, setCountdown] = useState(0)
 
   // Role mismatch state for customers attempting to log in
   const [customerMismatch, setCustomerMismatch] = useState(null)
@@ -41,14 +33,6 @@ export default function BusinessPortalPage() {
 
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin')
   const isCustomer = user && user.role === 'customer'
-
-  useEffect(() => {
-    let timer
-    if (countdown > 0) {
-      timer = setInterval(() => setCountdown(c => c - 1), 1000)
-    }
-    return () => clearInterval(timer)
-  }, [countdown])
 
   // Fetch businesses if logged in as owner
   const loadHubs = useCallback(async () => {
@@ -128,41 +112,6 @@ export default function BusinessPortalPage() {
       toast.error(msg, {
         style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #fecdd3' }
       })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSendOtp = async (e) => {
-    e.preventDefault()
-    if (!phone) return toast.error('Enter a valid phone number')
-    setLoading(true)
-    try {
-      await sendOtp(phone)
-      setOtpStep('verify')
-      setCountdown(30)
-      toast.success('OTP sent to your phone')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send OTP')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault()
-    if (otp.length !== 6) return toast.error('Enter 6-digit OTP')
-    setLoading(true)
-    try {
-      // Pass role: 'owner' so phone registrations on /business are strictly Hub Owners
-      const res = await verifyOtp(phone, otp, 'owner')
-      const responseData = res.data.data || res.data
-      const authUser = responseData.user
-      const token = responseData.token
-      logIn(authUser, token)
-      toast.success('Successfully logged in as Hub Owner!')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid OTP code')
     } finally {
       setLoading(false)
     }
@@ -656,205 +605,97 @@ export default function BusinessPortalPage() {
                 )}
               </AnimatePresence>
 
-              {/* Sub-method switch: Email vs SMS */}
-              <div className="flex items-center justify-center gap-4 mb-5 text-[11px] font-bold uppercase tracking-wider">
-                <button
-                  type="button"
-                  onClick={() => setAuthMethod('email')}
-                  className={`pb-1 transition-all ${
-                    authMethod === 'email'
-                      ? 'text-teal-400 border-b-2 border-teal-400'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  Work Email
-                </button>
-                <span className="text-zinc-700">&bull;</span>
-                <button
-                  type="button"
-                  onClick={() => setAuthMethod('otp')}
-                  className={`pb-1 transition-all ${
-                    authMethod === 'otp'
-                      ? 'text-teal-400 border-b-2 border-teal-400'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  SMS Access Code
-                </button>
-              </div>
-
-              {/* Email Authentication Form */}
-              {authMethod === 'email' ? (
-                <form onSubmit={handleEmailAuth} className="space-y-4">
-                  <AnimatePresence mode="wait">
-                    {authTab === 'signup' && (
-                      <motion.div
-                        key="signup-extra-fields"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-4 overflow-hidden"
-                      >
-                        <div>
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-                            Full Name
-                          </label>
-                          <input
-                            type="text"
-                            name="name"
-                            required
-                            value={form.name}
-                            onChange={onChange}
-                            placeholder="Alex Morgan"
-                            className="w-full px-4 py-3 rounded-xl bg-black/60 border border-zinc-800 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-teal-500 transition-colors"
-                          />
-                        </div>
-
-                        {/* Locked Role Notification */}
-                        <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-between text-xs">
-                          <span className="text-zinc-300 font-medium">Assigned Operational Role:</span>
-                          <span className="px-2 py-0.5 rounded-md bg-teal-400 text-zinc-950 font-black text-[10px] uppercase tracking-wider">
-                            Hub Owner
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-                      Work Email Address
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      required
-                      value={form.email}
-                      onChange={onChange}
-                      placeholder="owner@yourvenue.com"
-                      className="w-full px-4 py-3 rounded-xl bg-black/60 border border-zinc-800 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-teal-500 transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-                      Security Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        name="password"
-                        required
-                        value={form.password}
-                        onChange={onChange}
-                        placeholder="••••••••"
-                        className="w-full px-4 py-3 rounded-xl bg-black/60 border border-zinc-800 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-teal-500 transition-colors pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
-                      >
-                        {showPassword ? '👁️' : '👁️‍🗨️'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3.5 px-6 rounded-xl bg-teal-500 hover:bg-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-2"
-                  >
-                    <span>
-                      {loading
-                        ? 'Authenticating...'
-                        : authTab === 'signin'
-                        ? 'Sign In to Hub Console'
-                        : 'Register as Hub Owner'}
-                    </span>
-                    <span>→</span>
-                  </button>
-                </form>
-              ) : (
-                /* SMS OTP Flow */
-                <div className="space-y-4">
-                  {otpStep === 'phone' ? (
-                    <form onSubmit={handleSendOtp} className="space-y-4">
+              {/* Hub Owner Authentication Form */}
+              <form onSubmit={handleEmailAuth} className="space-y-4">
+                <AnimatePresence mode="wait">
+                  {authTab === 'signup' && (
+                    <motion.div
+                      key="signup-extra-fields"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-4 overflow-hidden"
+                    >
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-                          Hub Phone Number
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">+</span>
-                          <input
-                            type="tel"
-                            required
-                            placeholder="919876543210"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            className="w-full pl-8 pr-4 py-3 rounded-xl bg-black/60 border border-zinc-800 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-teal-500 transition-colors"
-                          />
-                        </div>
-                        <p className="text-[10px] text-zinc-500 mt-1">Country code + number without + (e.g., 91 for India)</p>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3.5 px-6 rounded-xl bg-teal-500 hover:bg-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 active:scale-[0.98] transition-all"
-                      >
-                        {loading ? 'Sending Code...' : 'Send SMS Verification Code'}
-                      </button>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleVerifyOtp} className="space-y-4">
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-                          Enter 6-Digit Code
+                          Full Name
                         </label>
                         <input
                           type="text"
-                          maxLength="6"
+                          name="name"
                           required
-                          value={otp}
-                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                          placeholder="000000"
-                          className="w-full py-3 px-4 text-center tracking-[0.8em] font-mono text-lg rounded-xl bg-black/60 border border-zinc-800 text-white focus:outline-none focus:border-teal-500"
+                          value={form.name}
+                          onChange={onChange}
+                          placeholder="Alex Morgan"
+                          className="w-full px-4 py-3 rounded-xl bg-black/60 border border-zinc-800 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-teal-500 transition-colors"
                         />
                       </div>
 
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3.5 px-6 rounded-xl bg-teal-500 hover:bg-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 active:scale-[0.98] transition-all"
-                      >
-                        {loading ? 'Verifying Code...' : 'Verify & Enter Console'}
-                      </button>
-
-                      <div className="flex items-center justify-between text-[11px] pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setOtpStep('phone')}
-                          className="text-zinc-500 hover:text-zinc-300 font-bold"
-                        >
-                          Change Number
-                        </button>
-                        {countdown > 0 ? (
-                          <span className="text-zinc-500">Resend in {countdown}s</span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleSendOtp}
-                            className="text-teal-400 hover:underline font-bold"
-                          >
-                            Resend Code
-                          </button>
-                        )}
+                      {/* Locked Role Notification */}
+                      <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-between text-xs">
+                        <span className="text-zinc-300 font-medium">Assigned Operational Role:</span>
+                        <span className="px-2 py-0.5 rounded-md bg-teal-400 text-zinc-950 font-black text-[10px] uppercase tracking-wider">
+                          Hub Owner
+                        </span>
                       </div>
-                    </form>
+                    </motion.div>
                   )}
+                </AnimatePresence>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">
+                    Work Email Address
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={form.email}
+                    onChange={onChange}
+                    placeholder="owner@yourvenue.com"
+                    className="w-full px-4 py-3 rounded-xl bg-black/60 border border-zinc-800 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-teal-500 transition-colors"
+                  />
                 </div>
-              )}
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5 block">
+                    Security Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      required
+                      value={form.password}
+                      onChange={onChange}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-3 rounded-xl bg-black/60 border border-zinc-800 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-teal-500 transition-colors pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                    >
+                      {showPassword ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 px-6 rounded-xl bg-teal-500 hover:bg-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-2"
+                >
+                  <span>
+                    {loading
+                      ? 'Authenticating...'
+                      : authTab === 'signin'
+                      ? 'Sign In to Hub Console'
+                      : 'Register as Hub Owner'}
+                  </span>
+                  <span>→</span>
+                </button>
+              </form>
 
               {/* Divider */}
               <div className="relative my-6">
