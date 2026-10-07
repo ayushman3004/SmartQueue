@@ -11,10 +11,15 @@ export const signup = asyncHandler(async (req, res) => {
 });
 
 export const signin = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  const { user, token } = await authService.login({ email, password });
+  const { email, password, requiredRole } = req.body;
+  const { user, token } = await authService.login({ email, password, requiredRole });
   setTokenCookie(res, token);
   res.json(new ApiResponse(200, { user, token }, "Logged in successfully"));
+});
+
+export const upgradeToOwner = asyncHandler(async (req, res) => {
+  const user = await authService.upgradeToOwner(req.user._id);
+  res.json(new ApiResponse(200, { user }, "Account successfully upgraded to Hub Owner"));
 });
 
 export const googleCallback = asyncHandler(async (req, res) => {

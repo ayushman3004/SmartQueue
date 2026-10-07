@@ -61,7 +61,7 @@ const FEATURE_SLIDES = [
       </div>
     ),
     action: 'Deploy Venue',
-    href: '/login'
+    href: '/business'
   },
   {
     id: 'forecasting',
@@ -113,7 +113,7 @@ export default function LandingPage() {
         <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
           <button 
             type="button"
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/business')}
             className="btn-island py-3.5 px-6 text-xs bg-teal-500 hover:bg-teal-400 text-zinc-950 font-black tracking-wider uppercase shadow-xl shadow-teal-500/25"
           >
             <span>Start Free Deployment</span>
@@ -212,7 +212,7 @@ export default function LandingPage() {
             </div>
 
             <button 
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/business')}
               className="relative z-10 group px-8 py-4 rounded-full bg-white text-zinc-950 text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-zinc-100 active:scale-[0.97] transition-all flex items-center gap-3"
             >
               <span>Launch Now</span>

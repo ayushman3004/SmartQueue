@@ -36,7 +36,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
 });
 
 export const verifyOtp = asyncHandler(async (req, res) => {
-  const { phoneNumber, otp } = req.body;
+  const { phoneNumber, otp, role } = req.body;
   if (!phoneNumber || !otp) {
     return res.status(400).json(new ApiResponse(400, null, "Phone number and OTP are required"));
   }
@@ -61,14 +61,18 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   let user = await User.findOne({ phone: phoneNumber });
 
   if (!user) {
-    // Create new user (placeholder details if needed, name is required in schema)
+    const assignedRole = role === "owner" ? "owner" : "customer";
     user = await User.create({
       name: `User ${phoneNumber.slice(-4)}`,
       phone: phoneNumber,
       email: `${phoneNumber}@smartqueue.internal`, // unique email requirement
       authProvider: "local",
-      role: "customer"
+      role: assignedRole
     });
+  } else if (role === "owner" && user.role === "customer") {
+    // If authenticating via Hub Owner portal, upgrade customer to owner
+    user.role = "owner";
+    await user.save();
   }
 
   // Cleanup OTP

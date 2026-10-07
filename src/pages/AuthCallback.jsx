@@ -14,10 +14,23 @@ export default function AuthCallback() {
     localStorage.setItem('token', token)
     getMe()
       .then(res => {
-        logIn(res.data.data.user, token)
-        navigate('/')
+        const loggedUser = res.data.data.user
+        logIn(loggedUser, token)
+        const redirect = localStorage.getItem('auth_redirect')
+        localStorage.removeItem('auth_redirect')
+        if (redirect) {
+          navigate(redirect)
+        } else if (loggedUser?.role === 'owner') {
+          navigate('/business')
+        } else {
+          navigate('/')
+        }
       })
-      .catch(() => navigate('/login'))
+      .catch(() => {
+        const redirect = localStorage.getItem('auth_redirect')
+        localStorage.removeItem('auth_redirect')
+        navigate(redirect === '/business' ? '/business' : '/login')
+      })
   }, [])
 
   return (

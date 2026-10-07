@@ -16,6 +16,7 @@ import AuthCallback from './pages/AuthCallback'
 import WalletPage from './pages/WalletPage'
 import AdminDashboard from './pages/AdminDashboard'
 import ProfilePage from './pages/ProfilePage'
+import BusinessPortalPage from './pages/BusinessPortalPage'
 
 const LoadingScreen = () => (
   <div className="flex items-center justify-center min-h-screen page-wrapper">
@@ -132,6 +133,10 @@ export default function App() {
                 <BookingPage />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path="/business"
+            element={<BusinessPortalPage />}
           />
           <Route
             path="/business/:businessId/manage"

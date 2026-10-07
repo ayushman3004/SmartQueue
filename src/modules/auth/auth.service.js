@@ -25,7 +25,7 @@ export const register = async ({ name, email, password, role }) => {
 };
 
 // ─── Login ────────────────────────────────────────────────────
-export const login = async ({ email, password }) => {
+export const login = async ({ email, password, requiredRole }) => {
   const user = await User.findOne({ email }).select("+password");
   if (!user) throw new ApiError(401, "Invalid credentials");
 
@@ -35,8 +35,21 @@ export const login = async ({ email, password }) => {
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new ApiError(401, "Invalid credentials");
 
+  if (requiredRole === "owner" && user.role !== "owner" && user.role !== "admin") {
+    throw new ApiError(403, "Access restricted to Hub Owners. This account is registered as a Customer. Please sign in at serveq.tech/login or upgrade your account to Hub Owner.");
+  }
+
   const token = generateToken(user);
   return { user: sanitize(user), token };
+};
+
+// ─── Upgrade Account to Hub Owner ────────────────────────────
+export const upgradeToOwner = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(404, "User not found");
+  user.role = "owner";
+  await user.save();
+  return sanitize(user);
 };
 
 // ─── Google OAuth (called by Passport) ───────────────────────
