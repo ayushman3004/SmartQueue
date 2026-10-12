@@ -44,13 +44,10 @@ export const predictServiceTime = async (context) => {
 const getFallback = (context) => {
   const { timeOfDay, queueLength } = context;
   const baseTimes = {
-    banking: 12,
+    clinic: 20,
     healthcare: 20,
-    restaurant: 15,
-    retail: 8,
     salon: 25,
-    government: 25,
-    general: 10,
+    general: 15,
   };
 
   const base = context.baseDuration || baseTimes[context.serviceType?.toLowerCase()] || 10;

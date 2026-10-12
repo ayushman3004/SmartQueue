@@ -7,12 +7,9 @@ import { useSocket } from '../context/SocketContext'
 import api from '../api/axios'
 
 const CATEGORY_ICONS = {
-  healthcare: '🏥',
-  banking: '🏦',
-  retail: '🛍️',
   salon: '💇',
-  restaurant: '🍽️',
-  government: '🏛️',
+  clinic: '🏥',
+  healthcare: '🏥',
   other: '🏢',
 }
 

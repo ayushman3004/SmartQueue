@@ -4,40 +4,28 @@ import React from 'react'
 
 const VENUES = [
   {
-    title: 'Restaurants & Cafes',
-    desc: 'Eliminate crowded waiting doorways during dinner and peak rushes.',
-    image: '/hubs/restaurant.png',
-    badge: 'Dining'
+    title: 'Salons & Hair Studios',
+    desc: 'Seamless walk-in booking and stylist turnaround without idle waiting.',
+    image: '/hubs/salon.png',
+    badge: 'Salon'
   },
   {
-    title: 'Clinics & Healthcare',
+    title: 'Medical Clinics & Doctors',
     desc: 'Stress-free waiting rooms for patients with live doctor desk calling.',
     image: '/hubs/clinic.png',
-    badge: 'Medical'
+    badge: 'Clinic'
   },
   {
-    title: 'Salons & Wellness',
-    desc: 'Seamless walk-in booking and stylist turnaround without idle waiting.',
+    title: 'Wellness & Grooming Lounges',
+    desc: 'Predictable scheduling and transparent queues for premium personal care.',
     image: '/hubs/salon.png',
     badge: 'Wellness'
   },
   {
-    title: 'Banking & Financial',
-    desc: 'Fast teller routing and high-priority counter allocation.',
-    image: '/hubs/bank.png',
-    badge: 'Finance'
-  },
-  {
-    title: 'Retail & Boutiques',
-    desc: 'Manage peak shopping flow, fitting rooms, and express checkouts.',
-    image: '/hubs/retail.png',
-    badge: 'Retail'
-  },
-  {
-    title: 'Public & Civic Centers',
-    desc: 'Civilian-first virtual ticketing for orderly municipal services.',
-    image: '/hubs/gov.png',
-    badge: 'Civic'
+    title: 'Diagnostic & Care Centers',
+    desc: 'Orderly token-based routing for consultations and medical checkups.',
+    image: '/hubs/clinic.png',
+    badge: 'Healthcare'
   }
 ]
 
@@ -147,7 +135,7 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-base sm:text-lg text-zinc-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                Join virtual lines on your phone, track live wait times, and walk straight in when your turn arrives. ServeQ eliminates crowded waiting rooms for venues and customers alike.
+                Join virtual lines on your phone, track live wait times, and walk straight in when your turn arrives. ServeQ eliminates crowded waiting rooms for salons, clinics, and service venues alike.
               </p>
 
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">

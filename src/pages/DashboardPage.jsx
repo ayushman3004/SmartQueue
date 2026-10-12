@@ -11,7 +11,7 @@ import BusinessCard from '../components/BusinessCard'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 
-const CATEGORIES = ['all', 'healthcare', 'banking', 'retail', 'salon', 'restaurant', 'government', 'other']
+const CATEGORIES = ['all', 'salon', 'clinic']
 
 export default function DashboardPage() {
   const { user, setUser } = useAuth()
@@ -380,19 +380,22 @@ export default function DashboardPage() {
 
         {/* Category Filter Chips */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={`px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all whitespace-nowrap active:scale-[0.96] ${
-                category === c
-                  ? 'bg-zinc-950 text-white shadow-md shadow-zinc-950/20'
-                  : 'bg-white border border-zinc-200/90 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
+          {CATEGORIES.map((c) => {
+            const label = c === 'all' ? 'All Venues' : c === 'salon' ? '💇 Salons' : '🏥 Clinics'
+            return (
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                className={`px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all whitespace-nowrap active:scale-[0.96] ${
+                  category === c
+                    ? 'bg-zinc-950 text-white shadow-md shadow-zinc-950/20'
+                    : 'bg-white border border-zinc-200/90 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
 
         {/* Businesses Grid */}

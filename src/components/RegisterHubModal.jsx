@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import { createBusiness } from '../api/business.api'
-import { CATEGORY_METADATA, SERVICE_PRESETS } from '../utils/servicePresets'
+import { CATEGORY_METADATA, SERVICE_PRESETS, ALLOWED_CATEGORIES } from '../utils/servicePresets'
 
 export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
   const [loading, setLoading] = useState(false)
@@ -153,22 +153,23 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
                 <label className="text-[10px] font-black uppercase text-zinc-500 tracking-wider block">
                   Industry / Category
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {Object.entries(CATEGORY_METADATA).map(([catKey, meta]) => {
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {ALLOWED_CATEGORIES.map((catKey) => {
+                    const meta = CATEGORY_METADATA[catKey] || {}
                     const isSelected = form.category === catKey
                     return (
                       <button
                         key={catKey}
                         type="button"
                         onClick={() => handleCategoryChange(catKey)}
-                        className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${
+                        className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2.5 transition-all ${
                           isSelected
-                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/20'
                             : 'bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100'
                         }`}
                       >
-                        <span className="text-base">{meta.icon}</span>
-                        <span className="truncate">{meta.label.split(' ')[0]}</span>
+                        <span className="text-lg">{meta.icon}</span>
+                        <span className="font-extrabold">{meta.label}</span>
                       </button>
                     )
                   })}

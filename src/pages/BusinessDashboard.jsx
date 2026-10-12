@@ -12,7 +12,7 @@ import {
   completeBookingService,
 } from '../api/booking.api'
 import { getBusinessAnalytics } from '../api/analytics.api'
-import { CATEGORY_METADATA, SERVICE_PRESETS } from '../utils/servicePresets'
+import { CATEGORY_METADATA, SERVICE_PRESETS, ALLOWED_CATEGORIES } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 
 export default function BusinessDashboard() {
@@ -817,8 +817,8 @@ export default function BusinessDashboard() {
                   onChange={(e) => setProfileForm(p => ({ ...p, category: e.target.value }))}
                   className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
                 >
-                  {['healthcare', 'banking', 'retail', 'salon', 'restaurant', 'government', 'other'].map(cat => (
-                    <option key={cat} value={cat}>{cat.toUpperCase()}</option>
+                  {ALLOWED_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{CATEGORY_METADATA[cat]?.label || cat.toUpperCase()}</option>
                   ))}
                 </select>
               </div>

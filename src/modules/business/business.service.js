@@ -41,7 +41,11 @@ export const getAllBusinesses = async (filters = {}) => {
   }
 
   if (filters.category && filters.category !== "all") {
-    match.category = filters.category;
+    if (filters.category === "clinic" || filters.category === "healthcare") {
+      match.category = { $in: ["clinic", "healthcare"] };
+    } else {
+      match.category = filters.category;
+    }
   }
 
   if (filters.location) {

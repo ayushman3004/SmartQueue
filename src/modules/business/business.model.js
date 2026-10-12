@@ -13,8 +13,8 @@ const businessSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["healthcare", "banking", "retail", "salon", "restaurant", "government", "other"],
-      default: "other",
+      enum: ["salon", "clinic", "healthcare", "other"],
+      default: "salon",
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
