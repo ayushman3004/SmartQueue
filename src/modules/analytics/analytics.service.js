@@ -13,15 +13,33 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
   }
 
   // Fetch bookings and reviews
-  const [totalBookings, allBookings, cancelledBookings, reviews] = await Promise.all([
+  const [totalBookings, allBookings, reviews] = await Promise.all([
     Booking.countDocuments({ businessId }),
     Booking.find({ businessId }).populate("userId", "name email phone").sort({ createdAt: -1 }),
-    Booking.countDocuments({ businessId, status: "cancelled" }),
     Review.find({ businessId }).sort({ createdAt: -1 }).limit(10),
   ]);
 
+  // Separate earned (active/completed) vs cancelled bookings
+  const earnedBookings = allBookings.filter(
+    (b) => b.status !== "cancelled" && b.status !== "refunded"
+  );
   const completedBookings = allBookings.filter((b) => b.status === "completed");
-  const totalRevenue = completedBookings.reduce(
+  const activeBookings = earnedBookings.filter((b) => b.status !== "completed");
+
+  const cancelledBookingsList = allBookings.filter(
+    (b) => b.status === "cancelled" || b.status === "refunded"
+  );
+  const cancelledBookingsCount = cancelledBookingsList.length;
+
+  const totalRevenue = earnedBookings.reduce(
+    (sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0),
+    0
+  );
+  const completedRevenue = completedBookings.reduce(
+    (sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0),
+    0
+  );
+  const cancelledRevenue = cancelledBookingsList.reduce(
     (sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0),
     0
   );
@@ -31,66 +49,113 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
       ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) * 10) / 10
       : 5.0;
 
-  // ─── 1. Calculate Daily Customer Breakdown (Past 7-14 Days) ─────────────────
+  // ─── 1. Calculate Daily Customer Breakdown (Rolling Past 7 Days + All Booked Dates) ───
   const daysMap = new Map();
   const today = new Date();
 
-  // Initialize the last 7 days with zero defaults
+  const getDateKey = (dateObj) => {
+    const d = new Date(dateObj);
+    return d.toISOString().split("T")[0];
+  };
+
+  const getDisplayDate = (dateObj) => {
+    const d = new Date(dateObj);
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  };
+
+  const createDayEntry = (dateKey, displayDate) => ({
+    date: dateKey,
+    displayDate,
+    totalBookings: 0,
+    totalCustomers: 0,
+    activeCount: 0,
+    completedCount: 0,
+    cancelledCount: 0,
+    revenue: 0,
+    cancelledRevenue: 0,
+    services: {},
+  });
+
+  // Initialize the last 7 days with zero defaults up to today
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateKey = d.toISOString().split("T")[0];
-    const displayDate = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-    daysMap.set(dateKey, {
-      date: dateKey,
-      displayDate,
-      totalCustomers: 0,
-      completedCount: 0,
-      revenue: 0,
-      services: {},
-    });
+    const dateKey = getDateKey(d);
+    daysMap.set(dateKey, createDayEntry(dateKey, getDisplayDate(d)));
   }
 
-  // Aggregate bookings into daily bins
+  // Ensure any date from allBookings (scheduled startTime or createdAt) has a bin
   allBookings.forEach((b) => {
-    const bDate = b.createdAt ? new Date(b.createdAt).toISOString().split("T")[0] : null;
-    if (bDate && daysMap.has(bDate)) {
-      const entry = daysMap.get(bDate);
-      entry.totalCustomers += 1;
-      if (b.status === "completed") {
-        entry.completedCount += 1;
-        entry.revenue += (b.paidAmount || 0) + (b.extraCharge || 0);
-      }
-      if (b.serviceType) {
-        entry.services[b.serviceType] = (entry.services[b.serviceType] || 0) + 1;
+    const targetDate = b.startTime || b.createdAt;
+    if (targetDate) {
+      const dateKey = getDateKey(targetDate);
+      if (!daysMap.has(dateKey)) {
+        daysMap.set(dateKey, createDayEntry(dateKey, getDisplayDate(targetDate)));
       }
     }
   });
 
-  const dailyBreakdown = Array.from(daysMap.values()).map((day) => {
-    // Find most popular service for the day
-    let topService = "General Service";
-    let maxCount = 0;
-    Object.entries(day.services).forEach(([svc, count]) => {
-      if (count > maxCount) {
-        maxCount = count;
-        topService = svc;
-      }
-    });
+  // Aggregate bookings into daily bins
+  allBookings.forEach((b) => {
+    const targetDate = b.startTime || b.createdAt;
+    if (!targetDate) return;
+    const dateKey = getDateKey(targetDate);
+    const entry = daysMap.get(dateKey);
+    if (!entry) return;
 
-    return {
-      date: day.date,
-      displayDate: day.displayDate,
-      totalCustomers: day.totalCustomers,
-      completedCount: day.completedCount,
-      revenue: day.revenue,
-      topService,
-    };
+    entry.totalBookings += 1;
+    entry.totalCustomers += 1;
+
+    const isCancelled = b.status === "cancelled" || b.status === "refunded";
+    const amount = (b.paidAmount || 0) + (b.extraCharge || 0);
+
+    if (isCancelled) {
+      entry.cancelledCount += 1;
+      entry.cancelledRevenue += amount;
+    } else {
+      entry.revenue += amount;
+      if (b.status === "completed") {
+        entry.completedCount += 1;
+      } else {
+        entry.activeCount += 1;
+      }
+    }
+
+    if (b.serviceType) {
+      entry.services[b.serviceType] = (entry.services[b.serviceType] || 0) + 1;
+    }
   });
+
+  // Sort daily breakdown chronologically
+  const dailyBreakdown = Array.from(daysMap.values())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((day) => {
+      let topService = "General Service";
+      let maxCount = 0;
+      Object.entries(day.services).forEach(([svc, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          topService = svc;
+        }
+      });
+
+      return {
+        date: day.date,
+        displayDate: day.displayDate,
+        totalBookings: day.totalBookings,
+        totalCustomers: day.totalCustomers,
+        activeCount: day.activeCount,
+        completedCount: day.completedCount,
+        cancelledCount: day.cancelledCount,
+        revenue: day.revenue,
+        cancelledRevenue: day.cancelledRevenue,
+        topService,
+      };
+    });
 
   // ─── 2. Identify Top / Best Customer ────────────────────────────────────────
   const customerMap = new Map();
-  completedBookings.forEach((b) => {
+  earnedBookings.forEach((b) => {
     const uId = b.userId?._id?.toString() || b.userId?.toString();
     if (!uId) return;
     if (!customerMap.has(uId)) {
@@ -109,7 +174,11 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
 
   let topCustomer = null;
   customerMap.forEach((c) => {
-    if (!topCustomer || c.visits > topCustomer.visits || (c.visits === topCustomer.visits && c.totalSpent > topCustomer.totalSpent)) {
+    if (
+      !topCustomer ||
+      c.visits > topCustomer.visits ||
+      (c.visits === topCustomer.visits && c.totalSpent > topCustomer.totalSpent)
+    ) {
       topCustomer = c;
     }
   });
@@ -129,13 +198,19 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     businessName: business.name,
     category: business.category,
     bookingsCount: totalBookings,
-    cancellationCount: cancelledBookings,
+    cancellationCount: cancelledBookingsCount,
     averageRating: avgRating,
     recentReviews: reviews,
     topCustomer,
     topEmployee,
     staffList,
   });
+
+  const uniqueCustomerIds = new Set(
+    earnedBookings
+      .map((b) => b.userId?._id?.toString() || b.userId?.toString())
+      .filter(Boolean)
+  );
 
   return {
     businessId,
@@ -145,13 +220,21 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     dailyBreakdown,
     metrics: {
       totalBookings,
+      activeBookings: activeBookings.length,
       completedBookings: completedBookings.length,
-      cancelledBookings,
+      cancelledBookings: cancelledBookingsCount,
       totalRevenue,
-      customerCount: new Set(completedBookings.map((b) => b.userId?._id?.toString() || b.userId?.toString())).size,
+      completedRevenue,
+      cancelledRevenue,
+      customerCount: uniqueCustomerIds.size,
       averageRating: avgRating,
       reviewCount: reviews.length,
-      dailyAverage: Math.round((dailyBreakdown.reduce((sum, d) => sum + d.totalCustomers, 0) / (dailyBreakdown.length || 1)) * 10) / 10,
+      dailyAverage:
+        Math.round(
+          (dailyBreakdown.reduce((sum, d) => sum + d.totalCustomers, 0) /
+            (dailyBreakdown.length || 1)) *
+            10
+        ) / 10,
     },
     topCustomer,
     topEmployee,

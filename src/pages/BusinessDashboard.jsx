@@ -105,6 +105,7 @@ export default function BusinessDashboard() {
 
     const handleBookingUpdate = () => {
       getBusinessBookings(businessId).then(res => setBookings(res.data.data.bookings || [])).catch(() => {})
+      getBusinessAnalytics(businessId).then(res => setAnalytics(res.data.data)).catch(() => {})
     }
 
     socket?.on('bookings:updated', handleBookingUpdate)
@@ -116,14 +117,14 @@ export default function BusinessDashboard() {
     }
   }, [businessId, fetchDashboardData, joinAdmin, leaveRoom, onQueueUpdate, socket])
 
-  // Load analytics when analytics tab is opened
+  // Load analytics whenever analytics tab is active
   useEffect(() => {
-    if (activeTab === 'analytics' && !analytics) {
+    if (activeTab === 'analytics') {
       getBusinessAnalytics(businessId)
         .then(res => setAnalytics(res.data.data))
         .catch(err => toast.error(err.response?.data?.message || "Failed to load analytics"))
     }
-  }, [activeTab, businessId, analytics])
+  }, [activeTab, businessId])
 
   const handleCallNext = async () => {
     if (!queue?.users?.length) return
@@ -1223,29 +1224,41 @@ export default function BusinessDashboard() {
       {activeTab === 'analytics' && (
         <div className="space-y-8 text-left">
           {/* Executive Overview Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm">
-              <p className="text-xs font-bold uppercase text-slate-400">Total Revenue</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="bg-white border border-teal-200 p-5 rounded-3xl shadow-sm bg-gradient-to-br from-teal-50/40 to-white">
+              <p className="text-xs font-bold uppercase text-teal-800 tracking-wider">Total Revenue</p>
               <p className="text-3xl font-black text-teal-700 mt-2">₹{analytics?.metrics?.totalRevenue ?? 0}</p>
-              <p className="text-[10px] text-slate-400 mt-1">From completed customer sessions</p>
+              <p className="text-[10px] text-zinc-500 mt-1 font-medium">
+                From {analytics?.metrics?.activeBookings ?? 0} active + {analytics?.metrics?.completedBookings ?? 0} completed
+              </p>
             </div>
 
-            <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm">
-              <p className="text-xs font-bold uppercase text-slate-400">Unique Customers</p>
+            <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Unique Customers</p>
               <p className="text-3xl font-black text-zinc-950 mt-2">{analytics?.metrics?.customerCount ?? 0}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Total patron accounts served</p>
+              <p className="text-[10px] text-slate-400 mt-1">Patrons booked & served</p>
             </div>
 
-            <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm">
-              <p className="text-xs font-bold uppercase text-slate-400">Completed Visits</p>
+            <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Active Bookings</p>
+              <p className="text-3xl font-black text-teal-800 mt-2">{analytics?.metrics?.activeBookings ?? 0}</p>
+              <p className="text-[10px] text-teal-700 font-semibold mt-1">Confirmed & in-service</p>
+            </div>
+
+            <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
+              <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Completed Visits</p>
               <p className="text-3xl font-black text-indigo-700 mt-2">{analytics?.metrics?.completedBookings ?? 0}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Total completed appointments</p>
+              <p className="text-[10px] text-slate-400 mt-1">Finished appointments</p>
             </div>
 
-            <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm">
-              <p className="text-xs font-bold uppercase text-slate-400">Daily Average Traffic</p>
-              <p className="text-3xl font-black text-amber-500 mt-2">{analytics?.metrics?.dailyAverage ?? 0}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Average visiting patrons / day</p>
+            <div className={`bg-white border p-5 rounded-3xl shadow-sm transition-all ${
+              (analytics?.metrics?.cancelledBookings ?? 0) > 0 ? 'border-rose-300 bg-rose-50/30' : 'border-zinc-200'
+            }`}>
+              <p className="text-xs font-bold uppercase text-rose-600 tracking-wider">Cancelled Bookings</p>
+              <p className="text-3xl font-black text-rose-600 mt-2">{analytics?.metrics?.cancelledBookings ?? 0}</p>
+              <p className="text-[10px] text-rose-700 font-semibold mt-1">
+                ₹{analytics?.metrics?.cancelledRevenue ?? 0} refunded to patrons
+              </p>
             </div>
           </div>
 
@@ -1258,11 +1271,11 @@ export default function BusinessDashboard() {
                   <span>Per-Day Customer Traffic & Visits Breakdown</span>
                 </h3>
                 <p className="text-xs text-zinc-500 font-medium">
-                  Complete day-by-day record of customer footfall, completed appointments, daily revenue, and top requested service.
+                  Complete day-by-day record of customer footfall, active & completed appointments, daily revenue, and cancelled bookings.
                 </p>
               </div>
               <span className="text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 px-3 py-1.5 rounded-xl self-start sm:self-auto">
-                7-Day Rolling History
+                Rolling Traffic & Schedule History
               </span>
             </div>
 
@@ -1276,8 +1289,9 @@ export default function BusinessDashboard() {
                   <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-zinc-100">
                     <tr>
                       <th className="py-3.5 px-4">Date</th>
-                      <th className="py-3.5 px-4">Customers Coming</th>
-                      <th className="py-3.5 px-4">Completed Visits</th>
+                      <th className="py-3.5 px-4">Bookings</th>
+                      <th className="py-3.5 px-4">Active & Completed</th>
+                      <th className="py-3.5 px-4">Cancelled Bookings</th>
                       <th className="py-3.5 px-4">Revenue Earned</th>
                       <th className="py-3.5 px-4">Most Popular Service</th>
                       <th className="py-3.5 px-4 text-right">Traffic Intensity</th>
@@ -1291,13 +1305,24 @@ export default function BusinessDashboard() {
                           <p className="text-[10px] text-zinc-400 font-mono">{day.date}</p>
                         </td>
                         <td className="py-4 px-4 font-bold text-zinc-900">
-                          <span className="text-sm">{day.totalCustomers}</span>
-                          <span className="text-zinc-400 text-[11px] ml-1">patrons</span>
+                          <span className="text-sm">{day.totalBookings ?? day.totalCustomers ?? 0}</span>
+                          <span className="text-zinc-400 text-[11px] ml-1">bookings</span>
                         </td>
-                        <td className="py-4 px-4 font-bold text-indigo-700">
-                          {day.completedCount} visits
+                        <td className="py-4 px-4 font-semibold text-xs">
+                          <span className="text-teal-700 font-bold">{day.activeCount || 0} active</span>
+                          <span className="text-zinc-300 mx-1.5">•</span>
+                          <span className="text-indigo-700 font-bold">{day.completedCount || 0} completed</span>
                         </td>
-                        <td className="py-4 px-4 font-bold text-teal-700">
+                        <td className="py-4 px-4">
+                          {(day.cancelledCount || 0) > 0 ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-rose-100 text-rose-700 border border-rose-200">
+                              {day.cancelledCount} cancelled (₹{day.cancelledRevenue} refunded)
+                            </span>
+                          ) : (
+                            <span className="text-zinc-400 text-xs">0 cancelled</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 font-black text-teal-700 text-sm">
                           ₹{day.revenue}
                         </td>
                         <td className="py-4 px-4 font-semibold text-zinc-800">
@@ -1305,13 +1330,13 @@ export default function BusinessDashboard() {
                         </td>
                         <td className="py-4 px-4 text-right">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                            day.totalCustomers >= 5
+                            (day.totalBookings || day.totalCustomers) >= 5
                               ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                              : day.totalCustomers > 0
+                              : (day.totalBookings || day.totalCustomers) > 0
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                               : 'bg-zinc-100 text-zinc-500'
                           }`}>
-                            {day.totalCustomers >= 5 ? '🔥 Peak Day' : day.totalCustomers > 0 ? '⚡ Steady' : 'Quiet'}
+                            {(day.totalBookings || day.totalCustomers) >= 5 ? '🔥 Peak Day' : (day.totalBookings || day.totalCustomers) > 0 ? '⚡ Steady' : 'Quiet'}
                           </span>
                         </td>
                       </tr>
