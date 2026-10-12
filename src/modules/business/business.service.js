@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Business from "./business.model.js";
+import Booking from "../../booking/booking.model.js";
 import ApiError from "../../../utils/ApiError.js";
 
 export const createBusiness = async (ownerId, data) => {
@@ -135,7 +136,73 @@ export const getAllBusinesses = async (filters = {}) => {
       },
     },
   ]);
+
+  await enrichStaffAvailability(businesses);
   return businesses;
+};
+
+// Enrich staff availability with live queue and active appointments
+export const enrichStaffAvailability = async (businesses) => {
+  if (!businesses) return businesses;
+  const isArray = Array.isArray(businesses);
+  const list = isArray ? businesses : [businesses];
+  if (list.length === 0) return businesses;
+
+  const bizIds = list.map((b) => b._id).filter(Boolean);
+  const now = new Date();
+
+  let activeBookings = [];
+  try {
+    if (Booking && bizIds.length > 0 && (mongoose.connection?.readyState === 1 || Booking.find !== mongoose.Model.find)) {
+      activeBookings = await Booking.find({
+        businessId: { $in: bizIds },
+        status: { $in: ["confirmed", "serving"] },
+        startTime: { $lte: now },
+        endTime: { $gte: now },
+      }).select("businessId assignedStaff serviceType startTime endTime");
+    }
+  } catch {
+    // Non-critical fallback
+  }
+
+  for (const b of list) {
+    const queueUsers = b.activeQueue || [];
+    const servingQueueUsers = queueUsers.filter((u) => u.status === "serving" && u.assignedStaff?.name);
+
+    const busyStaffMap = new Map();
+    servingQueueUsers.forEach((u) => {
+      busyStaffMap.set(u.assignedStaff.name.toLowerCase(), {
+        serviceType: u.serviceType,
+        source: "queue",
+      });
+    });
+
+    const bBookings = activeBookings.filter(
+      (bk) => bk.businessId?.toString() === b._id?.toString() && bk.assignedStaff?.name
+    );
+    bBookings.forEach((bk) => {
+      busyStaffMap.set(bk.assignedStaff.name.toLowerCase(), {
+        serviceType: bk.serviceType,
+        source: "booking",
+      });
+    });
+
+    if (Array.isArray(b.staff)) {
+      b.staff = b.staff.map((st) => {
+        const busyInfo = busyStaffMap.get(st.name.toLowerCase());
+        const isOccupied = Boolean(busyInfo);
+        const stObj = typeof st.toObject === "function" ? st.toObject() : st;
+        return {
+          ...stObj,
+          isOccupied,
+          currentService: busyInfo ? busyInfo.serviceType : null,
+          effectiveAvailable: (st.isAvailable !== false) && !isOccupied,
+        };
+      });
+    }
+  }
+
+  return isArray ? list : list[0];
 };
 
 export const getBusinessById = async (id) => {
@@ -146,6 +213,7 @@ export const getBusinessById = async (id) => {
   const bObj = b.toObject();
   const users = queue?.users || [];
   bObj.queueLength = users.length;
+  bObj.activeQueue = users;
 
   if (users.length > 0) {
     const lastUser = users[users.length - 1];
@@ -157,6 +225,7 @@ export const getBusinessById = async (id) => {
     bObj.estimatedWait = 0;
   }
 
+  await enrichStaffAvailability(bObj);
   return bObj;
 };
 

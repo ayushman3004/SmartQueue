@@ -159,6 +159,8 @@ export default function CustomerDashboardPage() {
     socket.on('queue:updated', (data) => handleQueueChange(data?.queue))
     socket.on('queue:joined', (data) => handleQueueChange(data?.queue))
     socket.on('queue:left', (data) => handleQueueChange(data?.queue))
+    socket.on('service:started', (data) => handleQueueChange(data?.queue))
+    socket.on('service:completed', (data) => handleQueueChange(data?.queue))
 
     return () => {
       unsubStatus?.()
@@ -166,6 +168,8 @@ export default function CustomerDashboardPage() {
       socket.off('queue:updated')
       socket.off('queue:joined')
       socket.off('queue:left')
+      socket.off('service:started')
+      socket.off('service:completed')
     }
   }, [socket, onBusinessStatus])
 
@@ -593,10 +597,22 @@ export default function CustomerDashboardPage() {
               const staffRoleIcon = isClinic ? '🩺' : '✂️'
               const staffList = biz.staff || []
 
+              // Compute staff members currently in service taking service from patrons
+              const busyStaffNames = new Set(
+                qUsers
+                  .filter(u => u.status === 'serving' && u.assignedStaff?.name)
+                  .map(u => u.assignedStaff.name.toLowerCase())
+              )
+              staffList.forEach(st => {
+                if (st.isOccupied) busyStaffNames.add(st.name.toLowerCase())
+              })
+
               const curSelectedServices = selectedServices[biz._id] || (services.length > 0 ? [services[0]] : [{ name: 'General Service', duration: biz.averageServiceTime || 15, price: biz.basePrice || 0 }])
               const totalDuration = curSelectedServices.reduce((acc, s) => acc + (s.duration || 15), 0)
               const totalPrice = curSelectedServices.reduce((acc, s) => acc + (s.price ?? biz.basePrice ?? 0), 0)
               const curStaff = selectedStaff[biz._id] || 'any'
+              const curStaffName = typeof curStaff === 'string' ? curStaff : curStaff?.name
+              const isCurStaffOccupied = curStaffName && curStaffName !== 'any' && busyStaffNames.has(curStaffName.toLowerCase())
 
               return (
                 <div
@@ -722,17 +738,41 @@ export default function CustomerDashboardPage() {
                         className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
                       >
                         <option value="any">✨ Any Available {isClinic ? 'General Physician / Doctor' : 'Barber / Stylist'} (Auto-Assign On-Duty)</option>
-                        {staffList.map((st, stIdx) => (
-                          <option key={stIdx} value={st.name}>
-                            {st.name} — {st.role || (isClinic ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {st.isAvailable === false ? '• Busy/Off' : '• Available'}
-                          </option>
-                        ))}
+                        {staffList.map((st, stIdx) => {
+                          const isOccupied = busyStaffNames.has(st.name.toLowerCase())
+                          const isAvailable = (st.isAvailable !== false) && !isOccupied
+                          return (
+                            <option key={stIdx} value={st.name} disabled={!isAvailable}>
+                              {isOccupied ? '🔴' : isAvailable ? '🟢' : '⚪'} {st.name} — {st.role || (isClinic ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {isOccupied ? '• IN SERVICE (NOT AVAILABLE)' : (st.isAvailable === false ? '• Off-Duty' : '• Available')}
+                            </option>
+                          )
+                        })}
                       </select>
+
+                      {/* Live busy notice if any staff are currently taking service */}
+                      {staffList.some(s => busyStaffNames.has(s.name.toLowerCase())) && (
+                        <div className="flex items-center gap-2 p-2 rounded-xl bg-rose-50 border border-rose-200 text-[10px] text-rose-900 font-semibold">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
+                          <span>
+                            {staffList.filter(s => busyStaffNames.has(s.name.toLowerCase())).map(s => s.name).join(', ')} currently in service with a patron. Unavailable until service completes.
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Selected staff is occupied alert */}
+                      {isCurStaffOccupied && (
+                        <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 text-[10px] text-amber-900 font-medium flex items-center gap-1.5">
+                          <span>⚠️</span>
+                          <span>
+                            <strong>{curStaffName}</strong> is in service now. Auto-fallback will pair you with {isClinic ? 'an on-duty General Physician' : 'an available on-duty Barber'}.
+                          </span>
+                        </div>
+                      )}
 
                       <p className="text-[10px] text-zinc-400 leading-tight">
                         {isClinic
-                          ? '⚕️ If chosen doctor is unavailable, auto-assigned to on-duty General Physician.'
-                          : '✂️ If chosen barber is unavailable, auto-assigned to any available on-duty barber.'}
+                          ? '⚕️ If chosen doctor is unavailable or in service, auto-assigned to on-duty General Physician.'
+                          : '✂️ If chosen barber is unavailable or in service, auto-assigned to any available on-duty barber.'}
                       </p>
                     </div>
                   </div>

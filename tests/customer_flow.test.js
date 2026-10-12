@@ -440,4 +440,33 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
       User.findOneAndUpdate = origUserFindOneAndUpdate;
     }
   });
+
+  await t.test("enrichStaffAvailability marks staff as occupied and not available during active service", async () => {
+    const { enrichStaffAvailability } = await import("../src/modules/business/business.service.js");
+    const testBusiness = {
+      _id: businessId,
+      name: "City Care Clinic",
+      category: "clinic",
+      activeQueue: [
+        {
+          status: "serving",
+          serviceType: "Consultation",
+          assignedStaff: { name: "Dr. Sarah Jenkins", role: "General Physician" },
+        },
+      ],
+      staff: [
+        { name: "Dr. Sarah Jenkins", role: "General Physician", isAvailable: true },
+        { name: "Dr. A. Verma", role: "Dermatologist", isAvailable: true },
+      ],
+    };
+
+    const enriched = await enrichStaffAvailability(testBusiness);
+    const sarah = enriched.staff.find((s) => s.name === "Dr. Sarah Jenkins");
+    const verma = enriched.staff.find((s) => s.name === "Dr. A. Verma");
+
+    assert.equal(sarah.isOccupied, true, "Dr. Sarah Jenkins should be marked as occupied");
+    assert.equal(sarah.effectiveAvailable, false, "Dr. Sarah Jenkins should not be available while taking service");
+    assert.equal(verma.isOccupied, false, "Dr. A. Verma should not be occupied");
+    assert.equal(verma.effectiveAvailable, true, "Dr. A. Verma should remain available");
+  });
 });

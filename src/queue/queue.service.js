@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Queue from "./queue.model.js";
 import QueueDS from "./queue.ds.js";
 import { predictServiceTime } from "../../ai/gemini.service.js";
@@ -70,10 +71,28 @@ export const joinQueue = async (businessId, userData, io = null) => {
     ? userData.preferredStaff.trim()
     : userData.preferredStaff?.name?.trim();
 
-  // Find staff members currently serving
+  // Find staff members currently serving in queue OR active appointments
   const currentlyServingStaff = queueDoc.users
     .filter((u) => u.status === "serving" && u.assignedStaff?.name)
     .map((u) => u.assignedStaff.name.toLowerCase());
+
+  try {
+    const Booking = mongoose.models.Booking || mongoose.model("Booking");
+    if (Booking && (mongoose.connection?.readyState === 1 || Booking.find !== mongoose.Model.find)) {
+      const now = new Date();
+      const activeBookings = await Booking.find({
+        businessId,
+        status: { $in: ["confirmed", "serving"] },
+        startTime: { $lte: now },
+        endTime: { $gte: now },
+      }).select("assignedStaff");
+      activeBookings?.forEach((bk) => {
+        if (bk.assignedStaff?.name) currentlyServingStaff.push(bk.assignedStaff.name.toLowerCase());
+      });
+    }
+  } catch {
+    // Non-critical fallback
+  }
 
   let assignedStaff = null;
 

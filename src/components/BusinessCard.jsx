@@ -39,7 +39,8 @@ export default function BusinessCard({ business: initialBusiness, index }) {
         setBusiness(prev => ({
           ...prev,
           queueLength: users.length,
-          estimatedWait: waitMins
+          estimatedWait: waitMins,
+          activeQueue: users,
         }));
       }
     }
@@ -48,12 +49,21 @@ export default function BusinessCard({ business: initialBusiness, index }) {
         setBusiness(prev => ({ ...prev, isOpen: data.isOpen }))
       }
     }
+    const handleServiceChange = (data) => {
+      if (data?.queue) handleQueueUpdate(data.queue);
+    };
 
     socket.on('queue:update', handleQueueUpdate)
+    socket.on('queue:updated', (data) => handleQueueUpdate(data?.queue || data))
     socket.on('business:status', handleStatusUpdate)
+    socket.on('service:started', handleServiceChange)
+    socket.on('service:completed', handleServiceChange)
     return () => {
       socket.off('queue:update', handleQueueUpdate)
+      socket.off('queue:updated')
       socket.off('business:status', handleStatusUpdate)
+      socket.off('service:started', handleServiceChange)
+      socket.off('service:completed', handleServiceChange)
     }
   }, [socket, business._id])
 
@@ -231,32 +241,54 @@ export default function BusinessCard({ business: initialBusiness, index }) {
         )}
 
         {/* Doctor / Barber Selection with Auto-Fallback */}
-        {!isOwner && (
-          <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-extrabold uppercase text-zinc-500 tracking-wider flex items-center gap-1">
-                <span>{business.category === 'clinic' || business.category === 'healthcare' ? '🩺' : '✂️'}</span>
-                <span>Select {business.category === 'clinic' || business.category === 'healthcare' ? 'Doctor' : 'Barber'}</span>
-              </label>
-              <span className="text-[9px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
-                🛡️ Auto-Fallback
-              </span>
-            </div>
+        {!isOwner && (() => {
+          const busyStaffNames = new Set(
+            (business.activeQueue || [])
+              .filter(u => u.status === 'serving' && u.assignedStaff?.name)
+              .map(u => u.assignedStaff.name.toLowerCase())
+          );
+          (business.staff || []).forEach(st => {
+            if (st.isOccupied) busyStaffNames.add(st.name.toLowerCase());
+          });
 
-            <select
-              value={selectedStaff}
-              onChange={(e) => setSelectedStaff(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="any">✨ Any Available (Auto-Assign On-Duty)</option>
-              {(business.staff || []).map((st, stIdx) => (
-                <option key={stIdx} value={st.name}>
-                  {st.name} — {st.role || (business.category === 'clinic' ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {st.isAvailable === false ? '• Busy/Off' : '• Available'}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+          return (
+            <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-extrabold uppercase text-zinc-500 tracking-wider flex items-center gap-1">
+                  <span>{business.category === 'clinic' || business.category === 'healthcare' ? '🩺' : '✂️'}</span>
+                  <span>Select {business.category === 'clinic' || business.category === 'healthcare' ? 'Doctor' : 'Barber'}</span>
+                </label>
+                <span className="text-[9px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
+                  🛡️ Auto-Fallback
+                </span>
+              </div>
+
+              <select
+                value={selectedStaff}
+                onChange={(e) => setSelectedStaff(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="any">✨ Any Available (Auto-Assign On-Duty)</option>
+                {(business.staff || []).map((st, stIdx) => {
+                  const isOccupied = busyStaffNames.has(st.name.toLowerCase());
+                  const isAvailable = (st.isAvailable !== false) && !isOccupied;
+                  return (
+                    <option key={stIdx} value={st.name} disabled={!isAvailable}>
+                      {isOccupied ? '🔴' : isAvailable ? '🟢' : '⚪'} {st.name} — {st.role || (business.category === 'clinic' ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {isOccupied ? '• IN SERVICE (NOT AVAILABLE)' : (st.isAvailable === false ? '• Off-Duty' : '• Available')}
+                    </option>
+                  );
+                })}
+              </select>
+
+              {(business.staff || []).some(s => busyStaffNames.has(s.name.toLowerCase())) && (
+                <p className="text-[10px] text-rose-700 font-bold flex items-center gap-1 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  <span>Staff in service with customer is unavailable until finished.</span>
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Pricing Summary & Action CTA Button */}
         <div className="mt-auto pt-4 border-t border-zinc-100 flex flex-col gap-3">

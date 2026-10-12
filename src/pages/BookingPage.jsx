@@ -91,9 +91,15 @@ export default function BookingPage() {
 
     socket.on('booking:delayed', handleDelay)
     socket.on('bookings:updated', handleUpdate)
+    socket.on('queue:update', handleUpdate)
+    socket.on('service:started', handleUpdate)
+    socket.on('service:completed', handleUpdate)
     return () => {
       socket.off('booking:delayed', handleDelay)
       socket.off('bookings:updated', handleUpdate)
+      socket.off('queue:update', handleUpdate)
+      socket.off('service:started', handleUpdate)
+      socket.off('service:completed', handleUpdate)
     }
   }, [socket, user, fetchData])
 
@@ -366,21 +372,36 @@ export default function BookingPage() {
 
                   {/* Individual Staff Cards */}
                   {availableStaffList.map((member, idx) => {
+                    const isOccupied = Boolean(member.isOccupied) || (
+                      business?.activeQueue?.some(u => u.status === 'serving' && u.assignedStaff?.name?.toLowerCase() === member.name?.toLowerCase())
+                    )
                     const isSelected = selectedStaff?._id === member._id || selectedStaff?.name === member.name
                     return (
                       <div
                         key={member._id || idx}
-                        onClick={() => setSelectedStaff(member)}
+                        onClick={() => {
+                          if (isOccupied) {
+                            toast.error(`${member.name} is currently in service with a patron. Auto-fallback will assign an on-duty ${isClinic ? 'General Physician' : 'Barber'}.`)
+                          }
+                          setSelectedStaff(member)
+                        }}
                         className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                          isSelected
-                            ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500/30'
-                            : 'bg-slate-50 border-zinc-200 hover:bg-white'
+                          isOccupied
+                            ? 'bg-rose-50/70 border-rose-200'
+                            : isSelected
+                              ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500/30'
+                              : 'bg-slate-50 border-zinc-200 hover:bg-white'
                         }`}
                       >
                         <div className="min-w-0 pr-2">
                           <p className="text-xs font-bold text-zinc-900 truncate flex items-center gap-1.5">
                             <span>{staffRoleIcon}</span>
                             <span>{member.name}</span>
+                            {isOccupied && (
+                              <span className="text-[9px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded-md">
+                                In Service
+                              </span>
+                            )}
                           </p>
                           <p className="text-[10px] text-slate-500 truncate">
                             {member.role || staffRoleLabel} {member.specialties ? `• ${Array.isArray(member.specialties) ? member.specialties.join(', ') : member.specialties}` : ''}
@@ -388,9 +409,9 @@ export default function BookingPage() {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <span className={`text-[10px] font-bold block ${
-                            member.isAvailable !== false ? 'text-emerald-700' : 'text-slate-400'
+                            isOccupied ? 'text-rose-600 font-extrabold' : member.isAvailable !== false ? 'text-emerald-700' : 'text-slate-400'
                           }`}>
-                            {member.isAvailable !== false ? '● Available' : '○ Off-Duty'}
+                            {isOccupied ? '🔴 In Service (Occupied)' : member.isAvailable !== false ? '● Available' : '○ Off-Duty'}
                           </span>
                           <span className="text-[10px] text-amber-500 font-bold">★ {member.rating ? Number(member.rating).toFixed(1) : '5.0'}</span>
                         </div>
