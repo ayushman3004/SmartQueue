@@ -24,10 +24,10 @@ export default function Navbar() {
   }
 
   const navLinks = user ? [
-    { name: 'Dashboard', path: user.role === 'owner' ? '/business' : '/customers' },
+    { name: 'Dashboard', path: user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/business' : '/customers' },
     { name: 'Wallet', path: '/wallet' },
     { name: 'Profile', path: '/profile' },
-    ...(user?.role === 'admin' ? [{ name: 'Admin', path: '/admin' }] : []),
+    ...(user?.role === 'admin' ? [{ name: 'Admin Portal', path: '/admin' }] : []),
   ] : []
 
   if (!user) return null
@@ -43,7 +43,7 @@ export default function Navbar() {
             : 'bg-white/70 backdrop-blur-md border-zinc-200/60 shadow-sm'
         }`}>
           {/* Logo */}
-          <Link to={user.role === 'owner' ? '/business' : '/customers'} className="flex items-center gap-3 no-underline group">
+          <Link to={user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/business' : '/customers'} className="flex items-center gap-3 no-underline group">
             <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-teal-600/10 group-hover:scale-105 transition-transform duration-200 overflow-hidden border border-zinc-200/70 p-1">
               <img src="/logo.png" alt="serveQ" className="w-full h-full object-cover rounded-xl" />
             </div>

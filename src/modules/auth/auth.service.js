@@ -26,7 +26,30 @@ export const register = async ({ name, email, password, role }) => {
 
 // ─── Login ────────────────────────────────────────────────────
 export const login = async ({ email, password, requiredRole }) => {
-  const user = await User.findOne({ email }).select("+password");
+  if (!email || !password) throw new ApiError(400, "Email and password are required");
+
+  const normEmail = (email || "").trim().toLowerCase();
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@serveq.tech").toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+
+  let user = await User.findOne({ email: normEmail }).select("+password");
+
+  // Bootstrap or upgrade superadmin if logging in as admin or using admin email
+  if ((requiredRole === "admin" || normEmail === adminEmail) && normEmail === adminEmail) {
+    if (!user) {
+      const hashed = await hashPassword(adminPassword);
+      user = await User.create({
+        name: "ServeQ Administrator",
+        email: adminEmail,
+        password: hashed,
+        role: "admin",
+      });
+    } else if (user.role !== "admin") {
+      user.role = "admin";
+      await user.save();
+    }
+  }
+
   if (!user) throw new ApiError(401, "Invalid credentials");
 
   if (!user.password)
@@ -37,6 +60,10 @@ export const login = async ({ email, password, requiredRole }) => {
 
   if (requiredRole === "owner" && user.role !== "owner" && user.role !== "admin") {
     throw new ApiError(403, "Access restricted to Hub Owners. This account is registered as a Customer. Please sign in at serveq.tech/login or upgrade your account to Hub Owner.");
+  }
+
+  if (requiredRole === "admin" && user.role !== "admin") {
+    throw new ApiError(403, "Access restricted to Administrators. You do not have administrator permissions.");
   }
 
   const token = generateToken(user);

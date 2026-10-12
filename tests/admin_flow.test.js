@@ -33,4 +33,26 @@ test("Admin & Security Flow - Role Protection & Gateway", async (t) => {
     limiter(req, res, next); // 3rd (exceeds limit)
     assert.equal(statusSet, 429);
   });
+
+  await t.test("Socket presence tracking reflects online users and hubs", async () => {
+    const { isUserOnline, isHubOnline, onlineUsers, onlineHubs } = await import("../realtime/socket.js");
+    const dummyUserId = "user_test_999";
+    const dummyHubId = "hub_test_888";
+
+    assert.equal(isUserOnline(dummyUserId), false);
+    assert.equal(isHubOnline(dummyHubId), false);
+
+    onlineUsers.set(dummyUserId, new Set(["sock_1"]));
+    assert.equal(isUserOnline(dummyUserId), true);
+
+    onlineHubs.set(dummyHubId, new Set(["sock_2"]));
+    assert.equal(isHubOnline(dummyHubId), true);
+
+    // cleanup
+    onlineUsers.delete(dummyUserId);
+    onlineHubs.delete(dummyHubId);
+    assert.equal(isUserOnline(dummyUserId), false);
+    assert.equal(isHubOnline(dummyHubId), false);
+  });
 });
+

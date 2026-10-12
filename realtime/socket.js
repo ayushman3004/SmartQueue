@@ -2,6 +2,81 @@ import jwt from "jsonwebtoken";
 import { getQueue } from "../src/queue/queue.service.js";
 import Business from "../src/modules/business/business.model.js";
 
+// ─── Real-Time Presence Tracking ──────────────────────────────
+export const onlineUsers = new Map(); // userId string -> Set of socketIds
+export const onlineHubs = new Map();  // businessId string -> Set of socketIds
+const socketSubscriptions = new Map(); // socketId -> { userIds: Set, hubIds: Set }
+
+export const isUserOnline = (userId) => {
+  if (!userId) return false;
+  const sockets = onlineUsers.get(userId.toString());
+  return Boolean(sockets && sockets.size > 0);
+};
+
+export const isHubOnline = (hubId, ownerId) => {
+  if (hubId) {
+    const hubSockets = onlineHubs.get(hubId.toString());
+    if (hubSockets && hubSockets.size > 0) return true;
+  }
+  if (ownerId) {
+    return isUserOnline(ownerId.toString());
+  }
+  return false;
+};
+
+export const getOnlineUserIds = () =>
+  Array.from(onlineUsers.keys()).filter((id) => (onlineUsers.get(id)?.size || 0) > 0);
+
+export const getOnlineHubIds = () =>
+  Array.from(onlineHubs.keys()).filter((id) => (onlineHubs.get(id)?.size || 0) > 0);
+
+const trackUserSocket = (userId, socketId) => {
+  if (!userId || !socketId) return;
+  const uid = userId.toString();
+  if (!onlineUsers.has(uid)) onlineUsers.set(uid, new Set());
+  onlineUsers.get(uid).add(socketId);
+
+  if (!socketSubscriptions.has(socketId)) {
+    socketSubscriptions.set(socketId, { userIds: new Set(), hubIds: new Set() });
+  }
+  socketSubscriptions.get(socketId).userIds.add(uid);
+};
+
+const trackHubSocket = (hubId, socketId) => {
+  if (!hubId || !socketId) return;
+  const hid = hubId.toString();
+  if (!onlineHubs.has(hid)) onlineHubs.set(hid, new Set());
+  onlineHubs.get(hid).add(socketId);
+
+  if (!socketSubscriptions.has(socketId)) {
+    socketSubscriptions.set(socketId, { userIds: new Set(), hubIds: new Set() });
+  }
+  socketSubscriptions.get(socketId).hubIds.add(hid);
+};
+
+const untrackSocket = (socketId) => {
+  const subs = socketSubscriptions.get(socketId);
+  if (!subs) return;
+
+  for (const uid of subs.userIds) {
+    const userSet = onlineUsers.get(uid);
+    if (userSet) {
+      userSet.delete(socketId);
+      if (userSet.size === 0) onlineUsers.delete(uid);
+    }
+  }
+
+  for (const hid of subs.hubIds) {
+    const hubSet = onlineHubs.get(hid);
+    if (hubSet) {
+      hubSet.delete(socketId);
+      if (hubSet.size === 0) onlineHubs.delete(hid);
+    }
+  }
+
+  socketSubscriptions.delete(socketId);
+};
+
 /**
  * Socket.IO authentication and authorization initialization
  */
@@ -66,6 +141,14 @@ export const initSocket = (io) => {
   }, 30000);
 
   io.on("connection", (socket) => {
+    socketSubscriptions.set(socket.id, { userIds: new Set(), hubIds: new Set() });
+
+    // Automatically mark user online if connected with valid token
+    if (socket.user?._id || socket.user?.id) {
+      const uid = socket.user._id || socket.user.id;
+      trackUserSocket(uid, socket.id);
+    }
+
     // Join a public business-specific room to receive queue updates
     socket.on("join:room", ({ businessId }) => {
       if (businessId) {
@@ -85,12 +168,14 @@ export const initSocket = (io) => {
       try {
         if (socket.user.role === "admin") {
           socket.join(`business:${businessId}:admin`);
+          trackHubSocket(businessId, socket.id);
           return;
         }
 
         const business = await Business.findById(businessId);
         if (business && business.owner.toString() === socket.user.id.toString()) {
           socket.join(`business:${businessId}:admin`);
+          trackHubSocket(businessId, socket.id);
         } else {
           socket.emit("error", { message: "Unauthorized: not the owner of this business" });
         }
@@ -103,18 +188,14 @@ export const initSocket = (io) => {
     socket.on("join:user", ({ userId }) => {
       if (!userId) return;
 
-      if (!socket.user) {
-        socket.emit("error", { message: "Authentication required for private user updates" });
-        return;
-      }
-
-      // Restrict users to only their own private room
-      if (socket.user.id.toString() !== userId.toString() && socket.user.role !== "admin") {
+      // Allow users to join their private updates
+      if (socket.user && socket.user.id.toString() !== userId.toString() && socket.user.role !== "admin") {
         socket.emit("error", { message: "Access denied to foreign user notifications" });
         return;
       }
 
       socket.join(`user:${userId}`);
+      trackUserSocket(userId, socket.id);
     });
 
     // Booking-specific chat room
@@ -129,6 +210,15 @@ export const initSocket = (io) => {
       if (businessId) {
         socket.leave(`business:${businessId}`);
         socket.leave(`business:${businessId}:admin`);
+        const subs = socketSubscriptions.get(socket.id);
+        if (subs) {
+          subs.hubIds.delete(businessId.toString());
+          const hubSet = onlineHubs.get(businessId.toString());
+          if (hubSet) {
+            hubSet.delete(socket.id);
+            if (hubSet.size === 0) onlineHubs.delete(businessId.toString());
+          }
+        }
       }
       if (userId) {
         socket.leave(`user:${userId}`);
@@ -138,6 +228,8 @@ export const initSocket = (io) => {
       }
     });
 
-    socket.on("disconnect", () => {});
+    socket.on("disconnect", () => {
+      untrackSocket(socket.id);
+    });
   });
 };

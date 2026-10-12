@@ -1,44 +1,244 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import axios from '../api/axios'
+import { signin } from '../api/auth.api'
+import { useAuth } from '../context/AuthContext'
+import { useSocket } from '../context/SocketContext'
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState(null)
-  const [businesses, setBusinesses] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all') // 'all' | 'approved' | 'suspended'
+// ─── Embedded Admin Login View ──────────────────────────────────
+function AdminLoginForm({ onLoginSuccess }) {
+  const { user, logOut } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  // Detail Modal State
-  const [selectedBusinessDetail, setSelectedBusinessDetail] = useState(null)
-  const [detailModalOpen, setDetailModalOpen] = useState(false)
-  const [loadingDetail, setLoadingDetail] = useState(false)
+  const handleFillDemo = () => {
+    setEmail('admin@serveq.tech')
+    setPassword('admin123')
+  }
 
-  const fetchAdminData = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!email || !password) {
+      toast.error('Please enter admin email and password')
+      return
+    }
+
+    setLoading(true)
     try {
-      const [statsRes, bizRes] = await Promise.all([
-        axios.get('/admin/stats'),
-        axios.get('/admin/businesses', { params: { search } }),
-      ])
-      setStats(statsRes.data.data)
-      setBusinesses(bizRes.data.data.businesses || [])
-    } catch {
-      toast.error('Failed to load admin telemetry')
+      const res = await signin({
+        email: email.trim(),
+        password,
+        requiredRole: 'admin',
+      })
+      toast.success('Admin authentication successful! Access granted.')
+      onLoginSuccess(res.data.data.user, res.data.data.token)
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Admin authentication failed. Please verify credentials.'
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchAdminData()
-  }, [search])
+  return (
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4 bg-slate-900/40">
+      <div className="w-full max-w-md bg-white border border-zinc-200 rounded-3xl p-8 sm:p-10 shadow-2xl space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-black uppercase tracking-wider">
+            <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+            Global Control Portal
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 uppercase tracking-tight">
+            Admin <span className="text-teal-600">Login</span>
+          </h1>
+          <p className="text-xs text-slate-500">
+            Secure administrative gateway for monitoring live venues, presence, and platform operations.
+          </p>
+        </div>
 
+        {/* Existing Session Alert if non-admin */}
+        {user && user.role !== 'admin' && (
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+            <p className="font-bold flex items-center gap-1.5">
+              <span>⚠️</span> Logged in as: {user.name} ({user.role})
+            </p>
+            <p className="text-[11px] text-amber-800">
+              Administrator privileges are required for this area. Enter administrative credentials below to upgrade this session or switch accounts.
+            </p>
+            <button
+              type="button"
+              onClick={logOut}
+              className="text-[11px] font-black underline text-amber-950 hover:text-black"
+            >
+              Sign out of current account
+            </button>
+          </div>
+        )}
+
+        {/* Quick Fill Demo Helper */}
+        <div className="bg-slate-50 border border-zinc-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs">
+          <div>
+            <p className="font-bold text-zinc-900">Default Superadmin</p>
+            <p className="text-[11px] text-slate-500 font-mono">admin@serveq.tech • admin123</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleFillDemo}
+            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap"
+          >
+            ⚡ Auto-Fill
+          </button>
+        </div>
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-1.5">
+              Administrator Email
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@serveq.tech"
+              className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-zinc-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-1.5">
+              Admin Password
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 text-zinc-900"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 bg-zinc-950 hover:bg-zinc-800 disabled:opacity-60 text-white font-bold rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Authenticating Admin...</span>
+              </>
+            ) : (
+              <span>Unlock Admin Dashboard →</span>
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Admin Dashboard Component ─────────────────────────────
+export default function AdminDashboard() {
+  const { user, loading: authLoading, logIn, logOut } = useAuth()
+  const { socket } = useSocket()
+
+  // Telemetry state
+  const [stats, setStats] = useState(null)
+  const [businesses, setBusinesses] = useState([])
+  const [usersList, setUsersList] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+
+  // Active Tab: 'hubs' | 'customers'
+  const [activeTab, setActiveTab] = useState('hubs')
+
+  // Search & Filters
+  const [hubSearch, setHubSearch] = useState('')
+  const [hubFilter, setHubFilter] = useState('all') // 'all' | 'online' | 'approved' | 'suspended'
+
+  const [userSearch, setUserSearch] = useState('')
+  const [userFilter, setUserFilter] = useState('all') // 'all' | 'online' | 'in_queue' | 'customer' | 'owner'
+
+  // Detail Modal & Remove Hub Confirmation Modal
+  const [selectedBusinessDetail, setSelectedBusinessDetail] = useState(null)
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+
+  const [hubToDelete, setHubToDelete] = useState(null)
+  const [deletingHub, setDeletingHub] = useState(false)
+
+  // Fetch telemetry from API
+  const fetchAdminData = useCallback(async (silent = false) => {
+    if (!user || user.role !== 'admin') return
+    if (!silent) setLoading(true)
+
+    try {
+      const [statsRes, bizRes, usersRes] = await Promise.all([
+        axios.get('/admin/stats'),
+        axios.get('/admin/businesses', { params: { search: hubSearch } }),
+        axios.get('/admin/users', { params: { search: userSearch } }),
+      ])
+
+      setStats(statsRes.data.data)
+      setBusinesses(bizRes.data.data.businesses || [])
+      setUsersList(usersRes.data.data.users || [])
+    } catch {
+      if (!silent) toast.error('Failed to load administration data')
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [user, hubSearch, userSearch])
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchAdminData()
+    }
+  }, [user, fetchAdminData])
+
+  // Periodic Auto-refresh
+  useEffect(() => {
+    if (!autoRefresh || !user || user.role !== 'admin') return
+    const interval = setInterval(() => {
+      fetchAdminData(true)
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [autoRefresh, user, fetchAdminData])
+
+  // Real-time socket events sync
+  useEffect(() => {
+    if (!socket || !user || user.role !== 'admin') return
+
+    const handleSync = () => {
+      fetchAdminData(true)
+    }
+
+    socket.on('business:status', handleSync)
+    socket.on('business:deleted', handleSync)
+    socket.on('queue:update', handleSync)
+    socket.on('queue:joined', handleSync)
+    socket.on('queue:left', handleSync)
+
+    return () => {
+      socket.off('business:status', handleSync)
+      socket.off('business:deleted', handleSync)
+      socket.off('queue:update', handleSync)
+      socket.off('queue:joined', handleSync)
+      socket.off('queue:left', handleSync)
+    }
+  }, [socket, user, fetchAdminData])
+
+  // Moderation Handler
   const handleModerate = async (id, action) => {
     try {
       const res = await axios.patch(`/admin/business/${id}/moderate`, { action })
       toast.success(res.data.message || `Action ${action} succeeded`)
-      fetchAdminData()
+      fetchAdminData(true)
       if (selectedBusinessDetail?.business?._id === id) {
         viewBusinessDetails(id)
       }
@@ -47,15 +247,20 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleDeleteBusiness = async (id) => {
-    if (!window.confirm('CRITICAL: This will permanently delete this business, its queues, and appointments. Proceed?')) return
+  // Remove Hub Handler (Permanent)
+  const confirmDeleteBusiness = async () => {
+    if (!hubToDelete) return
+    setDeletingHub(true)
     try {
-      await axios.delete(`/admin/business/${id}`)
-      toast.success('Business permanently purged')
+      await axios.delete(`/admin/business/${hubToDelete._id}`)
+      toast.success(`Hub "${hubToDelete.name}" permanently removed`)
+      setHubToDelete(null)
       setDetailModalOpen(false)
-      fetchAdminData()
-    } catch {
-      toast.error('Failed to delete business')
+      fetchAdminData(true)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove hub')
+    } finally {
+      setDeletingHub(false)
     }
   }
 
@@ -73,186 +278,530 @@ export default function AdminDashboard() {
     }
   }
 
+  // Check auth state
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
+        <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // If unauthenticated or non-admin, render Admin Login Form directly
+  if (!user || user.role !== 'admin') {
+    return (
+      <AdminLoginForm
+        onLoginSuccess={(userData, token) => {
+          logIn(userData, token)
+        }}
+      />
+    )
+  }
+
+  // Filter Hubs
   const filteredBusinesses = businesses.filter((b) => {
-    if (filterStatus === 'all') return true
-    if (filterStatus === 'approved') return b.approvalStatus === 'approved' && b.isActive
-    if (filterStatus === 'suspended') return b.approvalStatus === 'suspended' || !b.isActive
+    if (hubFilter === 'all') return true
+    if (hubFilter === 'online') return b.isOnline
+    if (hubFilter === 'approved') return b.approvalStatus === 'approved' && b.isActive
+    if (hubFilter === 'suspended') return b.approvalStatus === 'suspended' || !b.isActive
     return true
   })
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-      <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  // Filter Customers / Users
+  const filteredUsers = usersList.filter((u) => {
+    if (userFilter === 'all') return true
+    if (userFilter === 'online') return u.isOnline
+    if (userFilter === 'in_queue') return Boolean(u.activeQueue)
+    if (userFilter === 'customer') return u.role === 'customer'
+    if (userFilter === 'owner') return u.role === 'owner'
+    return true
+  })
+
+  const onlineHubsCount = stats?.stats?.onlineHubs ?? businesses.filter((b) => b.isOnline).length
+  const onlineUsersCount = stats?.stats?.onlineUsers ?? usersList.filter((u) => u.isOnline).length
 
   return (
     <div className="container max-w-7xl py-10 px-4 sm:px-6 space-y-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-zinc-200 pb-6">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-700">Enterprise Administration</span>
-          <h1 className="text-4xl font-black tracking-tight text-zinc-950 uppercase mt-1">
-            Global <span className="text-teal-600">Control</span> Hub
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-700">
+              Live Operations Control
+            </span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950 uppercase mt-1">
+            Global <span className="text-teal-600">Admin</span> Hub
           </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Real-time telemetry, active customer & hub presence, queue monitoring, and venue moderation.
+          </p>
+        </div>
+
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${
+              autoRefresh
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-slate-50 border-zinc-200 text-slate-600'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+            Auto-Sync: {autoRefresh ? 'ON' : 'OFF'}
+          </button>
+
+          <button
+            onClick={() => fetchAdminData(false)}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-zinc-800 rounded-xl text-xs font-bold transition"
+          >
+            ↻ Refresh Telemetry
+          </button>
+
+          <div className="flex items-center gap-2 pl-2 border-l border-zinc-200">
+            <span className="text-xs font-bold text-zinc-800">{user.email}</span>
+            <button
+              onClick={logOut}
+              className="px-3 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Global Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm">
-          <p className="text-xs font-bold uppercase text-slate-400">Total Users</p>
-          <p className="text-3xl font-black text-teal-700 mt-2">{stats?.stats?.users || 0}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Platform Accounts</p>
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        {/* Online Customers (Presently logged in) */}
+        <div className="bg-white border-2 border-emerald-400/80 p-5 rounded-3xl shadow-xs relative overflow-hidden">
+          <div className="absolute top-3 right-3 flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[9px] font-black text-emerald-700 uppercase">Live</span>
+          </div>
+          <p className="text-[11px] font-bold uppercase text-slate-400">Online Customers</p>
+          <p className="text-3xl font-black text-emerald-600 mt-1">{onlineUsersCount}</p>
+          <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">Presently Logged In</p>
         </div>
 
-        <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm">
-          <p className="text-xs font-bold uppercase text-slate-400">Registered Hubs</p>
-          <p className="text-3xl font-black text-indigo-700 mt-2">{stats?.stats?.businesses || 0}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Active Venues</p>
+        {/* Online Hubs (Active right now) */}
+        <div className="bg-white border-2 border-teal-400/80 p-5 rounded-3xl shadow-xs relative overflow-hidden">
+          <div className="absolute top-3 right-3 flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse" />
+            <span className="text-[9px] font-black text-teal-700 uppercase">Live</span>
+          </div>
+          <p className="text-[11px] font-bold uppercase text-slate-400">Online Hubs</p>
+          <p className="text-3xl font-black text-teal-600 mt-1">{onlineHubsCount}</p>
+          <p className="text-[10px] text-teal-700 font-semibold mt-0.5">Active Venues</p>
         </div>
 
-        <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm">
-          <p className="text-xs font-bold uppercase text-slate-400">Total Bookings</p>
-          <p className="text-3xl font-black text-zinc-950 mt-2">{stats?.stats?.bookings || 0}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Appointments Created</p>
+        <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-xs">
+          <p className="text-[11px] font-bold uppercase text-slate-400">Total Hubs</p>
+          <p className="text-3xl font-black text-indigo-700 mt-1">{stats?.stats?.businesses || 0}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Registered Venues</p>
         </div>
 
-        <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm">
-          <p className="text-xs font-bold uppercase text-slate-400">Platform Revenue</p>
-          <p className="text-3xl font-black text-emerald-600 mt-2">₹{stats?.stats?.revenue || 0}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Completed Transactions</p>
+        <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-xs">
+          <p className="text-[11px] font-bold uppercase text-slate-400">Total Users</p>
+          <p className="text-3xl font-black text-zinc-950 mt-1">{stats?.stats?.users || 0}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Platform Patrons</p>
+        </div>
+
+        <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-xs">
+          <p className="text-[11px] font-bold uppercase text-slate-400">Total Bookings</p>
+          <p className="text-3xl font-black text-zinc-950 mt-1">{stats?.stats?.bookings || 0}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Appointments Created</p>
+        </div>
+
+        <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-xs">
+          <p className="text-[11px] font-bold uppercase text-slate-400">Platform Revenue</p>
+          <p className="text-3xl font-black text-emerald-600 mt-1">₹{stats?.stats?.revenue || 0}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Completed Volume</p>
         </div>
       </div>
 
-      {/* Business Management Section */}
-      <div className="bg-white border border-zinc-200 rounded-3xl shadow-sm overflow-hidden space-y-6 p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
-          <div>
-            <h2 className="text-xl font-black text-zinc-950">Businesses & Hub Directory</h2>
-            <p className="text-xs text-slate-500">Monitor queue lengths, view revenue, approve, suspend, or delete venues.</p>
-          </div>
+      {/* Directory Navigation Tabs */}
+      <div className="flex border-b border-zinc-200 space-x-6 text-sm font-bold">
+        <button
+          onClick={() => setActiveTab('hubs')}
+          className={`pb-3 border-b-2 flex items-center gap-2 transition ${
+            activeTab === 'hubs'
+              ? 'border-teal-600 text-teal-700 font-black'
+              : 'border-transparent text-slate-400 hover:text-zinc-800'
+          }`}
+        >
+          <span>🏢 Hubs & Operations Directory</span>
+          <span className="px-2 py-0.5 text-[10px] rounded-full bg-teal-100 text-teal-800">
+            {businesses.length} total • {onlineHubsCount} online
+          </span>
+        </button>
 
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              placeholder="Search business..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-              {['all', 'approved', 'suspended'].map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setFilterStatus(st)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                    filterStatus === st ? 'bg-white shadow-xs text-zinc-900' : 'text-slate-500 hover:text-zinc-900'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
+        <button
+          onClick={() => setActiveTab('customers')}
+          className={`pb-3 border-b-2 flex items-center gap-2 transition ${
+            activeTab === 'customers'
+              ? 'border-teal-600 text-teal-700 font-black'
+              : 'border-transparent text-slate-400 hover:text-zinc-800'
+          }`}
+        >
+          <span>👥 Customers & Presence Directory</span>
+          <span className="px-2 py-0.5 text-[10px] rounded-full bg-emerald-100 text-emerald-800">
+            {usersList.length} total • {onlineUsersCount} online
+          </span>
+        </button>
+      </div>
+
+      {/* Tab 1: Hubs & Operations Directory */}
+      {activeTab === 'hubs' && (
+        <div className="bg-white border border-zinc-200 rounded-3xl shadow-sm overflow-hidden space-y-6 p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+            <div>
+              <h2 className="text-xl font-black text-zinc-950">Registered Hubs & Venues</h2>
+              <p className="text-xs text-slate-500">
+                Monitor online presence, live queues, revenue, operational status, or permanently remove hubs.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                placeholder="Search hub by name, city..."
+                value={hubSearch}
+                onChange={(e) => setHubSearch(e.target.value)}
+                className="px-4 py-2 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 w-52"
+              />
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'online', label: '🟢 Online Now' },
+                  { id: 'approved', label: 'Approved' },
+                  { id: 'suspended', label: 'Suspended' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    onClick={() => setHubFilter(st.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      hubFilter === st.id ? 'bg-white shadow-xs text-zinc-900' : 'text-slate-500 hover:text-zinc-900'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        {filteredBusinesses.length === 0 ? (
-          <div className="py-16 text-center text-slate-400">
-            No businesses found matching this query.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-zinc-100">
-                <tr>
-                  <th className="py-3.5 px-4">Business</th>
-                  <th className="py-3.5 px-4">Owner</th>
-                  <th className="py-3.5 px-4">Location</th>
-                  <th className="py-3.5 px-4">Queue / Bookings</th>
-                  <th className="py-3.5 px-4">Revenue</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Moderation Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {filteredBusinesses.map((b) => (
-                  <tr key={b._id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 px-4">
-                      <p className="font-bold text-zinc-900 text-sm">{b.name}</p>
-                      <p className="text-[10px] text-slate-400 capitalize">{b.category} Hub</p>
-                    </td>
-                    <td className="py-4 px-4">
-                      <p className="font-medium text-zinc-800">{b.owner?.name || 'Owner'}</p>
-                      <p className="text-[10px] text-slate-400">{b.owner?.email}</p>
-                      {b.owner?.phone && <p className="text-[10px] text-slate-400">{b.owner?.phone}</p>}
-                    </td>
-                    <td className="py-4 px-4 text-slate-600">
-                      <p className="font-medium">{b.location || b.address || 'Not specified'}</p>
-                    </td>
-                    <td className="py-4 px-4 font-semibold">
-                      <span className="text-teal-700">{b.queueLength || 0} in queue</span>
-                      <span className="text-slate-400 text-[10px] block">{b.bookingCount || 0} bookings</span>
-                    </td>
-                    <td className="py-4 px-4 font-black text-zinc-950">
-                      ₹{b.revenue || 0}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="space-y-1">
-                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase block w-fit ${
-                          b.approvalStatus === 'approved' && b.isActive
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {b.approvalStatus || (b.isActive ? 'approved' : 'suspended')}
-                        </span>
-                        <span className={`text-[9px] font-bold block ${b.isOpen ? 'text-emerald-700' : 'text-slate-400'}`}>
-                          {b.isOpen ? '● Open' : '○ Closed'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-right space-x-1.5">
-                      <button
-                        onClick={() => viewBusinessDetails(b._id)}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold"
-                      >
-                        Details
-                      </button>
-                      {b.isActive && b.approvalStatus === 'approved' ? (
-                        <button
-                          onClick={() => handleModerate(b._id, 'suspend')}
-                          className="px-3 py-1.5 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold"
-                        >
-                          Suspend
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleModerate(b._id, 'approve')}
-                          className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold"
-                        >
-                          Approve
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleModerate(b._id, b.isOpen ? 'close' : 'open')}
-                        className="px-3 py-1.5 bg-slate-50 border border-zinc-200 hover:bg-white text-slate-700 rounded-lg text-xs font-bold"
-                      >
-                        {b.isOpen ? 'Close' : 'Open'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBusiness(b._id)}
-                        className="px-3 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold"
-                      >
-                        Delete
-                      </button>
-                    </td>
+          {filteredBusinesses.length === 0 ? (
+            <div className="py-16 text-center text-slate-400 text-xs">
+              No hubs found matching this search or filter.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-zinc-100">
+                  <tr>
+                    <th className="py-3.5 px-4">Hub / Venue</th>
+                    <th className="py-3.5 px-4">Presence</th>
+                    <th className="py-3.5 px-4">Assigned Owner</th>
+                    <th className="py-3.5 px-4">Location</th>
+                    <th className="py-3.5 px-4">Queue / Bookings</th>
+                    <th className="py-3.5 px-4">Revenue</th>
+                    <th className="py-3.5 px-4">Operations</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {filteredBusinesses.map((b) => (
+                    <tr key={b._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-4 px-4">
+                        <p className="font-bold text-zinc-900 text-sm">{b.name}</p>
+                        <p className="text-[10px] text-slate-400 capitalize">{b.category} Hub</p>
+                      </td>
+                      <td className="py-4 px-4">
+                        {b.isOnline ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Online Now
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            Offline
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        <p className="font-medium text-zinc-800">{b.owner?.name || 'Owner'}</p>
+                        <p className="text-[10px] text-slate-400">{b.owner?.email}</p>
+                        {b.owner?.phone && <p className="text-[10px] text-slate-400">{b.owner?.phone}</p>}
+                      </td>
+                      <td className="py-4 px-4 text-slate-600">
+                        <p className="font-medium">{b.location || b.address || 'Not specified'}</p>
+                      </td>
+                      <td className="py-4 px-4 font-semibold">
+                        <span className="text-teal-700 font-bold">{b.queueLength || 0} in queue</span>
+                        <span className="text-slate-400 text-[10px] block">{b.bookingCount || 0} bookings</span>
+                      </td>
+                      <td className="py-4 px-4 font-black text-zinc-950">
+                        ₹{b.revenue || 0}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="space-y-1">
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase block w-fit ${
+                            b.approvalStatus === 'approved' && b.isActive
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {b.approvalStatus || (b.isActive ? 'approved' : 'suspended')}
+                          </span>
+                          <span className={`text-[9px] font-bold block ${b.isOpen ? 'text-emerald-700' : 'text-slate-400'}`}>
+                            {b.isOpen ? '● Open' : '○ Closed'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-right space-x-1.5">
+                        <button
+                          onClick={() => viewBusinessDetails(b._id)}
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold"
+                        >
+                          Details
+                        </button>
+                        {b.isActive && b.approvalStatus === 'approved' ? (
+                          <button
+                            onClick={() => handleModerate(b._id, 'suspend')}
+                            className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold"
+                          >
+                            Suspend
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleModerate(b._id, 'approve')}
+                            className="px-2.5 py-1.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold"
+                          >
+                            Approve
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleModerate(b._id, b.isOpen ? 'close' : 'open')}
+                          className="px-2.5 py-1.5 bg-slate-50 border border-zinc-200 hover:bg-white text-slate-700 rounded-lg text-xs font-bold"
+                        >
+                          {b.isOpen ? 'Close' : 'Open'}
+                        </button>
+                        <button
+                          onClick={() => setHubToDelete(b)}
+                          className="px-2.5 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white text-rose-700 rounded-lg text-xs font-bold transition shadow-xs"
+                          title="Permanently remove this hub from platform"
+                        >
+                          🗑️ Remove Hub
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Customers & Presence Directory */}
+      {activeTab === 'customers' && (
+        <div className="bg-white border border-zinc-200 rounded-3xl shadow-sm overflow-hidden space-y-6 p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+            <div>
+              <h2 className="text-xl font-black text-zinc-950">Customers & Patrons Telemetry</h2>
+              <p className="text-xs text-slate-500">
+                View customers presently logged in, their live queue tokens, balances, and appointment metrics.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                placeholder="Search patron by name, email..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="px-4 py-2 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 w-52"
+              />
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                {[
+                  { id: 'all', label: 'All Users' },
+                  { id: 'online', label: '🟢 Online Now' },
+                  { id: 'in_queue', label: 'In Queue' },
+                  { id: 'customer', label: 'Customers' },
+                  { id: 'owner', label: 'Hub Owners' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    onClick={() => setUserFilter(st.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      userFilter === st.id ? 'bg-white shadow-xs text-zinc-900' : 'text-slate-500 hover:text-zinc-900'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
+
+          {filteredUsers.length === 0 ? (
+            <div className="py-16 text-center text-slate-400 text-xs">
+              No customers found matching this query or presence filter.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-zinc-100">
+                  <tr>
+                    <th className="py-3.5 px-4">Patron / User</th>
+                    <th className="py-3.5 px-4">Presence Status</th>
+                    <th className="py-3.5 px-4">Role</th>
+                    <th className="py-3.5 px-4">Live Queue Token</th>
+                    <th className="py-3.5 px-4">Wallet Balance</th>
+                    <th className="py-3.5 px-4">Bookings</th>
+                    <th className="py-3.5 px-4">Registered</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {filteredUsers.map((u) => (
+                    <tr key={u._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 font-black flex items-center justify-center text-xs overflow-hidden">
+                            {u.avatar ? (
+                              <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                            ) : (
+                              u.name?.slice(0, 2).toUpperCase() || 'U'
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-zinc-900 text-sm">{u.name}</p>
+                            <p className="text-[10px] text-slate-400">{u.email}</p>
+                            {u.phone && <p className="text-[10px] text-slate-400">{u.phone}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        {u.isOnline ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-black uppercase">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Online (Logged In)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            Offline
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          u.role === 'admin'
+                            ? 'bg-purple-100 text-purple-800'
+                            : u.role === 'owner'
+                            ? 'bg-indigo-100 text-indigo-800'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        {u.activeQueue ? (
+                          <div className="p-2 rounded-xl bg-teal-50 border border-teal-200 text-[11px] space-y-0.5">
+                            <p className="font-black text-teal-900">
+                              Token #{u.activeQueue.tokenNumber} • Pos {u.activeQueue.position}
+                            </p>
+                            <p className="text-teal-700 text-[10px]">
+                              {u.activeQueue.businessName} ({u.activeQueue.status})
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-xs">— Not in Queue</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 font-black text-zinc-950">
+                        ₹{u.walletBalance ?? 0}
+                      </td>
+                      <td className="py-4 px-4 font-semibold text-xs">
+                        <span className="text-zinc-900">{u.bookingCount || 0} total</span>
+                        <span className="text-emerald-700 text-[10px] block">
+                          {u.completedCount || 0} completed (₹{u.totalSpent || 0})
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-slate-500 text-[11px]">
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Confirmation Modal: Remove Hub Permanently */}
+      <AnimatePresence>
+        {hubToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-rose-200 space-y-5"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl font-bold">
+                ⚠️
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black text-zinc-950">
+                  Permanently Remove Hub?
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  You are about to permanently delete <strong className="text-zinc-900">{hubToDelete.name}</strong> ({hubToDelete.category} Hub).
+                  This will immediately erase the business profile, associated queues, active tokens, and all scheduled bookings.
+                </p>
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-bold">
+                  This action is irreversible.
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={deletingHub}
+                  onClick={() => setHubToDelete(null)}
+                  className="px-4 py-2.5 rounded-xl border border-zinc-200 text-zinc-700 hover:bg-slate-100 text-xs font-bold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={deletingHub}
+                  onClick={confirmDeleteBusiness}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-md flex items-center gap-2"
+                >
+                  {deletingHub ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Removing Hub...</span>
+                    </>
+                  ) : (
+                    <span>Confirm & Remove Hub</span>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
       {/* Business Details Breakdown Modal */}
       <AnimatePresence>
@@ -315,7 +864,9 @@ export default function AdminDashboard() {
                   <div className="p-4 rounded-2xl border border-zinc-200 bg-slate-50/50 space-y-1">
                     <p className="text-[10px] font-black uppercase text-slate-400">Assigned Business Owner</p>
                     <p className="text-sm font-bold text-zinc-900">{selectedBusinessDetail.business?.owner?.name}</p>
-                    <p className="text-xs text-slate-500">Email: {selectedBusinessDetail.business?.owner?.email} • Phone: {selectedBusinessDetail.business?.phone || selectedBusinessDetail.business?.owner?.phone || 'N/A'}</p>
+                    <p className="text-xs text-slate-500">
+                      Email: {selectedBusinessDetail.business?.owner?.email} • Phone: {selectedBusinessDetail.business?.phone || selectedBusinessDetail.business?.owner?.phone || 'N/A'}
+                    </p>
                   </div>
 
                   {/* Current Queue Section */}
@@ -355,15 +906,17 @@ export default function AdminDashboard() {
                   {/* Modal Action Controls */}
                   <div className="pt-4 border-t border-zinc-100 flex items-center justify-between gap-3">
                     <button
-                      onClick={() => handleDeleteBusiness(selectedBusinessDetail.business?._id)}
-                      className="px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold"
+                      onClick={() => {
+                        setHubToDelete(selectedBusinessDetail.business)
+                      }}
+                      className="px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                     >
-                      Delete Venue
+                      🗑️ Remove Hub
                     </button>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleModerate(selectedBusinessDetail.business?._id, selectedBusinessDetail.business?.isActive ? 'suspend' : 'approve')}
-                        className="px-4 py-2.5 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl text-xs font-bold"
+                        className="px-4 py-2.5 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl text-xs font-bold transition"
                       >
                         {selectedBusinessDetail.business?.isActive ? 'Suspend Business' : 'Approve Business'}
                       </button>

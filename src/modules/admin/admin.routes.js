@@ -9,6 +9,7 @@ router.use(allowRoles("admin"));
 
 router.get("/stats", adminController.getStats);
 router.get("/businesses", adminController.getAllBusinesses);
+router.get("/users", adminController.getAllUsers);
 router.get("/business/:id", adminController.getBusinessDetail);
 router.patch("/business/:id/moderate", adminController.moderateBusiness);
 router.patch("/business/:id/toggle", adminController.toggleBusinessStatus);
