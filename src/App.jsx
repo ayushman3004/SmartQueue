@@ -112,11 +112,17 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
             path="/"
-            element={user ? (
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            ) : <LandingPage />}
+            element={
+              !user ? (
+                <LandingPage />
+              ) : user.role === 'owner' ? (
+                <Navigate to="/business" replace />
+              ) : (
+                <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                  <DashboardPage />
+                </ProtectedRoute>
+              )
+            }
           />
           <Route
             path="/queue/:businessId"

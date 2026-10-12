@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses, getMyBusinesses } from '../api/business.api'
@@ -8,7 +8,6 @@ import { getMyBookings, cancelBooking } from '../api/booking.api'
 import { getAvailableCoupons } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import BusinessCard from '../components/BusinessCard'
-import HubCommandCenter from '../components/HubCommandCenter'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 
@@ -19,7 +18,7 @@ export default function DashboardPage() {
   const isOwner = user?.role === 'owner'
 
   if (isOwner) {
-    return <HubCommandCenter />
+    return <Navigate to="/business" replace />
   }
   const navigate = useNavigate()
   const { onBusinessStatus, socket } = useSocket()
