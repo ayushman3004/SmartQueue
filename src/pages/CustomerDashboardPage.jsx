@@ -35,8 +35,34 @@ export default function CustomerDashboardPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
 
   // Selected services per business (for inline live join)
-  // map: { [businessId]: serviceName }
+  // map: { [businessId]: serviceObj[] }
   const [selectedServices, setSelectedServices] = useState({})
+  // Selected staff per business (for inline live join)
+  // map: { [businessId]: 'any' | staffObj }
+  const [selectedStaff, setSelectedStaff] = useState({})
+
+  // Toggle service selection for a business
+  const handleToggleService = (bizId, svc, allServices) => {
+    setSelectedServices(prev => {
+      const current = prev[bizId] || (allServices?.length > 0 ? [allServices[0]] : [svc])
+      const exists = current.some(s => s.name === svc.name)
+      if (exists) {
+        if (current.length === 1) {
+          toast('At least one service must remain selected', { icon: 'ℹ️' })
+          return prev
+        }
+        return {
+          ...prev,
+          [bizId]: current.filter(s => s.name !== svc.name),
+        }
+      } else {
+        return {
+          ...prev,
+          [bizId]: [...current, svc],
+        }
+      }
+    })
+  }
 
   // Coupon Drawer
   const [showCoupons, setShowCoupons] = useState(false)
@@ -62,12 +88,22 @@ export default function CustomerDashboardPage() {
       setMyBookings(myBkRes.data.data.bookings || [])
       setCoupons(coupRes.data.data.coupons || [])
 
-      // Initialize default selected services for each business
+      // Initialize default selected services and staff for each business
       setSelectedServices(prev => {
         const next = { ...prev }
         bizList.forEach(b => {
           if (!next[b._id]) {
-            next[b._id] = b.services?.[0]?.name || 'General Service'
+            next[b._id] = b.services?.length ? [b.services[0]] : [{ name: 'General Service', duration: b.averageServiceTime || 15, price: b.basePrice || 0 }]
+          }
+        })
+        return next
+      })
+
+      setSelectedStaff(prev => {
+        const next = { ...prev }
+        bizList.forEach(b => {
+          if (!next[b._id]) {
+            next[b._id] = 'any'
           }
         })
         return next
@@ -175,11 +211,19 @@ export default function CustomerDashboardPage() {
       return
     }
 
-    const serviceName = selectedServices[biz._id] || biz.services?.[0]?.name || 'General Service'
+    const services = biz.services || []
+    const curServices = selectedServices[biz._id] || (services.length > 0 ? [services[0]] : [{ name: 'General Service', duration: biz.averageServiceTime || 15, price: biz.basePrice || 0 }])
+    const curStaff = selectedStaff[biz._id] || 'any'
+    const preferredStaffName = curStaff === 'any' ? null : (typeof curStaff === 'string' ? curStaff : curStaff.name)
+
     setJoiningBizId(biz._id)
 
     try {
-      const res = await joinQueue(biz._id, { serviceType: serviceName })
+      const res = await joinQueue(biz._id, {
+        services: curServices,
+        serviceType: curServices.map(s => s.name).join(', '),
+        preferredStaff: preferredStaffName,
+      })
       const updatedQ = res.data.data.queue
 
       // Update business local state immediately
@@ -417,10 +461,32 @@ export default function CustomerDashboardPage() {
                   </div>
 
                   {/* Service info & Est start */}
-                  <div className="text-xs text-zinc-600 space-y-1">
+                  <div className="text-xs text-zinc-600 space-y-1.5">
                     <p>
                       Service: <strong className="text-zinc-950">{myQueueItem.serviceType || 'General Service'}</strong>
                     </p>
+                    {myQueueItem.services && myQueueItem.services.length > 1 && (
+                      <div className="flex flex-wrap gap-1">
+                        {myQueueItem.services.map((s, idx) => (
+                          <span key={idx} className="text-[10px] font-bold bg-teal-50 border border-teal-200 text-teal-800 px-2 py-0.5 rounded-md">
+                            {s.name} ({s.duration}m • ₹{s.price})
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {myQueueItem.assignedStaff?.name && (
+                      <p className="flex items-center gap-1.5 text-xs">
+                        <span className="text-zinc-500 font-medium">
+                          {business.category === 'clinic' ? '🩺 Doctor:' : '✂️ Barber:'}
+                        </span>
+                        <span className="font-bold text-zinc-950 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px] inline-flex items-center gap-1">
+                          {myQueueItem.assignedStaff.name}
+                          {myQueueItem.assignedStaff.autoAssigned && (
+                            <span className="text-[9px] text-teal-700 font-semibold">(On-Duty Fallback)</span>
+                          )}
+                        </span>
+                      </p>
+                    )}
                     {estimatedStartTime && !isServing && (
                       <p className="text-teal-700 font-semibold">
                         Est. Start: {new Date(estimatedStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -522,8 +588,15 @@ export default function CustomerDashboardPage() {
               const userTokenIndex = user?._id ? qUsers.findIndex(u => (u.userId?._id || u.userId)?.toString() === user._id.toString()) : -1
 
               const services = biz.services || []
-              const activeService = selectedServices[biz._id] || services[0]?.name || 'General Service'
-              const selectedServiceObj = services.find(s => s.name === activeService) || { duration: biz.averageServiceTime || 15, price: biz.basePrice || 0 }
+              const isClinic = biz.category === 'clinic' || biz.category === 'healthcare'
+              const staffRoleLabel = isClinic ? 'Doctor' : 'Barber'
+              const staffRoleIcon = isClinic ? '🩺' : '✂️'
+              const staffList = biz.staff || []
+
+              const curSelectedServices = selectedServices[biz._id] || (services.length > 0 ? [services[0]] : [{ name: 'General Service', duration: biz.averageServiceTime || 15, price: biz.basePrice || 0 }])
+              const totalDuration = curSelectedServices.reduce((acc, s) => acc + (s.duration || 15), 0)
+              const totalPrice = curSelectedServices.reduce((acc, s) => acc + (s.price ?? biz.basePrice ?? 0), 0)
+              const curStaff = selectedStaff[biz._id] || 'any'
 
               return (
                 <div
@@ -572,23 +645,96 @@ export default function CustomerDashboardPage() {
                       </div>
                     </div>
 
-                    {/* Inline Service Selection */}
-                    {services.length > 0 && (
-                      <div className="space-y-2 mt-3">
-                        <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Select Desired Service</p>
-                        <select
-                          value={activeService}
-                          onChange={(e) => setSelectedServices(prev => ({ ...prev, [biz._id]: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        >
-                          {services.map((svc, sIdx) => (
-                            <option key={sIdx} value={svc.name}>
-                              {svc.name} — {svc.duration}m (₹{svc.price})
-                            </option>
-                          ))}
-                        </select>
+                    {/* Multi-Service Selection */}
+                    <div className="space-y-2 mt-3 pt-3 border-t border-zinc-100">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">
+                          Select Services (Choose Multiple)
+                        </p>
+                        <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
+                          {curSelectedServices.length} Selected • {totalDuration}m
+                        </span>
                       </div>
-                    )}
+
+                      {services.length > 0 ? (
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                          {services.map((svc, sIdx) => {
+                            const isSelected = curSelectedServices.some(s => s.name === svc.name)
+                            return (
+                              <div
+                                key={sIdx}
+                                onClick={() => handleToggleService(biz._id, svc, services)}
+                                className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between select-none ${
+                                  isSelected
+                                    ? 'bg-teal-50/80 border-teal-500 font-semibold ring-1 ring-teal-500/20 text-zinc-950 shadow-xs'
+                                    : 'bg-zinc-50 border-zinc-200/80 text-zinc-600 hover:bg-white hover:border-zinc-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className={`w-4 h-4 rounded-md border flex items-center justify-center text-[10px] font-black transition-colors flex-shrink-0 ${
+                                    isSelected ? 'bg-teal-600 border-teal-600 text-white' : 'border-zinc-300 bg-white text-transparent'
+                                  }`}>
+                                    ✓
+                                  </div>
+                                  <span className="truncate">{svc.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2 font-bold flex-shrink-0 ml-2">
+                                  <span className="text-[10px] text-zinc-400">{svc.duration}m</span>
+                                  <span className="text-xs font-black text-teal-800 bg-teal-100/70 px-2 py-0.5 rounded-md">
+                                    ₹{svc.price ?? biz.basePrice ?? 0}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-500 flex justify-between">
+                          <span>General Consultation</span>
+                          <span>{biz.averageServiceTime || 15}m • ₹{biz.basePrice || 0}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Doctor / Barber Selection with Auto-Fallback */}
+                    <div className="space-y-1.5 mt-3 pt-3 border-t border-zinc-100">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider flex items-center gap-1">
+                          <span>{staffRoleIcon}</span>
+                          <span>Select {staffRoleLabel}</span>
+                        </label>
+                        <span className="text-[9px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
+                          🛡️ Auto-Fallback Guarantee
+                        </span>
+                      </div>
+
+                      <select
+                        value={typeof curStaff === 'string' ? curStaff : (curStaff?.name || 'any')}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          if (val === 'any') {
+                            setSelectedStaff(prev => ({ ...prev, [biz._id]: 'any' }))
+                          } else {
+                            const found = staffList.find(s => s.name === val)
+                            setSelectedStaff(prev => ({ ...prev, [biz._id]: found || val }))
+                          }
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        <option value="any">✨ Any Available {isClinic ? 'General Physician / Doctor' : 'Barber / Stylist'} (Auto-Assign On-Duty)</option>
+                        {staffList.map((st, stIdx) => (
+                          <option key={stIdx} value={st.name}>
+                            {st.name} — {st.role || (isClinic ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {st.isAvailable === false ? '• Busy/Off' : '• Available'}
+                          </option>
+                        ))}
+                      </select>
+
+                      <p className="text-[10px] text-zinc-400 leading-tight">
+                        {isClinic
+                          ? '⚕️ If chosen doctor is unavailable, auto-assigned to on-duty General Physician.'
+                          : '✂️ If chosen barber is unavailable, auto-assigned to any available on-duty barber.'}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Bottom Actions */}
@@ -624,7 +770,7 @@ export default function CustomerDashboardPage() {
                         ) : (
                           <>
                             <span>⚡ Join Live Queue</span>
-                            <span className="text-[10px] opacity-80">(~{selectedServiceObj.duration}m • ₹{selectedServiceObj.price})</span>
+                            <span className="text-[10px] opacity-80">(~{totalDuration}m • ₹{totalPrice})</span>
                           </>
                         )}
                       </button>

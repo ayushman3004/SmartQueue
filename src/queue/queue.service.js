@@ -26,18 +26,132 @@ export const joinQueue = async (businessId, userData, io = null) => {
     throw new ApiError(400, "You are already in this queue");
   }
 
-  // Determine price
-  let price = business.basePrice || 0;
-  const selectedServiceObj = business.services?.find((s) => s.name === userData.serviceType);
+  // 1. Process multiple services or fallback to single service
+  let selectedServicesList = [];
+  let baseServiceTime = 0;
+  let price = 0;
+  let finalServiceType = userData.serviceType || "general";
 
-  if (selectedServiceObj && selectedServiceObj.price !== undefined) {
-    price = selectedServiceObj.price;
-  } else if (userData.pricingLabel) {
-    const specificPricing = business.pricing?.find((p) => p.label === userData.pricingLabel);
-    if (specificPricing) price = specificPricing.price;
+  if (Array.isArray(userData.services) && userData.services.length > 0) {
+    selectedServicesList = userData.services.map((s) => ({
+      name: s.name,
+      duration: Math.max(1, Number(s.duration) || 15),
+      price: Math.max(0, Number(s.price) || 0),
+    }));
+    baseServiceTime = selectedServicesList.reduce((sum, s) => sum + s.duration, 0);
+    price = selectedServicesList.reduce((sum, s) => sum + s.price, 0);
+    finalServiceType = selectedServicesList.map((s) => s.name).join(", ");
+  } else if (userData.serviceType) {
+    const matched = business.services?.find((s) => s.name === userData.serviceType);
+    const sDur = matched?.duration || business.averageServiceTime || 15;
+    let sPrice = business.basePrice || 0;
+    if (userData.pricingLabel) {
+      const specificPricing = business.pricing?.find((p) => p.label === userData.pricingLabel);
+      if (specificPricing) sPrice = specificPricing.price;
+    }
+    if (matched && matched.price !== undefined) {
+      sPrice = matched.price;
+    }
+    selectedServicesList = [{ name: userData.serviceType, duration: sDur, price: sPrice }];
+    baseServiceTime = sDur;
+    price = sPrice;
+    finalServiceType = userData.serviceType;
+  } else {
+    baseServiceTime = business.averageServiceTime || 15;
+    price = business.basePrice || 0;
+    selectedServicesList = [{ name: "General Service", duration: baseServiceTime, price }];
+    finalServiceType = "General Service";
   }
 
-  // Apply Coupon if supplied
+  // 2. Staff Assignment (Doctor / Barber) with auto-fallback
+  const isClinic = business.category === "clinic" || business.category === "healthcare";
+  const staffList = Array.isArray(business.staff) ? business.staff : [];
+  const staffNameRequested = typeof userData.preferredStaff === "string"
+    ? userData.preferredStaff.trim()
+    : userData.preferredStaff?.name?.trim();
+
+  // Find staff members currently serving
+  const currentlyServingStaff = queueDoc.users
+    .filter((u) => u.status === "serving" && u.assignedStaff?.name)
+    .map((u) => u.assignedStaff.name.toLowerCase());
+
+  let assignedStaff = null;
+
+  // Check requested doctor / barber
+  if (staffNameRequested && staffNameRequested.toLowerCase() !== "any") {
+    const candidate = staffList.find(
+      (s) => s.name.toLowerCase() === staffNameRequested.toLowerCase() && s.isAvailable !== false
+    );
+    if (candidate && !currentlyServingStaff.includes(candidate.name.toLowerCase())) {
+      assignedStaff = {
+        name: candidate.name,
+        role: candidate.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+        specialties: candidate.specialties || "",
+        autoAssigned: false,
+      };
+    }
+  }
+
+  // Auto-fallback if requested staff unavailable or not specified
+  if (!assignedStaff) {
+    if (isClinic) {
+      // Find on-duty available General Physician
+      const activeDocs = staffList.filter(
+        (s) => s.isAvailable !== false && !currentlyServingStaff.includes(s.name.toLowerCase())
+      );
+      const freeDocs = [];
+      for (const doc of activeDocs) {
+        const text = `${doc.role || ""} ${doc.specialties || ""} ${doc.name || ""}`.toLowerCase();
+        const isGP =
+          text.includes("general") ||
+          text.includes("physician") ||
+          text.includes("primary") ||
+          text.includes("family") ||
+          text.includes("mbbs") ||
+          text.includes("medicine");
+        freeDocs.push({ doc, isGP });
+      }
+      const chosen = freeDocs.find((d) => d.isGP)?.doc || freeDocs[0]?.doc;
+      if (chosen) {
+        assignedStaff = {
+          name: chosen.name,
+          role: chosen.role || "General Physician",
+          specialties: chosen.specialties || "General Medicine & Primary Care",
+          autoAssigned: true,
+        };
+      } else {
+        assignedStaff = {
+          name: "Dr. On-Duty (General Physician)",
+          role: "General Physician",
+          specialties: "General Medicine & Primary Care",
+          autoAssigned: true,
+        };
+      }
+    } else {
+      // Salon: assign any available barber
+      const activeBarbers = staffList.filter(
+        (s) => s.isAvailable !== false && !currentlyServingStaff.includes(s.name.toLowerCase())
+      );
+      const chosenBarber = activeBarbers[0];
+      if (chosenBarber) {
+        assignedStaff = {
+          name: chosenBarber.name,
+          role: chosenBarber.role || "Barber / Stylist",
+          specialties: chosenBarber.specialties || "Hair Styling & Grooming",
+          autoAssigned: true,
+        };
+      } else {
+        assignedStaff = {
+          name: "On-Duty Stylist",
+          role: "Barber / Stylist",
+          specialties: "Hair Styling & Grooming",
+          autoAssigned: true,
+        };
+      }
+    }
+  }
+
+  // 3. Apply Coupon if supplied
   let discount = 0;
   if (userData.couponCode) {
     try {
@@ -61,9 +175,8 @@ export const joinQueue = async (businessId, userData, io = null) => {
   }
 
   // AI prediction for service duration
-  const baseServiceTime = selectedServiceObj ? selectedServiceObj.duration : (business.averageServiceTime || 10);
   const serviceTime = await predictServiceTime({
-    serviceType: userData.serviceType,
+    serviceType: finalServiceType,
     userType: userData.userType || "normal",
     timeOfDay: new Date().getHours(),
     queueLength: queueDS.map.size,
@@ -73,7 +186,9 @@ export const joinQueue = async (businessId, userData, io = null) => {
   queueDS.enqueue({
     userId: userData.userId,
     serviceTime,
-    serviceType: userData.serviceType || "general",
+    serviceType: finalServiceType,
+    services: selectedServicesList,
+    assignedStaff,
     pricingLabel: userData.pricingLabel || "",
     paidAmount: finalDeposit,
   });

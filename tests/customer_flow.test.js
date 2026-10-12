@@ -274,3 +274,170 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
     }
   });
 });
+
+test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async (t) => {
+  const { joinQueue } = await import("../src/queue/queue.service.js");
+  const Queue = (await import("../src/queue/queue.model.js")).default;
+  const Business = (await import("../src/modules/business/business.model.js")).default;
+  const User = (await import("../src/modules/auth/auth.model.js")).default;
+  const mongoose = (await import("mongoose")).default;
+
+  const businessId = new mongoose.Types.ObjectId();
+  const userId = new mongoose.Types.ObjectId();
+
+  await t.test("joinQueue records multiple services and assigns available doctor", async () => {
+    const origQueueFindOne = Queue.findOne;
+    const fakeQueueDoc = {
+      businessId,
+      users: [],
+      save: async () => {},
+    };
+    Queue.findOne = async () => fakeQueueDoc;
+
+    const origBizFindById = Business.findById;
+    Business.findById = async () => ({
+      _id: businessId,
+      name: "Sunrise Care Clinic",
+      category: "clinic",
+      isOpen: true,
+      isActive: true,
+      basePrice: 100,
+      staff: [
+        { name: "Dr. Sarah Jenkins", role: "General Physician", isAvailable: true },
+        { name: "Dr. A. Verma", role: "Dermatologist", isAvailable: true },
+      ],
+    });
+
+    const origUserFindById = User.findById;
+    User.findById = async () => ({ _id: userId, walletBalance: 1000 });
+    const origUserFindOneAndUpdate = User.findOneAndUpdate;
+    User.findOneAndUpdate = () => ({
+      select: async () => ({ _id: userId, walletBalance: 500 }),
+    });
+
+    try {
+      const updatedQueue = await joinQueue(businessId, {
+        userId,
+        services: [
+          { name: "General Checkup", duration: 20, price: 300 },
+          { name: "Blood Pressure Monitoring", duration: 10, price: 100 },
+        ],
+        preferredStaff: "Dr. A. Verma",
+      });
+
+      assert.equal(updatedQueue.users.length, 1);
+      const enqueued = updatedQueue.users[0];
+      assert.equal(enqueued.paidAmount, 400);
+      assert.equal(enqueued.services.length, 2);
+      assert.equal(enqueued.serviceType, "General Checkup, Blood Pressure Monitoring");
+      assert.equal(enqueued.assignedStaff.name, "Dr. A. Verma");
+      assert.equal(enqueued.assignedStaff.autoAssigned, false);
+    } finally {
+      Queue.findOne = origQueueFindOne;
+      Business.findById = origBizFindById;
+      User.findById = origUserFindById;
+      User.findOneAndUpdate = origUserFindOneAndUpdate;
+    }
+  });
+
+  await t.test("joinQueue auto-assigns General Physician if preferred doctor is unavailable/busy", async () => {
+    const origQueueFindOne = Queue.findOne;
+    const fakeQueueDoc = {
+      businessId,
+      users: [],
+      save: async () => {},
+    };
+    Queue.findOne = async () => fakeQueueDoc;
+
+    const origBizFindById = Business.findById;
+    Business.findById = async () => ({
+      _id: businessId,
+      name: "Sunrise Care Clinic",
+      category: "clinic",
+      isOpen: true,
+      isActive: true,
+      basePrice: 100,
+      staff: [
+        { name: "Dr. Sarah Jenkins", role: "General Physician", isAvailable: true },
+        { name: "Dr. A. Verma", role: "Dermatologist", isAvailable: false },
+      ],
+    });
+
+    const origUserFindById = User.findById;
+    User.findById = async () => ({ _id: userId, walletBalance: 1000 });
+    const origUserFindOneAndUpdate = User.findOneAndUpdate;
+    User.findOneAndUpdate = () => ({
+      select: async () => ({ _id: userId, walletBalance: 700 }),
+    });
+
+    try {
+      const updatedQueue = await joinQueue(businessId, {
+        userId,
+        services: [
+          { name: "Skin Consultation", duration: 15, price: 300 },
+        ],
+        preferredStaff: "Dr. A. Verma",
+      });
+
+      assert.equal(updatedQueue.users.length, 1);
+      const enqueued = updatedQueue.users[0];
+      assert.equal(enqueued.assignedStaff.name, "Dr. Sarah Jenkins");
+      assert.equal(enqueued.assignedStaff.autoAssigned, true);
+    } finally {
+      Queue.findOne = origQueueFindOne;
+      Business.findById = origBizFindById;
+      User.findById = origUserFindById;
+      User.findOneAndUpdate = origUserFindOneAndUpdate;
+    }
+  });
+
+  await t.test("joinQueue auto-assigns available barber in salon when 'any' is selected", async () => {
+    const origQueueFindOne = Queue.findOne;
+    const fakeQueueDoc = {
+      businessId,
+      users: [],
+      save: async () => {},
+    };
+    Queue.findOne = async () => fakeQueueDoc;
+
+    const origBizFindById = Business.findById;
+    Business.findById = async () => ({
+      _id: businessId,
+      name: "Hair & Grooming Studio",
+      category: "salon",
+      isOpen: true,
+      isActive: true,
+      basePrice: 150,
+      staff: [
+        { name: "John Barber", role: "Senior Barber", isAvailable: true },
+      ],
+    });
+
+    const origUserFindById = User.findById;
+    User.findById = async () => ({ _id: userId, walletBalance: 1000 });
+    const origUserFindOneAndUpdate = User.findOneAndUpdate;
+    User.findOneAndUpdate = () => ({
+      select: async () => ({ _id: userId, walletBalance: 750 }),
+    });
+
+    try {
+      const updatedQueue = await joinQueue(businessId, {
+        userId,
+        services: [
+          { name: "Haircut", duration: 30, price: 250 },
+        ],
+        preferredStaff: "any",
+      });
+
+      assert.equal(updatedQueue.users.length, 1);
+      const enqueued = updatedQueue.users[0];
+      assert.equal(enqueued.assignedStaff.name, "John Barber");
+      assert.equal(enqueued.assignedStaff.autoAssigned, true);
+    } finally {
+      Queue.findOne = origQueueFindOne;
+      Business.findById = origBizFindById;
+      User.findById = origUserFindById;
+      User.findOneAndUpdate = origUserFindOneAndUpdate;
+    }
+  });
+});

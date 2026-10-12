@@ -52,7 +52,7 @@ export const getQueue = asyncHandler(async (req, res) => {
 // POST /api/queue/:businessId/join
 export const join = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
-  const { serviceType, userType, pricingLabel, couponCode } = req.body;
+  const { serviceType, userType, pricingLabel, couponCode, services, preferredStaff } = req.body;
 
   const io = req.app.get("io");
   const queue = await queueService.joinQueue(
@@ -63,6 +63,8 @@ export const join = asyncHandler(async (req, res) => {
       userType: userType || "normal",
       pricingLabel,
       couponCode,
+      services,
+      preferredStaff,
     },
     io
   );

@@ -1,8 +1,10 @@
 class QueueNode {
-  constructor({ userId, serviceTime, serviceType, joinedAt, pricingLabel, paidAmount }) {
+  constructor({ userId, serviceTime, serviceType, joinedAt, pricingLabel, paidAmount, services, assignedStaff }) {
     this.userId = userId;
     this.serviceTime = serviceTime; // in minutes
     this.serviceType = serviceType || "general";
+    this.services = Array.isArray(services) ? services : [];
+    this.assignedStaff = assignedStaff || null;
     this.pricingLabel = pricingLabel || "";
     this.paidAmount = paidAmount || 0;
     this.joinedAt = joinedAt || new Date();
@@ -142,6 +144,8 @@ class QueueDS {
         status: current.status,
         serviceTime: current.serviceTime,
         serviceType: current.serviceType,
+        services: current.services || [],
+        assignedStaff: current.assignedStaff || null,
         pricingLabel: current.pricingLabel,
         paidAmount: current.paidAmount,
         estimatedStartTime: current.estimatedStartTime,
@@ -160,6 +164,8 @@ class QueueDS {
     users.forEach((u) => {
       const node = new QueueNode(u);
       node.status = u.status;
+      node.services = u.services || [];
+      node.assignedStaff = u.assignedStaff || null;
       node.pricingLabel = u.pricingLabel || "";
       node.paidAmount = u.paidAmount || 0;
       node.estimatedStartTime = u.estimatedStartTime ? new Date(u.estimatedStartTime) : null;

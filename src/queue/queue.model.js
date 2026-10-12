@@ -28,6 +28,19 @@ const queueSchema = new mongoose.Schema(
           type: String,
           default: "general",
         },
+        services: [
+          {
+            name: { type: String },
+            duration: { type: Number },
+            price: { type: Number, default: 0 },
+          },
+        ],
+        assignedStaff: {
+          name: { type: String, default: "" },
+          role: { type: String, default: "" },
+          specialties: { type: String, default: "" },
+          autoAssigned: { type: Boolean, default: false },
+        },
         estimatedStartTime: {
           type: Date,
           default: null,

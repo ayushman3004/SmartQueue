@@ -20,6 +20,7 @@ export default function BusinessCard({ business: initialBusiness, index }) {
   const [business, setBusiness] = useState(initialBusiness)
   const [booking, setBooking] = useState(false)
   const [selectedServices, setSelectedServices] = useState([business.services?.[0]?.name || "general"])
+  const [selectedStaff, setSelectedStaff] = useState('any')
 
   const isOwner = user?.role === 'owner' && (business.owner?._id || business.owner)?.toString() === user._id?.toString()
 
@@ -92,10 +93,11 @@ export default function BusinessCard({ business: initialBusiness, index }) {
 
     setBooking(true)
     try {
-      // Backend expects a single string for serviceType to not break schema logic. We join them.
       const joinedServices = selectedServices.join(', ')
       const response = await api.post(`/queue/${business._id}/join`, {
+        services: selectedObjects,
         serviceType: joinedServices,
+        preferredStaff: selectedStaff === 'any' ? null : selectedStaff,
       })
       if (response.data.success) {
         toast.success(`Joined ${business.name}!`, {
@@ -225,6 +227,34 @@ export default function BusinessCard({ business: initialBusiness, index }) {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Doctor / Barber Selection with Auto-Fallback */}
+        {!isOwner && (
+          <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-extrabold uppercase text-zinc-500 tracking-wider flex items-center gap-1">
+                <span>{business.category === 'clinic' || business.category === 'healthcare' ? '🩺' : '✂️'}</span>
+                <span>Select {business.category === 'clinic' || business.category === 'healthcare' ? 'Doctor' : 'Barber'}</span>
+              </label>
+              <span className="text-[9px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
+                🛡️ Auto-Fallback
+              </span>
+            </div>
+
+            <select
+              value={selectedStaff}
+              onChange={(e) => setSelectedStaff(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="any">✨ Any Available (Auto-Assign On-Duty)</option>
+              {(business.staff || []).map((st, stIdx) => (
+                <option key={stIdx} value={st.name}>
+                  {st.name} — {st.role || (business.category === 'clinic' ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {st.isAvailable === false ? '• Busy/Off' : '• Available'}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
