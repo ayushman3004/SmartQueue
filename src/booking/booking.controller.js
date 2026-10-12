@@ -12,7 +12,18 @@ export const getSlots = asyncHandler(async (req, res) => {
 
 // POST /api/bookings
 export const book = asyncHandler(async (req, res) => {
-  const { businessId, startTime, serviceType, notes, pricingLabel, couponCode, isGroupBooking, guestCount } = req.body;
+  const {
+    businessId,
+    startTime,
+    serviceType,
+    services,
+    preferredStaff,
+    notes,
+    pricingLabel,
+    couponCode,
+    isGroupBooking,
+    guestCount,
+  } = req.body;
   if (!businessId || !startTime) throw new ApiError(400, "businessId and startTime are required");
   if (isNaN(new Date(startTime).getTime())) throw new ApiError(400, "Invalid startTime format");
 
@@ -22,6 +33,8 @@ export const book = asyncHandler(async (req, res) => {
     userId: req.user._id,
     startTime,
     serviceType,
+    services,
+    preferredStaff,
     notes,
     pricingLabel,
     couponCode,

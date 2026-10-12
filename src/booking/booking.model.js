@@ -28,6 +28,22 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: "general",
     },
+    services: {
+      type: [
+        {
+          name: { type: String, required: true },
+          duration: { type: Number, default: 15 },
+          price: { type: Number, default: 0 },
+        },
+      ],
+      default: [],
+    },
+    assignedStaff: {
+      name: { type: String, default: "" },
+      role: { type: String, default: "" },
+      specialties: { type: String, default: "" },
+      autoAssigned: { type: Boolean, default: false },
+    },
     isGroupBooking: {
       type: Boolean,
       default: false,

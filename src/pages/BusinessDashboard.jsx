@@ -611,7 +611,21 @@ export default function BusinessDashboard() {
                         <p className="font-bold text-zinc-900">{b.userId?.name || 'Customer'}</p>
                         <p className="text-[10px] text-slate-400">{b.userId?.email || 'N/A'}</p>
                       </td>
-                      <td className="py-4 px-4 font-medium">{b.serviceType}</td>
+                      <td className="py-4 px-4 font-medium">
+                        <p className="font-semibold text-zinc-900">{b.serviceType}</p>
+                        {b.assignedStaff?.name && (
+                          <div className="flex items-center gap-1.5 mt-1 text-[11px] text-teal-800 font-bold">
+                            <span>{isClinic ? '🩺' : '✂️'}</span>
+                            <span>{b.assignedStaff.name}</span>
+                            <span className="text-[10px] text-zinc-400 font-normal">({b.assignedStaff.role || (isClinic ? 'Doctor' : 'Barber')})</span>
+                            {b.assignedStaff.autoAssigned && (
+                              <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1 py-0.2 rounded font-semibold">
+                                On-Duty
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-4 px-4 font-bold text-teal-800">₹{b.paidAmount}</td>
                       <td className="py-4 px-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${

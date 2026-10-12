@@ -12,6 +12,7 @@ import {
 } from '../api/booking.api'
 import { validateCoupon } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
+import { STAFF_PRESETS } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 
 export default function BookingPage() {
@@ -26,10 +27,11 @@ export default function BookingPage() {
   const [meta, setMeta] = useState({ avgServiceTime: 10, aiBuffer: 0, ratePerMinute: 20 })
   const [loading, setLoading] = useState(true)
 
-  // Booking Form State
+  // Booking Form State: Multiple Services & Doctor/Barber Selection
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
   const [selectedSlot, setSelectedSlot] = useState(null)
-  const [selectedService, setSelectedService] = useState(null)
+  const [selectedServices, setSelectedServices] = useState([])
+  const [selectedStaff, setSelectedStaff] = useState('any') // 'any' or staff member object
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [validatingCoupon, setValidatingCoupon] = useState(false)
@@ -53,8 +55,8 @@ export default function BookingPage() {
 
       const biz = bRes.data.data.business
       setBusiness(biz)
-      if (biz.services?.length > 0 && !selectedService) {
-        setSelectedService(biz.services[0])
+      if (biz.services?.length > 0 && selectedServices.length === 0) {
+        setSelectedServices([biz.services[0]])
       }
 
       setSlots(sRes.data.data.slots || [])
@@ -69,7 +71,7 @@ export default function BookingPage() {
     } finally {
       setLoading(false)
     }
-  }, [businessId, selectedDate, selectedService])
+  }, [businessId, selectedDate, selectedServices.length])
 
   useEffect(() => {
     fetchData()
@@ -95,6 +97,22 @@ export default function BookingPage() {
     }
   }, [socket, user, fetchData])
 
+  // Multiple services toggle handler
+  const handleToggleService = (svc) => {
+    setSelectedServices(prev => {
+      const exists = prev.some(s => s.name === svc.name)
+      if (exists) {
+        if (prev.length <= 1) {
+          toast.error("Please keep at least one service selected")
+          return prev
+        }
+        return prev.filter(s => s.name !== svc.name)
+      } else {
+        return [...prev, svc]
+      }
+    })
+  }
+
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return
     setValidatingCoupon(true)
@@ -111,19 +129,33 @@ export default function BookingPage() {
   }
 
   const handleSlotSelect = (slot) => {
+    if (selectedServices.length === 0) {
+      toast.error('Please select at least one service before choosing a time slot')
+      return
+    }
     setSelectedSlot(slot)
     setPaymentModalOpen(true)
   }
 
   const handleConfirmBooking = async () => {
     if (!selectedSlot) return
+    if (selectedServices.length === 0) {
+      toast.error('Please select at least one service')
+      return
+    }
+
     setBookingInProgress(true)
     try {
+      const combinedServiceNames = selectedServices.map(s => s.name).join(' + ')
+      const preferredStaffName = selectedStaff === 'any' ? null : (selectedStaff?.name || selectedStaff)
+
       const res = await createBooking({
         businessId,
         startTime: selectedSlot.startTime,
-        serviceType: selectedService?.name || 'general',
-        pricingLabel: selectedService?.name || 'standard',
+        services: selectedServices,
+        serviceType: combinedServiceNames,
+        pricingLabel: combinedServiceNames,
+        preferredStaff: preferredStaffName,
         couponCode: appliedCoupon?.coupon?.code,
       })
 
@@ -132,7 +164,13 @@ export default function BookingPage() {
         setUser(prev => prev ? { ...prev, walletBalance: newBal } : prev)
       }
 
-      toast.success(res.data.message || 'Booking confirmed!')
+      const assigned = res.data.data?.assignedStaff || res.data.data?.booking?.assignedStaff
+      if (assigned?.name) {
+        toast.success(`Booking confirmed! Assigned to ${assigned.name}${assigned.autoAssigned ? ' (On-Duty)' : ''}`)
+      } else {
+        toast.success(res.data.message || 'Booking confirmed!')
+      }
+
       setPaymentModalOpen(false)
       setSelectedSlot(null)
       fetchData()
@@ -188,10 +226,20 @@ export default function BookingPage() {
     return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
   }
 
-  // Price calculations
-  const servicePrice = selectedService?.price ?? (business?.basePrice || 0)
+  const isClinic = business?.category === 'clinic' || business?.category === 'healthcare'
+  const staffRoleLabel = isClinic ? 'Doctor / Specialist' : 'Barber / Stylist'
+  const staffRoleIcon = isClinic ? '🩺' : '✂️'
+
+  // Available staff list (use registered business staff or standard presets if empty)
+  const availableStaffList = (business?.staff && business.staff.length > 0)
+    ? business.staff
+    : (STAFF_PRESETS[isClinic ? 'clinic' : 'salon']?.defaults || [])
+
+  // Price and duration aggregations across multiple selected services
+  const totalServiceDuration = selectedServices.reduce((sum, s) => sum + (Number(s.duration) || 15), 0)
+  const totalServicePrice = selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0)
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0
-  const finalPrice = Math.max(0, servicePrice - discountAmount)
+  const finalPrice = Math.max(0, totalServicePrice - discountAmount)
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
@@ -233,28 +281,133 @@ export default function BookingPage() {
                 {business.phone && <p className="text-xs text-slate-400 mt-0.5">📞 {business.phone}</p>}
               </div>
 
-              {/* Service Selection */}
+              {/* Multi-Service Selection */}
               <div className="space-y-3">
-                <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">Select Service</label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">
+                    Select Services (Choose Multiple)
+                  </label>
+                  <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
+                    {selectedServices.length} Selected • {totalServiceDuration}m
+                  </span>
+                </div>
+
                 <div className="space-y-2">
                   {(business.services || [{ name: 'General Consultation', duration: 15, price: business.basePrice || 0 }]).map((svc, i) => {
-                    const isSelected = selectedService?.name === svc.name
+                    const isSelected = selectedServices.some(s => s.name === svc.name)
                     return (
                       <div
                         key={i}
-                        onClick={() => setSelectedService(svc)}
+                        onClick={() => handleToggleService(svc)}
                         className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                          isSelected ? 'bg-teal-50 border-teal-500 shadow-xs' : 'bg-slate-50 border-zinc-200 hover:bg-white'
+                          isSelected
+                            ? 'bg-teal-50/80 border-teal-500 shadow-xs ring-1 ring-teal-500/30'
+                            : 'bg-slate-50 border-zinc-200 hover:bg-white'
                         }`}
                       >
-                        <div>
-                          <p className="text-sm font-bold text-zinc-900 leading-none">{svc.name}</p>
-                          <p className="text-xs text-slate-400 mt-1">{svc.duration} minutes</p>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center text-xs font-black transition-colors ${
+                            isSelected ? 'bg-teal-600 border-teal-600 text-white' : 'border-zinc-300 bg-white text-transparent'
+                          }`}>
+                            ✓
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-zinc-900 leading-tight">{svc.name}</p>
+                            <p className="text-xs text-slate-400 mt-0.5 font-medium">{svc.duration} minutes</p>
+                          </div>
                         </div>
                         <span className="text-sm font-black text-teal-800">₹{svc.price ?? business.basePrice ?? 0}</span>
                       </div>
                     )
                   })}
+                </div>
+                <div className="p-2.5 rounded-xl bg-teal-50/50 border border-teal-100 flex items-center justify-between text-xs">
+                  <span className="text-zinc-600 font-medium">Selected Total:</span>
+                  <span className="font-black text-teal-800">
+                    {totalServiceDuration} mins • ₹{totalServicePrice}
+                  </span>
+                </div>
+              </div>
+
+              {/* Doctor / Barber Selection */}
+              <div className="space-y-3 pt-4 border-t border-zinc-100">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">
+                    {staffRoleIcon} Select {staffRoleLabel}
+                  </label>
+                  <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                    Auto-Fallback
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+                  {/* Option 1: Any Available / Auto-Assign */}
+                  <div
+                    onClick={() => setSelectedStaff('any')}
+                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                      selectedStaff === 'any'
+                        ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500/30'
+                        : 'bg-slate-50 border-zinc-200 hover:bg-white'
+                    }`}
+                  >
+                    <div>
+                      <p className="text-xs font-black text-zinc-900 flex items-center gap-1.5">
+                        <span>✨</span>
+                        <span>Any Available {isClinic ? 'General Physician / Doctor' : 'Barber / Stylist'}</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        Auto-assigned to on-duty {isClinic ? 'General Physician' : 'Barber'} at selected slot
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-black uppercase bg-teal-100 text-teal-800 px-2 py-0.5 rounded-md flex-shrink-0">
+                      Recommended
+                    </span>
+                  </div>
+
+                  {/* Individual Staff Cards */}
+                  {availableStaffList.map((member, idx) => {
+                    const isSelected = selectedStaff?._id === member._id || selectedStaff?.name === member.name
+                    return (
+                      <div
+                        key={member._id || idx}
+                        onClick={() => setSelectedStaff(member)}
+                        className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500/30'
+                            : 'bg-slate-50 border-zinc-200 hover:bg-white'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-bold text-zinc-900 truncate flex items-center gap-1.5">
+                            <span>{staffRoleIcon}</span>
+                            <span>{member.name}</span>
+                          </p>
+                          <p className="text-[10px] text-slate-500 truncate">
+                            {member.role || staffRoleLabel} {member.specialties ? `• ${Array.isArray(member.specialties) ? member.specialties.join(', ') : member.specialties}` : ''}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <span className={`text-[10px] font-bold block ${
+                            member.isAvailable !== false ? 'text-emerald-700' : 'text-slate-400'
+                          }`}>
+                            {member.isAvailable !== false ? '● Available' : '○ Off-Duty'}
+                          </span>
+                          <span className="text-[10px] text-amber-500 font-bold">★ {member.rating ? Number(member.rating).toFixed(1) : '5.0'}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Auto-Assignment Guarantee Alert */}
+                <div className="p-3 bg-teal-50/60 border border-teal-200/80 rounded-2xl text-[11px] text-teal-950 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-teal-800">
+                    <span>🛡️</span>
+                    <span>Guaranteed On-Duty Coverage</span>
+                  </p>
+                  <p className="text-slate-600 leading-snug">
+                    If your chosen {isClinic ? 'doctor' : 'barber'} is busy or unavailable at your slot, you will automatically be paired with {isClinic ? 'an on-duty General Physician' : 'any available Barber'} at that time.
+                  </p>
                 </div>
               </div>
 
@@ -307,7 +460,27 @@ export default function BookingPage() {
                         {b.status}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500">{b.serviceType} • Paid ₹{b.paidAmount}</p>
+
+                    <p className="text-xs text-slate-700 font-bold leading-tight">{b.serviceType}</p>
+
+                    {/* Assigned Doctor / Barber Badge */}
+                    {b.assignedStaff?.name && (
+                      <div className="p-2 rounded-xl bg-teal-50 border border-teal-200/80 text-[11px] text-teal-900 flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1">
+                          <span>{staffRoleIcon}</span>
+                          <span>{b.assignedStaff.name}</span>
+                          <span className="text-[10px] text-slate-500 font-normal">({b.assignedStaff.role || staffRoleLabel})</span>
+                        </span>
+                        {b.assignedStaff.autoAssigned && (
+                          <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                            On-Duty
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <p className="text-[11px] text-slate-500 font-medium">Paid: ₹{b.paidAmount}</p>
+
                     <div className="flex items-center gap-2 pt-2 border-t border-zinc-200">
                       {b.status === 'completed' ? (
                         <button
@@ -423,24 +596,55 @@ export default function BookingPage() {
                   <span>Venue</span>
                   <span className="font-bold text-zinc-900">{business?.name}</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Service</span>
-                  <span className="font-bold text-zinc-900">{selectedService?.name}</span>
+
+                {/* Multiple Services List */}
+                <div className="space-y-1.5 py-1 border-t border-b border-zinc-200/60">
+                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    Selected Services ({selectedServices.length})
+                  </span>
+                  {selectedServices.map((svc, i) => (
+                    <div key={i} className="flex justify-between items-center text-zinc-800">
+                      <span className="font-medium">• {svc.name} ({svc.duration}m)</span>
+                      <span className="font-bold text-teal-800">₹{svc.price}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-[11px] text-zinc-500 font-semibold pt-1">
+                    <span>Total Service Time:</span>
+                    <span>⏱ {totalServiceDuration} minutes</span>
+                  </div>
                 </div>
+
+                {/* Assigned Staff */}
+                <div className="flex justify-between items-start text-slate-600">
+                  <span>{staffRoleLabel}</span>
+                  <div className="text-right">
+                    <span className="font-bold text-teal-800 flex items-center gap-1 justify-end">
+                      <span>{staffRoleIcon}</span>
+                      <span>{selectedStaff === 'any' ? (`Any Available ${isClinic ? 'General Physician' : 'Barber'}`) : selectedStaff?.name}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      {selectedStaff === 'any' ? 'On-duty auto-assignment' : (selectedStaff?.role || 'Staff')}
+                    </span>
+                  </div>
+                </div>
+
                 <div className="flex justify-between text-slate-600">
                   <span>Time Slot</span>
                   <span className="font-bold text-zinc-900">{formatTime(selectedSlot?.startTime)}</span>
                 </div>
+
                 <div className="flex justify-between text-slate-600">
-                  <span>Base Price</span>
-                  <span className="font-bold text-zinc-900">₹{servicePrice}</span>
+                  <span>Services Subtotal</span>
+                  <span className="font-bold text-zinc-900">₹{totalServicePrice}</span>
                 </div>
+
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-emerald-700 font-bold">
                     <span>Coupon ({appliedCoupon?.coupon?.code})</span>
                     <span>-₹{discountAmount}</span>
                   </div>
                 )}
+
                 <div className="pt-2 border-t border-zinc-200 flex justify-between text-sm font-black text-zinc-950">
                   <span>Total Payable</span>
                   <span className="text-teal-700">₹{finalPrice}</span>

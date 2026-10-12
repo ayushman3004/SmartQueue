@@ -14,6 +14,8 @@ export const getAvailableSlots = async (businessId, date) => {
   if (!business) throw new ApiError(404, "Business not found");
 
   const avgTime = business.averageServiceTime || 10;
+  const staffList = Array.isArray(business.staff) ? business.staff.filter((s) => s.isAvailable !== false) : [];
+  const maxCapacity = Math.max(staffList.length || 1, business.maxCapacity || 1);
 
   // Build the day window (9 AM - 6 PM)
   const dayStart = new Date(date);
@@ -47,7 +49,7 @@ export const getAvailableSlots = async (businessId, date) => {
     const slotStart = new Date(cursor);
     const slotEnd = new Date(slotStart.getTime() + avgTime * 60000);
 
-    const hasConflict = bookings.some((b) => {
+    const overlappingBookings = bookings.filter((b) => {
       const bStart = new Date(b.startTime).getTime();
       const bEnd = new Date(b.endTime).getTime();
       const sStart = slotStart.getTime();
@@ -55,11 +57,14 @@ export const getAvailableSlots = async (businessId, date) => {
       return sStart < bEnd && sEnd > bStart;
     });
 
+    const isAvailable = overlappingBookings.length < maxCapacity;
+
     slots.push({
       startTime: slotStart.toISOString(),
       endTime: slotEnd.toISOString(),
       duration: avgTime,
-      available: !hasConflict,
+      available: isAvailable,
+      capacityRemaining: Math.max(0, maxCapacity - overlappingBookings.length),
       flexRange: {
         earliest: new Date(slotStart.getTime() - FLEX_WINDOW * 60000).toISOString(),
         latest: new Date(slotStart.getTime() + FLEX_WINDOW * 60000).toISOString(),
@@ -74,7 +79,7 @@ export const getAvailableSlots = async (businessId, date) => {
     avgServiceTime: avgTime,
     aiBuffer,
     ratePerMinute: RATE_PER_MINUTE,
-    maxCapacity: business.maxCapacity || 1,
+    maxCapacity,
   };
 };
 
@@ -84,6 +89,8 @@ export const createBooking = async ({
   userId,
   startTime,
   serviceType,
+  services,
+  preferredStaff,
   notes,
   isGroupBooking,
   guestCount,
@@ -93,23 +100,43 @@ export const createBooking = async ({
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
-  const duration = business.averageServiceTime || 10;
+  // 1. Process multiple services or fallback to single service
+  let selectedServicesList = [];
+  let duration = 0;
+  let totalCost = 0;
+
+  if (Array.isArray(services) && services.length > 0) {
+    selectedServicesList = services.map((s) => ({
+      name: s.name,
+      duration: Math.max(1, Number(s.duration) || 15),
+      price: Math.max(0, Number(s.price) || 0),
+    }));
+    duration = selectedServicesList.reduce((sum, s) => sum + s.duration, 0);
+    totalCost = selectedServicesList.reduce((sum, s) => sum + s.price, 0);
+  } else if (serviceType) {
+    const matched = business.services?.find((s) => s.name === serviceType);
+    const sDur = matched?.duration || business.averageServiceTime || 15;
+    let sPrice = business.basePrice || 0;
+    if (pricingLabel) {
+      const specificPricing = business.pricing?.find((p) => p.label === pricingLabel);
+      if (specificPricing) sPrice = specificPricing.price;
+    }
+    if (matched && matched.price !== undefined) {
+      sPrice = matched.price;
+    }
+    selectedServicesList = [{ name: serviceType, duration: sDur, price: sPrice }];
+    duration = sDur;
+    totalCost = sPrice;
+  } else {
+    duration = business.averageServiceTime || 15;
+    totalCost = business.basePrice || 0;
+    selectedServicesList = [{ name: "General Service", duration, price: totalCost }];
+  }
+
   const reqStart = new Date(startTime);
   const reqEnd = new Date(reqStart.getTime() + duration * 60000);
 
-  // Check for overlapping bookings
-  const conflict = await Booking.findOne({
-    businessId,
-    status: { $nin: ["cancelled", "refunded"] },
-    startTime: { $lt: reqEnd },
-    endTime: { $gt: reqStart },
-  });
-
-  if (conflict) {
-    throw new ApiError(409, "This time slot is no longer available. Please select another slot.");
-  }
-
-  // Check duplicate booking for the user
+  // 2. Check duplicate booking for this user
   const duplicate = await Booking.findOne({
     businessId,
     userId,
@@ -118,18 +145,134 @@ export const createBooking = async ({
   });
   if (duplicate) throw new ApiError(409, "You already have an active booking at this time.");
 
-  // Calculate pricing
-  let totalCost = business.basePrice || 0;
-  if (pricingLabel) {
-    const specificPricing = business.pricing?.find((p) => p.label === pricingLabel);
-    if (specificPricing) totalCost = specificPricing.price;
-  }
-  const matchedService = business.services?.find((s) => s.name === serviceType);
-  if (matchedService && matchedService.price !== undefined) {
-    totalCost = matchedService.price;
+  // 3. Staff Assignment (Doctor / Barber) with auto-fallback
+  const isClinic = business.category === "clinic" || business.category === "healthcare";
+  const staffList = Array.isArray(business.staff) ? business.staff : [];
+  const staffNameRequested = typeof preferredStaff === "string" ? preferredStaff.trim() : preferredStaff?.name?.trim();
+
+  let assignedStaff = null;
+
+  // Check if requested specific doctor/barber is available
+  if (staffNameRequested && staffNameRequested.toLowerCase() !== "any") {
+    const candidate = staffList.find(
+      (s) => s.name.toLowerCase() === staffNameRequested.toLowerCase() && s.isAvailable !== false
+    );
+    if (candidate) {
+      const conflict = await Booking.findOne({
+        businessId,
+        status: { $nin: ["cancelled", "refunded"] },
+        "assignedStaff.name": candidate.name,
+        startTime: { $lt: reqEnd },
+        endTime: { $gt: reqStart },
+      });
+      if (!conflict) {
+        assignedStaff = {
+          name: candidate.name,
+          role: candidate.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+          specialties: candidate.specialties || "",
+          autoAssigned: false,
+        };
+      }
+    }
   }
 
-  // Apply Coupon if provided
+  // Fallback if not assigned:
+  // If clinic: assign to an available General Physician (or on-duty physician)
+  // If salon: assign to any available barber at that time (or on-duty stylist)
+  if (!assignedStaff) {
+    if (isClinic) {
+      const activeDocs = staffList.filter((s) => s.isAvailable !== false);
+      const freeDocs = [];
+
+      for (const doc of activeDocs) {
+        const busy = await Booking.findOne({
+          businessId,
+          status: { $nin: ["cancelled", "refunded"] },
+          "assignedStaff.name": doc.name,
+          startTime: { $lt: reqEnd },
+          endTime: { $gt: reqStart },
+        });
+        if (!busy) {
+          const text = `${doc.role || ""} ${doc.specialties || ""} ${doc.name || ""}`.toLowerCase();
+          const isGP =
+            text.includes("general") ||
+            text.includes("physician") ||
+            text.includes("primary") ||
+            text.includes("family") ||
+            text.includes("mbbs") ||
+            text.includes("medicine");
+          freeDocs.push({ doc, isGP });
+        }
+      }
+
+      const chosen = freeDocs.find((d) => d.isGP)?.doc || freeDocs[0]?.doc;
+      if (chosen) {
+        assignedStaff = {
+          name: chosen.name,
+          role: chosen.role || "General Physician",
+          specialties: chosen.specialties || "General Medicine & Primary Care",
+          autoAssigned: true,
+        };
+      } else {
+        assignedStaff = {
+          name: "Dr. On-Duty (General Physician)",
+          role: "General Physician",
+          specialties: "General Medicine & Primary Care",
+          autoAssigned: true,
+        };
+      }
+    } else {
+      // Salon: assign any barber available at that time
+      let chosenBarber = null;
+      const activeBarbers = staffList.filter((s) => s.isAvailable !== false);
+
+      for (const barber of activeBarbers) {
+        const busy = await Booking.findOne({
+          businessId,
+          status: { $nin: ["cancelled", "refunded"] },
+          "assignedStaff.name": barber.name,
+          startTime: { $lt: reqEnd },
+          endTime: { $gt: reqStart },
+        });
+        if (!busy) {
+          chosenBarber = barber;
+          break;
+        }
+      }
+
+      if (chosenBarber) {
+        assignedStaff = {
+          name: chosenBarber.name,
+          role: chosenBarber.role || "Barber / Stylist",
+          specialties: chosenBarber.specialties || "Hair Styling & Grooming",
+          autoAssigned: true,
+        };
+      } else {
+        assignedStaff = {
+          name: "On-Duty Stylist",
+          role: "Barber / Stylist",
+          specialties: "Hair Styling & Grooming",
+          autoAssigned: true,
+        };
+      }
+    }
+  }
+
+  // 4. Overall capacity check
+  const activeStaffCount = staffList.filter((s) => s.isAvailable !== false).length;
+  const maxCapacity = Math.max(activeStaffCount || 1, business.maxCapacity || 1);
+  const overlappingCount = await Booking.countDocuments({
+    businessId,
+    status: { $nin: ["cancelled", "refunded"] },
+    startTime: { $lt: reqEnd },
+    endTime: { $gt: reqStart },
+  });
+
+  if (overlappingCount >= maxCapacity) {
+    throw new ApiError(409, "All practitioners are fully booked for this time slot. Please select another slot.");
+  }
+
+  // 5. Apply Coupon if provided
   let discount = 0;
   if (couponCode) {
     try {
@@ -144,7 +287,7 @@ export const createBooking = async ({
 
   const finalAmount = Math.max(0, totalCost - discount);
 
-  // Atomic deduction from wallet
+  // 6. Atomic deduction from wallet
   let newBalance = 0;
   if (finalAmount > 0) {
     newBalance = await deductWalletBalance(
@@ -158,17 +301,21 @@ export const createBooking = async ({
     newBalance = user?.walletBalance || 0;
   }
 
+  const combinedServiceNames = selectedServicesList.map((s) => s.name).join(" + ");
+
   const booking = await Booking.create({
     businessId,
     userId,
     startTime: reqStart,
     endTime: reqEnd,
     duration,
-    serviceType: serviceType || "general",
+    serviceType: combinedServiceNames,
+    services: selectedServicesList,
+    assignedStaff,
     isGroupBooking: !!isGroupBooking,
     guestCount: guestCount || 1,
     notes,
-    pricingLabel: pricingLabel || serviceType || "standard",
+    pricingLabel: pricingLabel || combinedServiceNames,
     paidAmount: finalAmount,
     status: "confirmed",
   });
@@ -180,6 +327,7 @@ export const createBooking = async ({
 
   return {
     booking: await booking.populate("userId", "name email avatar"),
+    assignedStaff,
     adjusted: false,
     newBalance,
   };

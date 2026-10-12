@@ -690,7 +690,16 @@ export default function CustomerDashboardPage() {
                     <td className="py-4 px-4 font-bold text-zinc-900">
                       {b.businessId?.name || 'Local Venue'}
                     </td>
-                    <td className="py-4 px-4 text-zinc-700">{b.serviceType}</td>
+                    <td className="py-4 px-4 text-zinc-700">
+                      <p className="font-semibold text-zinc-950">{b.serviceType}</p>
+                      {b.assignedStaff?.name && (
+                        <p className="text-[11px] font-bold text-teal-800 flex items-center gap-1 mt-0.5">
+                          <span>👨‍⚕️</span>
+                          <span>{b.assignedStaff.name}</span>
+                          <span className="text-[10px] text-zinc-400 font-normal">({b.assignedStaff.role || 'On-Duty'})</span>
+                        </p>
+                      )}
+                    </td>
                     <td className="py-4 px-4 font-bold text-teal-700">₹{b.paidAmount}</td>
                     <td className="py-4 px-4">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
