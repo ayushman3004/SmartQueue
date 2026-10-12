@@ -1,19 +1,34 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signup, signin } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
 
+// Fluid Apple-style spring curve
+const SLIDE_TRANSITION = {
+  duration: 0.55,
+  ease: [0.16, 1, 0.3, 1],
+}
+
 export default function LoginPage() {
   const [tab, setTab] = useState('signin') // 'signin' or 'signup'
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  )
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'customer' })
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const { logIn } = useAuth()
   const navigate = useNavigate()
 
-  const onChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -23,13 +38,14 @@ export default function LoginPage() {
       const res = await apiFn(tab === 'signup' ? form : { email: form.email, password: form.password })
       const { user, token } = res.data.data
       logIn(user, token)
-      toast.success(tab === 'signin' ? 'Welcome back!' : 'Account created successfully!', {
-        style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #f4f4f5' }
+      toast.success(tab === 'signin' ? 'Welcome back! Logged in successfully.' : 'Welcome to serveQ! Account created.', {
+        icon: '👋',
+        style: { borderRadius: '14px', background: '#ffffff', color: '#09090b', border: '1px solid #e4e4e7' }
       })
       navigate(user?.role === 'owner' ? '/business' : '/customers')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Authentication failed', {
-        style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #fef2f2' }
+      toast.error(err.response?.data?.message || 'Unable to sign in. Please check your details.', {
+        style: { borderRadius: '14px', background: '#ffffff', color: '#09090b', border: '1px solid #fee2e2' }
       })
     } finally {
       setLoading(false)
@@ -42,153 +58,349 @@ export default function LoginPage() {
     window.location.href = `${apiUrl}/api/auth/google?role=customer`
   }
 
-  const GoogleBtn = () => (
-    <button
-      type="button"
-      onClick={handleGoogleAuth}
-      className="flex items-center justify-center gap-3 w-full py-3.5 rounded-full bg-zinc-50 border border-zinc-200/90 text-zinc-700 text-xs font-bold hover:bg-zinc-100 hover:text-zinc-950 transition-all uppercase tracking-wider active:scale-[0.98] shadow-xs"
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M12.48 10.92v3.28h4.78c-.19 1.06-.9 1.95-1.78 2.53v2.13h2.87c1.68-1.55 2.65-3.83 2.65-6.53 0-.62-.06-1.22-.16-1.81H12.48z" /><path fill="currentColor" d="M12 23c3.13 0 5.75-1.04 7.67-2.81l-2.87-2.13c-.79.53-1.8.85-2.8.85-2.15 0-3.96-1.45-4.62-3.41H6.18v2.24C8.06 20.9 12 23 12 23z" /><path fill="currentColor" d="M7.38 15.5a6.6 6.6 0 0 1 0-4.14V9.12H6.18C5.43 10.59 5 12.24 5 14s.43 3.41 1.18 4.88l1.2-1.38z" /><path fill="currentColor" d="M12 4.14c1.7 0 3.22.58 4.42 1.73l3.31-3.31C17.75 1.04 15.13 0 12 0 8.06 0 4.14 2.1 2.18 5.48l3.66 2.84c.66-1.96 2.47-3.41 4.62-3.41z" /></svg>
-      Neural Sync (Google)
-    </button>
-  )
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-10 bg-[#f4f7f6] relative overflow-hidden">
+      {/* Background Soft Ambient Lights */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-teal-400/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-400/10 rounded-full blur-[140px] pointer-events-none" />
 
-  const renderEmailFlow = () => (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <AnimatePresence mode="wait">
-        {tab === 'signup' && (
+      {/* Main Split Card Container */}
+      <div className="w-full max-w-4xl bg-white rounded-[32px] sm:rounded-[36px] shadow-2xl shadow-zinc-900/5 border border-zinc-200/80 overflow-hidden relative z-10">
+        <div className="flex flex-col md:flex-row relative min-h-[560px] sm:min-h-[600px] w-full">
+          {/* ─── 1. Cartoon Illustration Panel (Waving Boy & Girl) ─── */}
           <motion.div
-            key="signup-fields"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="space-y-5 overflow-hidden"
+            initial={false}
+            animate={{
+              x: isDesktop ? (tab === 'signup' ? '0%' : '100%') : '0%',
+            }}
+            transition={SLIDE_TRANSITION}
+            className="w-full md:w-1/2 p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden min-h-[460px] sm:min-h-[600px] bg-[#dcf1e7] z-20"
           >
-            <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Full Identity</label>
-              <input className="input" name="name" placeholder="John Doe" value={form.name} onChange={onChange} required />
+            {/* Full-Section Characters Image */}
+            <img
+              src="/welcome-characters.jpg"
+              alt="Cartoon boy and girl welcoming to serveQ"
+              className="absolute inset-0 w-full h-full object-cover object-bottom select-none pointer-events-none"
+            />
+
+            {/* Soft top gradient scrim to guarantee crisp text legibility */}
+            <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#dcf1e7]/95 via-[#dcf1e7]/60 to-transparent pointer-events-none z-[1]" />
+
+            {/* Top Logo */}
+            <div className="flex items-center gap-2.5 relative z-10">
+              <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center text-xs font-black shadow-sm">
+                Q
+              </div>
+              <span className="text-base font-black tracking-tight text-zinc-900 drop-shadow-xs">serveQ</span>
+            </div>
+
+            {/* Central Animated Greeting Title */}
+            <div className="relative z-10 space-y-1.5 text-center sm:text-left mt-2 mb-auto">
+              <AnimatePresence mode="wait">
+                {tab === 'signup' ? (
+                  <motion.div
+                    key="text-signup"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                  >
+                    <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight uppercase">
+                      JOIN WITH US!
+                    </h2>
+                    <p className="text-xs sm:text-sm text-zinc-700 font-semibold max-w-xs mt-1">
+                      Please add your information and create an account.
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="text-signin"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                  >
+                    <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight uppercase">
+                      WELCOME BACK!
+                    </h2>
+                    <p className="text-xs sm:text-sm text-zinc-700 font-semibold max-w-xs mt-1">
+                      Sign in to jump straight into your live queues and appointments.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Bottom Footer Text */}
+            <div className="relative z-10 text-[11px] font-bold text-zinc-700/80 drop-shadow-xs mt-auto pt-6 text-center sm:text-left">
+              Queue smart &bull; Skip waiting &bull; serveQ
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
 
-      <div>
-        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Email Address</label>
-        <input className="input" type="email" name="email" placeholder="name@company.com" value={form.email} onChange={onChange} required />
-      </div>
-
-      <div>
-        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Security Credential</label>
-        <div className="relative">
-          <input
-            className="input pr-12"
-            type={showPassword ? "text" : "password"}
-            name="password"
-            placeholder="••••••••"
-            value={form.password}
-            onChange={onChange}
-            required
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+          {/* ─── 2. Auth Form Panel ─── */}
+          <motion.div
+            initial={false}
+            animate={{
+              x: isDesktop ? (tab === 'signup' ? '0%' : '-100%') : '0%',
+            }}
+            transition={SLIDE_TRANSITION}
+            className="w-full md:w-1/2 p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-white z-10"
           >
-            {showPassword ? (
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-            ) : (
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
-            )}
-          </button>
-        </div>
-      </div>
+            <div className="max-w-md w-full mx-auto space-y-6">
+              {/* Form Heading */}
+              <div className="space-y-1">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={tab}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                  >
+                    <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">
+                      {tab === 'signup' ? 'Create an account' : 'Welcome back!'}
+                    </h1>
+                    <p className="text-xs text-zinc-500 font-medium mt-1">
+                      {tab === 'signup'
+                        ? 'Enter your details below to register your account.'
+                        : 'Please enter your email and password to sign in.'}
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full btn-island py-4 text-xs mt-4"
-      >
-        <span>{loading ? 'Processing...' : tab === 'signin' ? 'Unlock Portal' : 'Create Access'}</span>
-        <span className="btn-bubble">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-          </svg>
-        </span>
-      </button>
-    </form>
-  )
+              {/* Form Body */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <AnimatePresence mode="wait">
+                  {tab === 'signup' ? (
+                    <motion.div
+                      key="signup-inputs"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="space-y-4"
+                    >
+                      {/* Full Name */}
+                      <div>
+                        <label className="text-xs font-bold text-zinc-700 block mb-1.5">
+                          Full Name
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          required
+                          value={form.name}
+                          onChange={onChange}
+                          placeholder="John Doe"
+                          autoComplete="name"
+                          className="w-full px-4 py-3.5 rounded-2xl bg-zinc-100/80 border border-zinc-200/70 text-zinc-900 placeholder-zinc-400 text-sm focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
+                        />
+                      </div>
 
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#fafaf9] relative overflow-hidden">
-      {/* Subtle Background Accent */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] bg-teal-500/8 blur-[130px] pointer-events-none" />
+                      {/* Email */}
+                      <div>
+                        <label className="text-xs font-bold text-zinc-700 block mb-1.5">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          required
+                          value={form.email}
+                          onChange={onChange}
+                          placeholder="Enter your Email here"
+                          autoComplete="email"
+                          className="w-full px-4 py-3.5 rounded-2xl bg-zinc-100/80 border border-zinc-200/70 text-zinc-900 placeholder-zinc-400 text-sm focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
+                        />
+                      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-        className="w-full max-w-md z-10"
-      >
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-white border border-zinc-200/90 flex items-center justify-center mx-auto mb-5 shadow-sm overflow-hidden p-1">
-            <img src="/logo.png" alt="serveQ" className="w-full h-full object-cover rounded-xl" />
-          </div>
-          <h1 className="text-3xl font-black text-zinc-950 tracking-tight leading-none mb-1.5">serveQ</h1>
-          <p className="text-zinc-500 text-xs font-semibold tracking-wide">Enterprise Operational Hub</p>
-        </div>
+                      {/* Password */}
+                      <div>
+                        <label className="text-xs font-bold text-zinc-700 block mb-1.5">
+                          Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            name="password"
+                            required
+                            value={form.password}
+                            onChange={onChange}
+                            placeholder="Enter your Password"
+                            autoComplete="new-password"
+                            className="w-full px-4 py-3.5 pr-12 rounded-2xl bg-zinc-100/80 border border-zinc-200/70 text-zinc-900 placeholder-zinc-400 text-sm focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 transition-colors p-1"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? (
+                              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            ) : (
+                              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
 
-        {/* Priority Check: Double-Bezel Form Container */}
-        <div className="bezel-shell">
-          <div className="bezel-core p-6 sm:p-8 space-y-6">
-            <div className="flex bg-zinc-100/70 p-1 rounded-full border border-zinc-200/80">
-              {[
-                { id: 'signin', label: 'Sign In' },
-                { id: 'signup', label: 'Create Account' }
-              ].map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  className={`flex-1 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all active:scale-[0.97] ${
-                    tab === t.id 
-                      ? 'bg-white text-zinc-950 shadow-xs border border-zinc-200/80' 
-                      : 'text-zinc-500 hover:text-zinc-800'
-                  }`}
+                      {/* Primary Submit Button */}
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3.5 px-6 rounded-2xl bg-[#52b788] hover:bg-[#40916c] active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 mt-2"
+                      >
+                        {loading ? 'Creating Account...' : 'Create Account'}
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="signin-inputs"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="space-y-4"
+                    >
+                      {/* Email */}
+                      <div>
+                        <label className="text-xs font-bold text-zinc-700 block mb-1.5">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          required
+                          value={form.email}
+                          onChange={onChange}
+                          placeholder="Enter your Email here"
+                          autoComplete="email"
+                          className="w-full px-4 py-3.5 rounded-2xl bg-zinc-100/80 border border-zinc-200/70 text-zinc-900 placeholder-zinc-400 text-sm focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
+                        />
+                      </div>
+
+                      {/* Password */}
+                      <div>
+                        <label className="text-xs font-bold text-zinc-700 block mb-1.5">
+                          Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            name="password"
+                            required
+                            value={form.password}
+                            onChange={onChange}
+                            placeholder="Enter your Password"
+                            autoComplete="current-password"
+                            className="w-full px-4 py-3.5 pr-12 rounded-2xl bg-zinc-100/80 border border-zinc-200/70 text-zinc-900 placeholder-zinc-400 text-sm focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 transition-colors p-1"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? (
+                              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            ) : (
+                              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Primary Submit Button */}
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3.5 px-6 rounded-2xl bg-[#52b788] hover:bg-[#40916c] active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 mt-2"
+                      >
+                        {loading ? 'Signing In...' : 'Sign In'}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </form>
+
+              {/* Mode Toggle Link */}
+              <div className="text-center text-xs font-medium text-zinc-500">
+                {tab === 'signup' ? (
+                  <p>
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setTab('signin')}
+                      className="font-bold text-[#2d6a4f] hover:text-[#1b4332] transition-colors underline active:scale-95"
+                    >
+                      Log in
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    Don't have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setTab('signup')}
+                      className="font-bold text-[#2d6a4f] hover:text-[#1b4332] transition-colors underline active:scale-95"
+                    >
+                      Create Account
+                    </button>
+                  </p>
+                )}
+              </div>
+
+              {/* OR Divider */}
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-zinc-200" />
+                </div>
+                <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
+                  <span className="bg-white px-3 text-zinc-400">OR</span>
+                </div>
+              </div>
+
+              {/* Google Login Button */}
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                className="w-full py-3.5 px-4 rounded-2xl bg-white border border-zinc-200/90 hover:bg-zinc-50 hover:border-zinc-300 text-zinc-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-3 active:scale-[0.98]"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" className="flex-shrink-0">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+
+              {/* Business / Hub Owner Link */}
+              <div className="pt-2 text-center">
+                <Link
+                  to="/business"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 hover:text-teal-900 transition-colors"
                 >
-                  {t.label}
-                </button>
-              ))}
+                  <span>🏢 Business / Hub Owner Portal</span>
+                  <span>→</span>
+                </Link>
+              </div>
             </div>
-
-            {renderEmailFlow()}
-
-            <div className="relative pt-2">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-200/60"></div></div>
-              <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-extrabold"><span className="bg-white px-3 text-zinc-400">or sync with</span></div>
-            </div>
-
-            <GoogleBtn />
-          </div>
+          </motion.div>
         </div>
-
-        {/* Hub Owner Exclusive Portal Link */}
-        <div className="mt-5 p-3.5 rounded-2xl bg-white border border-teal-200/90 shadow-sm text-center space-y-1">
-          <div className="flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-teal-800">
-            <span>🏢</span>
-            <span>Are you a Business / Hub Owner?</span>
-          </div>
-          <Link
-            to="/business"
-            className="inline-flex items-center gap-1 text-xs font-black text-teal-600 hover:text-teal-800 transition-colors"
-          >
-            <span>Go to Hub Owner Portal (serveq.tech/business)</span>
-            <span>→</span>
-          </Link>
-        </div>
-
-        <p className="mt-6 text-center text-zinc-400 text-[10px] font-bold uppercase tracking-widest">
-          End-to-End Encrypted Session &bull; v2.4.0
-        </p>
-      </motion.div>
+      </div>
     </div>
   )
 }
