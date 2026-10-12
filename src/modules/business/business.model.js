@@ -76,6 +76,20 @@ const businessSchema = new mongoose.Schema(
       ],
       default: [{ name: "general", duration: 10 }]
     },
+    staff: {
+      type: [
+        {
+          name: { type: String, required: true },
+          role: { type: String, default: "" },
+          specialties: { type: String, default: "" },
+          phone: { type: String, default: "" },
+          isAvailable: { type: Boolean, default: true },
+          customersServed: { type: Number, default: 0 },
+          rating: { type: Number, default: 5.0 },
+        },
+      ],
+      default: [],
+    },
     basePrice: {
       type: Number,
       default: 0,

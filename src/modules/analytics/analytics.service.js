@@ -4,7 +4,7 @@ import Review from "../review/review.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import { generateBusinessAIAnalytics } from "../../../ai/gemini.service.js";
 
-export const getBusinessAnalytics = async (businessId, requestingUserId, userRole) => {
+export const getBusinessAnalytics = async (businessId, requestingUserId, userRole, options = {}) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
@@ -12,19 +12,119 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     throw new ApiError(403, "Access denied: you can only view analytics for your own business");
   }
 
-  // Calculate stats from bookings
-  const [totalBookings, completedBookings, cancelledBookings, reviews] = await Promise.all([
+  // Fetch bookings and reviews
+  const [totalBookings, allBookings, cancelledBookings, reviews] = await Promise.all([
     Booking.countDocuments({ businessId }),
-    Booking.find({ businessId, status: "completed" }),
+    Booking.find({ businessId }).populate("userId", "name email phone").sort({ createdAt: -1 }),
     Booking.countDocuments({ businessId, status: "cancelled" }),
     Review.find({ businessId }).sort({ createdAt: -1 }).limit(10),
   ]);
 
-  const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0), 0);
-  const avgRating = reviews.length > 0
-    ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) * 10) / 10
-    : 5.0;
+  const completedBookings = allBookings.filter((b) => b.status === "completed");
+  const totalRevenue = completedBookings.reduce(
+    (sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0),
+    0
+  );
 
+  const avgRating =
+    reviews.length > 0
+      ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) * 10) / 10
+      : 5.0;
+
+  // ─── 1. Calculate Daily Customer Breakdown (Past 7-14 Days) ─────────────────
+  const daysMap = new Map();
+  const today = new Date();
+
+  // Initialize the last 7 days with zero defaults
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateKey = d.toISOString().split("T")[0];
+    const displayDate = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    daysMap.set(dateKey, {
+      date: dateKey,
+      displayDate,
+      totalCustomers: 0,
+      completedCount: 0,
+      revenue: 0,
+      services: {},
+    });
+  }
+
+  // Aggregate bookings into daily bins
+  allBookings.forEach((b) => {
+    const bDate = b.createdAt ? new Date(b.createdAt).toISOString().split("T")[0] : null;
+    if (bDate && daysMap.has(bDate)) {
+      const entry = daysMap.get(bDate);
+      entry.totalCustomers += 1;
+      if (b.status === "completed") {
+        entry.completedCount += 1;
+        entry.revenue += (b.paidAmount || 0) + (b.extraCharge || 0);
+      }
+      if (b.serviceType) {
+        entry.services[b.serviceType] = (entry.services[b.serviceType] || 0) + 1;
+      }
+    }
+  });
+
+  const dailyBreakdown = Array.from(daysMap.values()).map((day) => {
+    // Find most popular service for the day
+    let topService = "General Service";
+    let maxCount = 0;
+    Object.entries(day.services).forEach(([svc, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        topService = svc;
+      }
+    });
+
+    return {
+      date: day.date,
+      displayDate: day.displayDate,
+      totalCustomers: day.totalCustomers,
+      completedCount: day.completedCount,
+      revenue: day.revenue,
+      topService,
+    };
+  });
+
+  // ─── 2. Identify Top / Best Customer ────────────────────────────────────────
+  const customerMap = new Map();
+  completedBookings.forEach((b) => {
+    const uId = b.userId?._id?.toString() || b.userId?.toString();
+    if (!uId) return;
+    if (!customerMap.has(uId)) {
+      customerMap.set(uId, {
+        userId: uId,
+        name: b.userId?.name || "Verified Customer",
+        email: b.userId?.email || "",
+        visits: 0,
+        totalSpent: 0,
+      });
+    }
+    const cData = customerMap.get(uId);
+    cData.visits += 1;
+    cData.totalSpent += (b.paidAmount || 0) + (b.extraCharge || 0);
+  });
+
+  let topCustomer = null;
+  customerMap.forEach((c) => {
+    if (!topCustomer || c.visits > topCustomer.visits || (c.visits === topCustomer.visits && c.totalSpent > topCustomer.totalSpent)) {
+      topCustomer = c;
+    }
+  });
+
+  // ─── 3. Identify Top Employee (Barber or Doctor) ───────────────────────────
+  const staffList = Array.isArray(business.staff) ? business.staff : [];
+  let topEmployee = null;
+  if (staffList.length > 0) {
+    topEmployee = staffList.reduce((best, cur) => {
+      if (!best) return cur;
+      return (cur.customersServed || 0) > (best.customersServed || 0) ? cur : best;
+    }, null);
+  }
+
+  // ─── 4. Generate AI Executive Analytics ────────────────────────────────────
   const aiInsights = await generateBusinessAIAnalytics({
     businessName: business.name,
     category: business.category,
@@ -32,20 +132,29 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     cancellationCount: cancelledBookings,
     averageRating: avgRating,
     recentReviews: reviews,
+    topCustomer,
+    topEmployee,
+    staffList,
   });
 
   return {
     businessId,
     businessName: business.name,
+    category: business.category,
+    staff: staffList,
+    dailyBreakdown,
     metrics: {
       totalBookings,
       completedBookings: completedBookings.length,
       cancelledBookings,
       totalRevenue,
-      customerCount: new Set(completedBookings.map((b) => b.userId?.toString())).size,
+      customerCount: new Set(completedBookings.map((b) => b.userId?._id?.toString() || b.userId?.toString())).size,
       averageRating: avgRating,
       reviewCount: reviews.length,
+      dailyAverage: Math.round((dailyBreakdown.reduce((sum, d) => sum + d.totalCustomers, 0) / (dailyBreakdown.length || 1)) * 10) / 10,
     },
+    topCustomer,
+    topEmployee,
     aiInsights,
   };
 };

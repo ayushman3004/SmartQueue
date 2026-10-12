@@ -36,3 +36,35 @@ export const SERVICE_PRESETS = {
     { name: "Comprehensive Service Session", duration: 30, price: 500 },
   ],
 }
+
+export const STAFF_PRESETS = {
+  salon: {
+    title: "Barbers & Stylists",
+    singular: "Barber / Stylist",
+    icon: "✂️",
+    defaults: [
+      { name: "Alex Rivera", role: "Master Barber", specialties: "Fade, Lineup & Beard Design", isAvailable: true, customersServed: 24, rating: 4.9 },
+      { name: "David Chen", role: "Senior Stylist", specialties: "Scissor Cut & Texture Styling", isAvailable: true, customersServed: 19, rating: 4.8 },
+      { name: "Marcus Hayes", role: "Grooming Specialist", specialties: "Hot Towel Shave & Facial", isAvailable: true, customersServed: 15, rating: 5.0 },
+    ],
+  },
+  clinic: {
+    title: "Doctors & Specialists",
+    singular: "Doctor / Specialist",
+    icon: "🩺",
+    defaults: [
+      { name: "Dr. Sarah Jenkins", role: "Senior Consultant", specialties: "General Medicine & Family Health", isAvailable: true, customersServed: 31, rating: 4.9 },
+      { name: "Dr. Rajesh Gupta", role: "Specialist Physician", specialties: "Internal Medicine & Diagnostics", isAvailable: true, customersServed: 27, rating: 5.0 },
+      { name: "Dr. Elena Rostova", role: "Clinical Consultant", specialties: "Preventative & Primary Care", isAvailable: true, customersServed: 22, rating: 4.8 },
+    ],
+  },
+  healthcare: {
+    title: "Doctors & Specialists",
+    singular: "Doctor / Specialist",
+    icon: "🩺",
+    defaults: [
+      { name: "Dr. Sarah Jenkins", role: "Senior Consultant", specialties: "General Medicine & Family Health", isAvailable: true, customersServed: 31, rating: 4.9 },
+      { name: "Dr. Rajesh Gupta", role: "Specialist Physician", specialties: "Internal Medicine & Diagnostics", isAvailable: true, customersServed: 27, rating: 5.0 },
+    ],
+  },
+}

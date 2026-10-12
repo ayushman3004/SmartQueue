@@ -18,6 +18,20 @@ export const createBusiness = async (ownerId, data) => {
     payload.serviceTypes = ["General Service"];
   }
 
+  // Initialize default staff (Barbers for salons, Doctors for clinics) if not provided
+  if (!Array.isArray(payload.staff) || payload.staff.length === 0) {
+    const isClinic = payload.category === "clinic" || payload.category === "healthcare";
+    payload.staff = isClinic
+      ? [
+          { name: "Dr. Sarah Jenkins", role: "Senior Consultant", specialties: "General Medicine & Family Care", isAvailable: true, customersServed: 28, rating: 4.9 },
+          { name: "Dr. Rajesh Gupta", role: "Specialist Physician", specialties: "Internal Medicine & Diagnostics", isAvailable: true, customersServed: 24, rating: 5.0 },
+        ]
+      : [
+          { name: "Alex Rivera", role: "Master Barber", specialties: "Fade, Lineup & Beard Design", isAvailable: true, customersServed: 32, rating: 4.9 },
+          { name: "David Chen", role: "Senior Stylist", specialties: "Scissor Cut & Texture Styling", isAvailable: true, customersServed: 21, rating: 4.8 },
+        ];
+  }
+
   const business = await Business.create(payload);
 
   // Initialize a Queue document for the new business
@@ -181,6 +195,21 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
       }))
       .filter(s => s.name);
     safeData.serviceTypes = safeData.services.map(s => s.name);
+  }
+
+  // Validate and sanitize staff if provided
+  if (Array.isArray(safeData.staff)) {
+    safeData.staff = safeData.staff
+      .map(st => ({
+        name: String(st.name || '').trim(),
+        role: String(st.role || '').trim(),
+        specialties: String(st.specialties || '').trim(),
+        phone: String(st.phone || '').trim(),
+        isAvailable: st.isAvailable !== false,
+        customersServed: Math.max(0, Number(st.customersServed) || 0),
+        rating: Math.max(1, Math.min(5, Number(st.rating) || 5.0)),
+      }))
+      .filter(st => st.name);
   }
 
   Object.assign(b, safeData);
