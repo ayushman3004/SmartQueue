@@ -23,7 +23,7 @@ export default function AuthCallback() {
         } else if (loggedUser?.role === 'owner') {
           navigate('/business')
         } else {
-          navigate('/')
+          navigate('/customers')
         }
       })
       .catch(() => {

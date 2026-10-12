@@ -141,7 +141,7 @@ export default function LandingPage() {
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/customers')}
                   className="px-6 py-3.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold tracking-wide uppercase shadow-md shadow-teal-600/20 active:scale-95 transition-all"
                 >
                   Join a Queue →
@@ -303,7 +303,7 @@ export default function LandingPage() {
                   <div className="pt-2">
                     <button
                       type="button"
-                      onClick={() => navigate('/login')}
+                      onClick={() => navigate('/customers')}
                       className="text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors"
                     >
                       View Live Queues →
@@ -365,7 +365,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/customers')}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-teal-500 hover:bg-teal-400 text-zinc-950 text-xs font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all text-center"
               >
                 Get Started

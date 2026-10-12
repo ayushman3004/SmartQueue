@@ -26,7 +26,7 @@ export default function LoginPage() {
       toast.success(tab === 'signin' ? 'Welcome back!' : 'Account created successfully!', {
         style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #f4f4f5' }
       })
-      navigate('/')
+      navigate(user?.role === 'owner' ? '/business' : '/customers')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Authentication failed', {
         style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #fef2f2' }

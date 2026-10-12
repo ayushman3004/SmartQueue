@@ -29,6 +29,34 @@ export const protect = asyncHandler(async (req, _res, next) => {
 });
 
 /**
+ * Optional authentication: attaches req.user if token is present and valid,
+ * but allows unauthenticated requests to proceed.
+ */
+export const optionalAuth = asyncHandler(async (req, _res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
+  } else if (req.cookies?.token) {
+    token = req.cookies.token;
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id).select("-password");
+      if (user) req.user = user;
+    } catch {
+      // Continue as guest
+    }
+  }
+  next();
+});
+
+/**
  * Restrict access to specific roles.
  * Usage: allowRoles("owner") or allowRoles("owner", "user")
  * Must be used AFTER protect middleware.

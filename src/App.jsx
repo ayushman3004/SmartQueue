@@ -9,6 +9,7 @@ import AIDesistant from './components/AIDesistant'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
+import CustomerDashboardPage from './pages/CustomerDashboardPage'
 import QueuePage from './pages/QueuePage'
 import BookingPage from './pages/BookingPage'
 import BusinessDashboard from './pages/BusinessDashboard'
@@ -118,12 +119,19 @@ export default function App() {
               ) : user.role === 'owner' ? (
                 <Navigate to="/business" replace />
               ) : (
-                <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                  <DashboardPage />
-                </ProtectedRoute>
+                <Navigate to="/customers" replace />
               )
             }
           />
+          <Route
+            path="/customers"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <CustomerDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/customer" element={<Navigate to="/customers" replace />} />
           <Route
             path="/queue/:businessId"
             element={

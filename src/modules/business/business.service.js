@@ -99,6 +99,7 @@ export const getAllBusinesses = async (filters = {}) => {
       $addFields: {
         queueLength: { $size: { $ifNull: ["$queueData.users", []] } },
         totalServiceTime: { $sum: "$queueData.users.serviceTime" },
+        activeQueue: { $ifNull: ["$queueData.users", []] },
       },
     },
     {

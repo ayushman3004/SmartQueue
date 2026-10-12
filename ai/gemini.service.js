@@ -114,58 +114,63 @@ export const generateBusinessAIAnalytics = async ({
     return getHeuristicAnalytics();
   }
 
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const isClinic = category === "clinic" || category === "healthcare";
-    const prompt = `You are an elite operational analytics advisor for ${businessName} (Category: ${category}).
-    Analyze the following operational metrics:
-    - Venue: ${businessName}
-    - Type: ${isClinic ? "Medical Clinic" : "Salon & Wellness"}
-    - Total Bookings: ${bookingsCount}
-    - Total Cancellations: ${cancellationCount}
-    - Average Customer Rating: ${averageRating}/5
-    - Top Customer Data: ${topCustomer ? JSON.stringify(topCustomer) : "Frequent returning patron"}
-    - Top Staff Performer: ${topEmployee ? JSON.stringify(topEmployee) : (isClinic ? "Top Doctor" : "Top Barber")}
-    - Available Staff: ${staffList.map((s) => `${s.name} (${s.role || "Staff"})`).join(", ") || "Active team"}
-    - Recent Customer Comments: ${recentReviews.map((r) => `"${r.comment}" (${r.rating}★)`).join("; ") || "Positive customer feedback"}
+  const isClinic = category === "clinic" || category === "healthcare";
+  const prompt = `You are an elite operational analytics advisor for ${businessName} (Category: ${category}).
+  Analyze the following operational metrics:
+  - Venue: ${businessName}
+  - Type: ${isClinic ? "Medical Clinic" : "Salon & Wellness"}
+  - Total Bookings: ${bookingsCount}
+  - Total Cancellations: ${cancellationCount}
+  - Average Customer Rating: ${averageRating}/5
+  - Top Customer Data: ${topCustomer ? JSON.stringify(topCustomer) : "Frequent returning patron"}
+  - Top Staff Performer: ${topEmployee ? JSON.stringify(topEmployee) : (isClinic ? "Top Doctor" : "Top Barber")}
+  - Available Staff: ${staffList.map((s) => `${s.name} (${s.role || "Staff"})`).join(", ") || "Active team"}
+  - Recent Customer Comments: ${recentReviews.map((r) => `"${r.comment}" (${r.rating}★)`).join("; ") || "Positive customer feedback"}
 
-    Generate an actionable executive report.
-    Respond ONLY with a valid JSON object matching this schema (no markdown fences, no explanatory text):
-    {
-      "peakHours": ["string", "string"],
-      "peakHoursAnalysis": "string",
-      "cancellationRate": "string",
-      "sentimentSummary": "string",
-      "bestCustomer": {
-        "name": "string",
-        "visits": number,
-        "totalSpent": number,
-        "review": "string",
-        "badge": "string"
-      },
-      "bestEmployee": {
-        "name": "string",
-        "role": "string",
-        "customersServed": number,
-        "rating": number,
-        "review": "string",
-        "badge": "string"
-      },
-      "recommendations": ["string", "string", "string"]
-    }`;
+  Generate an actionable executive report.
+  Respond ONLY with a valid JSON object matching this schema (no markdown fences, no explanatory text):
+  {
+    "peakHours": ["string", "string"],
+    "peakHoursAnalysis": "string",
+    "cancellationRate": "string",
+    "sentimentSummary": "string",
+    "bestCustomer": {
+      "name": "string",
+      "visits": number,
+      "totalSpent": number,
+      "review": "string",
+      "badge": "string"
+    },
+    "bestEmployee": {
+      "name": "string",
+      "role": "string",
+      "customersServed": number,
+      "rating": number,
+      "review": "string",
+      "badge": "string"
+    },
+    "recommendations": ["string", "string", "string"]
+  }`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return getHeuristicAnalytics();
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    return {
-      ...parsed,
-      isAiGenerated: true,
-    };
-  } catch (err) {
-    console.warn("⚠️ Gemini AI analytics fallback triggered:", err.message);
-    return getHeuristicAnalytics();
+  const candidateModels = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.7-flash"];
+  for (const modelName of candidateModels) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          ...parsed,
+          isAiGenerated: true,
+          modelUsed: modelName,
+        };
+      }
+    } catch (err) {
+      console.warn(`⚠️ Model ${modelName} analytics attempt failed:`, err.message);
+    }
   }
+
+  return getHeuristicAnalytics();
 };
