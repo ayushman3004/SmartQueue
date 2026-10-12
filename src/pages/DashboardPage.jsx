@@ -8,8 +8,7 @@ import { getMyBookings, cancelBooking } from '../api/booking.api'
 import { getAvailableCoupons } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import BusinessCard from '../components/BusinessCard'
-import RegisterHubModal from '../components/RegisterHubModal'
-import ManageServicesModal from '../components/ManageServicesModal'
+import HubCommandCenter from '../components/HubCommandCenter'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 
@@ -17,6 +16,11 @@ const CATEGORIES = ['all', 'healthcare', 'banking', 'retail', 'salon', 'restaura
 
 export default function DashboardPage() {
   const { user, setUser } = useAuth()
+  const isOwner = user?.role === 'owner'
+
+  if (isOwner) {
+    return <HubCommandCenter />
+  }
   const navigate = useNavigate()
   const { onBusinessStatus, socket } = useSocket()
 
@@ -45,7 +49,6 @@ export default function DashboardPage() {
   const [registerHubOpen, setRegisterHubOpen] = useState(false)
   const [manageServicesBiz, setManageServicesBiz] = useState(null)
 
-  const isOwner = user?.role === 'owner'
 
   const handleHubCreated = (newBiz) => {
     setMyBusinesses(prev => [newBiz, ...prev])
@@ -237,112 +240,7 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* Owner Section (If role === 'owner') */}
-      {isOwner && (
-        <section className="space-y-6 text-left">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
-            <div>
-              <h2 className="text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-                <span>Your Operational Hubs</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 font-extrabold">
-                  {myBusinesses.length}
-                </span>
-              </h2>
-              <p className="text-xs text-zinc-500 font-medium">Manage your service catalog, real-time queues, and operations console.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setRegisterHubOpen(true)}
-              className="btn-island py-2.5 px-4 text-xs bg-teal-600 hover:bg-teal-700 text-white shadow-teal-600/20 flex items-center gap-2 self-start sm:self-auto"
-            >
-              <span>+ Register New Hub</span>
-              <span className="btn-bubble bg-white/20 text-white">🏢</span>
-            </button>
-          </div>
 
-          {/* Empty State when no hubs registered */}
-          {myBusinesses.length === 0 ? (
-            <div className="bezel-shell">
-              <div className="bezel-core p-8 sm:p-12 text-center space-y-4 bg-gradient-to-b from-zinc-50 via-teal-50/10 to-teal-50/30 border border-dashed border-teal-300/80 rounded-3xl">
-                <div className="w-16 h-16 rounded-2xl bg-teal-100/80 border border-teal-200 flex items-center justify-center text-3xl mx-auto shadow-sm">
-                  🏢
-                </div>
-                <div className="max-w-md mx-auto space-y-1.5">
-                  <h3 className="text-xl font-black text-zinc-950 tracking-tight">No Hubs Registered Yet</h3>
-                  <p className="text-xs text-zinc-500 font-medium leading-relaxed">
-                    You are registered as a Hub Owner! Create your first business hub to define your catalog of services, configure session durations and pricing, and start accepting live queue reservations.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setRegisterHubOpen(true)}
-                  className="px-6 py-3 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-teal-600/25 active:scale-95 transition-all inline-flex items-center gap-2"
-                >
-                  <span>+ Register Your Business Hub</span>
-                  <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">✨</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myBusinesses.map(b => (
-                <div
-                  key={b._id}
-                  className="bezel-shell group flex flex-col justify-between"
-                >
-                  <div className="bezel-core p-6 flex flex-col justify-between h-full space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-2xl">{CATEGORY_METADATA[b.category]?.icon || '🏢'}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          b.isOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}>
-                          {b.isOpen ? '● LIVE' : '○ CLOSED'}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-black text-zinc-950 mb-0.5 group-hover:text-teal-700 transition-colors">{b.name}</h3>
-                      <p className="text-xs text-zinc-400 capitalize">{b.category} Hub &bull; {b.location || b.address || 'Operational'}</p>
-                    </div>
-
-                    {/* Services count pill & queue summary */}
-                    <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between text-xs font-semibold text-zinc-600">
-                      <span className="flex items-center gap-1.5 text-teal-700 font-bold">
-                        <span>⚡</span>
-                        <span>{b.services?.length || 1} Services Active</span>
-                      </span>
-                      <span className="text-zinc-500 font-medium">
-                        Queue: <strong>{b.queueLength || 0}</strong> waiting
-                      </span>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setManageServicesBiz(b)
-                        }}
-                        className="flex-1 py-2 px-3 rounded-xl bg-teal-50 hover:bg-teal-100/80 text-teal-900 border border-teal-200 text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-98"
-                        title="Configure services catalog"
-                      >
-                        <span>⚡</span> Services
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/business/${b._id}/manage`)}
-                        className="flex-1 py-2 px-3 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-98"
-                      >
-                        Console →
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
 
       {/* Customer's Active Bookings & History */}
       <section className="space-y-6 text-left">
