@@ -1,231 +1,415 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { useNavigate, Link } from 'react-router-dom'
 import React from 'react'
-import MetroHero from '../components/MetroHero'
-import ImageStreamHero from '../components/ImageStreamHero'
-import SqueezeCarousel from '../components/SqueezeCarousel'
-import PerfToggle from '../components/PerfToggle'
 
-const FEATURE_SLIDES = [
+const VENUES = [
   {
-    id: 'positioning',
-    title: 'Live System Positioning.',
-    description: 'Monitor real-time hub traffic to track exact wait times and queue flow with pinpoint precision.',
-    image: '/hero-viz.png',
-    overlay: (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
-        <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
-        Live Geo-Queue Radar
-      </div>
-    ),
-    action: 'Start Queue',
-    href: '/login'
+    title: 'Restaurants & Cafes',
+    desc: 'Eliminate crowded waiting doorways during dinner and peak rushes.',
+    image: '/hubs/restaurant.png',
+    badge: 'Dining'
   },
   {
-    id: 'payments',
-    title: 'Seamless Payments.',
-    description: 'Reserve slots instantly with integrated payments. Secure refunds process automatically if plans change.',
-    image: '/hubs/bank.png',
-    overlay: (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
-        <span className="text-teal-300">💳</span>
-        Automated Escrow Checkout
-      </div>
-    ),
-    action: 'Reserve Priority',
-    href: '/login'
-  },
-  {
-    id: 'sync',
-    title: 'Zero-Latency Sync.',
-    description: 'Built on high-performance WebSockets to ensure your status immediately syncs across all devices.',
-    image: '/dash-dark-bg.png',
-    overlay: (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
-        <span className="text-amber-400">⚡</span>
-        Sub-10ms WebSocket Mesh
-      </div>
-    ),
-    action: 'View System State',
-    href: '/login'
-  },
-  {
-    id: 'infrastructure',
-    title: 'Business Infrastructure.',
-    description: 'Equip your team with an enterprise-grade dashboard to completely manage and optimize customer flow.',
-    image: '/cta-bg.png',
-    overlay: (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
-        <span className="text-cyan-300">🏢</span>
-        Enterprise Command Center
-      </div>
-    ),
-    action: 'Deploy Venue',
-    href: '/business'
-  },
-  {
-    id: 'forecasting',
-    title: 'Predictive Wait-Time AI.',
-    description: 'Heuristic forecasting estimates patient and customer turnaround based on live counter velocity.',
+    title: 'Clinics & Healthcare',
+    desc: 'Stress-free waiting rooms for patients with live doctor desk calling.',
     image: '/hubs/clinic.png',
-    overlay: (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-wide">
-        <span className="text-teal-300">🧠</span>
-        Neural Wait Forecasting
-      </div>
-    ),
-    action: 'Explore AI Engine',
-    href: '/login'
+    badge: 'Medical'
+  },
+  {
+    title: 'Salons & Wellness',
+    desc: 'Seamless walk-in booking and stylist turnaround without idle waiting.',
+    image: '/hubs/salon.png',
+    badge: 'Wellness'
+  },
+  {
+    title: 'Banking & Financial',
+    desc: 'Fast teller routing and high-priority counter allocation.',
+    image: '/hubs/bank.png',
+    badge: 'Finance'
+  },
+  {
+    title: 'Retail & Boutiques',
+    desc: 'Manage peak shopping flow, fitting rooms, and express checkouts.',
+    image: '/hubs/retail.png',
+    badge: 'Retail'
+  },
+  {
+    title: 'Public & Civic Centers',
+    desc: 'Civilian-first virtual ticketing for orderly municipal services.',
+    image: '/hubs/gov.png',
+    badge: 'Civic'
   }
 ]
 
-const HUB_IMAGES = [
-  { url: '/hubs/restaurant.png', title: 'Restaurants', desc: 'Manage peak hour dining queues with zero friction.' },
-  { url: '/hubs/salon.png', title: 'Salons', desc: 'Optimize stylist schedules and reduce client wait times.' },
-  { url: '/hubs/clinic.png', title: 'Clinics', desc: 'Provide a stress-free environment for patient arrival.' },
-  { url: '/hubs/bank.png', title: 'Banking', desc: 'Elite financial service management with digital precision.' },
-  { url: '/hubs/retail.png', title: 'Retail', desc: 'High-fashion flow control for premium boutiques.' },
-  { url: '/hubs/gov.png', title: 'Government', desc: 'Civilian-first architecture for modern public services.' }
+const FEATURES = [
+  {
+    icon: '⚡',
+    title: 'Zero-Latency Sync',
+    desc: 'Sub-10ms WebSocket connection keeps token numbers updating in real-time across all devices.'
+  },
+  {
+    icon: '🧠',
+    title: 'Predictive Wait Times',
+    desc: 'Smart turnaround forecasting estimates remaining wait times based on counter velocity.'
+  },
+  {
+    icon: '💳',
+    title: 'Integrated Payments',
+    desc: 'Reserve priority slots instantly with automatic escrow refunds if your schedule changes.'
+  },
+  {
+    icon: '🏢',
+    title: 'Business Command Suite',
+    desc: 'Manage customer flow, call tokens with one tap, and analyze venue traffic analytics.'
+  }
 ]
 
-
-
-
+const STEPS = [
+  {
+    step: '01',
+    title: 'Join Virtually',
+    desc: 'Find any nearby venue or scan the on-site QR code right from your smartphone.'
+  },
+  {
+    step: '02',
+    title: 'Wait Anywhere',
+    desc: 'Grab coffee or relax nearby. Your live queue position and estimated wait time sync in real-time.'
+  },
+  {
+    step: '03',
+    title: 'Walk Straight In',
+    desc: 'Receive an instant notification when your counter or table is ready. No crowded lines.'
+  }
+]
 
 export default function LandingPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="w-full overflow-x-hidden bg-[#05070d] text-white">
-      {/* Ambient background mesh */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
-        <div className="absolute top-[5%] right-[12%] w-[550px] h-[550px] bg-teal-500/10 rounded-full blur-[140px]" />
-        <div className="absolute bottom-[15%] left-[8%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[130px]" />
-      </div>
-
-      {/* Cinematic Locked Scroll-Scrub Video Hero */}
-      <MetroHero 
-        title="ELIMINATE THE WAITING ROOM"
-        tagline="Zero-friction virtual waiting queues. Every door in the city is open without the wait."
-        scrollHint="SCROLL TO EXPLORE"
-        signature={false}
-      >
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-          <button 
-            type="button"
-            onClick={() => navigate('/business')}
-            className="btn-island py-3.5 px-6 text-xs bg-teal-500 hover:bg-teal-400 text-zinc-950 font-black tracking-wider uppercase shadow-xl shadow-teal-500/25"
-          >
-            <span>Start Free Deployment</span>
-            <span className="btn-bubble">→</span>
-          </button>
-          <button 
-            type="button"
-            onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-            className="px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 text-white text-xs font-bold uppercase tracking-wider transition-all"
-          >
-            Explore Platform ↓
-          </button>
-        </div>
-      </MetroHero>
-
-      {/* Live Venue 3D Perspective Stream Corridor */}
-      <section className="relative py-12 sm:py-16 bg-[#05070d] text-white overflow-hidden border-b border-zinc-800/80">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-[2rem] sm:rounded-[2.5rem] bg-black border border-white/10 overflow-hidden shadow-2xl">
-            <ImageStreamHero
-              images={HUB_IMAGES}
-              cards={10}
-              speed={22}
-              axis={56}
-              className="w-full h-[500px] sm:h-[600px] md:h-[680px] lg:h-[740px]"
-            >
-              {/* Edge Gradient Fades */}
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-28 bg-gradient-to-r from-black to-transparent z-10" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-28 bg-gradient-to-l from-black to-transparent z-10" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/70 to-transparent z-10" />
-
-              {/* Text Above */}
-              <div className="absolute inset-x-0 top-8 sm:top-12 md:top-14 z-20 flex flex-col items-center text-center px-4 pointer-events-none">
-                <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-[1.08] max-w-3xl">
-                  Deployable Across, <br />
-                  Every High-Volume Venue.
-                </h2>
-              </div>
-
-              {/* Caption Below */}
-              <div className="absolute inset-x-0 bottom-5 sm:bottom-7 z-20 flex justify-center text-center px-4 pointer-events-none">
-                <p className="text-zinc-400 text-xs sm:text-sm font-normal tracking-wide max-w-xl">
-                  Dining, clinical care, financial branches, luxury retail, and public services moving with zero physical wait times.
-                </p>
-              </div>
-            </ImageStreamHero>
-          </div>
-        </div>
-      </section>
-
-      {/* Capabilities Section (Interactive Squeeze Carousel) */}
-      <section id="features" className="py-24 relative overflow-hidden bg-[#05070d] text-white border-t border-zinc-800/80">
-        <div className="container mx-auto px-4 sm:px-8 lg:px-12 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-zinc-800/80 mb-8">
-            <div className="space-y-3 max-w-2xl text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 text-teal-300 text-xs font-bold border border-teal-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                Core Technology
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
-                Architected for <span className="text-teal-400">Zero-Friction</span> Flow.
-              </h2>
-              <p className="text-zinc-400 text-sm sm:text-base font-medium">
-                Everything required to transform physical waiting rooms into synchronous real-time digital queues.
-              </p>
+    <div className="min-h-screen bg-[#fafaf9] text-zinc-900 selection:bg-teal-500/20 selection:text-teal-900">
+      {/* ── Top Navigation Bar ── */}
+      <header className="sticky top-0 z-50 bg-[#fafaf9]/85 backdrop-blur-md border-b border-zinc-200/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 no-underline">
+            <div className="w-9 h-9 rounded-xl bg-white border border-zinc-200/80 p-1 flex items-center justify-center shadow-xs">
+              <img src="/logo.png" alt="serveQ Logo" className="w-full h-full object-contain" />
             </div>
-          </div>
+            <span className="text-lg font-black tracking-tight text-zinc-950">serveQ</span>
+          </Link>
 
-          <SqueezeCarousel 
-            slides={FEATURE_SLIDES}
-            height="clamp(280px, 34cqi, 440px)"
-            radius={20}
-            autoplay={true}
-            interval={5000}
-            hoverGrow={true}
-          />
-        </div>
-      </section>
+          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-600">
+            <a href="#how-it-works" className="hover:text-zinc-950 transition-colors">How It Works</a>
+            <a href="#venues" className="hover:text-zinc-950 transition-colors">Venues</a>
+            <a href="#features" className="hover:text-zinc-950 transition-colors">Features</a>
+          </nav>
 
-      {/* CTA Section */}
-      <section className="py-24 px-4 sm:px-8">
-        <div className="container mx-auto">
-          <div className="bg-zinc-950 p-10 sm:p-16 md:p-20 rounded-[2.5rem] flex flex-col xl:flex-row items-start xl:items-center justify-between gap-10 shadow-2xl relative overflow-hidden text-left border border-zinc-800">
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-500/15 rounded-full blur-[140px] pointer-events-none" />
-            
-            <div className="space-y-4 relative z-10 max-w-xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-[10px] font-extrabold uppercase tracking-widest border border-teal-500/30">
-                <span>⚡</span> Enterprise Ready
-              </div>
-              <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none">
-                Ready to transform <br />your venue?
-              </h2>
-              <p className="text-zinc-400 text-sm sm:text-base font-medium">
-                Equip your team with automated real-time queuing, digital booking, and AI wait predictions.
-              </p>
-            </div>
-
-            <button 
-              onClick={() => navigate('/business')}
-              className="relative z-10 group px-8 py-4 rounded-full bg-white text-zinc-950 text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-zinc-100 active:scale-[0.97] transition-all flex items-center gap-3"
+          <div className="flex items-center gap-3">
+            <Link
+              to="/business"
+              className="hidden sm:inline-flex text-xs font-bold text-zinc-700 hover:text-zinc-950 px-3 py-2 rounded-lg hover:bg-zinc-100 transition-colors"
             >
-              <span>Launch Now</span>
-              <span className="w-7 h-7 rounded-full bg-zinc-950 text-white flex items-center justify-center transition-transform group-hover:translate-x-1">
-                →
-              </span>
+              For Business
+            </Link>
+            <Link
+              to="/login"
+              className="text-xs font-bold text-zinc-800 hover:text-zinc-950 px-3.5 py-2 rounded-lg hover:bg-zinc-100 transition-colors"
+            >
+              Sign In
+            </Link>
+            <button
+              onClick={() => navigate('/login')}
+              className="text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded-full shadow-sm hover:shadow transition-all active:scale-95"
+            >
+              Get Started
             </button>
           </div>
         </div>
+      </header>
+
+      {/* ── Hero Section ── */}
+      <section className="relative pt-16 pb-20 sm:pt-24 sm:pb-28 overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-teal-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+            
+            {/* Left Column: Value Prop */}
+            <div className="lg:col-span-7 text-center lg:text-left space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200/70 text-teal-800 text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                Live Virtual Queue Management
+              </div>
+
+              <h1 className="text-4xl sm:text-6xl font-black text-zinc-950 tracking-tight leading-[1.08]">
+                Wait from anywhere, <br />
+                <span className="text-teal-600">not in line.</span>
+              </h1>
+
+              <p className="text-base sm:text-lg text-zinc-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                Join virtual lines on your phone, track live wait times, and walk straight in when your turn arrives. ServeQ eliminates crowded waiting rooms for venues and customers alike.
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/login')}
+                  className="px-6 py-3.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold tracking-wide uppercase shadow-md shadow-teal-600/20 active:scale-95 transition-all"
+                >
+                  Join a Queue →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/business')}
+                  className="px-6 py-3.5 rounded-full bg-white hover:bg-zinc-50 border border-zinc-200/90 text-zinc-800 text-xs font-bold tracking-wide uppercase shadow-xs active:scale-95 transition-all"
+                >
+                  Business Portal
+                </button>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="pt-6 border-t border-zinc-200/80 flex items-center justify-center lg:justify-start gap-8 text-left">
+                <div>
+                  <p className="text-xl font-black text-zinc-950">&lt; 10ms</p>
+                  <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Sync Latency</p>
+                </div>
+                <div className="w-px h-8 bg-zinc-200" />
+                <div>
+                  <p className="text-xl font-black text-zinc-950">100%</p>
+                  <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Virtual Queue</p>
+                </div>
+                <div className="w-px h-8 bg-zinc-200" />
+                <div>
+                  <p className="text-xl font-black text-teal-600">0 min</p>
+                  <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Lobby Waiting</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Clean Interactive Mockup */}
+            <div className="lg:col-span-5 flex justify-center">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full max-w-sm bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xl shadow-zinc-950/5 space-y-5 text-left"
+              >
+                {/* Live Pass Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse" />
+                    <span className="text-xs font-bold text-zinc-900 tracking-wide">Live Queue Pass</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200/70">
+                    Active
+                  </span>
+                </div>
+
+                {/* Venue Info */}
+                <div>
+                  <p className="text-xs font-medium text-zinc-500">Venue</p>
+                  <h3 className="text-base font-bold text-zinc-950">Metropolitan Health Clinic</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">Counter 02 • General Physician</p>
+                </div>
+
+                {/* Token Display */}
+                <div className="bg-zinc-50 rounded-2xl p-5 border border-zinc-100 text-center space-y-1">
+                  <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Your Token Number</p>
+                  <p className="text-5xl font-black tracking-tight text-teal-600">#24</p>
+                  <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-zinc-600 pt-1">
+                    <span>Now Serving:</span>
+                    <span className="text-zinc-950 font-black">#22</span>
+                  </div>
+                </div>
+
+                {/* Status Grid */}
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="bg-teal-50/50 rounded-xl p-3 border border-teal-100">
+                    <p className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">Ahead Of You</p>
+                    <p className="text-lg font-black text-teal-950 mt-0.5">2 People</p>
+                  </div>
+                  <div className="bg-zinc-50 rounded-xl p-3 border border-zinc-100">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Estimated Wait</p>
+                    <p className="text-lg font-black text-zinc-900 mt-0.5">~4 Mins</p>
+                  </div>
+                </div>
+
+                {/* Bottom Notification Callout */}
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-teal-600/5 border border-teal-500/20 text-xs text-teal-900 font-medium">
+                  <span className="text-base">🔔</span>
+                  <span>We'll notify you on your phone when your turn is next.</span>
+                </div>
+              </motion.div>
+            </div>
+
+          </div>
+        </div>
       </section>
 
-      {/* Floating Adaptive Performance & Cookie Settings */}
-      <PerfToggle />
+      {/* ── How It Works ── */}
+      <section id="how-it-works" className="py-20 bg-white border-y border-zinc-200/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center max-w-2xl mx-auto space-y-3 mb-14">
+            <span className="text-xs font-bold uppercase tracking-widest text-teal-600">Simple Process</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
+              How ServeQ Works
+            </h2>
+            <p className="text-sm sm:text-base text-zinc-600">
+              Three effortless steps to never wait in a crowded physical lobby again.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {STEPS.map((s) => (
+              <div key={s.step} className="bg-zinc-50 rounded-2xl p-7 border border-zinc-200/70 space-y-3 text-left hover:border-zinc-300 transition-colors">
+                <span className="text-xs font-black text-teal-600 bg-teal-50 px-2.5 py-1 rounded-md border border-teal-200/60">
+                  {s.step}
+                </span>
+                <h3 className="text-lg font-bold text-zinc-950 pt-1">{s.title}</h3>
+                <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Venues Supported ── */}
+      <section id="venues" className="py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12 text-left">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest text-teal-600">High-Volume Hubs</span>
+              <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight mt-1">
+                Built For Every Venue
+              </h2>
+            </div>
+            <Link
+              to="/business"
+              className="text-xs font-bold text-teal-700 hover:text-teal-800 transition-colors"
+            >
+              Set up your venue →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {VENUES.map((v) => (
+              <div
+                key={v.title}
+                className="bg-white rounded-2xl border border-zinc-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-zinc-300 transition-all text-left flex flex-col"
+              >
+                <div className="h-44 overflow-hidden bg-zinc-100 relative">
+                  <img
+                    src={v.image}
+                    alt={v.title}
+                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                  <span className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-wider bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full text-zinc-900 border border-zinc-200/70">
+                    {v.badge}
+                  </span>
+                </div>
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-2">
+                  <div>
+                    <h3 className="text-base font-bold text-zinc-950">{v.title}</h3>
+                    <p className="text-xs text-zinc-600 mt-1 leading-relaxed">{v.desc}</p>
+                  </div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login')}
+                      className="text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors"
+                    >
+                      View Live Queues →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Core Features ── */}
+      <section id="features" className="py-20 bg-white border-y border-zinc-200/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center max-w-2xl mx-auto space-y-3 mb-14">
+            <span className="text-xs font-bold uppercase tracking-widest text-teal-600">Platform Infrastructure</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
+              Engineered For Reliability
+            </h2>
+            <p className="text-sm sm:text-base text-zinc-600">
+              High-performance queuing technology built to keep venues and customers in perfect sync.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="bg-zinc-50 rounded-2xl p-6 border border-zinc-200/70 space-y-3 text-left hover:border-zinc-300 transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200/80 flex items-center justify-center text-lg shadow-xs">
+                  {f.icon}
+                </div>
+                <h3 className="text-base font-bold text-zinc-950">{f.title}</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Call To Action Banner ── */}
+      <section className="py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="bg-zinc-950 text-white rounded-3xl p-8 sm:p-14 text-center sm:text-left flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl">
+            <div className="space-y-3 max-w-xl">
+              <span className="text-[10px] font-black uppercase tracking-widest text-teal-400 bg-teal-950/80 px-3 py-1 rounded-full border border-teal-800">
+                Start Today
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+                Ready to skip the wait?
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                Join a live queue in seconds as a customer, or set up automated virtual queuing for your venue with zero setup fees.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-teal-500 hover:bg-teal-400 text-zinc-950 text-xs font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all text-center"
+              >
+                Get Started
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/business')}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider border border-zinc-700 active:scale-95 transition-all text-center"
+              >
+                For Business
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Simple Minimal Footer ── */}
+      <footer className="border-t border-zinc-200/80 py-10 bg-white text-xs text-zinc-500">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="serveQ Logo" className="w-5 h-5 object-contain" />
+            <span className="font-bold text-zinc-900">serveQ</span>
+            <span>• Smart Virtual Queuing</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link to="/business" className="hover:text-zinc-900 transition-colors">Business Portal</Link>
+            <Link to="/login" className="hover:text-zinc-900 transition-colors">Sign In</Link>
+            <a href="#how-it-works" className="hover:text-zinc-900 transition-colors">How It Works</a>
+          </div>
+          <p>© {new Date().getFullYear()} serveQ. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   )
 }
