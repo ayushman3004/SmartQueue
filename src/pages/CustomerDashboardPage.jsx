@@ -10,7 +10,11 @@ import { getAvailableCoupons } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
+// <<<<<<< feat/added-tour-feature
 import { useSeo } from '../utils/useSeo'
+=======
+import { useDebounce } from '../hooks/useDebounce'
+// >>>>>>> main
 
 const CATEGORIES = [
   { id: 'all', label: 'All Hubs' },
@@ -41,6 +45,9 @@ export default function CustomerDashboardPage() {
   const [locationQuery, setLocationQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [historyFilter, setHistoryFilter] = useState('all') // 'all' | 'completed' | 'upcoming'
+
+  const debouncedSearch = useDebounce(search, 350)
+  const debouncedLocation = useDebounce(locationQuery, 350)
 
   // Selected services per business (for inline live join)
   // map: { [businessId]: serviceObj[] }
@@ -86,7 +93,7 @@ export default function CustomerDashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       const [allRes, myBkRes, coupRes] = await Promise.all([
-        getAllBusinesses({ search, category: selectedCategory, location: locationQuery, includeAll: false }),
+        getAllBusinesses({ search: debouncedSearch, category: selectedCategory, location: debouncedLocation, includeAll: false }),
         getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
         getAvailableCoupons().catch(() => ({ data: { data: { coupons: [] } } })),
       ])
@@ -122,7 +129,7 @@ export default function CustomerDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, selectedCategory, locationQuery])
+  }, [debouncedSearch, selectedCategory, debouncedLocation])
 
   useEffect(() => {
     fetchData()

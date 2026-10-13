@@ -325,7 +325,7 @@ export const toggleOpen = async (id, ownerId, io) => {
 
 // ─── MULTI-STEP ONBOARDING ENGINE ──────────────────────────────────────────
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PHONE_REGEX = /^[+0-9\s\-()]{7,20}$/;
 
 export const getOnboardingDraft = async (ownerId, businessId = null) => {

@@ -10,6 +10,7 @@ import { submitReview } from '../api/review.api'
 import BusinessCard from '../components/BusinessCard'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
+import { useDebounce } from '../hooks/useDebounce'
 
 const CATEGORIES = ['all', 'salon', 'clinic']
 
@@ -29,6 +30,9 @@ export default function DashboardPage() {
   const [search, setSearch] = useState('')
   const [locationQuery, setLocationQuery] = useState('')
   const [category, setCategory] = useState('all')
+
+  const debouncedSearch = useDebounce(search, 350)
+  const debouncedLocation = useDebounce(locationQuery, 350)
 
   // Review Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
@@ -58,7 +62,7 @@ export default function DashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       const [allRes, myBRes, myBkRes, coupRes] = await Promise.all([
-        getAllBusinesses({ search, category, location: locationQuery }),
+        getAllBusinesses({ search: debouncedSearch, category, location: debouncedLocation }),
         isOwner ? getMyBusinesses().catch(() => ({ data: { data: { businesses: [] } } })) : Promise.resolve({ data: { data: { businesses: [] } } }),
         getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
         getAvailableCoupons().catch(() => ({ data: { data: { coupons: [] } } })),
@@ -73,7 +77,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, category, locationQuery, isOwner])
+  }, [debouncedSearch, category, debouncedLocation, isOwner])
 
   useEffect(() => {
     fetchData()

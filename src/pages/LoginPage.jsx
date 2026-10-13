@@ -4,7 +4,11 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signup, signin } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
+// <<<<<<< feat/added-tour-feature
 import { useSeo } from '../utils/useSeo'
+// =======
+import { isValidEmail, validatePasswordStrength } from '../utils/validators'
+// >>>>>>> main
 
 // Fluid Apple-style spring curve
 const SLIDE_TRANSITION = {
@@ -20,6 +24,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'customer' })
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [ownerMismatch, setOwnerMismatch] = useState(null)
   const { logIn } = useAuth()
   const navigate = useNavigate()
 
@@ -40,18 +45,51 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setOwnerMismatch(null)
+
+    if (!isValidEmail(form.email)) {
+      toast.error('Please enter a valid email address (e.g. name@example.com)')
+      return
+    }
+
+    if (tab === 'signup') {
+      const strength = validatePasswordStrength(form.password)
+      if (!strength.isValid) {
+        toast.error('Password must contain at least 8 characters, numbers, capital letters, and symbols.')
+        return
+      }
+    }
+
     setLoading(true)
     try {
       const apiFn = tab === 'signup' ? signup : signin
-      const res = await apiFn(tab === 'signup' ? form : { email: form.email, password: form.password })
+      const payload = tab === 'signup'
+        ? { name: form.name.trim(), email: form.email.trim(), password: form.password, role: 'customer' }
+        : { email: form.email.trim(), password: form.password, requiredRole: 'customer' }
+
+      const res = await apiFn(payload)
       const { user, token } = res.data.data
+
+      if (user?.role === 'owner') {
+        setOwnerMismatch({ email: form.email })
+        toast.error('This account is registered as a Hub Owner, not a Customer.')
+        return
+      }
+
       logIn(user, token)
       toast.success(tab === 'signin' ? 'Welcome back! Logged in successfully.' : 'Welcome to serveQ! Account created.', {
         style: { borderRadius: '14px', background: '#ffffff', color: '#09090b', border: '1px solid #e4e4e7' }
       })
-      navigate(user?.role === 'owner' ? '/business' : '/customers')
+      navigate('/customers')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Unable to sign in. Please check your details.', {
+      const msg = err.response?.data?.message || 'Unable to sign in. Please check your details.'
+      if (
+        (err.response?.status === 403 || err.response?.status === 409) &&
+        (msg.toLowerCase().includes('hub owner') || msg.toLowerCase().includes('owner'))
+      ) {
+        setOwnerMismatch({ email: form.email })
+      }
+      toast.error(msg, {
         style: { borderRadius: '14px', background: '#ffffff', color: '#09090b', border: '1px solid #fee2e2' }
       })
     } finally {
@@ -176,6 +214,38 @@ export default function LoginPage() {
                 </AnimatePresence>
               </div>
 
+              {/* Mismatch Alert for Hub Owner Accounts */}
+              <AnimatePresence>
+                {ownerMismatch && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden mb-4"
+                  >
+                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2.5">
+                      <div className="flex items-start gap-2">
+                        <span className="font-bold text-amber-700 text-sm">!</span>
+                        <div>
+                          <p className="font-bold text-amber-950">Hub Owner Account Detected</p>
+                          <p className="text-[11px] text-amber-800 mt-0.5">
+                            This email is registered as a Hub Owner. Please log in via the Hub Owner Business Portal.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Link
+                          to="/business"
+                          className="flex-1 py-2 text-center rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs no-underline transition-all shadow-sm"
+                        >
+                          Go to Hub Owner Portal →
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Form Body */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 <AnimatePresence mode="wait">
@@ -234,7 +304,7 @@ export default function LoginPage() {
                             required
                             value={form.password}
                             onChange={onChange}
-                            placeholder="Enter your Password"
+                            placeholder="Set a secure password"
                             autoComplete="new-password"
                             className="w-full px-4 py-3.5 pr-12 rounded-2xl bg-zinc-100/80 border border-zinc-200/70 text-zinc-900 placeholder-zinc-400 text-sm focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all"
                           />
@@ -255,6 +325,33 @@ export default function LoginPage() {
                               </svg>
                             )}
                           </button>
+                        </div>
+
+                        {/* Red Color Password Guidelines */}
+                        <div className="mt-2 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs space-y-1.5">
+                          <p className="font-bold text-rose-600 flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5 shrink-0 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            Password Requirements:
+                          </p>
+                          <p className="text-red-500 text-[11px] font-semibold leading-relaxed">
+                            Password must contain numbers, capital letters, lowercase letters, and special symbols (minimum 8 characters).
+                          </p>
+                          <div className="grid grid-cols-2 gap-1 pt-0.5 text-[10px] font-bold">
+                            <span className={form.password.length >= 8 ? 'text-emerald-600' : 'text-red-500'}>
+                              {form.password.length >= 8 ? '✓' : '✗'} 8+ Characters
+                            </span>
+                            <span className={/[A-Z]/.test(form.password) ? 'text-emerald-600' : 'text-red-500'}>
+                              {/[A-Z]/.test(form.password) ? '✓' : '✗'} Capital Letter (A-Z)
+                            </span>
+                            <span className={/[0-9]/.test(form.password) ? 'text-emerald-600' : 'text-red-500'}>
+                              {/[0-9]/.test(form.password) ? '✓' : '✗'} Numbers (0-9)
+                            </span>
+                            <span className={/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(form.password) ? 'text-emerald-600' : 'text-red-500'}>
+                              {/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(form.password) ? '✓' : '✗'} Special Symbols
+                            </span>
+                          </div>
                         </div>
                       </div>
 
