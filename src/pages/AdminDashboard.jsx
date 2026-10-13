@@ -5,11 +5,9 @@ import axios from '../api/axios'
 import { signin } from '../api/auth.api'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-// <<<<<<< feat/added-tour-feature
 import { useSeo } from '../utils/useSeo'
 import { isValidEmail } from '../utils/validators'
 import { useDebounce } from '../hooks/useDebounce'
-// >>>>>>> main
 
 // ─── Embedded Admin Login View ──────────────────────────────────
 function AdminLoginForm({ onLoginSuccess }) {

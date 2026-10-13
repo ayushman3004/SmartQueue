@@ -4,11 +4,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signup, signin } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
-// <<<<<<< feat/added-tour-feature
 import { useSeo } from '../utils/useSeo'
-// =======
 import { isValidEmail, validatePasswordStrength } from '../utils/validators'
-// >>>>>>> main
 
 // Fluid Apple-style spring curve
 const SLIDE_TRANSITION = {

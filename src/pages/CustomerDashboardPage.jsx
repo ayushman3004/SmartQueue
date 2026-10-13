@@ -10,11 +10,8 @@ import { getAvailableCoupons } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
-// <<<<<<< feat/added-tour-feature
 import { useSeo } from '../utils/useSeo'
-=======
 import { useDebounce } from '../hooks/useDebounce'
-// >>>>>>> main
 
 const CATEGORIES = [
   { id: 'all', label: 'All Hubs' },

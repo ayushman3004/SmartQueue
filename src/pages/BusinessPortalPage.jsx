@@ -5,12 +5,9 @@ import { useAuth } from '../context/AuthContext'
 import { signup, signin, upgradeToOwner } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
 import HubCommandCenter from '../components/HubCommandCenter'
-// <<<<<<< feat/added-tour-feature
 import { useSeo } from '../utils/useSeo'
-// =======
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { isValidEmail, validatePasswordStrength } from '../utils/validators'
-// >>>>>>> main
 
 // Fluid Apple-style spring curve
 const SLIDE_TRANSITION = {

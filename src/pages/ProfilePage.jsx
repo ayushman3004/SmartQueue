@@ -3,11 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
-// <<<<<<< feat/added-tour-feature
 import { useSeo } from '../utils/useSeo'
-// =======
 import { isValidEmail } from '../utils/validators'
-// >>>>>>> main
 
 export default function ProfilePage() {
   const { user, setUser } = useAuth()
