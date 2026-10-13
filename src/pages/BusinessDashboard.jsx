@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getQueue, callNext, extendUserTime } from '../api/queue.api'
+import { getQueue, callNext, extendUserTime, assignQueueStaff } from '../api/queue.api'
 import { getBusiness, updateBusiness, toggleBusiness } from '../api/business.api'
 import {
   getBusinessBookings,
@@ -153,6 +153,16 @@ export default function BusinessDashboard() {
       toast.success(`Extended by ${mins}m`)
     } catch {
       toast.error('Error extending time')
+    }
+  }
+
+  const handleAssignQueueStaff = async (userId, staffName) => {
+    try {
+      const res = await assignQueueStaff(businessId, userId, staffName)
+      setQueue(res.data.data.queue)
+      toast.success(`Assigned to ${staffName}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error assigning doctor/staff')
     }
   }
 
@@ -489,6 +499,67 @@ export default function BusinessDashboard() {
                   <p className="text-xs text-slate-500 mt-0.5">
                     Service: <span className="font-semibold text-zinc-800">{serving?.serviceType || 'N/A'}</span> • Target Duration: {serving?.serviceTime || business.averageServiceTime} mins
                   </p>
+
+                  {/* Prominent Assigned Doctor / Specialist Display */}
+                  {serving && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 pt-2.5 border-t border-teal-100/80">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        {isClinic ? 'Assigned Doctor:' : 'Assigned Specialist:'}
+                      </span>
+                      {serving.assignedStaff?.name ? (
+                        <div className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-xl border border-teal-200 shadow-2xs">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="font-black text-xs text-zinc-950">
+                            {serving.assignedStaff.name}
+                          </span>
+                          {serving.assignedStaff.role && (
+                            <span className="text-[11px] text-teal-700 font-semibold">
+                              ({serving.assignedStaff.role})
+                            </span>
+                          )}
+                          {serving.assignedStaff.autoAssigned && (
+                            <span className="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.2 rounded">
+                              Auto-Assigned
+                            </span>
+                          )}
+                        </div>
+                      ) : business.staff && business.staff.length > 0 ? (
+                        <div className="inline-flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-teal-200">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="font-bold text-xs text-zinc-900">
+                            {business.staff[0].name}
+                          </span>
+                          <span className="text-[10px] text-teal-600 font-medium">
+                            ({business.staff[0].role || (isClinic ? 'Doctor' : 'Staff')})
+                          </span>
+                          <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1 rounded font-bold">
+                            On-Duty
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic bg-white px-2.5 py-1 rounded-lg border border-zinc-200">
+                          {isClinic ? 'On-Duty General Physician' : 'On-Duty Specialist'}
+                        </span>
+                      )}
+
+                      {business.staff && business.staff.length > 0 && (
+                        <select
+                          value={serving.assignedStaff?.name || ''}
+                          onChange={(e) => handleAssignQueueStaff(serving.userId?._id || serving.userId, e.target.value)}
+                          className="text-[11px] font-bold text-teal-800 bg-white border border-teal-300 rounded-lg px-2 py-1 shadow-2xs hover:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
+                        >
+                          <option value="" disabled>
+                            Switch {isClinic ? 'Doctor' : 'Staff'}...
+                          </option>
+                          {business.staff.map((s, idx) => (
+                            <option key={idx} value={s.name}>
+                              {s.name} ({s.role || (isClinic ? 'Doctor' : 'Staff')})
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -541,6 +612,7 @@ export default function BusinessDashboard() {
                       <th className="py-3.5 px-6">#</th>
                       <th className="py-3.5 px-6">Customer</th>
                       <th className="py-3.5 px-6">Service</th>
+                      <th className="py-3.5 px-6">{isClinic ? 'Assigned Doctor' : 'Assigned Staff'}</th>
                       <th className="py-3.5 px-6">Duration</th>
                       <th className="py-3.5 px-6">Est. Start Time</th>
                       <th className="py-3.5 px-6 text-right">Status</th>
@@ -555,6 +627,63 @@ export default function BusinessDashboard() {
                           <p className="text-[10px] text-slate-400">{u.userId?.email || 'N/A'}</p>
                         </td>
                         <td className="py-4 px-6 font-medium text-slate-700">{u.serviceType || 'general'}</td>
+                        <td className="py-4 px-6">
+                          {u.assignedStaff?.name ? (
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-zinc-950 text-xs">{u.assignedStaff.name}</span>
+                                {u.assignedStaff.autoAssigned && (
+                                  <span className="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.2 rounded">
+                                    Auto
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-teal-700 font-medium">
+                                {u.assignedStaff.role || (isClinic ? 'Doctor / Specialist' : 'Barber / Stylist')}
+                              </p>
+                              {business.staff && business.staff.length > 1 && (
+                                <select
+                                  value={u.assignedStaff.name}
+                                  onChange={(e) => handleAssignQueueStaff(u.userId?._id || u.userId, e.target.value)}
+                                  className="mt-1 text-[10px] font-semibold text-slate-600 bg-slate-50 border border-zinc-200 rounded px-1.5 py-0.5 hover:bg-white focus:outline-none focus:border-teal-500 cursor-pointer"
+                                >
+                                  {business.staff.map((s, idx) => (
+                                    <option key={idx} value={s.name}>
+                                      Reassign: {s.name} ({s.role || (isClinic ? 'Doctor' : 'Staff')})
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          ) : business.staff && business.staff.length > 0 ? (
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className="font-bold text-zinc-800 text-xs">{business.staff[0].name}</span>
+                                <span className="text-[9px] font-bold bg-teal-50 text-teal-700 border border-teal-200 px-1 py-0.2 rounded">
+                                  On-Duty
+                                </span>
+                              </div>
+                              <select
+                                defaultValue=""
+                                onChange={(e) => handleAssignQueueStaff(u.userId?._id || u.userId, e.target.value)}
+                                className="text-[10px] font-semibold text-teal-800 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
+                              >
+                                <option value="" disabled>
+                                  Assign {isClinic ? 'Doctor' : 'Staff'}...
+                                </option>
+                                {business.staff.map((s, idx) => (
+                                  <option key={idx} value={s.name}>
+                                    {s.name} ({s.role || (isClinic ? 'Doctor' : 'Staff')})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">
+                              {isClinic ? 'On-Duty Doctor' : 'On-Duty Staff'}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-4 px-6 font-bold text-zinc-900">{u.serviceTime} mins</td>
                         <td className="py-4 px-6 text-slate-600">
                           {u.estimatedStartTime ? new Date(u.estimatedStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}

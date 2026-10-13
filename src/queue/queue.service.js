@@ -445,3 +445,70 @@ export const handleCancelDelay = async (businessId, userId, io = null) => {
 
   return { queue: queueDoc, totalCredited };
 };
+
+// ASSIGN STAFF (DOCTOR / BARBER / SPECIALIST)
+export const assignStaff = async (businessId, userId, staffName, requesterId, requesterRole, io = null) => {
+  const business = await Business.findById(businessId);
+  if (!business) throw new ApiError(404, "Business not found");
+
+  if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
+    throw new ApiError(403, "Access denied: you can only manage queues for your own business");
+  }
+
+  const queue = await Queue.findOne({ businessId });
+  if (!queue) throw new ApiError(404, "Queue not found");
+
+  const isClinic = business.category === "clinic" || business.category === "healthcare";
+  const staffMember = (business.staff || []).find(
+    (s) => s.name?.toLowerCase() === staffName?.toLowerCase()
+  );
+
+  const queueDS = QueueDS.fromArray(queue.users);
+  let current = queueDS.head;
+  let found = false;
+
+  while (current) {
+    const curUserId = current.userId?._id || current.userId;
+    if (curUserId?.toString() === userId?.toString()) {
+      current.assignedStaff = {
+        name: staffMember ? staffMember.name : staffName,
+        role: staffMember?.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+        specialties: staffMember?.specialties || "",
+        autoAssigned: false,
+      };
+      found = true;
+      break;
+    }
+    current = current.next;
+  }
+
+  if (found) {
+    queue.users = queueDS.toArray();
+  } else {
+    const u = queue.users.find(
+      (usr) => (usr.userId?._id || usr.userId)?.toString() === userId?.toString()
+    );
+    if (u) {
+      u.assignedStaff = {
+        name: staffMember ? staffMember.name : staffName,
+        role: staffMember?.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+        specialties: staffMember?.specialties || "",
+        autoAssigned: false,
+      };
+    }
+  }
+
+  await queue.save();
+
+  const populatedQueue = await Queue.findOne({ businessId }).populate(
+    "users.userId",
+    "name email phone"
+  );
+
+  if (io) {
+    io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue: populatedQueue });
+    io.to(`business:${businessId}`).emit("queue:update", populatedQueue);
+  }
+
+  return populatedQueue;
+};

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getQueue, join, leave, callNext, estimate, extend, cancelDelay } from "./queue.controller.js";
+import { getQueue, join, leave, callNext, estimate, extend, cancelDelay, assignStaff } from "./queue.controller.js";
 import { protect, allowRoles } from "../../middleware/auth.middleware.js";
 
 const router = Router();
@@ -18,5 +18,7 @@ router.post("/:businessId/cancel-delay", protect, allowRoles("customer", "admin"
 // Owner only — management
 router.post("/:businessId/next", protect, allowRoles("owner", "admin"), callNext);
 router.post("/:businessId/extend", protect, allowRoles("owner", "admin"), extend);
+router.post("/:businessId/assign-staff", protect, allowRoles("owner", "admin"), assignStaff);
 
 export default router;
+

@@ -469,4 +469,64 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
     assert.equal(verma.isOccupied, false, "Dr. A. Verma should not be occupied");
     assert.equal(verma.effectiveAvailable, true, "Dr. A. Verma should remain available");
   });
+
+  await t.test("assignStaff reassigns doctor/practitioner in queue properly", async () => {
+    const { assignStaff } = await import("../src/queue/queue.service.js");
+    const Queue = (await import("../src/queue/queue.model.js")).default;
+    const Business = (await import("../src/modules/business/business.model.js")).default;
+
+    const fakeUserId = new mongoose.Types.ObjectId();
+    const fakeBizId = new mongoose.Types.ObjectId();
+    const ownerId = new mongoose.Types.ObjectId();
+
+    const mockBusiness = {
+      _id: fakeBizId,
+      owner: ownerId,
+      category: "clinic",
+      staff: [
+        { name: "Dr. Elena Rostova", role: "Orthodontist", specialties: "Braces & Aligners" },
+        { name: "Dr. Sarah Jenkins", role: "General Physician", specialties: "Primary Care" },
+      ],
+    };
+
+    const mockQueueDoc = {
+      businessId: fakeBizId,
+      users: [
+        {
+          userId: fakeUserId,
+          status: "serving",
+          serviceTime: 20,
+          serviceType: "Scaling",
+          assignedStaff: { name: "Dr. Sarah Jenkins", role: "General Physician", autoAssigned: true },
+        },
+      ],
+      save: async () => {},
+    };
+    mockQueueDoc.populate = async () => mockQueueDoc;
+
+    const origBizFindById = Business.findById;
+    const origQueueFindOne = Queue.findOne;
+
+    try {
+      Business.findById = async () => mockBusiness;
+      Queue.findOne = () => mockQueueDoc;
+
+      const updated = await assignStaff(
+        fakeBizId,
+        fakeUserId,
+        "Dr. Elena Rostova",
+        ownerId,
+        "owner"
+      );
+
+      const target = updated.users[0];
+      assert.equal(target.assignedStaff.name, "Dr. Elena Rostova");
+      assert.equal(target.assignedStaff.role, "Orthodontist");
+      assert.equal(target.assignedStaff.autoAssigned, false);
+    } finally {
+      Business.findById = origBizFindById;
+      Queue.findOne = origQueueFindOne;
+    }
+  });
 });
+

@@ -155,3 +155,23 @@ export const cancelDelay = asyncHandler(async (req, res) => {
     new ApiResponse(200, { queue }, `Cancelled with ₹${totalCredited} refunded to your wallet`)
   );
 });
+
+// POST /api/queue/:businessId/assign-staff (owner or admin only)
+export const assignStaff = asyncHandler(async (req, res) => {
+  const { businessId } = req.params;
+  const { userId, staffName } = req.body;
+  const io = req.app.get("io");
+
+  const queue = await queueService.assignStaff(
+    businessId,
+    userId,
+    staffName,
+    req.user._id,
+    req.user.role,
+    io
+  );
+
+  emitQueueUpdate(req, businessId, queue);
+  res.json(new ApiResponse(200, { queue }, "Assigned staff member successfully"));
+});
+

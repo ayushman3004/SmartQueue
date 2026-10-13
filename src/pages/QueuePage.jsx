@@ -213,6 +213,11 @@ export default function QueuePage() {
                     </div>
                     <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-center shadow-xs mb-6">
                       <p className="text-xs font-black text-emerald-700 uppercase tracking-wider">Please proceed to service desk</p>
+                      {myQueueData?.assignedStaff?.name && (
+                        <p className="text-xs font-black text-emerald-900 mt-2">
+                          {business?.category === 'clinic' ? 'Assigned Doctor:' : 'Assigned Specialist:'} {myQueueData.assignedStaff.name} {myQueueData.assignedStaff.role ? `(${myQueueData.assignedStaff.role})` : ''}
+                        </p>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -242,9 +247,28 @@ export default function QueuePage() {
                     </div>
 
                     {myQueueData?.serviceType && (
-                      <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/70 mb-5 text-left">
+                      <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/70 mb-3 text-left">
                         <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Selected Service</p>
                         <p className="text-xs font-black text-teal-900">{myQueueData.serviceType}</p>
+                      </div>
+                    )}
+
+                    {myQueueData?.assignedStaff?.name && (
+                      <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/70 mb-5 text-left">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">
+                          {business?.category === 'clinic' ? 'Assigned Doctor' : 'Assigned Specialist'}
+                        </p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-black text-teal-900">{myQueueData.assignedStaff.name}</p>
+                          {myQueueData.assignedStaff.role && (
+                            <span className="text-[10px] text-teal-700 font-medium">({myQueueData.assignedStaff.role})</span>
+                          )}
+                          {myQueueData.assignedStaff.autoAssigned && (
+                            <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.2 rounded font-semibold">
+                              Auto
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                   </>

@@ -62,6 +62,12 @@ export default function QueueCard({ user, position, isMe, _totalUsers }) {
             <span className="truncate max-w-[130px] sm:max-w-none">{user.serviceType || 'General Consultation'}</span>
             <span className="w-1 h-1 rounded-full bg-zinc-300" />
             <span className="font-semibold text-zinc-600">{user.serviceTime}m block</span>
+            {user.assignedStaff?.name && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-zinc-300" />
+                <span className="font-bold text-teal-700">{user.assignedStaff.name}</span>
+              </>
+            )}
           </div>
         </div>
 
