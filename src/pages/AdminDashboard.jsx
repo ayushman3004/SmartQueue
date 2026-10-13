@@ -5,6 +5,7 @@ import axios from '../api/axios'
 import { signin } from '../api/auth.api'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
+import { useSeo } from '../utils/useSeo'
 
 // ─── Embedded Admin Login View ──────────────────────────────────
 function AdminLoginForm({ onLoginSuccess }) {
@@ -143,10 +144,15 @@ function AdminLoginForm({ onLoginSuccess }) {
   )
 }
 
-// ─── Main Admin Dashboard Component ─────────────────────────────
 export default function AdminDashboard() {
   const { user, loading: authLoading, logIn, logOut } = useAuth()
   const { socket } = useSocket()
+
+  useSeo({
+    title: 'Admin Command Console',
+    description: 'System-wide telemetry, user monitoring, and hub moderation.',
+    robots: 'noindex, nofollow',
+  })
 
   // Telemetry state
   const [stats, setStats] = useState(null)
@@ -355,9 +361,10 @@ export default function AdminDashboard() {
 
           <button
             onClick={() => fetchAdminData(false)}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-zinc-800 rounded-xl text-xs font-bold transition"
+            disabled={loading}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-zinc-800 rounded-xl text-xs font-bold transition"
           >
-            ↻ Refresh Telemetry
+            {loading ? '↻ Syncing...' : '↻ Refresh Telemetry'}
           </button>
 
           <div className="flex items-center gap-2 pl-2 border-l border-zinc-200">
@@ -533,8 +540,20 @@ export default function AdminDashboard() {
                       </td>
                       <td className="py-4 px-4">
                         <p className="font-medium text-zinc-800">{b.owner?.name || 'Owner'}</p>
-                        <p className="text-[10px] text-slate-400">{b.owner?.email}</p>
-                        {b.owner?.phone && <p className="text-[10px] text-slate-400">{b.owner?.phone}</p>}
+                        {b.owner?.email && (
+                          <p className="text-[10px] text-slate-400">
+                            <a href={`mailto:${b.owner.email}`} className="hover:text-teal-700 underline">
+                              {b.owner.email}
+                            </a>
+                          </p>
+                        )}
+                        {b.owner?.phone && (
+                          <p className="text-[10px] text-slate-400">
+                            <a href={`tel:${b.owner.phone}`} className="hover:text-teal-700 underline">
+                              {b.owner.phone}
+                            </a>
+                          </p>
+                        )}
                       </td>
                       <td className="py-4 px-4 text-slate-600">
                         <p className="font-medium">{b.location || b.address || 'Not specified'}</p>
@@ -678,8 +697,20 @@ export default function AdminDashboard() {
                           </div>
                           <div>
                             <p className="font-bold text-zinc-900 text-sm">{u.name}</p>
-                            <p className="text-[10px] text-slate-400">{u.email}</p>
-                            {u.phone && <p className="text-[10px] text-slate-400">{u.phone}</p>}
+                            {u.email && (
+                              <p className="text-[10px] text-slate-400">
+                                <a href={`mailto:${u.email}`} className="hover:text-teal-700 underline">
+                                  {u.email}
+                                </a>
+                              </p>
+                            )}
+                            {u.phone && (
+                              <p className="text-[10px] text-slate-400">
+                                <a href={`tel:${u.phone}`} className="hover:text-teal-700 underline">
+                                  {u.phone}
+                                </a>
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -865,7 +896,28 @@ export default function AdminDashboard() {
                     <p className="text-[10px] font-black uppercase text-slate-400">Assigned Business Owner</p>
                     <p className="text-sm font-bold text-zinc-900">{selectedBusinessDetail.business?.owner?.name}</p>
                     <p className="text-xs text-slate-500">
-                      Email: {selectedBusinessDetail.business?.owner?.email} • Phone: {selectedBusinessDetail.business?.phone || selectedBusinessDetail.business?.owner?.phone || 'N/A'}
+                      Email:{' '}
+                      {selectedBusinessDetail.business?.owner?.email ? (
+                        <a
+                          href={`mailto:${selectedBusinessDetail.business.owner.email}`}
+                          className="text-teal-700 hover:text-teal-800 underline"
+                        >
+                          {selectedBusinessDetail.business.owner.email}
+                        </a>
+                      ) : (
+                        'N/A'
+                      )}{' '}
+                      • Phone:{' '}
+                      {(selectedBusinessDetail.business?.phone || selectedBusinessDetail.business?.owner?.phone) ? (
+                        <a
+                          href={`tel:${selectedBusinessDetail.business?.phone || selectedBusinessDetail.business?.owner?.phone}`}
+                          className="text-teal-700 hover:text-teal-800 underline"
+                        >
+                          {selectedBusinessDetail.business?.phone || selectedBusinessDetail.business?.owner?.phone}
+                        </a>
+                      ) : (
+                        'N/A'
+                      )}
                     </p>
                   </div>
 

@@ -1,15 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useSocket } from '../context/SocketContext'
 import { signup, signin, upgradeToOwner } from '../api/auth.api'
-import { getMyBusinesses } from '../api/business.api'
 import { toast } from 'react-hot-toast'
-import RegisterHubModal from '../components/RegisterHubModal'
-import ManageServicesModal from '../components/ManageServicesModal'
 import HubCommandCenter from '../components/HubCommandCenter'
-import { CATEGORY_METADATA } from '../utils/servicePresets'
+import { useSeo } from '../utils/useSeo'
 
 // Fluid Apple-style spring curve
 const SLIDE_TRANSITION = {
@@ -19,8 +15,14 @@ const SLIDE_TRANSITION = {
 
 export default function BusinessPortalPage() {
   const { user, logIn, logOut, setUser } = useAuth()
-  const { socket, onBusinessStatus } = useSocket()
   const navigate = useNavigate()
+
+  useSeo({
+    title: 'Business Hub Portal — Virtual Queues & Counter Control',
+    description: 'Enterprise virtual queue management for salons, clinics, and service venues. Command customer flow and eliminate physical waiting lines.',
+    robots: 'index, follow',
+    canonical: 'https://serveq.tech/business',
+  })
 
   // Responsive desktop detection for smooth coordinate slide
   const [isDesktop, setIsDesktop] = useState(() =>
@@ -43,45 +45,8 @@ export default function BusinessPortalPage() {
   const [customerMismatch, setCustomerMismatch] = useState(null)
   const [upgrading, setUpgrading] = useState(false)
 
-  // Hub Owner Dashboard states (for logged-in owners)
-  const [myBusinesses, setMyBusinesses] = useState([])
-  const [fetchingHubs, setFetchingHubs] = useState(false)
-  const [registerHubOpen, setRegisterHubOpen] = useState(false)
-  const [manageServicesBiz, setManageServicesBiz] = useState(null)
-
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin')
   const isCustomer = user && user.role === 'customer'
-
-  // Fetch businesses if logged in as owner
-  const loadHubs = useCallback(async () => {
-    if (!isOwnerOrAdmin) return
-    setFetchingHubs(true)
-    try {
-      const res = await getMyBusinesses()
-      setMyBusinesses(res.data.data.businesses || [])
-    } catch (err) {
-      console.error('Failed to load hubs:', err)
-    } finally {
-      setFetchingHubs(false)
-    }
-  }, [isOwnerOrAdmin])
-
-  useEffect(() => {
-    if (isOwnerOrAdmin) {
-      loadHubs()
-    }
-  }, [isOwnerOrAdmin, loadHubs])
-
-  // Real-time status sync for hubs
-  useEffect(() => {
-    if (!isOwnerOrAdmin) return
-    const unsub = onBusinessStatus?.((data) => {
-      setMyBusinesses((prev) =>
-        prev.map((b) => (b._id === data.businessId ? { ...b, isOpen: data.isOpen, isActive: data.isActive } : b))
-      )
-    })
-    return () => unsub?.()
-  }, [isOwnerOrAdmin, onBusinessStatus])
 
   const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
 
@@ -152,7 +117,6 @@ export default function BusinessPortalPage() {
       toast.success('Your account is now upgraded to Hub Owner!', {
         style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
       })
-      loadHubs()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to upgrade account')
     } finally {
@@ -296,12 +260,12 @@ export default function BusinessPortalPage() {
               <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#dcf1e7]/95 via-[#dcf1e7]/60 to-transparent pointer-events-none z-[1]" />
 
               {/* Top Logo */}
-              <div className="flex items-center gap-2.5 relative z-10">
-                <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center text-xs font-black shadow-sm">
+              <Link to="/" className="flex items-center gap-2.5 relative z-10 no-underline group" aria-label="serveQ Homepage">
+                <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center text-xs font-black shadow-sm group-hover:scale-105 transition-transform">
                   Q
                 </div>
                 <span className="text-base font-black tracking-tight text-zinc-900 drop-shadow-xs">serveQ Business</span>
-              </div>
+              </Link>
 
               {/* Central Animated Greeting Title */}
               <div className="relative z-10 space-y-1.5 text-center sm:text-left mt-2 mb-auto">
@@ -734,16 +698,22 @@ export default function BusinessPortalPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-5xl mx-auto w-full pt-8 mt-10 border-t border-zinc-200 text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <footer className="max-w-5xl mx-auto w-full pt-8 mt-10 border-t border-zinc-200 text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           &copy; {new Date().getFullYear()} serveQ Infrastructure. Enterprise Venue Command.
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
           <Link to="/" className="text-zinc-600 hover:text-zinc-900 transition-colors no-underline font-medium">
             Customer Home
           </Link>
           <Link to="/login" className="text-zinc-600 hover:text-zinc-900 transition-colors no-underline font-medium">
             Customer Portal
+          </Link>
+          <Link to="/privacy" className="text-zinc-600 hover:text-zinc-900 transition-colors no-underline font-medium">
+            Privacy Policy
+          </Link>
+          <Link to="/terms" className="text-zinc-600 hover:text-zinc-900 transition-colors no-underline font-medium">
+            Terms & Conditions
           </Link>
           <span className="text-teal-700 font-mono text-[11px] font-bold">serveq.tech/business</span>
         </div>

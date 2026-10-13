@@ -8,7 +8,6 @@ import BackButton from './components/BackButton'
 import AIDesistant from './components/AIDesistant'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
-import DashboardPage from './pages/DashboardPage'
 import CustomerDashboardPage from './pages/CustomerDashboardPage'
 import QueuePage from './pages/QueuePage'
 import BookingPage from './pages/BookingPage'
@@ -19,6 +18,9 @@ import AdminDashboard from './pages/AdminDashboard'
 import ProfilePage from './pages/ProfilePage'
 import BusinessPortalPage from './pages/BusinessPortalPage'
 import BusinessOnboardingPage from './pages/BusinessOnboardingPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import TermsPage from './pages/TermsPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 const LoadingScreen = () => (
   <div className="flex items-center justify-center min-h-screen page-wrapper">
@@ -202,7 +204,9 @@ export default function App() {
             path="/admin"
             element={<AdminDashboard />}
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
     </div>

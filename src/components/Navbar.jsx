@@ -18,6 +18,16 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false)
+    }
+    if (mobileMenuOpen) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [mobileMenuOpen])
+
   const handleLogout = () => {
     logOut()
     navigate('/login')
@@ -140,6 +150,7 @@ export default function Navbar() {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden relative w-10 h-10 rounded-full bg-zinc-50 text-zinc-700 border border-zinc-200/80 flex items-center justify-center active:scale-[0.96]"
               aria-label="Toggle Navigation"
+              aria-expanded={mobileMenuOpen}
             >
               <div className="w-4 h-3.5 flex flex-col justify-between items-center">
                 <span className={`w-full h-0.5 bg-zinc-800 rounded-full transition-transform duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-[6px]' : ''}`} />

@@ -30,7 +30,7 @@ export default function MetroHero({
   onExplore,
   children,
 }) {
-  const { isOptimized, isAndroid, isWindows, isMobile, isLowPower } = usePerfMode()
+  const { isOptimized, isAndroid, isMobile, isLowPower } = usePerfMode()
   const disableScrollLock = isOptimized || isAndroid || isMobile || isLowPower
 
   const sectionRef = useRef(null)
@@ -55,7 +55,10 @@ export default function MetroHero({
       if (playPromise !== undefined) {
         playPromise.catch(() => {})
       }
-      setReady(true)
+      const onVideoReady = () => setReady(true)
+      video.addEventListener('canplay', onVideoReady, { once: true })
+      video.addEventListener('loadeddata', onVideoReady, { once: true })
+      const fallbackTimer = setTimeout(onVideoReady, 50)
 
       const onWindowScroll = () => {
         const y = window.scrollY
@@ -81,6 +84,9 @@ export default function MetroHero({
       onWindowScroll()
 
       return () => {
+        clearTimeout(fallbackTimer)
+        video.removeEventListener('canplay', onVideoReady)
+        video.removeEventListener('loadeddata', onVideoReady)
         window.removeEventListener("scroll", onWindowScroll)
       }
     }

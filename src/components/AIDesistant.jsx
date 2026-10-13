@@ -31,7 +31,7 @@ export default function AIDesistant() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100]">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100]">
       <AnimatePresence>
         {isOpen && (
           <motion.div 
@@ -39,7 +39,7 @@ export default function AIDesistant() {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 16 }}
             transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-            className="bezel-shell w-[360px] sm:w-[380px] h-[520px] mb-4 shadow-2xl origin-bottom-right"
+            className="bezel-shell w-[calc(100vw-2rem)] max-w-[380px] h-[520px] max-h-[calc(100dvh-6rem)] mb-3 sm:mb-4 shadow-2xl origin-bottom-right"
           >
             <div className="bezel-core h-full flex flex-col overflow-hidden text-left">
               {/* Header */}

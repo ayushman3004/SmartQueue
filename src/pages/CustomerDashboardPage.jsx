@@ -10,6 +10,7 @@ import { getAvailableCoupons } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
+import { useSeo } from '../utils/useSeo'
 
 const CATEGORIES = [
   { id: 'all', label: 'All Hubs' },
@@ -20,7 +21,13 @@ const CATEGORIES = [
 export default function CustomerDashboardPage() {
   const { user, setUser } = useAuth()
   const navigate = useNavigate()
-  const { onBusinessStatus, onQueueUpdate, socket, connected } = useSocket()
+  const { onBusinessStatus, socket } = useSocket()
+
+  useSeo({
+    title: 'Customer Dashboard & Queues',
+    description: 'Explore live venues, join virtual waiting queues, and manage your appointments.',
+    robots: 'noindex, nofollow',
+  })
 
   const [businesses, setBusinesses] = useState([])
   const [myBookings, setMyBookings] = useState([])
@@ -421,7 +428,7 @@ export default function CustomerDashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {myActiveQueues.map(({ business, myQueueItem, position, peopleAhead, totalInQueue, isServing, servingToken, estimatedStartTime }) => (
+            {myActiveQueues.map(({ business, myQueueItem, position, peopleAhead, totalInQueue: _totalInQueue, isServing, servingToken, estimatedStartTime }) => (
               <div
                 key={business._id}
                 className={`p-6 rounded-3xl border shadow-sm transition-all flex flex-col justify-between gap-5 ${

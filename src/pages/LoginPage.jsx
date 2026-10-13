@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signup, signin } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
+import { useSeo } from '../utils/useSeo'
 
 // Fluid Apple-style spring curve
 const SLIDE_TRANSITION = {
@@ -21,6 +22,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const { logIn } = useAuth()
   const navigate = useNavigate()
+
+  useSeo({
+    title: tab === 'signup' ? 'Create an Account' : 'Sign In',
+    description: 'Sign in to serveQ to join queues, track estimated wait times, and manage bookings.',
+    robots: 'index, follow',
+    canonical: 'https://serveq.tech/login',
+  })
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768)
@@ -86,12 +94,12 @@ export default function LoginPage() {
             <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#dcf1e7]/95 via-[#dcf1e7]/60 to-transparent pointer-events-none z-[1]" />
 
             {/* Top Logo */}
-            <div className="flex items-center gap-2.5 relative z-10">
-              <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center text-xs font-black shadow-sm">
+            <Link to="/" className="flex items-center gap-2.5 relative z-10 no-underline group" aria-label="serveQ Homepage">
+              <div className="w-8 h-8 rounded-xl bg-zinc-950 text-white flex items-center justify-center text-xs font-black shadow-sm group-hover:scale-105 transition-transform">
                 Q
               </div>
               <span className="text-base font-black tracking-tight text-zinc-900 drop-shadow-xs">serveQ</span>
-            </div>
+            </Link>
 
             {/* Central Animated Greeting Title */}
             <div className="relative z-10 space-y-1.5 text-center sm:text-left mt-2 mb-auto">
