@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+import { isValidEmail } from '../utils/validators'
 
 export default function ProfilePage() {
   const { user, setUser } = useAuth()
@@ -32,6 +33,10 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (form.email && !isValidEmail(form.email)) {
+      toast.error('Please enter a valid email address (e.g. name@domain.com)')
+      return
+    }
     setLoading(true)
     try {
       const res = await api.patch('/auth/me', form)

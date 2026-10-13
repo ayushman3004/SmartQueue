@@ -6,19 +6,55 @@ import {
   generateToken,
 } from "../auth.utils.js";
 
+export const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 // ─── Register ─────────────────────────────────────────────────
 export const register = async ({ name, email, password, role }) => {
   if (!name || !email || !password) throw new ApiError(400, "Name, email, and password are required");
-  if (password.length < 6) throw new ApiError(400, "Password must be at least 6 characters");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Invalid email format");
 
-  const existing = await User.findOne({ email });
-  if (existing) throw new ApiError(409, "Email already registered");
+  const normEmail = (email || "").trim().toLowerCase();
+  if (!normEmail || !EMAIL_REGEX.test(normEmail)) {
+    throw new ApiError(400, "Invalid email format. Please provide a valid email address (e.g. name@example.com)");
+  }
+
+  if (password.length < 8) {
+    throw new ApiError(400, "Password must be at least 8 characters long");
+  }
+  if (!/[A-Z]/.test(password)) {
+    throw new ApiError(400, "Password must contain at least one capital letter (A-Z)");
+  }
+  if (!/[a-z]/.test(password)) {
+    throw new ApiError(400, "Password must contain at least one lowercase letter (a-z)");
+  }
+  if (!/[0-9]/.test(password)) {
+    throw new ApiError(400, "Password must contain at least one number (0-9)");
+  }
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password)) {
+    throw new ApiError(400, "Password must contain at least one special symbol (!@#$%^&*...)");
+  }
+
+  const existing = await User.findOne({ email: normEmail });
+  if (existing) {
+    const userRole = role === "owner" ? "owner" : "customer";
+    if (existing.role === "customer" && userRole === "owner") {
+      throw new ApiError(
+        409,
+        "This email is already registered as a Customer. Please sign in to the Business Portal to upgrade your account or use the Customer Portal."
+      );
+    }
+    if (existing.role === "owner" && userRole === "customer") {
+      throw new ApiError(
+        409,
+        "This email is already registered as a Hub Owner. Please sign in via the Business Command Center at /business."
+      );
+    }
+    throw new ApiError(409, "Email already registered");
+  }
 
   // Disallow admin self-registration: only customer or owner permitted
   const userRole = role === "owner" ? "owner" : "customer";
   const hashed = await hashPassword(password);
-  const user = await User.create({ name: name.trim(), email, password: hashed, role: userRole });
+  const user = await User.create({ name: name.trim(), email: normEmail, password: hashed, role: userRole });
 
   const token = generateToken(user);
   return { user: sanitize(user), token };
@@ -29,6 +65,10 @@ export const login = async ({ email, password, requiredRole }) => {
   if (!email || !password) throw new ApiError(400, "Email and password are required");
 
   const normEmail = (email || "").trim().toLowerCase();
+  if (!normEmail || !EMAIL_REGEX.test(normEmail)) {
+    throw new ApiError(400, "Invalid email format. Please provide a valid email address (e.g. name@example.com)");
+  }
+
   const adminEmail = (process.env.ADMIN_EMAIL || "admin@serveq.tech").toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
 
@@ -52,19 +92,30 @@ export const login = async ({ email, password, requiredRole }) => {
 
   if (!user) throw new ApiError(401, "Invalid credentials");
 
-  if (!user.password)
-    throw new ApiError(401, "This account uses Google login. Please sign in with Google.");
-
-  const valid = await comparePassword(password, user.password);
-  if (!valid) throw new ApiError(401, "Invalid credentials");
-
+  // Role verification checks
   if (requiredRole === "owner" && user.role !== "owner" && user.role !== "admin") {
-    throw new ApiError(403, "Access restricted to Hub Owners. This account is registered as a Customer. Please sign in at serveq.tech/login or upgrade your account to Hub Owner.");
+    throw new ApiError(
+      403,
+      "Access restricted to Hub Owners. This account is registered as a Customer. Please sign in at the Customer Portal or upgrade your account to Hub Owner."
+    );
+  }
+
+  if (requiredRole === "customer" && user.role === "owner") {
+    throw new ApiError(
+      403,
+      "Access restricted to Customers. This account is registered as a Hub Owner. Please sign in via the Business Command Center at /business."
+    );
   }
 
   if (requiredRole === "admin" && user.role !== "admin") {
     throw new ApiError(403, "Access restricted to Administrators. You do not have administrator permissions.");
   }
+
+  if (!user.password)
+    throw new ApiError(401, "This account uses Google login. Please sign in with Google.");
+
+  const valid = await comparePassword(password, user.password);
+  if (!valid) throw new ApiError(401, "Invalid credentials");
 
   const token = generateToken(user);
   return { user: sanitize(user), token };

@@ -5,6 +5,8 @@ import axios from '../api/axios'
 import { signin } from '../api/auth.api'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
+import { isValidEmail } from '../utils/validators'
+import { useDebounce } from '../hooks/useDebounce'
 
 // ─── Embedded Admin Login View ──────────────────────────────────
 function AdminLoginForm({ onLoginSuccess }) {
@@ -22,6 +24,11 @@ function AdminLoginForm({ onLoginSuccess }) {
     e.preventDefault()
     if (!email || !password) {
       toast.error('Please enter admin email and password')
+      return
+    }
+
+    if (!isValidEmail(email.trim())) {
+      toast.error('Please enter a valid email address (e.g. admin@serveq.tech)')
       return
     }
 
@@ -165,6 +172,9 @@ export default function AdminDashboard() {
   const [userSearch, setUserSearch] = useState('')
   const [userFilter, setUserFilter] = useState('all') // 'all' | 'online' | 'in_queue' | 'customer' | 'owner'
 
+  const debouncedHubSearch = useDebounce(hubSearch, 350)
+  const debouncedUserSearch = useDebounce(userSearch, 350)
+
   // Detail Modal & Remove Hub Confirmation Modal
   const [selectedBusinessDetail, setSelectedBusinessDetail] = useState(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -181,8 +191,8 @@ export default function AdminDashboard() {
     try {
       const [statsRes, bizRes, usersRes] = await Promise.all([
         axios.get('/admin/stats'),
-        axios.get('/admin/businesses', { params: { search: hubSearch } }),
-        axios.get('/admin/users', { params: { search: userSearch } }),
+        axios.get('/admin/businesses', { params: { search: debouncedHubSearch } }),
+        axios.get('/admin/users', { params: { search: debouncedUserSearch } }),
       ])
 
       setStats(statsRes.data.data)
@@ -193,7 +203,7 @@ export default function AdminDashboard() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [user, hubSearch, userSearch])
+  }, [user, debouncedHubSearch, debouncedUserSearch])
 
   useEffect(() => {
     if (user?.role === 'admin') {
