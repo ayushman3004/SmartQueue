@@ -20,6 +20,16 @@ export const joinQueue = async (businessId, userData, io = null) => {
     throw new ApiError(400, "This business is currently closed or not accepting queue entries");
   }
 
+  // Validate business queue preferences
+  if (business.queueSettings?.enableLiveQueue === false) {
+    throw new ApiError(403, "Live queue is currently disabled for this business");
+  }
+
+  const maxCap = business.queueSettings?.maxQueueCapacity || 50;
+  if (queueDoc.users.length >= maxCap) {
+    throw new ApiError(400, `Live queue has reached maximum capacity of ${maxCap} patrons.`);
+  }
+
   const queueDS = QueueDS.fromArray(queueDoc.users);
 
   // 🚫 Prevent duplicate joins
@@ -183,8 +193,15 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   const finalDeposit = Math.max(0, price - discount);
 
-  // Safe atomic wallet deduction
-  if (finalDeposit > 0) {
+  // Pay at business vs online wallet deduction
+  const isPayAtBusiness =
+    userData.paymentMethod === "PAY_AT_BUSINESS" ||
+    business.paymentConfiguration?.paymentMode === "PAY_AT_BUSINESS";
+
+  const depositCharged = isPayAtBusiness ? 0 : finalDeposit;
+
+  // Safe atomic wallet deduction only if online payment
+  if (!isPayAtBusiness && finalDeposit > 0) {
     await deductWalletBalance(
       userData.userId,
       finalDeposit,
@@ -209,7 +226,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
     services: selectedServicesList,
     assignedStaff,
     pricingLabel: userData.pricingLabel || "",
-    paidAmount: finalDeposit,
+    paidAmount: depositCharged,
   });
 
   queueDoc.users = queueDS.toArray();

@@ -72,6 +72,12 @@ export default function BusinessDashboard() {
         return
       }
 
+      // Safe route protection: if onboarding is in progress, resume onboarding wizard
+      if (biz.onboarding && biz.onboarding.status === 'IN_PROGRESS') {
+        navigate(`/business/onboarding/${biz._id}`)
+        return
+      }
+
       setBusiness(biz)
       setQueue(qRes.data.data.queue)
       setBookings(bkRes.data.data.bookings || [])
@@ -355,7 +361,7 @@ export default function BusinessDashboard() {
     try {
       const res = await generateAIAnalyticsReview(businessId)
       setAnalytics(res.data.data)
-      toast.success('✨ AI Executive Review updated live!')
+      toast.success('AI Executive Review updated live!')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to generate AI review')
     } finally {
@@ -395,7 +401,7 @@ export default function BusinessDashboard() {
                 <span>{business?.address || 'No address set'}</span>
                 <span>•</span>
                 <span className={`font-bold ${business?.isOpen ? 'text-emerald-700' : 'text-rose-600'}`}>
-                  {business?.isOpen ? '● OPEN' : '○ CLOSED'}
+                  {business?.isOpen ? 'OPEN' : 'CLOSED'}
                 </span>
               </div>
             </div>
@@ -421,7 +427,7 @@ export default function BusinessDashboard() {
             disabled={calling || users.length === 0}
             className="px-6 py-2.5 rounded-xl bg-zinc-950 text-white font-bold text-xs hover:bg-zinc-800 disabled:opacity-40 transition-all flex items-center gap-2"
           >
-            {calling ? 'Processing...' : 'Serve Next in Queue ⏭'}
+            {calling ? 'Processing...' : 'Serve Next in Queue'}
           </button>
         </div>
       </div>
@@ -434,10 +440,10 @@ export default function BusinessDashboard() {
           { id: 'services', label: 'Services Catalog', count: profileForm.services?.length || 0 },
           {
             id: 'staff',
-            label: isClinic ? 'Doctors & Specialists 🩺' : 'Barbers & Stylists ✂️',
+            label: isClinic ? 'Doctors & Specialists' : 'Barbers & Stylists',
             count: business?.staff?.length || 0,
           },
-          { id: 'analytics', label: 'AI Analytics & Daily Traffic 📊' },
+          { id: 'analytics', label: 'AI Analytics & Daily Traffic' },
           { id: 'profile', label: 'Hub Settings' },
         ].map((tab) => (
           <button
@@ -468,10 +474,10 @@ export default function BusinessDashboard() {
           <div className="lg:col-span-12">
             <div className="bg-white border border-teal-200 rounded-3xl p-6 md:p-8 shadow-sm bg-gradient-to-r from-teal-50/60 to-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-center gap-5">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl border ${
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black border ${
                   serving ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-slate-100 border-zinc-200 text-slate-400'
                 }`}>
-                  {serving ? '⚡' : '💤'}
+                  {serving ? 'ACTIVE' : 'IDLE'}
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 px-2.5 py-1 rounded-md">
@@ -615,7 +621,6 @@ export default function BusinessDashboard() {
                         <p className="font-semibold text-zinc-900">{b.serviceType}</p>
                         {b.assignedStaff?.name && (
                           <div className="flex items-center gap-1.5 mt-1 text-[11px] text-teal-800 font-bold">
-                            <span>{isClinic ? '🩺' : '✂️'}</span>
                             <span>{b.assignedStaff.name}</span>
                             <span className="text-[10px] text-zinc-400 font-normal">({b.assignedStaff.role || (isClinic ? 'Doctor' : 'Barber')})</span>
                             {b.assignedStaff.autoAssigned && (
@@ -696,7 +701,7 @@ export default function BusinessDashboard() {
                   onClick={handleLoadCategoryPresets}
                   className="text-xs font-bold text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/80 border border-teal-200 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
                 >
-                  <span>⚡</span> Load Standard Presets
+                  Load Standard Presets
                 </button>
                 <button
                   type="button"
@@ -704,7 +709,7 @@ export default function BusinessDashboard() {
                   disabled={savingServices}
                   className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md shadow-teal-600/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  {savingServices ? 'Deploying...' : 'Save & Deploy 💾'}
+                  {savingServices ? 'Deploying...' : 'Save & Deploy'}
                 </button>
               </div>
             </div>
@@ -789,7 +794,7 @@ export default function BusinessDashboard() {
                         <p className="text-sm font-bold text-zinc-950 truncate">{svc.name}</p>
                         <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500 font-medium">
                           <span className="px-2 py-0.5 rounded-md bg-zinc-200/80 text-zinc-700 font-bold text-[10px]">
-                            ⏱ {svc.duration} mins
+                            {svc.duration} mins
                           </span>
                           <span className="px-2 py-0.5 rounded-md bg-teal-100/70 text-teal-800 font-black text-[10px]">
                             ₹{svc.price}
@@ -884,7 +889,7 @@ export default function BusinessDashboard() {
                     Deploying Catalog...
                   </>
                 ) : (
-                  'Deploy & Save All Services 🚀'
+                  'Deploy & Save All Services'
                 )}
               </button>
             </div>
@@ -917,7 +922,7 @@ export default function BusinessDashboard() {
                   disabled={savingStaff}
                   className="text-xs font-bold text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/80 border border-teal-200 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <span>⚡</span> Load Standard Roster
+                  Load Standard Roster
                 </button>
               </div>
             </div>
@@ -930,7 +935,6 @@ export default function BusinessDashboard() {
 
               {(!business?.staff || business.staff.length === 0) ? (
                 <div className="p-12 text-center border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/50 space-y-3">
-                  <p className="text-2xl">{isClinic ? '🩺' : '✂️'}</p>
                   <p className="text-sm font-bold text-zinc-700">No {isClinic ? 'doctors' : 'barbers'} registered yet</p>
                   <p className="text-xs text-zinc-400 max-w-md mx-auto">
                     Add your staff below or click "Load Standard Roster" to get started with recommended profiles.
@@ -945,12 +949,12 @@ export default function BusinessDashboard() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3.5">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black ${
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black tracking-wider ${
                             member.isAvailable
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                               : 'bg-zinc-200 text-zinc-500 border border-zinc-300'
                           }`}>
-                            {isClinic ? '🩺' : '✂️'}
+                            {member.name ? member.name.slice(0, 2).toUpperCase() : 'ST'}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
@@ -965,7 +969,7 @@ export default function BusinessDashboard() {
                             </div>
                             <p className="text-xs font-semibold text-teal-800 mt-0.5">{member.role}</p>
                             {member.phone && (
-                              <p className="text-[11px] text-zinc-500 mt-0.5">📞 {member.phone}</p>
+                              <p className="text-[11px] text-zinc-500 mt-0.5">{member.phone}</p>
                             )}
                           </div>
                         </div>
@@ -1281,7 +1285,6 @@ export default function BusinessDashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-5">
               <div>
                 <h3 className="text-lg font-black text-zinc-950 flex items-center gap-2">
-                  <span>📅</span>
                   <span>Per-Day Customer Traffic & Visits Breakdown</span>
                 </h3>
                 <p className="text-xs text-zinc-500 font-medium">
@@ -1350,7 +1353,7 @@ export default function BusinessDashboard() {
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                               : 'bg-zinc-100 text-zinc-500'
                           }`}>
-                            {(day.totalBookings || day.totalCustomers) >= 5 ? '🔥 Peak Day' : (day.totalBookings || day.totalCustomers) > 0 ? '⚡ Steady' : 'Quiet'}
+                            {(day.totalBookings || day.totalCustomers) >= 5 ? 'Peak Day' : (day.totalBookings || day.totalCustomers) > 0 ? 'Steady' : 'Quiet'}
                           </span>
                         </td>
                       </tr>
@@ -1367,7 +1370,7 @@ export default function BusinessDashboard() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30 px-3 py-1 rounded-full">
-                    ✨ AI Performance Intelligence
+                    AI Performance Intelligence
                   </span>
                   <span className="text-xs text-zinc-400">
                     {analytics?.aiInsights?.isAiGenerated ? 'Powered by Google Gemini AI' : 'Deterministic Pacing Engine'}
@@ -1394,10 +1397,7 @@ export default function BusinessDashboard() {
                     <span>Analyzing Peak & Staff...</span>
                   </>
                 ) : (
-                  <>
-                    <span className="text-sm">✨</span>
-                    <span>Generate AI Review</span>
-                  </>
+                  <span>Generate AI Review</span>
                 )}
               </button>
             </div>
@@ -1408,7 +1408,6 @@ export default function BusinessDashboard() {
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xl">⏰</span>
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 px-2.5 py-1 rounded-md">
                       Rush Forecast
                     </span>
@@ -1421,7 +1420,7 @@ export default function BusinessDashboard() {
                         key={i}
                         className="px-3 py-1.5 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-200 text-xs font-bold"
                       >
-                        ⏱ {window}
+                        {window}
                       </span>
                     ))}
                   </div>
@@ -1442,7 +1441,6 @@ export default function BusinessDashboard() {
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xl">👑</span>
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-md">
                       {analytics?.aiInsights?.bestCustomer?.badge || 'VIP Regular'}
                     </span>
@@ -1467,7 +1465,7 @@ export default function BusinessDashboard() {
                 </div>
 
                 <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400">
-                  💡 Retention advice: Priority queueing recommendation
+                  Retention advice: Priority queueing recommendation
                 </div>
               </div>
 
@@ -1475,7 +1473,6 @@ export default function BusinessDashboard() {
               <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xl">🏆</span>
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-md">
                       {analytics?.aiInsights?.bestEmployee?.badge || (isClinic ? 'Doctor of the Month' : 'Barber of the Month')}
                     </span>
@@ -1492,7 +1489,7 @@ export default function BusinessDashboard() {
                     <div className="flex items-center gap-3 text-xs text-zinc-300 font-semibold pt-1">
                       <span>{analytics?.aiInsights?.bestEmployee?.customersServed ?? analytics?.topEmployee?.customersServed ?? 0} served</span>
                       <span>•</span>
-                      <span className="text-amber-400">★ {analytics?.aiInsights?.bestEmployee?.rating ?? analytics?.topEmployee?.rating ?? 5.0}</span>
+                      <span className="text-amber-400">Rating: {analytics?.aiInsights?.bestEmployee?.rating ?? analytics?.topEmployee?.rating ?? 5.0}</span>
                     </div>
                   </div>
 
@@ -1503,7 +1500,7 @@ export default function BusinessDashboard() {
                 </div>
 
                 <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400">
-                  ⭐ Performance appraisal: Recommended for spotlight
+                  Performance appraisal: Recommended for spotlight
                 </div>
               </div>
             </div>

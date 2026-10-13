@@ -3,10 +3,10 @@
 export const ALLOWED_CATEGORIES = ['salon', 'clinic']
 
 export const CATEGORY_METADATA = {
-  salon: { label: "Salon & Wellness", icon: "💇", defaultDuration: 30, defaultPrice: 250 },
-  clinic: { label: "Clinic & Healthcare", icon: "🏥", defaultDuration: 20, defaultPrice: 400 },
-  healthcare: { label: "Clinic & Healthcare", icon: "🏥", defaultDuration: 20, defaultPrice: 400 }, // alias for backward compatibility
-  other: { label: "General Service Hub", icon: "🏢", defaultDuration: 15, defaultPrice: 150 },
+  salon: { label: "Salon & Wellness", icon: "", defaultDuration: 30, defaultPrice: 250 },
+  clinic: { label: "Clinic & Healthcare", icon: "", defaultDuration: 20, defaultPrice: 400 },
+  healthcare: { label: "Clinic & Healthcare", icon: "", defaultDuration: 20, defaultPrice: 400 }, // alias for backward compatibility
+  other: { label: "General Service Hub", icon: "", defaultDuration: 15, defaultPrice: 150 },
 }
 
 export const SERVICE_PRESETS = {
@@ -41,7 +41,7 @@ export const STAFF_PRESETS = {
   salon: {
     title: "Barbers & Stylists",
     singular: "Barber / Stylist",
-    icon: "✂️",
+    icon: "",
     defaults: [
       { name: "Alex Rivera", role: "Master Barber", specialties: "Fade, Lineup & Beard Design", isAvailable: true, customersServed: 24, rating: 4.9 },
       { name: "David Chen", role: "Senior Stylist", specialties: "Scissor Cut & Texture Styling", isAvailable: true, customersServed: 19, rating: 4.8 },
@@ -51,7 +51,7 @@ export const STAFF_PRESETS = {
   clinic: {
     title: "Doctors & Specialists",
     singular: "Doctor / Specialist",
-    icon: "🩺",
+    icon: "",
     defaults: [
       { name: "Dr. Sarah Jenkins", role: "Senior Consultant", specialties: "General Medicine & Family Health", isAvailable: true, customersServed: 31, rating: 4.9 },
       { name: "Dr. Rajesh Gupta", role: "Specialist Physician", specialties: "Internal Medicine & Diagnostics", isAvailable: true, customersServed: 27, rating: 5.0 },
@@ -61,7 +61,7 @@ export const STAFF_PRESETS = {
   healthcare: {
     title: "Doctors & Specialists",
     singular: "Doctor / Specialist",
-    icon: "🩺",
+    icon: "",
     defaults: [
       { name: "Dr. Sarah Jenkins", role: "Senior Consultant", specialties: "General Medicine & Family Health", isAvailable: true, customersServed: 31, rating: 4.9 },
       { name: "Dr. Rajesh Gupta", role: "Specialist Physician", specialties: "Internal Medicine & Diagnostics", isAvailable: true, customersServed: 27, rating: 5.0 },

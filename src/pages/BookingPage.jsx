@@ -44,6 +44,7 @@ export default function BookingPage() {
   const [rating, setRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+  const [paymentChoice, setPaymentChoice] = useState('PAY_AT_BUSINESS')
 
   const fetchData = useCallback(async () => {
     try {
@@ -55,6 +56,14 @@ export default function BookingPage() {
 
       const biz = bRes.data.data.business
       setBusiness(biz)
+
+      const pMode = biz.paymentConfiguration?.paymentMode || 'PAY_AT_BUSINESS'
+      if (pMode === 'ONLINE') {
+        setPaymentChoice('WALLET')
+      } else {
+        setPaymentChoice('PAY_AT_BUSINESS')
+      }
+
       if (biz.services?.length > 0 && selectedServices.length === 0) {
         setSelectedServices([biz.services[0]])
       }
@@ -83,7 +92,7 @@ export default function BookingPage() {
 
     const handleDelay = (data) => {
       if (data.userId === user?._id) {
-        toast(data.message, { icon: '⏱️' })
+        toast(data.message)
         fetchData()
       }
     }
@@ -163,6 +172,7 @@ export default function BookingPage() {
         pricingLabel: combinedServiceNames,
         preferredStaff: preferredStaffName,
         couponCode: appliedCoupon?.coupon?.code,
+        paymentMethod: paymentChoice,
       })
 
       const newBal = res.data.data.newBalance
@@ -234,7 +244,7 @@ export default function BookingPage() {
 
   const isClinic = business?.category === 'clinic' || business?.category === 'healthcare'
   const staffRoleLabel = isClinic ? 'Doctor / Specialist' : 'Barber / Stylist'
-  const staffRoleIcon = isClinic ? '🩺' : '✂️'
+  const staffRoleIcon = ''
 
   // Available staff list (use registered business staff or standard presets if empty)
   const availableStaffList = (business?.staff && business.staff.length > 0)
@@ -284,7 +294,7 @@ export default function BookingPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 capitalize">{business.category} • {business.address || business.location || 'Local Hub'}</p>
-                {business.phone && <p className="text-xs text-slate-400 mt-0.5">📞 {business.phone}</p>}
+                {business.phone && <p className="text-xs text-slate-400 mt-0.5">Phone: {business.phone}</p>}
               </div>
 
               {/* Multi-Service Selection */}
@@ -336,29 +346,38 @@ export default function BookingPage() {
               </div>
 
               {/* Doctor / Barber Selection */}
-              <div className="space-y-3 pt-4 border-t border-zinc-100">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">
-                    {staffRoleIcon} Select {staffRoleLabel}
-                  </label>
-                  <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
-                    Auto-Fallback
+              {business?.bookingSettings?.allowStaffSelection === false ? (
+                <div className="p-3.5 bg-zinc-50 border border-zinc-200 rounded-2xl text-xs space-y-1">
+                  <span className="font-bold text-zinc-800 flex items-center gap-1.5">
+                    <span>Automated Staff Allocation</span>
                   </span>
+                  <p className="text-zinc-500 text-[11px] leading-snug">
+                    Staff members are assigned automatically by the venue management based on real-time on-duty availability.
+                  </p>
                 </div>
+              ) : (
+                <div className="space-y-3 pt-4 border-t border-zinc-100">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">
+                      Select {staffRoleLabel}
+                    </label>
+                    <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                      Auto-Fallback
+                    </span>
+                  </div>
 
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                  {/* Option 1: Any Available / Auto-Assign */}
-                  <div
-                    onClick={() => setSelectedStaff('any')}
-                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                      selectedStaff === 'any'
-                        ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500/30'
-                        : 'bg-slate-50 border-zinc-200 hover:bg-white'
-                    }`}
-                  >
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+                    {/* Option 1: Any Available / Auto-Assign */}
+                    <div
+                      onClick={() => setSelectedStaff('any')}
+                      className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                        selectedStaff === 'any'
+                          ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500/30'
+                          : 'bg-slate-50 border-zinc-200 hover:bg-white'
+                      }`}
+                    >
                     <div>
                       <p className="text-xs font-black text-zinc-900 flex items-center gap-1.5">
-                        <span>✨</span>
                         <span>Any Available {isClinic ? 'General Physician / Doctor' : 'Barber / Stylist'}</span>
                       </p>
                       <p className="text-[10px] text-slate-500 mt-0.5">
@@ -395,7 +414,6 @@ export default function BookingPage() {
                       >
                         <div className="min-w-0 pr-2">
                           <p className="text-xs font-bold text-zinc-900 truncate flex items-center gap-1.5">
-                            <span>{staffRoleIcon}</span>
                             <span>{member.name}</span>
                             {isOccupied && (
                               <span className="text-[9px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded-md">
@@ -411,9 +429,9 @@ export default function BookingPage() {
                           <span className={`text-[10px] font-bold block ${
                             isOccupied ? 'text-rose-600 font-extrabold' : member.isAvailable !== false ? 'text-emerald-700' : 'text-slate-400'
                           }`}>
-                            {isOccupied ? '🔴 In Service (Occupied)' : member.isAvailable !== false ? '● Available' : '○ Off-Duty'}
+                            {isOccupied ? 'In Service (Occupied)' : member.isAvailable !== false ? 'Available' : 'Off-Duty'}
                           </span>
-                          <span className="text-[10px] text-amber-500 font-bold">★ {member.rating ? Number(member.rating).toFixed(1) : '5.0'}</span>
+                          <span className="text-[10px] text-amber-500 font-bold">Rating: {member.rating ? Number(member.rating).toFixed(1) : '5.0'}</span>
                         </div>
                       </div>
                     )
@@ -423,7 +441,6 @@ export default function BookingPage() {
                 {/* Auto-Assignment Guarantee Alert */}
                 <div className="p-3 bg-teal-50/60 border border-teal-200/80 rounded-2xl text-[11px] text-teal-950 space-y-1">
                   <p className="font-bold flex items-center gap-1.5 text-teal-800">
-                    <span>🛡️</span>
                     <span>Guaranteed On-Duty Coverage</span>
                   </p>
                   <p className="text-slate-600 leading-snug">
@@ -431,6 +448,7 @@ export default function BookingPage() {
                   </p>
                 </div>
               </div>
+              )}
 
               {/* Coupon Section */}
               <div className="space-y-2 pt-4 border-t border-zinc-100">
@@ -508,7 +526,7 @@ export default function BookingPage() {
                           onClick={() => handleOpenReview(b)}
                           className="text-xs font-bold text-teal-700 hover:underline"
                         >
-                          ⭐ Leave Review
+                          Leave Review
                         </button>
                       ) : b.status === 'scheduled' || b.status === 'confirmed' ? (
                         <button
@@ -545,45 +563,63 @@ export default function BookingPage() {
 
             {meta.aiBuffer > 0 && (
               <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-900 flex items-center gap-2">
-                <span>🧠</span>
                 <span><strong>AI Pacing Active:</strong> +{meta.aiBuffer} mins safety buffer added based on historical extensions.</span>
               </div>
             )}
 
-            {/* Slots Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {slots.map((slot, i) => {
-                const isPast = new Date(slot.startTime) < new Date()
-                const isAvailable = slot.available && !isPast
-
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    disabled={!isAvailable}
-                    onClick={() => handleSlotSelect(slot)}
-                    className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-h-[90px] ${
-                      isAvailable
-                        ? 'bg-slate-50 border-zinc-200 hover:border-teal-500 hover:bg-teal-50/40 cursor-pointer shadow-xs'
-                        : 'bg-zinc-50 border-zinc-100 text-slate-300 cursor-not-allowed opacity-60'
-                    }`}
-                  >
-                    <span className="text-sm font-black text-zinc-900">{formatTime(slot.startTime)}</span>
-                    <span className="text-[10px] text-slate-400 font-bold">{slot.duration} mins</span>
-                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md mt-1 ${
-                      isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      {isAvailable ? 'Available' : 'Booked'}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {slots.length === 0 && (
-              <div className="py-16 text-center text-slate-400 border border-dashed border-zinc-200 rounded-3xl">
-                No slots available on this date. Please try another day.
+            {/* Appointments Disabled Warning */}
+            {business?.bookingSettings?.enableAppointments === false ? (
+              <div className="py-12 px-6 text-center border border-amber-200 bg-amber-50 rounded-2xl space-y-3">
+                <h3 className="text-lg font-bold text-amber-950">Advance Bookings Disabled</h3>
+                <p className="text-xs text-amber-800 max-w-md mx-auto">
+                  This venue does not accept advance scheduled appointments. You can visit in person or join the live queue on the customer dashboard.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/queue/${businessId}`)}
+                  className="px-4 py-2 bg-amber-800 text-white text-xs font-bold rounded-xl hover:bg-amber-900 transition-colors"
+                >
+                  Go to Live Queue
+                </button>
               </div>
+            ) : (
+              <>
+                {/* Slots Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {slots.map((slot, i) => {
+                    const isPast = new Date(slot.startTime) < new Date()
+                    const isAvailable = slot.available && !isPast
+
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={!isAvailable}
+                        onClick={() => handleSlotSelect(slot)}
+                        className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-h-[90px] ${
+                          isAvailable
+                            ? 'bg-slate-50 border-zinc-200 hover:border-teal-500 hover:bg-teal-50/40 cursor-pointer shadow-xs'
+                            : 'bg-zinc-50 border-zinc-100 text-slate-300 cursor-not-allowed opacity-60'
+                        }`}
+                      >
+                        <span className="text-sm font-black text-zinc-900">{formatTime(slot.startTime)}</span>
+                        <span className="text-[10px] text-slate-400 font-bold">{slot.duration} mins</span>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md mt-1 ${
+                          isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          {isAvailable ? 'Available' : 'Booked'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {slots.length === 0 && (
+                  <div className="py-16 text-center text-slate-400 border border-dashed border-zinc-200 rounded-3xl">
+                    No slots available on this date. Please try another day.
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -631,7 +667,7 @@ export default function BookingPage() {
                   ))}
                   <div className="flex justify-between text-[11px] text-zinc-500 font-semibold pt-1">
                     <span>Total Service Time:</span>
-                    <span>⏱ {totalServiceDuration} minutes</span>
+                    <span>{totalServiceDuration} minutes</span>
                   </div>
                 </div>
 
@@ -640,7 +676,6 @@ export default function BookingPage() {
                   <span>{staffRoleLabel}</span>
                   <div className="text-right">
                     <span className="font-bold text-teal-800 flex items-center gap-1 justify-end">
-                      <span>{staffRoleIcon}</span>
                       <span>{selectedStaff === 'any' ? (`Any Available ${isClinic ? 'General Physician' : 'Barber'}`) : selectedStaff?.name}</span>
                     </span>
                     <span className="text-[10px] text-slate-400 block">
@@ -672,11 +707,58 @@ export default function BookingPage() {
                 </div>
               </div>
 
+              {/* Payment Mode Selector / Details */}
+              {business?.paymentConfiguration?.paymentMode === 'BOTH' ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-700 block">Select Payment Method</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentChoice('PAY_AT_BUSINESS')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        paymentChoice === 'PAY_AT_BUSINESS'
+                          ? 'border-teal-500 bg-teal-50/50 text-teal-950 font-bold'
+                          : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">Pay at Venue</div>
+                      <div className="text-[10px] text-zinc-400">Cash / UPI QR at counter</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentChoice('WALLET')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        paymentChoice === 'WALLET'
+                          ? 'border-teal-500 bg-teal-50/50 text-teal-950 font-bold'
+                          : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">Online Wallet</div>
+                      <div className="text-[10px] text-zinc-400">Bal: ₹{user?.walletBalance ?? 0}</div>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Provider Notice */}
-              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-[11px] text-teal-900">
-                <p className="font-bold mb-0.5">🔒 Payment Provider: Mock Payment Gateway (Test Mode)</p>
-                <p className="text-teal-700 opacity-90">Safe financial ledger check. Wallet balance: ₹{user?.walletBalance ?? 0}</p>
-              </div>
+              {paymentChoice === 'PAY_AT_BUSINESS' ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-950">
+                  <p className="font-bold mb-0.5">Pay at Business (Zero Advance Online Charge)</p>
+                  <p className="text-emerald-700 opacity-90">
+                    Your appointment slot is confirmed immediately. Pay ₹{finalPrice} directly to the merchant upon arrival via cash or UPI.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-[11px] text-teal-900">
+                  <p className="font-bold mb-0.5">Online Payment (Customer Wallet)</p>
+                  <p className="text-teal-700 opacity-90">
+                    Deducted from your wallet balance: ₹{user?.walletBalance ?? 0}.
+                    {user?.walletBalance < finalPrice && (
+                      <span className="text-rose-600 font-bold block mt-1">Warning: Balance is less than ₹{finalPrice}.</span>
+                    )}
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center gap-3">
                 <button
@@ -689,10 +771,14 @@ export default function BookingPage() {
                 <button
                   type="button"
                   onClick={handleConfirmBooking}
-                  disabled={bookingInProgress}
+                  disabled={bookingInProgress || (paymentChoice === 'WALLET' && (user?.walletBalance || 0) < finalPrice)}
                   className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 disabled:opacity-50"
                 >
-                  {bookingInProgress ? 'Processing...' : `Confirm & Pay ₹${finalPrice}`}
+                  {bookingInProgress
+                    ? 'Processing...'
+                    : paymentChoice === 'PAY_AT_BUSINESS'
+                    ? `Confirm Booking (Pay ₹${finalPrice} at Venue)`
+                    : `Confirm & Pay ₹${finalPrice}`}
                 </button>
               </div>
             </motion.div>

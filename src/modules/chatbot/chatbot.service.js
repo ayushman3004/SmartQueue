@@ -45,7 +45,7 @@ async function getPlatformContext() {
         .join("; ");
 
       return `- **${b.name}** [ID: ${b._id}]:
-  * Type: ${b.category === "salon" ? "Salon & Hair Studio ✂️" : "Medical Clinic & Healthcare 🩺"}
+  * Type: ${b.category === "salon" ? "Salon & Hair Studio" : "Medical Clinic & Healthcare"}
   * Status: ${b.isOpen ? "OPEN NOW" : "CLOSED"}
   * Location: ${b.address || b.location || "Local Hub"} | Phone: ${b.phone || "N/A"}
   * Operating Timings: ${b.timings?.open || "09:00"} to ${b.timings?.close || "18:00"}

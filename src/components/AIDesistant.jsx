@@ -45,8 +45,10 @@ export default function AIDesistant() {
               {/* Header */}
               <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50/80 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-950 text-white flex items-center justify-center text-lg shadow-sm">
-                    🤖
+                  <div className="w-10 h-10 rounded-xl bg-zinc-950 text-teal-400 flex items-center justify-center shadow-sm">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-zinc-950 tracking-tight">serveQ Assistant</h4>
@@ -130,7 +132,9 @@ export default function AIDesistant() {
         aria-label="Open AI Assistant"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        <span className="text-xl relative z-10 transition-transform group-hover:scale-110">🤖</span>
+        <svg className="w-6 h-6 text-white relative z-10 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
         <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-teal-400 animate-radar" />
       </motion.button>
     </div>

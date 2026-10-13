@@ -96,9 +96,29 @@ export const createBooking = async ({
   guestCount,
   pricingLabel,
   couponCode,
+  paymentMethod = "WALLET",
 }, io = null) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
+
+  // Validate business booking preferences
+  if (business.bookingSettings?.enableAppointments === false) {
+    throw new ApiError(403, "Appointment booking is currently disabled for this business");
+  }
+
+  const now = new Date();
+  const maxAdvanceDays = business.bookingSettings?.maxAdvanceBookingDays || 14;
+  const maxAdvanceDate = new Date(now.getTime() + maxAdvanceDays * 24 * 60 * 60 * 1000);
+  if (new Date(startTime) > maxAdvanceDate) {
+    throw new ApiError(400, `Appointments cannot be booked more than ${maxAdvanceDays} days in advance`);
+  }
+
+  if (business.bookingSettings?.allowSameDayBooking === false) {
+    const isSameDay = new Date(startTime).toDateString() === now.toDateString();
+    if (isSameDay) {
+      throw new ApiError(400, "Same-day booking is not permitted by this business");
+    }
+  }
 
   // 1. Process multiple services or fallback to single service
   let selectedServicesList = [];
@@ -287,18 +307,33 @@ export const createBooking = async ({
 
   const finalAmount = Math.max(0, totalCost - discount);
 
-  // 6. Atomic deduction from wallet
+  // 6. Payment Processing: Pay at Business vs Online Wallet
+  const isPayAtBusiness =
+    paymentMethod === "PAY_AT_BUSINESS" ||
+    business.paymentConfiguration?.paymentMode === "PAY_AT_BUSINESS";
+
   let newBalance = 0;
-  if (finalAmount > 0) {
-    newBalance = await deductWalletBalance(
-      userId,
-      finalAmount,
-      `Booking at ${business.name}`,
-      io
-    );
-  } else {
+  let paidAmount = 0;
+
+  if (isPayAtBusiness) {
+    // Pay at business: no wallet deduction required
+    paidAmount = 0;
     const user = await User.findById(userId);
     newBalance = user?.walletBalance || 0;
+  } else {
+    // Online / Wallet deduction
+    if (finalAmount > 0) {
+      newBalance = await deductWalletBalance(
+        userId,
+        finalAmount,
+        `Booking at ${business.name}`,
+        io
+      );
+      paidAmount = finalAmount;
+    } else {
+      const user = await User.findById(userId);
+      newBalance = user?.walletBalance || 0;
+    }
   }
 
   const combinedServiceNames = selectedServicesList.map((s) => s.name).join(" + ");
@@ -316,7 +351,7 @@ export const createBooking = async ({
     guestCount: guestCount || 1,
     notes,
     pricingLabel: pricingLabel || combinedServiceNames,
-    paidAmount: finalAmount,
+    paidAmount,
     status: "confirmed",
   });
 

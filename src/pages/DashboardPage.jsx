@@ -183,7 +183,7 @@ export default function DashboardPage() {
               onClick={() => navigate('/wallet')}
               className="group flex items-center gap-3 bg-white/10 hover:bg-white/15 border border-white/20 px-4.5 py-2.5 rounded-full backdrop-blur-md transition-all active:scale-[0.97] shadow-sm"
             >
-              <span className="w-8 h-8 rounded-full bg-teal-500/30 flex items-center justify-center text-base">💳</span>
+              <span className="w-8 h-8 rounded-full bg-teal-500/30 flex items-center justify-center text-xs font-black text-white">₹</span>
               <div className="text-left">
                 <p className="text-[9px] uppercase font-black text-teal-300 tracking-wider leading-none">Wallet</p>
                 <p className="text-sm font-black text-white mt-0.5">₹{(user?.walletBalance ?? 0).toLocaleString()}</p>
@@ -195,7 +195,6 @@ export default function DashboardPage() {
               className="btn-island py-2.5 px-5 text-xs bg-teal-500 hover:bg-teal-400 text-teal-950 shadow-teal-500/20"
             >
               <span>Coupons ({coupons.length})</span>
-              <span className="btn-bubble bg-teal-950/15 text-teal-950">🏷️</span>
             </button>
           </div>
         </div>
@@ -214,7 +213,7 @@ export default function DashboardPage() {
             <div className="bezel-core p-6 space-y-4 text-left">
               <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
                 <h3 className="text-xs font-black text-zinc-950 uppercase tracking-widest flex items-center gap-2">
-                  <span>🎁</span> Active Express Coupons
+                  Active Express Coupons
                 </h3>
                 <button
                   onClick={() => setShowCoupons(false)}
@@ -246,7 +245,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
           <div>
             <h2 className="text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-              <span>🎟️</span> My Live Tickets & Bookings
+              My Live Tickets & Bookings
             </h2>
             <p className="text-xs text-zinc-500 font-medium">Monitor active queue status, arrival timers, and historical receipts.</p>
           </div>
@@ -255,7 +254,6 @@ export default function DashboardPage() {
         {myBookings.length === 0 ? (
           <div className="bezel-shell">
             <div className="bezel-core p-10 text-center space-y-2">
-              <span className="text-3xl">🎫</span>
               <p className="text-sm font-black text-zinc-800">No active reservations yet.</p>
               <p className="text-xs text-zinc-400 font-medium">Select any verified business below to join the live queue or reserve an appointment.</p>
             </div>
@@ -286,7 +284,7 @@ export default function DashboardPage() {
 
                     {b.delayMinutes > 0 && (
                       <div className="mt-2 p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 font-semibold">
-                        ⚠️ Delayed by {b.delayMinutes} min.
+                        Delayed by {b.delayMinutes} min.
                       </div>
                     )}
                   </div>
@@ -297,7 +295,7 @@ export default function DashboardPage() {
                         onClick={() => handleOpenReview(b)}
                         className="flex-1 py-2.5 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 font-black text-xs hover:bg-teal-100 transition-colors active:scale-[0.98]"
                       >
-                        ⭐ Leave Review
+                        Leave Review
                       </button>
                     ) : b.status === 'cancelled' || b.status === 'refunded' ? (
                       <span className="text-xs font-semibold text-zinc-400">Archived Record</span>
@@ -331,7 +329,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-                <span>⚡</span> Recommended Fast-Track Hubs
+                Recommended Fast-Track Hubs
               </h2>
               <p className="text-xs text-slate-500 font-medium">Venues with minimal queues and rapid turnaround times.</p>
             </div>
@@ -355,7 +353,9 @@ export default function DashboardPage() {
           {/* Search and Location Fields */}
           <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full md:w-auto">
             <div className="relative w-full sm:w-64">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">🔍</span>
+              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               <input
                 type="text"
                 placeholder="Search hub or service..."
@@ -366,7 +366,10 @@ export default function DashboardPage() {
             </div>
 
             <div className="relative w-full sm:w-52">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">📍</span>
+              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
               <input
                 type="text"
                 placeholder="City or Area..."
@@ -381,7 +384,7 @@ export default function DashboardPage() {
         {/* Category Filter Chips */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
           {CATEGORIES.map((c) => {
-            const label = c === 'all' ? 'All Venues' : c === 'salon' ? '💇 Salons' : '🏥 Clinics'
+            const label = c === 'all' ? 'All Venues' : c === 'salon' ? 'Salons' : 'Clinics'
             return (
               <button
                 key={c}
@@ -410,7 +413,6 @@ export default function DashboardPage() {
         ) : businesses.length === 0 ? (
           <div className="bezel-shell">
             <div className="bezel-core p-16 text-center space-y-3">
-              <span className="text-4xl">🔍</span>
               <h3 className="text-lg font-black text-zinc-900">No matching hubs found</h3>
               <p className="text-xs text-zinc-500 font-medium">Try broadening your search terms or selecting a different category.</p>
             </div>

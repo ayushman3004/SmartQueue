@@ -115,7 +115,7 @@ export const gatewayErrorHandler = (err, req, res, _next) => {
   }
 
   if (statusCode >= 500) {
-    console.error(`[${req.id}] 🔥 Server Error:`, err);
+    console.error(`[${req.id}] Server Error:`, err);
   }
 
   res.status(statusCode).json({

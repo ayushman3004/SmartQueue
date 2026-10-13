@@ -12,9 +12,9 @@ import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Hubs', icon: '🏪' },
-  { id: 'salon', label: 'Salons & Hair Studios', icon: '✂️' },
-  { id: 'clinic', label: 'Clinics & Doctors', icon: '🩺' },
+  { id: 'all', label: 'All Hubs' },
+  { id: 'salon', label: 'Salons & Hair Studios' },
+  { id: 'clinic', label: 'Clinics & Doctors' },
 ]
 
 export default function CustomerDashboardPage() {
@@ -210,6 +210,10 @@ export default function CustomerDashboardPage() {
 
   // Quick Join Queue Handler
   const handleJoinQueue = async (biz) => {
+    if (biz.queueSettings?.enableLiveQueue === false) {
+      toast.error('Live queue is currently disabled for this business.')
+      return
+    }
     if (!biz.isOpen) {
       toast.error('This business is currently closed for check-ins.')
       return
@@ -219,6 +223,7 @@ export default function CustomerDashboardPage() {
     const curServices = selectedServices[biz._id] || (services.length > 0 ? [services[0]] : [{ name: 'General Service', duration: biz.averageServiceTime || 15, price: biz.basePrice || 0 }])
     const curStaff = selectedStaff[biz._id] || 'any'
     const preferredStaffName = curStaff === 'any' ? null : (typeof curStaff === 'string' ? curStaff : curStaff.name)
+    const paymentMethod = biz.paymentConfiguration?.paymentMode === 'ONLINE' ? 'WALLET' : 'PAY_AT_BUSINESS'
 
     setJoiningBizId(biz._id)
 
@@ -227,6 +232,7 @@ export default function CustomerDashboardPage() {
         services: curServices,
         serviceType: curServices.map(s => s.name).join(', '),
         preferredStaff: preferredStaffName,
+        paymentMethod,
       })
       const updatedQ = res.data.data.queue
 
@@ -235,10 +241,10 @@ export default function CustomerDashboardPage() {
         prev.map(b => (b._id === biz._id ? { ...b, activeQueue: updatedQ.users, queueLength: updatedQ.users.length } : b))
       )
 
-      toast.success(`🎉 You joined the queue at ${biz.name}!`)
+      toast.success(`You joined the queue at ${biz.name}!`)
     } catch (err) {
       if (err.response?.status === 400 || err.response?.data?.message?.includes('already')) {
-        toast('You are already registered in this queue.', { icon: 'ℹ️' })
+        toast('You are already registered in this queue.')
         navigate(`/queue/${biz._id}`)
       } else {
         toast.error(err.response?.data?.message || 'Failed to join queue')
@@ -335,7 +341,7 @@ export default function CustomerDashboardPage() {
             onClick={() => navigate('/wallet')}
             className="flex items-center gap-3 bg-white/10 hover:bg-white/15 border border-white/20 px-4 py-2.5 rounded-2xl backdrop-blur-md transition-all active:scale-[0.98] shadow-sm"
           >
-            <span className="w-8 h-8 rounded-xl bg-teal-500/30 flex items-center justify-center text-sm">💳</span>
+            <span className="w-8 h-8 rounded-xl bg-teal-500/30 flex items-center justify-center text-xs font-black text-white">₹</span>
             <div className="text-left">
               <p className="text-[9px] uppercase font-black text-teal-300 tracking-wider leading-none">Wallet</p>
               <p className="text-sm font-black text-white mt-0.5">₹{(user?.walletBalance ?? 0).toLocaleString()}</p>
@@ -347,7 +353,6 @@ export default function CustomerDashboardPage() {
             className="px-4.5 py-2.5 rounded-2xl bg-teal-400 hover:bg-teal-300 text-zinc-950 font-black text-xs transition-all shadow-md active:scale-95 flex items-center gap-2"
           >
             <span>Coupons ({coupons.length})</span>
-            <span className="text-sm">🏷️</span>
           </button>
         </div>
       </div>
@@ -363,7 +368,7 @@ export default function CustomerDashboardPage() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
               <h3 className="text-xs font-black text-zinc-950 uppercase tracking-widest flex items-center gap-2">
-                <span>🎁</span> Active Express Coupons
+                Active Express Coupons
               </h3>
               <button
                 onClick={() => setShowCoupons(false)}
@@ -392,7 +397,6 @@ export default function CustomerDashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 pb-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2.5">
-              <span>🎟️</span>
               <span>My Active Queue Tickets</span>
               {myActiveQueues.length > 0 && (
                 <span className="px-2.5 py-0.5 text-xs font-black rounded-full bg-teal-100 text-teal-800">
@@ -408,7 +412,6 @@ export default function CustomerDashboardPage() {
 
         {myActiveQueues.length === 0 ? (
           <div className="bg-white border border-dashed border-zinc-300 rounded-3xl p-8 sm:p-10 text-center space-y-2">
-            <span className="text-3xl">🎫</span>
             <p className="text-sm font-black text-zinc-800">You are not in any live queues right now.</p>
             <p className="text-xs text-zinc-400 font-medium max-w-md mx-auto">
               Select any open salon or clinic below to grab your live token. You can wait anywhere and walk in when called!
@@ -429,7 +432,6 @@ export default function CustomerDashboardPage() {
                   <div className="flex items-start justify-between gap-3 pb-3 border-b border-zinc-100">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-base">{business.category === 'salon' ? '✂️' : '🩺'}</span>
                         <h3 className="text-lg font-black text-zinc-950 tracking-tight">{business.name}</h3>
                       </div>
                       <p className="text-xs text-zinc-500 font-medium mt-0.5">{business.address || business.location}</p>
@@ -440,7 +442,7 @@ export default function CustomerDashboardPage() {
                         ? 'bg-emerald-600 text-white animate-pulse shadow-sm'
                         : 'bg-amber-100 text-amber-900 border border-amber-200'
                     }`}>
-                      {isServing ? '⚡ NOW SERVING' : 'WAITING IN LINE'}
+                      {isServing ? 'NOW SERVING' : 'WAITING IN LINE'}
                     </span>
                   </div>
 
@@ -481,7 +483,7 @@ export default function CustomerDashboardPage() {
                     {myQueueItem.assignedStaff?.name && (
                       <p className="flex items-center gap-1.5 text-xs">
                         <span className="text-zinc-500 font-medium">
-                          {business.category === 'clinic' ? '🩺 Doctor:' : '✂️ Barber:'}
+                          {business.category === 'clinic' ? 'Doctor:' : 'Barber:'}
                         </span>
                         <span className="font-bold text-zinc-950 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px] inline-flex items-center gap-1">
                           {myQueueItem.assignedStaff.name}
@@ -504,7 +506,7 @@ export default function CustomerDashboardPage() {
                     onClick={() => navigate(`/queue/${business._id}`)}
                     className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
                   >
-                    <span>📺 View Live Screen</span>
+                    <span>View Live Screen</span>
                   </button>
                   <button
                     onClick={() => handleLeaveQueue(business._id, business.name)}
@@ -525,7 +527,6 @@ export default function CustomerDashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-              <span>🏪</span>
               <span>Present Live Queues at Nearby Hubs</span>
             </h2>
             <p className="text-xs text-zinc-500 font-medium">
@@ -564,7 +565,6 @@ export default function CustomerDashboardPage() {
                   : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50'
               }`}
             >
-              <span>{cat.icon}</span>
               <span>{cat.label}</span>
             </button>
           ))}
@@ -578,7 +578,6 @@ export default function CustomerDashboardPage() {
           </div>
         ) : businesses.length === 0 ? (
           <div className="p-16 text-center border border-dashed border-zinc-300 rounded-3xl bg-white space-y-2">
-            <p className="text-3xl">🔍</p>
             <p className="text-sm font-black text-zinc-800">No active businesses found</p>
             <p className="text-xs text-zinc-400">Try adjusting your category filter or search keywords.</p>
           </div>
@@ -594,7 +593,6 @@ export default function CustomerDashboardPage() {
               const services = biz.services || []
               const isClinic = biz.category === 'clinic' || biz.category === 'healthcare'
               const staffRoleLabel = isClinic ? 'Doctor' : 'Barber'
-              const staffRoleIcon = isClinic ? '🩺' : '✂️'
               const staffList = biz.staff || []
 
               // Compute staff members currently in service taking service from patrons
@@ -624,7 +622,6 @@ export default function CustomerDashboardPage() {
                     <div className="flex items-start justify-between gap-3 pb-3 border-b border-zinc-100">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">{biz.category === 'salon' ? '✂️' : '🩺'}</span>
                           <h3 className="text-base font-black text-zinc-950 tracking-tight">{biz.name}</h3>
                         </div>
                         <p className="text-xs text-zinc-500 font-medium mt-0.5 line-clamp-1">{biz.address || biz.location || 'Local Venue'}</p>
@@ -635,7 +632,7 @@ export default function CustomerDashboardPage() {
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                           : 'bg-rose-100 text-rose-700 border border-rose-200'
                       }`}>
-                        {biz.isOpen ? '● OPEN' : '○ CLOSED'}
+                        {biz.isOpen ? 'OPEN' : 'CLOSED'}
                       </span>
                     </div>
 
@@ -644,7 +641,7 @@ export default function CustomerDashboardPage() {
                       <div className="p-1">
                         <p className="text-[9px] uppercase font-black text-zinc-400 tracking-wider">Now Serving</p>
                         <p className="text-base font-black text-indigo-700 mt-0.5">
-                          {servingToken ? `#${servingToken}` : 'Idle 💤'}
+                          {servingToken ? `#${servingToken}` : 'Idle'}
                         </p>
                       </div>
                       <div className="p-1 border-x border-zinc-200">
@@ -716,11 +713,10 @@ export default function CustomerDashboardPage() {
                     <div className="space-y-1.5 mt-3 pt-3 border-t border-zinc-100">
                       <div className="flex items-center justify-between">
                         <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider flex items-center gap-1">
-                          <span>{staffRoleIcon}</span>
                           <span>Select {staffRoleLabel}</span>
                         </label>
                         <span className="text-[9px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
-                          🛡️ Auto-Fallback Guarantee
+                          Auto-Fallback Guarantee
                         </span>
                       </div>
 
@@ -737,13 +733,13 @@ export default function CustomerDashboardPage() {
                         }}
                         className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
                       >
-                        <option value="any">✨ Any Available {isClinic ? 'General Physician / Doctor' : 'Barber / Stylist'} (Auto-Assign On-Duty)</option>
+                        <option value="any">Any Available {isClinic ? 'General Physician / Doctor' : 'Barber / Stylist'} (Auto-Assign On-Duty)</option>
                         {staffList.map((st, stIdx) => {
                           const isOccupied = busyStaffNames.has(st.name.toLowerCase())
                           const isAvailable = (st.isAvailable !== false) && !isOccupied
                           return (
                             <option key={stIdx} value={st.name} disabled={!isAvailable}>
-                              {isOccupied ? '🔴' : isAvailable ? '🟢' : '⚪'} {st.name} — {st.role || (isClinic ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {isOccupied ? '• IN SERVICE (NOT AVAILABLE)' : (st.isAvailable === false ? '• Off-Duty' : '• Available')}
+                              {isOccupied ? '[In Service]' : isAvailable ? '[Available]' : '[Off-Duty]'} {st.name} — {st.role || (isClinic ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {isOccupied ? '• IN SERVICE (NOT AVAILABLE)' : (st.isAvailable === false ? '• Off-Duty' : '• Available')}
                             </option>
                           )
                         })}
@@ -762,7 +758,7 @@ export default function CustomerDashboardPage() {
                       {/* Selected staff is occupied alert */}
                       {isCurStaffOccupied && (
                         <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 text-[10px] text-amber-900 font-medium flex items-center gap-1.5">
-                          <span>⚠️</span>
+                          <span className="font-bold text-amber-600">!</span>
                           <span>
                             <strong>{curStaffName}</strong> is in service now. Auto-fallback will pair you with {isClinic ? 'an on-duty General Physician' : 'an available on-duty Barber'}.
                           </span>
@@ -771,8 +767,8 @@ export default function CustomerDashboardPage() {
 
                       <p className="text-[10px] text-zinc-400 leading-tight">
                         {isClinic
-                          ? '⚕️ If chosen doctor is unavailable or in service, auto-assigned to on-duty General Physician.'
-                          : '✂️ If chosen barber is unavailable or in service, auto-assigned to any available on-duty barber.'}
+                          ? 'If chosen doctor is unavailable or in service, auto-assigned to on-duty General Physician.'
+                          : 'If chosen barber is unavailable or in service, auto-assigned to any available on-duty barber.'}
                       </p>
                     </div>
                   </div>
@@ -785,7 +781,7 @@ export default function CustomerDashboardPage() {
                           onClick={() => navigate(`/queue/${biz._id}`)}
                           className="flex-1 py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
                         >
-                          <span>🎟️ In Line (Token #{userTokenIndex + 1})</span>
+                          <span>In Line (Token #{userTokenIndex + 1})</span>
                         </button>
                         <button
                           onClick={() => handleLeaveQueue(biz._id, biz.name)}
@@ -795,6 +791,10 @@ export default function CustomerDashboardPage() {
                         >
                           ✕
                         </button>
+                      </div>
+                    ) : biz.queueSettings?.enableLiveQueue === false ? (
+                      <div className="w-full py-2.5 px-3 rounded-xl bg-zinc-100 text-zinc-400 font-bold text-xs text-center border border-zinc-200">
+                        Live Queue Currently Unavailable
                       </div>
                     ) : (
                       <button
@@ -809,7 +809,7 @@ export default function CustomerDashboardPage() {
                           </>
                         ) : (
                           <>
-                            <span>⚡ Join Live Queue</span>
+                            <span>Join Live Queue</span>
                             <span className="text-[10px] opacity-80">(~{totalDuration}m • ₹{totalPrice})</span>
                           </>
                         )}
@@ -823,12 +823,18 @@ export default function CustomerDashboardPage() {
                       >
                         View Queue Screen
                       </button>
-                      <button
-                        onClick={() => navigate(`/booking/${biz._id}`)}
-                        className="flex-1 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold transition-colors text-center text-[11px]"
-                      >
-                        Book Time Slot 📅
-                      </button>
+                      {biz.bookingSettings?.enableAppointments === false ? (
+                        <span className="flex-1 py-2 rounded-xl bg-zinc-50 text-zinc-400 font-bold transition-colors text-center text-[11px] cursor-not-allowed">
+                          Walk-in Only
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => navigate(`/booking/${biz._id}`)}
+                          className="flex-1 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold transition-colors text-center text-[11px]"
+                        >
+                          Book Time Slot
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -843,7 +849,7 @@ export default function CustomerDashboardPage() {
         <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-              <span>📅</span> My Appointments & Bookings
+              <span>My Appointments & Bookings</span>
             </h2>
             <p className="text-xs text-zinc-500 font-medium">Scheduled time slots and historical visits.</p>
           </div>
@@ -880,7 +886,6 @@ export default function CustomerDashboardPage() {
                       <p className="font-semibold text-zinc-950">{b.serviceType}</p>
                       {b.assignedStaff?.name && (
                         <p className="text-[11px] font-bold text-teal-800 flex items-center gap-1 mt-0.5">
-                          <span>👨‍⚕️</span>
                           <span>{b.assignedStaff.name}</span>
                           <span className="text-[10px] text-zinc-400 font-normal">({b.assignedStaff.role || 'On-Duty'})</span>
                         </p>
@@ -906,7 +911,7 @@ export default function CustomerDashboardPage() {
                           onClick={() => handleOpenReview(b)}
                           className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded-lg font-bold text-[11px]"
                         >
-                          Review ★
+                          Review
                         </button>
                       )}
                       {(b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'waiting') && (

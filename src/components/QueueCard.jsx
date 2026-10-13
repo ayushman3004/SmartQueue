@@ -37,7 +37,7 @@ export default function QueueCard({ user, position, isMe, _totalUsers }) {
                 : 'bg-zinc-100 text-zinc-600 border border-zinc-200/70'
           }`}
         >
-          {isServing ? '⚡' : `#${position}`}
+          {isServing ? 'NOW' : `#${position}`}
         </div>
 
         {/* User / Ticket Details */}

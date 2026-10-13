@@ -100,9 +100,11 @@ export default function BusinessPortalPage() {
         const res = await signup(payload)
         const { user: newUser, token } = res.data.data
         logIn(newUser, token)
-        toast.success('Hub Owner account registered successfully!', {
+        toast.success('Hub Owner account registered successfully! Let’s set up your venue...', {
           style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
         })
+        navigate('/business/onboarding')
+        return
       } else {
         const payload = {
           email: form.email.trim(),
@@ -148,7 +150,6 @@ export default function BusinessPortalPage() {
       setUser(updatedUser)
       setCustomerMismatch(null)
       toast.success('Your account is now upgraded to Hub Owner!', {
-        icon: '🎉',
         style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
       })
       loadHubs()
@@ -172,8 +173,10 @@ export default function BusinessPortalPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-lg bg-white border border-zinc-200 rounded-3xl p-8 sm:p-10 shadow-2xl relative z-10 text-center space-y-6"
         >
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl mx-auto shadow-sm">
-            🛡️
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto shadow-sm text-amber-800">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
           </div>
 
           <div className="space-y-2">
@@ -195,7 +198,7 @@ export default function BusinessPortalPage() {
               onClick={handleUpgradeCurrentAccount}
               className="w-full py-3.5 px-6 rounded-2xl bg-[#52b788] hover:bg-[#40916c] text-white font-bold text-xs uppercase tracking-wider shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
-              <span>{upgrading ? 'Upgrading Account...' : '✨ Upgrade Account to Hub Owner'}</span>
+              <span>{upgrading ? 'Upgrading Account...' : 'Upgrade Account to Hub Owner'}</span>
             </button>
 
             <button
@@ -386,7 +389,7 @@ export default function BusinessPortalPage() {
                     >
                       <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2.5">
                         <div className="flex items-start gap-2">
-                          <span className="text-base">⚠️</span>
+                          <span className="font-bold text-amber-700 text-sm">!</span>
                           <div>
                             <p className="font-bold text-amber-950">Hub Owner Account Required</p>
                             <p className="text-[11px] text-amber-800 mt-0.5">
@@ -402,7 +405,7 @@ export default function BusinessPortalPage() {
                               disabled={upgrading}
                               className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs"
                             >
-                              {upgrading ? 'Upgrading...' : '⚡ Upgrade to Hub Owner'}
+                              {upgrading ? 'Upgrading...' : 'Upgrade to Hub Owner'}
                             </button>
                           )}
                           <Link
@@ -665,8 +668,10 @@ export default function BusinessPortalPage() {
           {/* 4 Feature Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 text-left">
             <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-2 shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center text-lg font-bold">
-                ⚡
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </div>
               <h3 className="text-sm font-bold text-zinc-900">Sub-10ms Live Counters</h3>
               <p className="text-xs text-zinc-500 leading-relaxed">
@@ -675,8 +680,10 @@ export default function BusinessPortalPage() {
             </div>
 
             <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-2 shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center text-lg font-bold">
-                🧠
+              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
               </div>
               <h3 className="text-sm font-bold text-zinc-900">AI Wait Predictions</h3>
               <p className="text-xs text-zinc-500 leading-relaxed">
@@ -685,8 +692,10 @@ export default function BusinessPortalPage() {
             </div>
 
             <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-2 shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-lg font-bold">
-                💳
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
               </div>
               <h3 className="text-sm font-bold text-zinc-900">Instant In-App Deposits</h3>
               <p className="text-xs text-zinc-500 leading-relaxed">
@@ -695,8 +704,10 @@ export default function BusinessPortalPage() {
             </div>
 
             <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 space-y-2 shadow-xs">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-lg font-bold">
-                📊
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
               </div>
               <h3 className="text-sm font-bold text-zinc-900">Service Catalog Matrix</h3>
               <p className="text-xs text-zinc-500 leading-relaxed">

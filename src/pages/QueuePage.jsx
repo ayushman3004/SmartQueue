@@ -165,7 +165,7 @@ export default function QueuePage() {
             className="mb-8 p-6 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs"
           >
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-xl shadow-xs border border-amber-100">⚠️</div>
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center font-black text-amber-700 shadow-xs border border-amber-100">!</div>
               <div>
                 <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-0.5">Queue Delay Detected</p>
                 <p className="text-xs font-bold text-amber-600">Service delayed by {delayInfo?.delay || 0} minutes. You may cancel for a full refund.</p>
@@ -198,7 +198,11 @@ export default function QueuePage() {
                 {isServing ? (
                   <>
                     <div className="flex items-center gap-3.5 mb-5 pb-4 border-b border-zinc-100">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-300 flex items-center justify-center text-2xl shadow-xs">⚡</div>
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-300 flex items-center justify-center text-emerald-700 shadow-xs">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
                       <div>
                         <span className="badge-eyebrow bg-emerald-50 text-emerald-700 border-emerald-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-radar" />
@@ -208,7 +212,6 @@ export default function QueuePage() {
                       </div>
                     </div>
                     <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-center shadow-xs mb-6">
-                      <p className="text-3xl font-black text-emerald-700 leading-none mb-1.5">🎯</p>
                       <p className="text-xs font-black text-emerald-700 uppercase tracking-wider">Please proceed to service desk</p>
                     </div>
                   </>
@@ -260,7 +263,6 @@ export default function QueuePage() {
           ) : (
             <div className="bezel-shell">
               <div className="bezel-core p-8 text-center space-y-3">
-                <p className="text-4xl">🚶</p>
                 <h3 className="text-base font-black text-zinc-800">You are not in line</h3>
                 <p className="text-xs text-zinc-400 font-medium">Join this queue from the hub dashboard to receive live updates.</p>
                 <button
@@ -311,7 +313,6 @@ export default function QueuePage() {
               <div className="space-y-2.5">
                 {users.length === 0 ? (
                   <div className="text-center py-16 bg-zinc-50/60 rounded-2xl border border-dashed border-zinc-200">
-                    <p className="text-4xl mb-3">✨</p>
                     <p className="text-xs font-black text-zinc-700 uppercase tracking-wider">Queue Is Currently Clear</p>
                     <p className="text-[11px] text-zinc-400 mt-1">Immediate service available upon check-in.</p>
                   </div>

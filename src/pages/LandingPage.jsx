@@ -31,22 +31,38 @@ const VENUES = [
 
 const FEATURES = [
   {
-    icon: '⚡',
+    icon: (
+      <svg className="w-5 h-5 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
     title: 'Zero-Latency Sync',
     desc: 'Sub-10ms WebSocket connection keeps token numbers updating in real-time across all devices.'
   },
   {
-    icon: '🧠',
+    icon: (
+      <svg className="w-5 h-5 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    ),
     title: 'Predictive Wait Times',
     desc: 'Smart turnaround forecasting estimates remaining wait times based on counter velocity.'
   },
   {
-    icon: '💳',
+    icon: (
+      <svg className="w-5 h-5 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    ),
     title: 'Integrated Payments',
     desc: 'Reserve priority slots instantly with automatic escrow refunds if your schedule changes.'
   },
   {
-    icon: '🏢',
+    icon: (
+      <svg className="w-5 h-5 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    ),
     title: 'Business Command Suite',
     desc: 'Manage customer flow, call tokens with one tap, and analyze venue traffic analytics.'
   }
@@ -224,7 +240,9 @@ export default function LandingPage() {
 
                 {/* Bottom Notification Callout */}
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-teal-600/5 border border-teal-500/20 text-xs text-teal-900 font-medium">
-                  <span className="text-base">🔔</span>
+                  <svg className="w-4 h-4 text-teal-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
                   <span>We'll notify you on your phone when your turn is next.</span>
                 </div>
               </motion.div>

@@ -51,3 +51,31 @@ export const toggle = asyncHandler(async (req, res) => {
   const business = await businessService.toggleOpen(req.params.id, req.user._id, io);
   res.json(new ApiResponse(200, { business }, `Business is now ${business.isOpen ? "open" : "closed"}`));
 });
+
+export const getOnboardingDraft = asyncHandler(async (req, res) => {
+  const business = await businessService.getOnboardingDraft(req.user._id, req.query.businessId);
+  res.json(new ApiResponse(200, { business }));
+});
+
+export const initOnboarding = asyncHandler(async (req, res) => {
+  const business = await businessService.initOnboarding(req.user._id, req.body);
+  res.status(201).json(new ApiResponse(201, { business }, "Onboarding session initialized"));
+});
+
+export const saveOnboardingStep = asyncHandler(async (req, res) => {
+  const { step, data } = req.body;
+  const business = await businessService.saveOnboardingStep(
+    req.params.id,
+    req.user._id,
+    step,
+    data
+  );
+  res.json(new ApiResponse(200, { business }, `Step ${step} saved successfully`));
+});
+
+export const launchBusiness = asyncHandler(async (req, res) => {
+  const io = req.app.get("io");
+  const business = await businessService.launchBusiness(req.params.id, req.user._id, io);
+  res.json(new ApiResponse(200, { business }, "Your business is ready on ServeQ!"));
+});
+

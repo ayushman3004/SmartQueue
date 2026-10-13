@@ -103,7 +103,7 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
 
       const res = await createBusiness(payload)
       const created = res.data.data.business
-      toast.success(`🎉 Hub "${created.name}" established with ${created.services?.length || 0} services!`)
+      toast.success(`Hub "${created.name}" established with ${created.services?.length || 0} services!`)
       onCreated?.(created)
       onClose()
     } catch (err) {
@@ -129,8 +129,10 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center text-2xl shadow-xs">
-                  🏢
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center text-teal-800 shadow-xs">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-zinc-950 tracking-tight">Register Business Hub</h2>
@@ -261,7 +263,7 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h3 className="text-sm font-black text-zinc-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>⚡</span> Configured Services ({form.services.length})
+                      Configured Services ({form.services.length})
                     </h3>
                     <p className="text-xs text-zinc-500">Customers select these services when reserving or joining your queue.</p>
                   </div>
@@ -270,7 +272,7 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
                     onClick={handleLoadPresets}
                     className="text-xs font-bold text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/80 border border-teal-200 px-3 py-1.5 rounded-xl transition-all self-start sm:self-auto flex items-center gap-1"
                   >
-                    <span>⚡</span> Load Industry Presets
+                    Load Industry Presets
                   </button>
                 </div>
 
@@ -375,7 +377,7 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
                       Establishing Hub...
                     </>
                   ) : (
-                    'Establish Hub & Open Catalog 🚀'
+                    'Establish Hub & Open Catalog'
                   )}
                 </button>
               </div>

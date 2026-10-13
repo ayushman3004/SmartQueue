@@ -103,7 +103,7 @@ export default function ProfilePage() {
                   editing ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-slate-50 border-zinc-200 text-slate-500 hover:bg-white hover:text-zinc-950 shadow-sm'
                 }`}
               >
-                {editing ? 'Discard Overrides' : '🛠️ Modify Profile'}
+                {editing ? 'Discard Overrides' : 'Modify Profile'}
               </button>
             </div>
 
@@ -142,7 +142,7 @@ export default function ProfilePage() {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="md:col-span-2 pt-6">
                   <button type="submit" disabled={loading} className="w-full py-6 rounded-3xl bg-zinc-950 text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-2xl active:scale-95 transition-all relative overflow-hidden group">
                     <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                    <span className="relative z-10">{loading ? 'Synchronizing Genesis...' : '💾 Commmit Global Overrides'}</span>
+                    <span className="relative z-10">{loading ? 'Synchronizing Genesis...' : 'Commit Global Overrides'}</span>
                   </button>
                 </motion.div>
               )}

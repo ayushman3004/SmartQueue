@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster, toast } from 'react-hot-toast'
 import { useAuth } from './context/AuthContext'
 import { useSocket } from './context/SocketContext'
@@ -18,6 +18,7 @@ import WalletPage from './pages/WalletPage'
 import AdminDashboard from './pages/AdminDashboard'
 import ProfilePage from './pages/ProfilePage'
 import BusinessPortalPage from './pages/BusinessPortalPage'
+import BusinessOnboardingPage from './pages/BusinessOnboardingPage'
 
 const LoadingScreen = () => (
   <div className="flex items-center justify-center min-h-screen page-wrapper">
@@ -36,7 +37,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
         <div className="text-center glass p-10 max-w-md">
-          <p className="text-5xl mb-4">🚫</p>
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
           <h2 className="text-xl font-bold mb-2">Access Denied</h2>
           <p className="text-sm mb-6 text-neutral-400">
             You are not allowed to perform this action.
@@ -53,6 +58,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 export default function App() {
   const { user } = useAuth()
   const { socket, joinUser } = useSocket()
+  const location = useLocation()
+  const isOnboarding = location.pathname.startsWith('/business/onboarding')
 
   // Join user's private socket room for wallet:update and notifications
   useEffect(() => {
@@ -65,7 +72,6 @@ export default function App() {
     if (!socket) return
     const handleNear = (data) => {
       toast(data.message, {
-        icon: '🔔',
         style: {
           borderRadius: '16px', background: '#111', color: '#fff', border: '1px solid #7B61FF', padding: '16px', fontSize: '14px', fontWeight: 'bold'
         },
@@ -100,14 +106,14 @@ export default function App() {
           },
         }}
       />
-      {user && <Navbar />}
-      {user && (
+      {user && !isOnboarding && <Navbar />}
+      {user && !isOnboarding && (
         <>
           <BackButton />
           <AIDesistant />
         </>
       )}
-      <main className={user ? "main-content" : ""}>
+      <main className={user && !isOnboarding ? "main-content" : ""}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
@@ -151,6 +157,22 @@ export default function App() {
           <Route
             path="/business"
             element={<BusinessPortalPage />}
+          />
+          <Route
+            path="/business/onboarding"
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                <BusinessOnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/onboarding/:businessId"
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                <BusinessOnboardingPage />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/business/:businessId/manage"

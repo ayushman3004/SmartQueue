@@ -63,7 +63,7 @@ function AdminLoginForm({ onLoginSuccess }) {
         {user && user.role !== 'admin' && (
           <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
             <p className="font-bold flex items-center gap-1.5">
-              <span>⚠️</span> Logged in as: {user.name} ({user.role})
+              Logged in as: {user.name} ({user.role})
             </p>
             <p className="text-[11px] text-amber-800">
               Administrator privileges are required for this area. Enter administrative credentials below to upgrade this session or switch accounts.
@@ -89,7 +89,7 @@ function AdminLoginForm({ onLoginSuccess }) {
             onClick={handleFillDemo}
             className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap"
           >
-            ⚡ Auto-Fill
+            Auto-Fill
           </button>
         </div>
 
@@ -431,7 +431,7 @@ export default function AdminDashboard() {
               : 'border-transparent text-slate-400 hover:text-zinc-800'
           }`}
         >
-          <span>🏢 Hubs & Operations Directory</span>
+          <span>Hubs & Operations Directory</span>
           <span className="px-2 py-0.5 text-[10px] rounded-full bg-teal-100 text-teal-800">
             {businesses.length} total • {onlineHubsCount} online
           </span>
@@ -445,7 +445,7 @@ export default function AdminDashboard() {
               : 'border-transparent text-slate-400 hover:text-zinc-800'
           }`}
         >
-          <span>👥 Customers & Presence Directory</span>
+          <span>Customers & Presence Directory</span>
           <span className="px-2 py-0.5 text-[10px] rounded-full bg-emerald-100 text-emerald-800">
             {usersList.length} total • {onlineUsersCount} online
           </span>
@@ -474,7 +474,7 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
                 {[
                   { id: 'all', label: 'All' },
-                  { id: 'online', label: '🟢 Online Now' },
+                  { id: 'online', label: 'Online Now' },
                   { id: 'approved', label: 'Approved' },
                   { id: 'suspended', label: 'Suspended' },
                 ].map((st) => (
@@ -593,7 +593,7 @@ export default function AdminDashboard() {
                           className="px-2.5 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white text-rose-700 rounded-lg text-xs font-bold transition shadow-xs"
                           title="Permanently remove this hub from platform"
                         >
-                          🗑️ Remove Hub
+                          Remove Hub
                         </button>
                       </td>
                     </tr>
@@ -627,7 +627,7 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
                 {[
                   { id: 'all', label: 'All Users' },
-                  { id: 'online', label: '🟢 Online Now' },
+                  { id: 'online', label: 'Online Now' },
                   { id: 'in_queue', label: 'In Queue' },
                   { id: 'customer', label: 'Customers' },
                   { id: 'owner', label: 'Hub Owners' },
@@ -757,8 +757,8 @@ export default function AdminDashboard() {
               exit={{ scale: 0.95, y: 15 }}
               className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-rose-200 space-y-5"
             >
-              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl font-bold">
-                ⚠️
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl font-black">
+                !
               </div>
               <div className="space-y-2">
                 <h3 className="text-xl font-black text-zinc-950">
@@ -911,7 +911,7 @@ export default function AdminDashboard() {
                       }}
                       className="px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                     >
-                      🗑️ Remove Hub
+                      Remove Hub
                     </button>
                     <div className="flex items-center gap-2">
                       <button

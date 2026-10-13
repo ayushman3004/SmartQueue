@@ -6,12 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import api from '../api/axios'
 
-const CATEGORY_ICONS = {
-  salon: '💇',
-  clinic: '🏥',
-  healthcare: '🏥',
-  other: '🏢',
-}
+
 
 export default function BusinessCard({ business: initialBusiness, index }) {
   const navigate = useNavigate()
@@ -140,8 +135,8 @@ export default function BusinessCard({ business: initialBusiness, index }) {
         {/* Header with Machined Tile Icon & Status */}
         <div className="flex items-center justify-between gap-3 pb-5 border-b border-zinc-100">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-center text-2xl shadow-xs group-hover:scale-105 transition-transform duration-200 flex-shrink-0">
-              {CATEGORY_ICONS[business.category] || '🏢'}
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center text-lg font-black text-teal-800 shadow-xs group-hover:scale-105 transition-transform duration-200 flex-shrink-0">
+              {business.name?.[0]?.toUpperCase() || 'Q'}
             </div>
             <div className="min-w-0">
               <h3 className="text-lg font-black text-zinc-950 tracking-tight truncate group-hover:text-teal-700 transition-colors">
@@ -255,11 +250,10 @@ export default function BusinessCard({ business: initialBusiness, index }) {
             <div className="mt-3 pt-3 border-t border-zinc-100 flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-extrabold uppercase text-zinc-500 tracking-wider flex items-center gap-1">
-                  <span>{business.category === 'clinic' || business.category === 'healthcare' ? '🩺' : '✂️'}</span>
                   <span>Select {business.category === 'clinic' || business.category === 'healthcare' ? 'Doctor' : 'Barber'}</span>
                 </label>
                 <span className="text-[9px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
-                  🛡️ Auto-Fallback
+                  Auto-Fallback
                 </span>
               </div>
 
@@ -268,13 +262,13 @@ export default function BusinessCard({ business: initialBusiness, index }) {
                 onChange={(e) => setSelectedStaff(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
-                <option value="any">✨ Any Available (Auto-Assign On-Duty)</option>
+                <option value="any">Any Available (Auto-Assign On-Duty)</option>
                 {(business.staff || []).map((st, stIdx) => {
                   const isOccupied = busyStaffNames.has(st.name.toLowerCase());
                   const isAvailable = (st.isAvailable !== false) && !isOccupied;
                   return (
                     <option key={stIdx} value={st.name} disabled={!isAvailable}>
-                      {isOccupied ? '🔴' : isAvailable ? '🟢' : '⚪'} {st.name} — {st.role || (business.category === 'clinic' ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {isOccupied ? '• IN SERVICE (NOT AVAILABLE)' : (st.isAvailable === false ? '• Off-Duty' : '• Available')}
+                      {isOccupied ? '[In Service]' : isAvailable ? '[Available]' : '[Off-Duty]'} {st.name} — {st.role || (business.category === 'clinic' ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {isOccupied ? '• IN SERVICE (NOT AVAILABLE)' : (st.isAvailable === false ? '• Off-Duty' : '• Available')}
                     </option>
                   );
                 })}

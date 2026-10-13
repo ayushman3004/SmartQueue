@@ -39,7 +39,6 @@ export default function LoginPage() {
       const { user, token } = res.data.data
       logIn(user, token)
       toast.success(tab === 'signin' ? 'Welcome back! Logged in successfully.' : 'Welcome to serveQ! Account created.', {
-        icon: '👋',
         style: { borderRadius: '14px', background: '#ffffff', color: '#09090b', border: '1px solid #e4e4e7' }
       })
       navigate(user?.role === 'owner' ? '/business' : '/customers')
@@ -393,7 +392,7 @@ export default function LoginPage() {
                   to="/business"
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 hover:text-teal-900 transition-colors"
                 >
-                  <span>🏢 Business / Hub Owner Portal</span>
+                  <span>Business / Hub Owner Portal</span>
                   <span>→</span>
                 </Link>
               </div>

@@ -21,27 +21,27 @@ export const SocketProvider = ({ children, setUser, user }) => {
 
   useEffect(() => {
     const onConnect = () => {
-      console.log("✅ Socket connected:", socket.id);
+      console.log("Socket connected:", socket.id);
       setConnected(true);
     };
 
     const onDisconnect = () => {
-      console.log("❌ Socket disconnected");
+      console.log("Socket disconnected");
       setConnected(false);
     };
 
     const onConnectError = (err) => {
-      console.error("🚨 Socket connection error:", err.message);
+      console.error("Socket connection error:", err.message);
     };
 
     const onWalletUpdate = ({ balance }) => {
-      console.log("💰 Wallet update received:", balance);
+      console.log("Wallet update received:", balance);
       setUser(prev => prev ? { ...prev, walletBalance: balance } : prev);
     };
 
     const onQueueJoined = (data) => {
       if (data.userId === userRef.current?._id) toast.success("You joined the queue successfully", { id: "q-join" });
-      else toast("Someone joined the queue", { id: "q-join-other", icon: "ℹ️" });
+      else toast("Someone joined the queue", { id: "q-join-other" });
     };
 
     const onQueueLeft = (data) => {

@@ -42,7 +42,6 @@ export default function PerfToggle() {
         <div className="w-72 p-4 rounded-2xl bg-zinc-950/95 text-white border border-zinc-800 backdrop-blur-xl shadow-2xl shadow-black/80 flex flex-col gap-3 animate-in fade-in zoom-in-95">
           <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-sm">⚡</span>
               <span className="text-xs font-black uppercase tracking-wider text-white">Performance Settings</span>
             </div>
             <button
@@ -67,7 +66,6 @@ export default function PerfToggle() {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span>🚀</span>
                 <div className="text-left">
                   <div>Smooth 60FPS Mode</div>
                   <div className="text-[10px] font-normal text-zinc-400">Zero lag • Smooth video • Low GPU</div>
@@ -85,7 +83,6 @@ export default function PerfToggle() {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span>✨</span>
                 <div className="text-left">
                   <div>Cinematic FX Mode</div>
                   <div className="text-[10px] font-normal text-zinc-400">Full scrub • Max 3D depth</div>
@@ -110,7 +107,7 @@ export default function PerfToggle() {
       >
         <span className={`w-2 h-2 rounded-full ${isOptimized ? 'bg-teal-400 shadow-sm shadow-teal-400' : 'bg-indigo-400'}`} />
         <span className="text-zinc-300 group-hover:text-white">
-          {isOptimized ? '⚡ 60FPS Mode' : '✨ Cinematic Mode'}
+          {isOptimized ? '60FPS Mode' : 'Cinematic Mode'}
         </span>
         <span className="text-[10px] text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded-md border border-zinc-800">
           Cookie

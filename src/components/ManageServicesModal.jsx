@@ -143,14 +143,14 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
             {/* Quick Actions Bar */}
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
-                <span>📋</span> Active Catalog ({services.length})
+                Active Catalog ({services.length})
               </span>
               <button
                 type="button"
                 onClick={handleLoadPresets}
                 className="text-xs font-bold text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/80 border border-teal-200 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1"
               >
-                <span>⚡</span> Load Standard Presets
+                Load Standard Presets
               </button>
             </div>
 
@@ -332,7 +332,7 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
                     Saving Changes...
                   </>
                 ) : (
-                  'Save & Deploy Services 💾'
+                  'Save & Deploy Services'
                 )}
               </button>
             </div>
