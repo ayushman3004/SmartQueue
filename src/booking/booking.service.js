@@ -505,15 +505,68 @@ export const completeService = async (bookingId, requesterId, requesterRole) => 
   }
 
   booking.status = "completed";
+
+  // Ensure paidAmount is populated if was 0 or unrecorded
+  if (!booking.paidAmount || booking.paidAmount === 0) {
+    const svcPrice = (booking.services || []).reduce(
+      (sum, s) => sum + (Number(s.price) || 0),
+      0
+    ) || business.basePrice || 0;
+    if (svcPrice > 0) {
+      booking.paidAmount = svcPrice;
+    }
+  }
+
   await booking.save();
+
+  // Increment doctor/staff customersServed count
+  if (booking.assignedStaff?.name && Array.isArray(business.staff)) {
+    const staffMember = business.staff.find(
+      (s) => s.name?.toLowerCase() === booking.assignedStaff.name.toLowerCase()
+    );
+    if (staffMember) {
+      staffMember.customersServed = (staffMember.customersServed || 0) + 1;
+      await business.save();
+    }
+  }
+
   return booking;
 };
 
 // ─── Queries & Cancel ─────────────────────────────────────────
 export const getMyBookings = async (userId) => {
-  return await Booking.find({ userId })
+  const bookings = await Booking.find({ userId })
     .populate("businessId", "name category address location phone averageServiceTime")
-    .sort({ startTime: -1 });
+    .sort({ startTime: -1, createdAt: -1 });
+
+  // Attach reviews if present
+  try {
+    const Review = mongoose.models.Review || mongoose.model("Review");
+    if (Review && bookings.length > 0) {
+      const bookingIds = bookings.map((b) => b._id);
+      const reviews = await Review.find({ bookingId: { $in: bookingIds } });
+      const reviewMap = new Map();
+      reviews.forEach((r) => reviewMap.set(r.bookingId?.toString(), r));
+
+      return bookings.map((b) => {
+        const obj = typeof b.toObject === "function" ? b.toObject() : { ...b };
+        const rev = reviewMap.get(b._id?.toString());
+        if (rev) {
+          obj.review = {
+            _id: rev._id,
+            rating: rev.rating,
+            comment: rev.comment,
+            createdAt: rev.createdAt,
+          };
+        }
+        return obj;
+      });
+    }
+  } catch (err) {
+    console.error("Error attaching reviews to bookings:", err);
+  }
+
+  return bookings;
 };
 
 export const getBusinessBookings = async (businessId, requesterId, requesterRole) => {

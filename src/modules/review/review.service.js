@@ -13,9 +13,10 @@ export const createReview = async ({ bookingId, businessId, userId, rating, comm
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
+  let booking = null;
   // If bookingId provided, verify it belongs to user and is completed
   if (bookingId) {
-    const booking = await Booking.findOne({ _id: bookingId, userId });
+    booking = await Booking.findOne({ _id: bookingId, userId });
     if (!booking) {
       throw new ApiError(403, "You can only review bookings that belong to you");
     }
@@ -32,6 +33,24 @@ export const createReview = async ({ bookingId, businessId, userId, rating, comm
     rating: Math.round(numRating),
     comment: comment || "",
   });
+
+  // Recalculate average rating for business
+  const allReviews = await Review.find({ businessId });
+  const total = allReviews.length;
+  const avg = Math.round((allReviews.reduce((sum, r) => sum + r.rating, 0) / total) * 10) / 10;
+  business.rating = avg;
+  business.totalReviews = total;
+
+  if (booking?.assignedStaff?.name && Array.isArray(business.staff)) {
+    const staffMember = business.staff.find(
+      (s) => s.name?.toLowerCase() === booking.assignedStaff.name.toLowerCase()
+    );
+    if (staffMember) {
+      staffMember.rating = avg;
+    }
+  }
+
+  await business.save();
 
   return await review.populate("userId", "name avatar");
 };

@@ -152,11 +152,15 @@ export const generateBusinessAIAnalytics = async ({
     "recommendations": ["string", "string", "string"]
   }`;
 
-  const candidateModels = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.7-flash"];
+  const candidateModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"];
   for (const modelName of candidateModels) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent(prompt);
+      const apiCall = model.generateContent(prompt);
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 2500)
+      );
+      const result = await Promise.race([apiCall, timeout]);
       const text = result.response.text().trim();
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -168,7 +172,7 @@ export const generateBusinessAIAnalytics = async ({
         };
       }
     } catch (err) {
-      console.warn(`⚠️ Model ${modelName} analytics attempt failed:`, err.message);
+      console.warn(`Model ${modelName} analytics attempt failed or timed out:`, err.message);
     }
   }
 

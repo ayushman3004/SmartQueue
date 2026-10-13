@@ -528,5 +528,134 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
       Queue.findOne = origQueueFindOne;
     }
   });
+
+  await t.test("callNext creates completed booking record for revenue tracking and history", async () => {
+    const { callNext } = await import("../src/queue/queue.service.js");
+    const Queue = (await import("../src/queue/queue.model.js")).default;
+    const Business = (await import("../src/modules/business/business.model.js")).default;
+    const Booking = (await import("../src/booking/booking.model.js")).default;
+
+    const fakeUserId = new mongoose.Types.ObjectId();
+    const fakeBizId = new mongoose.Types.ObjectId();
+    const ownerId = new mongoose.Types.ObjectId();
+
+    let createdBooking = null;
+    const origBookingCreate = Booking.create;
+    Booking.create = async (payload) => {
+      createdBooking = payload;
+      return payload;
+    };
+
+    const mockBusiness = {
+      _id: fakeBizId,
+      owner: ownerId,
+      category: "clinic",
+      staff: [{ name: "Dr. Elena Rostova", customersServed: 5 }],
+      save: async () => {},
+    };
+
+    const mockQueue = {
+      businessId: fakeBizId,
+      users: [
+        {
+          userId: fakeUserId,
+          status: "serving",
+          serviceTime: 30,
+          serviceType: "Root Canal",
+          services: [{ name: "Root Canal", duration: 30, price: 1500 }],
+          assignedStaff: { name: "Dr. Elena Rostova", role: "Orthodontist" },
+          paidAmount: 1500,
+          joinedAt: new Date(),
+        },
+      ],
+      save: async () => {},
+    };
+
+    const origBizFindById = Business.findById;
+    const origQueueFindOne = Queue.findOne;
+
+    try {
+      Business.findById = async () => mockBusiness;
+      Queue.findOne = async () => mockQueue;
+
+      await callNext(fakeBizId, ownerId, "owner");
+
+      assert.ok(createdBooking, "Should create a completed booking record");
+      assert.equal(createdBooking.status, "completed");
+      assert.equal(createdBooking.paidAmount, 1500);
+      assert.equal(createdBooking.serviceType, "Root Canal");
+      assert.equal(createdBooking.assignedStaff.name, "Dr. Elena Rostova");
+      assert.equal(mockBusiness.staff[0].customersServed, 6, "Should increment staff customersServed");
+    } finally {
+      Booking.create = origBookingCreate;
+      Business.findById = origBizFindById;
+      Queue.findOne = origQueueFindOne;
+    }
+  });
+
+  await t.test("createReview updates business rating and staff rating", async () => {
+    const { createReview } = await import("../src/modules/review/review.service.js");
+    const Review = (await import("../src/modules/review/review.model.js")).default;
+    const Business = (await import("../src/modules/business/business.model.js")).default;
+    const Booking = (await import("../src/booking/booking.model.js")).default;
+
+    const fakeUserId = new mongoose.Types.ObjectId();
+    const fakeBizId = new mongoose.Types.ObjectId();
+    const fakeBookingId = new mongoose.Types.ObjectId();
+
+    const mockBusiness = {
+      _id: fakeBizId,
+      name: "Smile Hub",
+      rating: 4.0,
+      totalReviews: 1,
+      staff: [{ name: "Dr. Elena Rostova", rating: 4.0 }],
+      save: async () => {},
+    };
+
+    const mockBooking = {
+      _id: fakeBookingId,
+      userId: fakeUserId,
+      assignedStaff: { name: "Dr. Elena Rostova" },
+    };
+
+    const origBizFindById = Business.findById;
+    const origBookingFindOne = Booking.findOne;
+    const origBookingFindById = Booking.findById;
+    const origReviewFindOne = Review.findOne;
+    const origReviewCreate = Review.create;
+    const origReviewFind = Review.find;
+
+    try {
+      Business.findById = async () => mockBusiness;
+      Booking.findOne = async () => mockBooking;
+      Booking.findById = async () => mockBooking;
+      Review.findOne = async () => null; // no duplicate
+      Review.create = async (payload) => ({
+        ...payload,
+        populate: async () => payload,
+      });
+      Review.find = async () => [{ rating: 5 }, { rating: 5 }];
+
+      await createReview({
+        bookingId: fakeBookingId,
+        businessId: fakeBizId,
+        userId: fakeUserId,
+        rating: 5,
+        comment: "Excellent treatment!",
+      });
+
+      assert.equal(mockBusiness.rating, 5.0, "Business rating should be updated to 5.0");
+      assert.equal(mockBusiness.totalReviews, 2, "Total reviews should be 2");
+      assert.equal(mockBusiness.staff[0].rating, 5.0, "Doctor rating should be updated to 5.0");
+    } finally {
+      Business.findById = origBizFindById;
+      Booking.findOne = origBookingFindOne;
+      Booking.findById = origBookingFindById;
+      Review.findOne = origReviewFindOne;
+      Review.create = origReviewCreate;
+      Review.find = origReviewFind;
+    }
+  });
 });
+
 

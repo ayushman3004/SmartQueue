@@ -33,6 +33,7 @@ export default function CustomerDashboardPage() {
   const [search, setSearch] = useState('')
   const [locationQuery, setLocationQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [historyFilter, setHistoryFilter] = useState('all') // 'all' | 'completed' | 'upcoming'
 
   // Selected services per business (for inline live join)
   // map: { [businessId]: serviceObj[] }
@@ -310,6 +311,7 @@ export default function CustomerDashboardPage() {
       })
       toast.success('Thank you! Review submitted successfully.')
       setReviewModalOpen(false)
+      getMyBookings().then(r => setMyBookings(r.data.data.bookings || []))
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit review')
     } finally {
@@ -844,36 +846,62 @@ export default function CustomerDashboardPage() {
         )}
       </section>
 
-      {/* ── SECTION 3: APPOINTMENT RESERVATIONS & BOOKING HISTORY ── */}
+      {/* ── SECTION 3: SERVICE HISTORY & APPOINTMENT BOOKINGS ── */}
       <section className="space-y-4 pt-4 border-t border-zinc-200">
-        <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-              <span>My Appointments & Bookings</span>
+              <span>Service History & Appointments</span>
             </h2>
-            <p className="text-xs text-zinc-500 font-medium">Scheduled time slots and historical visits.</p>
+            <p className="text-xs text-zinc-500 font-medium">Complete history of services taken across all clinics, salons & hubs, with rating options.</p>
+          </div>
+          <div className="flex items-center gap-1.5 self-start sm:self-auto bg-zinc-100 p-1 rounded-xl text-xs font-bold">
+            <button
+              onClick={() => setHistoryFilter('all')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${historyFilter === 'all' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'}`}
+            >
+              All ({myBookings.length})
+            </button>
+            <button
+              onClick={() => setHistoryFilter('completed')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${historyFilter === 'completed' ? 'bg-white text-emerald-800 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'}`}
+            >
+              Completed ({myBookings.filter(b => b.status === 'completed').length})
+            </button>
+            <button
+              onClick={() => setHistoryFilter('upcoming')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${historyFilter === 'upcoming' ? 'bg-white text-teal-800 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'}`}
+            >
+              Upcoming ({myBookings.filter(b => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded').length})
+            </button>
           </div>
         </div>
 
         {myBookings.length === 0 ? (
           <div className="p-8 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-2xl bg-white">
-            No appointment bookings on record yet.
+            No service history or appointment bookings on record yet. Completed services will appear here with rating options.
           </div>
         ) : (
           <div className="overflow-x-auto bg-white rounded-3xl border border-zinc-200 shadow-sm">
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 text-zinc-500 font-bold uppercase border-b border-zinc-100">
                 <tr>
-                  <th className="py-3.5 px-4">Date & Slot</th>
+                  <th className="py-3.5 px-4">Date & Time</th>
                   <th className="py-3.5 px-4">Business</th>
-                  <th className="py-3.5 px-4">Service</th>
+                  <th className="py-3.5 px-4">Service & Specialist</th>
                   <th className="py-3.5 px-4">Paid</th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-4 text-right">Rating & Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 font-medium">
-                {myBookings.map((b) => (
+                {myBookings
+                  .filter((b) => {
+                    if (historyFilter === 'completed') return b.status === 'completed';
+                    if (historyFilter === 'upcoming') return b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded';
+                    return true;
+                  })
+                  .map((b) => (
                   <tr key={b._id} className="hover:bg-zinc-50/70 transition-colors">
                     <td className="py-4 px-4 font-bold text-zinc-950">
                       {new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -895,7 +923,7 @@ export default function CustomerDashboardPage() {
                     <td className="py-4 px-4">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
                         b.status === 'completed'
-                          ? 'bg-zinc-100 text-zinc-600'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                           : b.status === 'serving'
                           ? 'bg-emerald-100 text-emerald-800 animate-pulse'
                           : b.status === 'cancelled'
@@ -907,12 +935,19 @@ export default function CustomerDashboardPage() {
                     </td>
                     <td className="py-4 px-4 text-right space-x-2">
                       {b.status === 'completed' && (
-                        <button
-                          onClick={() => handleOpenReview(b)}
-                          className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded-lg font-bold text-[11px]"
-                        >
-                          Review
-                        </button>
+                        b.review ? (
+                          <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold">
+                            <span className="text-amber-500 font-black">{b.review.rating} ★</span>
+                            <span className="text-[10px] text-amber-700 font-semibold">Rated</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenReview(b)}
+                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition-transform active:scale-95 inline-flex items-center gap-1"
+                          >
+                            <span>★ Rate Service</span>
+                          </button>
+                        )
                       )}
                       {(b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'waiting') && (
                         <button

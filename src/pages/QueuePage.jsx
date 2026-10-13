@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getQueue, leaveQueue, cancelDelay } from '../api/queue.api'
 import { getBusiness } from '../api/business.api'
+import { submitReview } from '../api/review.api'
 import QueueCard from '../components/QueueCard'
 import { toast } from 'react-hot-toast'
 
@@ -20,6 +21,11 @@ export default function QueuePage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [timer, setTimer] = useState('')
   const [delayInfo, setDelayInfo] = useState(null)
+  const [completedBooking, setCompletedBooking] = useState(null)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewSubmitted, setReviewSubmitted] = useState(false)
+  const [submittingReview, setSubmittingReview] = useState(false)
 
   const users = queue?.users || []
 
@@ -79,11 +85,21 @@ export default function QueuePage() {
       )
     })
 
+    const handleServiceCompleted = (data) => {
+      const uId = data.userId?._id || data.userId;
+      if (uId?.toString() === user?._id?.toString()) {
+        setCompletedBooking(data.booking || { businessId, serviceType: 'Completed Service' })
+        toast.success('Your service is completed! Please rate your experience.')
+      }
+    }
+    socket?.on('service:completed', handleServiceCompleted)
+
     return () => {
       leaveRoom(businessId)
       unsubUpdate?.()
       unsubDelay?.()
       unsubStatus?.()
+      socket?.off('service:completed', handleServiceCompleted)
     }
   }, [businessId, fetchData, connected, user])
 
@@ -128,18 +144,23 @@ export default function QueuePage() {
     }
   }
 
-  // ✅ CANCEL DELAY
-  const handleHandleDelay = async () => {
-    setActionLoading(true)
+  // ✅ SUBMIT REVIEW
+  const handleQueueReviewSubmit = async (e) => {
+    e.preventDefault()
+    setSubmittingReview(true)
     try {
-      await cancelDelay(businessId)
-      setDelayInfo(null)
-      toast.success('Cancelled & refunded')
-      navigate('/')
-    } catch {
-      toast.error('Failed')
+      await submitReview({
+        bookingId: completedBooking?._id || undefined,
+        businessId,
+        rating: reviewRating,
+        comment: reviewComment,
+      })
+      setReviewSubmitted(true)
+      toast.success('Thank you! Your rating has been recorded.')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error submitting review')
     } finally {
-      setActionLoading(false)
+      setSubmittingReview(false)
     }
   }
 
@@ -187,7 +208,77 @@ export default function QueuePage() {
         {/* LEFT COLUMN — Your Status */}
         <div className="lg:col-span-4 space-y-6">
 
-          {myQueueData ? (
+          {completedBooking ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bezel-shell"
+            >
+              <div className="bezel-core p-7 space-y-4 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto text-xl font-black">
+                  ✓
+                </div>
+                <div>
+                  <span className="badge-eyebrow bg-emerald-50 text-emerald-800 border-emerald-200">
+                    Service Completed
+                  </span>
+                  <h3 className="text-xl font-black text-zinc-950 mt-1">
+                    How was your experience?
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Rate and review your visit at {business?.name || 'this hub'}.
+                  </p>
+                </div>
+
+                {reviewSubmitted ? (
+                  <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200 text-teal-800 font-bold text-xs space-y-2">
+                    <p>Thank you for submitting your rating!</p>
+                    <button
+                      onClick={() => navigate('/customers')}
+                      className="px-4 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700"
+                    >
+                      View Service History →
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleQueueReviewSubmit} className="space-y-4 text-left">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-zinc-500 mb-1">Rating</label>
+                      <div className="flex items-center gap-1.5 justify-center py-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            type="button"
+                            key={star}
+                            onClick={() => setReviewRating(star)}
+                            className={`text-2xl transition-transform hover:scale-125 ${star <= reviewRating ? 'text-amber-400' : 'text-zinc-200'}`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-zinc-500 mb-1">Feedback</label>
+                      <textarea
+                        rows={3}
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Share your thoughts on the care, wait time, or service..."
+                        className="w-full p-2.5 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={submittingReview}
+                      className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs shadow-xs disabled:opacity-50"
+                    >
+                      {submittingReview ? 'Submitting...' : 'Submit Rating'}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </motion.div>
+          ) : myQueueData ? (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}

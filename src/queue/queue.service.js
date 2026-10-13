@@ -3,6 +3,7 @@ import Queue from "./queue.model.js";
 import QueueDS from "./queue.ds.js";
 import { predictServiceTime } from "../../ai/gemini.service.js";
 import Business from "../modules/business/business.model.js";
+import Booking from "../booking/booking.model.js";
 import ApiError from "../../utils/ApiError.js";
 import { deductWalletBalance, refundToWallet } from "../modules/payment/payment.service.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
@@ -268,14 +269,67 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
   queue.users = queueDS.toArray();
   await queue.save();
 
+  // Create completed booking record so service history, revenue, analytics, and rating options are populated
+  let completedBooking = null;
+  if (previousHead && previousHead.userId) {
+    try {
+      const totalServicePrice = (previousHead.services || []).reduce(
+        (sum, s) => sum + (Number(s.price) || 0),
+        0
+      ) || business.basePrice || previousHead.paidAmount || 0;
+      const finalAmountEarned = Math.max(Number(previousHead.paidAmount) || 0, Number(totalServicePrice) || 0);
+      const uId = previousHead.userId?._id || previousHead.userId;
+
+      const startTime = previousHead.joinedAt || new Date(Date.now() - (previousHead.serviceTime || 15) * 60000);
+      const endTime = new Date();
+
+      completedBooking = await Booking.create({
+        businessId,
+        userId: uId,
+        startTime,
+        endTime,
+        duration: previousHead.serviceTime || business.averageServiceTime || 15,
+        serviceType: previousHead.serviceType || "General Service",
+        services: previousHead.services || [],
+        assignedStaff: previousHead.assignedStaff || { name: "", role: "" },
+        status: "completed",
+        paidAmount: finalAmountEarned,
+        pricingLabel: previousHead.pricingLabel || "",
+      });
+
+      // Update staff member customersServed count
+      if (previousHead.assignedStaff?.name && Array.isArray(business.staff)) {
+        const staffMember = business.staff.find(
+          (s) => s.name?.toLowerCase() === previousHead.assignedStaff.name.toLowerCase()
+        );
+        if (staffMember) {
+          staffMember.customersServed = (staffMember.customersServed || 0) + 1;
+          await business.save();
+        }
+      }
+    } catch (saveErr) {
+      console.error("Error creating completed booking from queue session:", saveErr);
+    }
+  }
+
   if (io) {
     // 1. Emit completed for previous head
     if (previousHead) {
+      const uId = previousHead.userId?._id || previousHead.userId;
       io.to(`business:${businessId}`).emit("service:completed", {
         businessId,
-        userId: previousHead.userId,
+        userId: uId,
+        booking: completedBooking,
         queue,
       });
+      if (uId) {
+        io.to(`user:${uId}`).emit("service:completed", {
+          businessId,
+          businessName: business.name,
+          booking: completedBooking,
+          message: `Your service at ${business.name} has been completed! Please take a moment to leave a rating.`,
+        });
+      }
     }
 
     // 2. Emit started for new head if present

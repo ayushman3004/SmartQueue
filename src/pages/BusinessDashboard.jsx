@@ -138,7 +138,9 @@ export default function BusinessDashboard() {
     try {
       const res = await callNext(businessId)
       setQueue(res.data.data.queue)
-      toast.success('Called next customer')
+      toast.success('Service completed & called next customer')
+      getBusinessAnalytics(businessId).then(r => setAnalytics(r.data.data)).catch(() => {})
+      getBusinessBookings(businessId).then(r => setBookings(r.data.data.bookings || [])).catch(() => {})
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to call next')
     } finally {
@@ -185,6 +187,7 @@ export default function BusinessDashboard() {
       await startBookingService(id)
       toast.success("Service started for appointment")
       fetchDashboardData()
+      getBusinessAnalytics(businessId).then(r => setAnalytics(r.data.data)).catch(() => {})
     } catch (err) {
       toast.error(err.response?.data?.message || "Could not start service")
     }
@@ -195,6 +198,7 @@ export default function BusinessDashboard() {
       await completeBookingService(id)
       toast.success("Service completed!")
       fetchDashboardData()
+      getBusinessAnalytics(businessId).then(r => setAnalytics(r.data.data)).catch(() => {})
     } catch (err) {
       toast.error(err.response?.data?.message || "Could not complete service")
     }

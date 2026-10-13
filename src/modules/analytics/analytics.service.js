@@ -1,6 +1,8 @@
+import mongoose from "mongoose";
 import Business from "../business/business.model.js";
 import Booking from "../../booking/booking.model.js";
 import Review from "../review/review.model.js";
+import Queue from "../../queue/queue.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import { generateBusinessAIAnalytics } from "../../../ai/gemini.service.js";
 
@@ -12,12 +14,32 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     throw new ApiError(403, "Access denied: you can only view analytics for your own business");
   }
 
-  // Fetch bookings and reviews
+  // Fetch bookings, reviews, and active queue
   const [totalBookings, allBookings, reviews] = await Promise.all([
     Booking.countDocuments({ businessId }),
     Booking.find({ businessId }).populate("userId", "name email phone").sort({ createdAt: -1 }),
     Review.find({ businessId }).sort({ createdAt: -1 }).limit(10),
   ]);
+
+  // Safely check active live queue users if database is connected
+  let liveQueueUsers = [];
+  try {
+    if (Queue && mongoose.connection.readyState === 1) {
+      const qDoc = await Queue.findOne({ businessId }).populate("users.userId", "name email phone");
+      if (qDoc && Array.isArray(qDoc.users)) {
+        liveQueueUsers = qDoc.users.filter(
+          (u) => u.status === "waiting" || u.status === "serving"
+        );
+      }
+    }
+  } catch {
+    // Non-critical fallback
+  }
+
+  const liveQueueRevenue = liveQueueUsers.reduce((sum, u) => {
+    const svcPrice = (u.services || []).reduce((sSum, s) => sSum + (Number(s.price) || 0), 0) || business.basePrice || u.paidAmount || 0;
+    return sum + Math.max(Number(u.paidAmount) || 0, Number(svcPrice) || 0);
+  }, 0);
 
   // Separate earned (active/completed) vs cancelled bookings
   const earnedBookings = allBookings.filter(
@@ -34,7 +56,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
   const totalRevenue = earnedBookings.reduce(
     (sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0),
     0
-  );
+  ) + liveQueueRevenue;
   const completedRevenue = completedBookings.reduce(
     (sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0),
     0
@@ -206,11 +228,14 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     staffList,
   });
 
-  const uniqueCustomerIds = new Set(
-    earnedBookings
+  const uniqueCustomerIds = new Set([
+    ...earnedBookings
       .map((b) => b.userId?._id?.toString() || b.userId?.toString())
-      .filter(Boolean)
-  );
+      .filter(Boolean),
+    ...liveQueueUsers
+      .map((u) => u.userId?._id?.toString() || u.userId?.toString())
+      .filter(Boolean),
+  ]);
 
   return {
     businessId,
@@ -219,8 +244,8 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     staff: staffList,
     dailyBreakdown,
     metrics: {
-      totalBookings,
-      activeBookings: activeBookings.length,
+      totalBookings: totalBookings + liveQueueUsers.length,
+      activeBookings: activeBookings.length + liveQueueUsers.length,
       completedBookings: completedBookings.length,
       cancelledBookings: cancelledBookingsCount,
       totalRevenue,
