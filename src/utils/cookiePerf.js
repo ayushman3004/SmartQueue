@@ -75,7 +75,9 @@ export function usePerfMode() {
   const [deviceInfo, setDeviceInfo] = useState(() => detectDeviceCapabilities());
 
   useEffect(() => {
-    setDeviceInfo(detectDeviceCapabilities());
+    const handleResize = () => setDeviceInfo(detectDeviceCapabilities());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const setMode = useCallback((newMode) => {

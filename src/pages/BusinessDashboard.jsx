@@ -14,6 +14,7 @@ import {
 import { getBusinessAnalytics, generateAIAnalyticsReview } from '../api/analytics.api'
 import { CATEGORY_METADATA, SERVICE_PRESETS, STAFF_PRESETS, ALLOWED_CATEGORIES } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
+import { useSeo } from '../utils/useSeo'
 
 export default function BusinessDashboard() {
   const { businessId } = useParams()
@@ -23,6 +24,12 @@ export default function BusinessDashboard() {
 
   const [activeTab, setActiveTab] = useState('queue') // 'queue' | 'appointments' | 'profile' | 'analytics'
   const [business, setBusiness] = useState(null)
+
+  useSeo({
+    title: business?.name ? `${business.name} — Venue Command Console` : 'Venue Command Console',
+    description: 'Manage live service counters, queues, staff rosters, and venue analytics on serveQ.',
+    robots: 'noindex, nofollow',
+  })
   const [queue, setQueue] = useState(null)
   const [bookings, setBookings] = useState([])
   const [analytics, setAnalytics] = useState(null)
@@ -1102,7 +1109,14 @@ export default function BusinessDashboard() {
                             </div>
                             <p className="text-xs font-semibold text-teal-800 mt-0.5">{member.role}</p>
                             {member.phone && (
-                              <p className="text-[11px] text-zinc-500 mt-0.5">{member.phone}</p>
+                              <p className="text-[11px] text-zinc-500 mt-0.5">
+                                <a
+                                  href={`tel:${member.phone}`}
+                                  className="text-teal-700 hover:text-teal-800 underline transition-colors"
+                                >
+                                  {member.phone}
+                                </a>
+                              </p>
                             )}
                           </div>
                         </div>

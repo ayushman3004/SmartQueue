@@ -8,11 +8,12 @@ import { getBusiness } from '../api/business.api'
 import { submitReview } from '../api/review.api'
 import QueueCard from '../components/QueueCard'
 import { toast } from 'react-hot-toast'
+import { useSeo } from '../utils/useSeo'
 
 export default function QueuePage() {
   const { businessId } = useParams()
   const { user } = useAuth()
-  const { joinRoom, joinUser, leaveRoom, onQueueUpdate, onQueueDelay, onBusinessStatus, connected } = useSocket()
+  const { socket, joinRoom, joinUser, leaveRoom, onQueueUpdate, onQueueDelay, onBusinessStatus, connected } = useSocket()
   const navigate = useNavigate()
 
   const [business, setBusiness] = useState(null)
@@ -26,6 +27,12 @@ export default function QueuePage() {
   const [reviewComment, setReviewComment] = useState('')
   const [reviewSubmitted, setReviewSubmitted] = useState(false)
   const [submittingReview, setSubmittingReview] = useState(false)
+
+  useSeo({
+    title: business?.name ? `${business.name} — Live Queue Pass` : 'Live Queue Pass',
+    description: 'Track your live queue position, estimated wait time, and counter status in real time.',
+    robots: 'noindex, nofollow',
+  })
 
   const users = queue?.users || []
 
@@ -144,6 +151,23 @@ export default function QueuePage() {
     }
   }
 
+  // ✅ CANCEL DELAY WITH FULL REFUND
+  const handleCancelDelay = async () => {
+    if (!window.confirm('Cancel your queue booking and request an automated refund due to service delay?')) return
+
+    setActionLoading(true)
+    try {
+      await cancelDelay(businessId)
+      setDelayInfo(null)
+      toast.success('Queue booking cancelled and refunded successfully.')
+      fetchData()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel delay')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   // ✅ SUBMIT REVIEW
   const handleQueueReviewSubmit = async (e) => {
     e.preventDefault()
@@ -193,9 +217,9 @@ export default function QueuePage() {
               </div>
             </div>
             <button
-              onClick={handleHandleDelay}
+              onClick={handleCancelDelay}
               disabled={actionLoading}
-              className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition-all active:scale-95 shadow-xs whitespace-nowrap"
+              className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition-all active:scale-95 shadow-xs whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {actionLoading ? 'Processing...' : 'Cancel & Refund'}
             </button>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { usePerfMode } from '../utils/cookiePerf';
 
 export default function PerfToggle() {
-  const { mode, setMode, isOptimized, isAndroid, isWindows, isMobile } = usePerfMode();
+  const { setMode, isOptimized, isAndroid, isWindows, isMobile } = usePerfMode();
   const [open, setOpen] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
 
@@ -10,10 +10,13 @@ export default function PerfToggle() {
     // Show a brief subtle notification on first visit or mobile if optimized
     const hasSeenNotice = sessionStorage.getItem('serveq_perf_notice_seen');
     if (!hasSeenNotice && isOptimized) {
-      setShowNotice(true);
       sessionStorage.setItem('serveq_perf_notice_seen', 'true');
-      const timer = setTimeout(() => setShowNotice(false), 5000);
-      return () => clearTimeout(timer);
+      const showTimer = setTimeout(() => setShowNotice(true), 100);
+      const hideTimer = setTimeout(() => setShowNotice(false), 5100);
+      return () => {
+        clearTimeout(showTimer);
+        clearTimeout(hideTimer);
+      };
     }
   }, [isOptimized]);
 

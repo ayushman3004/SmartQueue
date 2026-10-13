@@ -17,15 +17,11 @@ const CATEGORIES = ['all', 'salon', 'clinic']
 export default function DashboardPage() {
   const { user, setUser } = useAuth()
   const isOwner = user?.role === 'owner'
-
-  if (isOwner) {
-    return <Navigate to="/business" replace />
-  }
   const navigate = useNavigate()
   const { onBusinessStatus, socket } = useSocket()
 
   const [businesses, setBusinesses] = useState([])
-  const [myBusinesses, setMyBusinesses] = useState([])
+  const [_myBusinesses, setMyBusinesses] = useState([])
   const [myBookings, setMyBookings] = useState([])
   const [coupons, setCoupons] = useState([])
   const [loading, setLoading] = useState(true)
@@ -160,6 +156,10 @@ export default function DashboardPage() {
     .filter(b => b.isOpen && b.isActive)
     .sort((a, b) => (a.estimatedWait || 0) - (b.estimatedWait || 0))
     .slice(0, 3)
+
+  if (isOwner) {
+    return <Navigate to="/business" replace />
+  }
 
   return (
     <div className="container max-w-7xl pt-4 pb-24 space-y-12 px-4 sm:px-6">

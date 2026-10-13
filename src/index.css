@@ -55,6 +55,16 @@ button, a, input, select, textarea {
   touch-action: manipulation;
 }
 
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+button:disabled, input:disabled, select:disabled, textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ─── Fluid Micro-Animations & Dynamic Feedback ───────────────── */
 @keyframes spin-fast { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes pulse-subtle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.75; transform: scale(0.97); } }

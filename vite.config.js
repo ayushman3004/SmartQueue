@@ -16,8 +16,14 @@ export default defineConfig({
         target: 'http://127.0.0.1:3001',
         changeOrigin: true,
         configure: (proxy) => {
-          proxy.on('error', () => {
-            // Silence ECONNREFUSED logs in terminal when backend server is offline
+          proxy.on('error', (err, _req, res) => {
+            if (res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(503, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({
+                success: false,
+                message: 'Backend server is offline on port 3001. Please run `npm run server:dev` or `npm run dev:all`.',
+              }))
+            }
           })
         },
       },
@@ -26,8 +32,11 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
         configure: (proxy) => {
-          proxy.on('error', () => {
-            // Silence ws ECONNREFUSED logs in terminal when backend server is offline
+          proxy.on('error', (_err, _req, _res) => {})
+          proxy.on('proxyReqWsError', (_err, _req, socket) => {
+            if (socket && !socket.destroyed) {
+              socket.destroy()
+            }
           })
         },
       },

@@ -4,12 +4,19 @@ import { toast } from 'react-hot-toast'
 import * as walletApi from '../api/wallet.api'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
+import { useSeo } from '../utils/useSeo'
 
 export default function WalletPage() {
   const { user, setUser } = useAuth()
   const { joinUser } = useSocket()
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useSeo({
+    title: 'Wallet & Balances',
+    description: 'View your verified balance, add deposit funds, and manage appointment transactions.',
+    robots: 'noindex, nofollow',
+  })
 
   // Fetch latest balance on mount
   useEffect(() => {
@@ -18,12 +25,12 @@ export default function WalletPage() {
         setUser(prev => prev ? { ...prev, walletBalance: res.data.data.balance } : prev)
       })
       .catch(() => {})
-  }, [])
+  }, [setUser])
 
   // Ensure user is in their private socket room for wallet:update events
   useEffect(() => {
     if (user?._id) joinUser(user._id)
-  }, [user?._id])
+  }, [user?._id, joinUser])
 
   const handleAddMoney = async (e) => {
     e.preventDefault()
@@ -108,8 +115,8 @@ export default function WalletPage() {
 
             <button 
               type="submit" 
-              disabled={loading}
-              className="w-full btn-island py-4 text-xs tracking-wider"
+              disabled={loading || !amount || Number(amount) <= 0}
+              className="w-full btn-island py-4 text-xs tracking-wider disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
             >
               <span>{loading ? "Processing Deposit..." : "Add Funds to Wallet"}</span>
               <span className="btn-bubble">

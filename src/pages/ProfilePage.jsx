@@ -3,12 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+// <<<<<<< feat/added-tour-feature
+import { useSeo } from '../utils/useSeo'
+// =======
 import { isValidEmail } from '../utils/validators'
+// >>>>>>> main
 
 export default function ProfilePage() {
   const { user, setUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
+
+  useSeo({
+    title: 'Profile & Account Security',
+    description: 'Manage your serveQ user profile, contact details, and account settings.',
+    robots: 'noindex, nofollow',
+  })
   const [form, setForm] = useState({
     name: user?.name || '',
     email: user?.email || '',

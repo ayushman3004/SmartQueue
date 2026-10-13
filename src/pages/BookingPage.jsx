@@ -14,6 +14,7 @@ import { validateCoupon } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import { STAFF_PRESETS } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
+import { useSeo } from '../utils/useSeo'
 
 export default function BookingPage() {
   const { businessId } = useParams()
@@ -22,6 +23,12 @@ export default function BookingPage() {
   const navigate = useNavigate()
 
   const [business, setBusiness] = useState(null)
+
+  useSeo({
+    title: business?.name ? `${business.name} — Book Appointment` : 'Book Appointment',
+    description: 'Select services, choose available practitioners, and reserve priority slots on serveQ.',
+    robots: 'noindex, nofollow',
+  })
   const [slots, setSlots] = useState([])
   const [myBookings, setMyBookings] = useState([])
   const [meta, setMeta] = useState({ avgServiceTime: 10, aiBuffer: 0, ratePerMinute: 20 })
@@ -294,7 +301,17 @@ export default function BookingPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 capitalize">{business.category} • {business.address || business.location || 'Local Hub'}</p>
-                {business.phone && <p className="text-xs text-slate-400 mt-0.5">Phone: {business.phone}</p>}
+                {business.phone && (
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Phone:{' '}
+                    <a
+                      href={`tel:${business.phone}`}
+                      className="text-teal-700 hover:text-teal-800 font-semibold underline underline-offset-2 transition-colors"
+                    >
+                      {business.phone}
+                    </a>
+                  </p>
+                )}
               </div>
 
               {/* Multi-Service Selection */}

@@ -11,6 +11,7 @@ import {
   getMyBusinesses,
 } from '../api/business.api'
 import { CATEGORY_METADATA, SERVICE_PRESETS, STAFF_PRESETS, ALLOWED_CATEGORIES } from '../utils/servicePresets'
+import { useSeo } from '../utils/useSeo'
 
 const TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST +5:30)' },
@@ -52,6 +53,12 @@ export default function BusinessOnboardingPage() {
   const [saving, setSaving] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [business, setBusiness] = useState(null)
+
+  useSeo({
+    title: 'Venue Onboarding Wizard',
+    description: 'Set up your venue profile, operating hours, and service catalog.',
+    robots: 'noindex, nofollow',
+  })
 
   // Step 1 Form: Business Information
   const [step1, setStep1] = useState({
@@ -257,7 +264,7 @@ export default function BusinessOnboardingPage() {
         try {
           const fallbackRes = await initOnboarding({ name: `${user?.name || 'My'}'s Hub`, createNew: true })
           if (isMounted) populateFromBusiness(fallbackRes.data.data.business)
-        } catch (e) {
+        } catch {
           toast.error('Initialization error. Please refresh.')
         }
       } finally {
