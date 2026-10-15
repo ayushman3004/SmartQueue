@@ -133,35 +133,46 @@ export const upgradeToOwner = async (userId) => {
 // ─── Google OAuth (called by Passport) ───────────────────────
 export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, role }) => {
   const selectedRole = role === "owner" ? "owner" : "customer";
+  const normalizedEmail = (email || "").toLowerCase().trim();
 
   // Check if user already exists by googleId
   let user = await User.findOne({ googleId });
   if (user) {
-    // If an existing customer explicitly chooses owner, upgrade their role
+    // If account exists as customer, do not allow Hub Owner login
     if (selectedRole === "owner" && user.role === "customer") {
-      user.role = "owner";
-      await user.save();
+      throw new ApiError(
+        403,
+        "This email is registered as a Customer. Hub Owner login is not allowed for customer accounts."
+      );
     }
     return user;
   }
 
-  // Check if email matches an existing local account → merge
-  user = await User.findOne({ email });
-  if (user) {
-    user.googleId = googleId;
-    user.authProvider = "both";
-    if (!user.avatar) user.avatar = avatar;
-    if (selectedRole === "owner" && user.role === "customer") {
-      user.role = "owner";
+  // Check if email matches an existing local or Google account
+  if (normalizedEmail) {
+    user = await User.findOne({ email: normalizedEmail });
+    if (user) {
+      // If existing user is customer, do not allow Hub Owner login
+      if (selectedRole === "owner" && user.role === "customer") {
+        throw new ApiError(
+          403,
+          "This email is registered as a Customer. Hub Owner login is not allowed for customer accounts."
+        );
+      }
+      user.googleId = googleId;
+      if (user.authProvider === "local") {
+        user.authProvider = "both";
+      }
+      if (!user.avatar && avatar) user.avatar = avatar;
+      await user.save();
+      return user;
     }
-    await user.save();
-    return user;
   }
 
   // New user entirely
   return await User.create({
     name,
-    email,
+    email: normalizedEmail,
     googleId,
     avatar,
     role: selectedRole,

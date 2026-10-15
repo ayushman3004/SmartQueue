@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signup, signin, upgradeToOwner } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
@@ -18,6 +18,7 @@ const SLIDE_TRANSITION = {
 export default function BusinessPortalPage() {
   const { user, logIn, logOut, setUser } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useSeo({
     title: 'Business Hub Portal — Virtual Queues & Counter Control',
@@ -36,6 +37,36 @@ export default function BusinessPortalPage() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Listen for OAuth error redirects (e.g. customer trying to Google login as owner)
+  useEffect(() => {
+    const error = searchParams.get('error')
+    const message = searchParams.get('message')
+    if (error) {
+      if (error === 'customer_account_forbidden') {
+        setCustomerMismatch({ email: searchParams.get('email') || '' })
+        toast.error(
+          message ? decodeURIComponent(message) : 'This email is registered as a Customer. Hub Owner login is not permitted for customer accounts.',
+          {
+            style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #fecdd3' },
+            duration: 6000,
+          }
+        )
+      } else {
+        toast.error(
+          message ? decodeURIComponent(message) : 'Google authentication failed',
+          {
+            style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #fecdd3' },
+          }
+        )
+      }
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('error')
+      nextParams.delete('message')
+      nextParams.delete('email')
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Auth form states
   const [authTab, setAuthTab] = useState('signin') // 'signin' or 'signup'

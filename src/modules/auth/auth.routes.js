@@ -29,11 +29,28 @@ router.get("/google", (req, res, next) => {
 });
 
 router.get("/google/callback", (req, res, next) => {
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
     return res.redirect(`${clientUrl}/login?error=oauth_not_configured`);
   }
-  passport.authenticate("google", { failureRedirect: "/login", session: false })(req, res, next);
-}, googleCallback);
+
+  passport.authenticate("google", { session: false }, (err, user) => {
+    const role = req.query?.state === "owner" ? "owner" : "customer";
+    const failureUrl = role === "owner" ? `${clientUrl}/business` : `${clientUrl}/login`;
+
+    if (err) {
+      const code = err.statusCode === 403 ? "customer_account_forbidden" : "oauth_error";
+      const message = encodeURIComponent(err.message || "Authentication failed");
+      return res.redirect(`${failureUrl}?error=${code}&message=${message}`);
+    }
+
+    if (!user) {
+      return res.redirect(`${failureUrl}?error=auth_failed`);
+    }
+
+    req.user = user;
+    return googleCallback(req, res, next);
+  })(req, res, next);
+});
 
 export default router;

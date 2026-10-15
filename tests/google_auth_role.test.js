@@ -53,16 +53,12 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
     assert.equal(user.role, "customer");
   });
 
-  await t.test("upgrades existing customer account to owner when owner role is selected", async () => {
+  await t.test("rejects Google login as owner if existing account by googleId is a customer", async () => {
     const existingUser = {
       _id: "user-333",
       googleId: "google-333",
-      email: "switch@example.com",
+      email: "customer@example.com",
       role: "customer",
-      saved: false,
-      save: async function () {
-        this.saved = true;
-      },
     };
 
     User.findOne = async ({ googleId }) => {
@@ -70,15 +66,48 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
       return null;
     };
 
-    const user = await findOrCreateGoogleUser({
-      googleId: "google-333",
-      email: "switch@example.com",
-      name: "Switch User",
-      role: "owner",
-    });
+    await assert.rejects(
+      () =>
+        findOrCreateGoogleUser({
+          googleId: "google-333",
+          email: "customer@example.com",
+          name: "Customer User",
+          role: "owner",
+        }),
+      (err) => {
+        assert.equal(err.statusCode, 403);
+        assert.match(err.message, /Customer/i);
+        return true;
+      }
+    );
+  });
 
-    assert.equal(user.role, "owner");
-    assert.equal(existingUser.saved, true);
+  await t.test("rejects Google login as owner if existing account by email is a customer", async () => {
+    const existingUser = {
+      _id: "user-334",
+      email: "cust-email@example.com",
+      role: "customer",
+    };
+
+    User.findOne = async (query) => {
+      if (query.email === "cust-email@example.com") return existingUser;
+      return null;
+    };
+
+    await assert.rejects(
+      () =>
+        findOrCreateGoogleUser({
+          googleId: "google-new-id",
+          email: "cust-email@example.com",
+          name: "Customer By Email",
+          role: "owner",
+        }),
+      (err) => {
+        assert.equal(err.statusCode, 403);
+        assert.match(err.message, /Customer/i);
+        return true;
+      }
+    );
   });
 
   await t.test("does not demote existing owner account to customer", async () => {
