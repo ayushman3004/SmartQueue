@@ -10,6 +10,21 @@ import nodemailer from "nodemailer";
  *   - EMAIL_FROM (e.g. "serveQ Security <no-reply@serveq.tech>")
  */
 export const getMailTransporter = () => {
+  // 1. Direct Resend integration
+  const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
+  if (resendApiKey) {
+    return nodemailer.createTransport({
+      host: "smtp.resend.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: "resend",
+        pass: resendApiKey,
+      },
+    });
+  }
+
+  // 2. Generic SMTP or Gmail configuration
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
   const rawPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.GMAIL_PASS || process.env.EMAIL_ACCESS_KEY || "").trim();
   const host = (process.env.SMTP_HOST || process.env.EMAIL_HOST || "").trim();
@@ -50,7 +65,10 @@ export const getMailTransporter = () => {
  */
 export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
-  const from = process.env.EMAIL_FROM || `"serveQ Security" <${user || "no-reply@serveq.tech"}>`;
+  const defaultFrom = process.env.RESEND_API_KEY
+    ? "serveQ Security <onboarding@resend.dev>"
+    : `"serveQ Security" <${user || "no-reply@serveq.tech"}>`;
+  const from = process.env.EMAIL_FROM || defaultFrom;
   const transporter = getMailTransporter();
 
   const recipientName = name ? name.split(" ")[0] : "there";
