@@ -10,21 +10,7 @@ import nodemailer from "nodemailer";
  *   - EMAIL_FROM (e.g. "serveQ Security <no-reply@serveq.tech>")
  */
 export const getMailTransporter = () => {
-  // 1. Direct Resend integration
-  const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
-  if (resendApiKey) {
-    return nodemailer.createTransport({
-      host: "smtp.resend.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: "resend",
-        pass: resendApiKey,
-      },
-    });
-  }
-
-  // 2. Generic SMTP or Gmail configuration
+  // Generic SMTP or Gmail configuration with strict timeouts to prevent hanging on cloud hosts
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
   const rawPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.GMAIL_PASS || process.env.EMAIL_ACCESS_KEY || "").trim();
   const host = (process.env.SMTP_HOST || process.env.EMAIL_HOST || "").trim();
@@ -37,6 +23,12 @@ export const getMailTransporter = () => {
   // For Gmail app passwords (16 letters), strip internal spaces. For custom SMTP, preserve password.
   const pass = host ? rawPass.trim() : rawPass.replace(/\s+/g, "");
 
+  const timeoutOptions = {
+    connectionTimeout: 10000, // 10s max socket connection timeout
+    greetingTimeout: 5000,
+    socketTimeout: 10000,
+  };
+
   if (host) {
     const isPort465 = port === 465;
     return nodemailer.createTransport({
@@ -47,16 +39,17 @@ export const getMailTransporter = () => {
       tls: {
         rejectUnauthorized: process.env.NODE_ENV === "production",
       },
+      ...timeoutOptions,
     });
   }
 
   // Default to smtp.gmail.com with port 465 (direct SSL/TLS)
-  // This is significantly faster and more reliable than port 587 STARTTLS
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
     secure: true,
     auth: { user, pass },
+    ...timeoutOptions,
   });
 };
 
@@ -170,14 +163,84 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
 
   const text = `Hi ${recipientName},\n\nYour serveQ password reset verification code is: ${otp}\n\nThis code is valid for 10 minutes.\n\nIf you did not request this password reset, please ignore this email.\n\n— serveQ Security Team`;
 
+  // 1. Direct Resend HTTPS REST API (Bypasses Render SMTP port blocking)
+  const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
+  if (resendApiKey) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          subject: `${otp} is your serveQ password reset verification code`,
+          text,
+          html,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        // Fallback to onboarding@resend.dev if custom domain is not verified
+        if (typeof data?.message === "string" && data.message.toLowerCase().includes("domain") && from !== "serveQ Security <onboarding@resend.dev>") {
+          console.warn("⚠️ Custom domain not verified on Resend, falling back to onboarding@resend.dev");
+          const retryRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "serveQ Security <onboarding@resend.dev>",
+              to: [to],
+              subject: `${otp} is your serveQ password reset verification code`,
+              text,
+              html,
+            }),
+          });
+          const retryData = await retryRes.json();
+          if (retryRes.ok) {
+            console.log(`✅ [Resend API] Delivered via onboarding@resend.dev (ID: ${retryData.id})`);
+            return { sent: true, simulated: false, messageId: retryData.id };
+          }
+        }
+
+        console.error(`❌ [Resend API] Delivery failed for ${to}:`, data);
+        return {
+          sent: false,
+          simulated: false,
+          error: data?.message || "Failed to deliver email via Resend API",
+        };
+      }
+
+      console.log(`✅ [Resend API] Password reset email sent to ${to} (Message ID: ${data.id})`);
+      return {
+        sent: true,
+        simulated: false,
+        messageId: data.id,
+      };
+    } catch (apiErr) {
+      console.error(`❌ [Resend API Network Error]:`, apiErr.message);
+      return {
+        sent: false,
+        simulated: false,
+        error: `Resend API network error: ${apiErr.message}`,
+      };
+    }
+  }
+
+  // 2. Fallback to Nodemailer SMTP
   if (!transporter) {
     console.warn(`\n⚠️ [Nodemailer] Cannot send email to ${to}: SMTP_USER or SMTP_PASS is not configured in .env!`);
     console.log(`🔑 [ServeQ Password Reset OTP for ${to}]: ${otp}`);
-    console.log(`ℹ️ Add SMTP_USER and SMTP_PASS into .env to send real emails via Gmail/SMTP.\n`);
+    console.log(`ℹ️ Add SMTP_USER and SMTP_PASS or RESEND_API_KEY into .env to send real emails.\n`);
     return {
       sent: false,
       simulated: true,
-      error: "Email service is not configured. Please add SMTP_USER and SMTP_PASS to your .env file.",
+      error: "Email service is not configured. Please add RESEND_API_KEY or SMTP_USER/SMTP_PASS in environment variables.",
     };
   }
 
@@ -200,7 +263,7 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
     return {
       sent: false,
       simulated: false,
-      error: `Email delivery failed: ${error.message}. Please check your SMTP_USER and SMTP_PASS.`,
+      error: `Email delivery failed: ${error.message}. Please configure RESEND_API_KEY for cloud hosting.`,
     };
   }
 };
