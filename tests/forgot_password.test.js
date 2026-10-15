@@ -9,6 +9,8 @@ import {
 } from "../src/modules/auth/forgotPassword.service.js";
 import { comparePassword } from "../src/modules/auth.utils.js";
 
+process.env.NODE_ENV = "test";
+
 test("Forgot Password Flow - Nodemailer OTP Verification & Password Reset", async (t) => {
   const originalUserFindOne = User.findOne;
   const originalOtpFindOne = Otp.findOne;

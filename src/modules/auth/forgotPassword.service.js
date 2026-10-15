@@ -56,6 +56,13 @@ export const sendPasswordResetOtp = async (rawEmail) => {
     otp,
   });
 
+  if (!mailResult.sent && process.env.NODE_ENV !== "test") {
+    throw new ApiError(
+      mailResult.simulated ? 503 : 500,
+      mailResult.error || "Failed to send email. Please check your SMTP configuration in .env."
+    );
+  }
+
   return {
     email,
     sent: mailResult.sent,

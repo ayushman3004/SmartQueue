@@ -1,51 +1,56 @@
 import nodemailer from "nodemailer";
 
 /**
- * Creates and caches the Nodemailer transporter based on environment variables.
+ * Creates the Nodemailer transporter based on environment variables.
  * Supported env vars:
- *   - SMTP_HOST / EMAIL_HOST (e.g. "smtp.gmail.com")
- *   - SMTP_PORT / EMAIL_PORT (e.g. 587 or 465)
+ *   - SMTP_HOST / EMAIL_HOST (defaults to "smtp.gmail.com")
+ *   - SMTP_PORT / EMAIL_PORT (defaults to 465 for SSL or 587)
  *   - SMTP_USER / EMAIL_USER / GMAIL_USER
  *   - SMTP_PASS / EMAIL_PASS / GMAIL_PASS / EMAIL_ACCESS_KEY
  *   - EMAIL_FROM (e.g. "serveQ Security <no-reply@serveq.tech>")
  */
-let cachedTransporter = null;
-
 export const getMailTransporter = () => {
-  if (cachedTransporter) return cachedTransporter;
+  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
+  const rawPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.GMAIL_PASS || process.env.EMAIL_ACCESS_KEY || "").trim();
+  const host = (process.env.SMTP_HOST || process.env.EMAIL_HOST || "").trim();
+  const port = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT);
 
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.GMAIL_PASS || process.env.EMAIL_ACCESS_KEY;
-  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
-  const port = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT) || 587;
-
-  if (!user || !pass) {
+  if (!user || !rawPass) {
     return null;
   }
 
+  // For Gmail app passwords (16 letters), strip internal spaces. For custom SMTP, preserve password.
+  const pass = host ? rawPass.trim() : rawPass.replace(/\s+/g, "");
+
   if (host) {
-    cachedTransporter = nodemailer.createTransport({
+    const isPort465 = port === 465;
+    return nodemailer.createTransport({
       host,
-      port,
-      secure: port === 465,
+      port: port || 587,
+      secure: isPort465,
       auth: { user, pass },
-    });
-  } else {
-    // Default to Gmail service if no custom host provided
-    cachedTransporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user, pass },
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === "production",
+      },
     });
   }
 
-  return cachedTransporter;
+  // Default to smtp.gmail.com with port 465 (direct SSL/TLS)
+  // This is significantly faster and more reliable than port 587 STARTTLS
+  return nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: { user, pass },
+  });
 };
 
 /**
  * Sends a branded 6-digit OTP email for password reset via Nodemailer.
  */
 export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
-  const from = process.env.EMAIL_FROM || `"serveQ Security" <${process.env.SMTP_USER || process.env.EMAIL_USER || "no-reply@serveq.tech"}>`;
+  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
+  const from = process.env.EMAIL_FROM || `"serveQ Security" <${user || "no-reply@serveq.tech"}>`;
   const transporter = getMailTransporter();
 
   const recipientName = name ? name.split(" ")[0] : "there";
@@ -148,14 +153,13 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
   const text = `Hi ${recipientName},\n\nYour serveQ password reset verification code is: ${otp}\n\nThis code is valid for 10 minutes.\n\nIf you did not request this password reset, please ignore this email.\n\n— serveQ Security Team`;
 
   if (!transporter) {
-    console.log(`\n══════════════════════════════════════════════════════════`);
+    console.warn(`\n⚠️ [Nodemailer] Cannot send email to ${to}: SMTP_USER or SMTP_PASS is not configured in .env!`);
     console.log(`🔑 [ServeQ Password Reset OTP for ${to}]: ${otp}`);
-    console.log(`ℹ️ (To send real emails, set SMTP_USER and SMTP_PASS in .env)`);
-    console.log(`══════════════════════════════════════════════════════════\n`);
+    console.log(`ℹ️ Add SMTP_USER and SMTP_PASS into .env to send real emails via Gmail/SMTP.\n`);
     return {
       sent: false,
       simulated: true,
-      message: "Transporter not configured. OTP printed to server logs.",
+      error: "Email service is not configured. Please add SMTP_USER and SMTP_PASS to your .env file.",
     };
   }
 
@@ -167,21 +171,18 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
       text,
       html,
     });
+    console.log(`✅ [Nodemailer] Password reset email sent to ${to} (Message ID: ${info.messageId})`);
     return {
       sent: true,
       simulated: false,
       messageId: info.messageId,
     };
   } catch (error) {
-    console.error("❌ Failed to send OTP email via Nodemailer:", error.message);
-    // Fall back to server console logging so development / staging never breaks
-    console.log(`\n══════════════════════════════════════════════════════════`);
-    console.log(`🔑 [FALLBACK] ServeQ OTP for ${to}: ${otp}`);
-    console.log(`══════════════════════════════════════════════════════════\n`);
+    console.error(`❌ [Nodemailer] Failed to send email to ${to}:`, error.message);
     return {
       sent: false,
-      simulated: true,
-      error: error.message,
+      simulated: false,
+      error: `Email delivery failed: ${error.message}. Please check your SMTP_USER and SMTP_PASS.`,
     };
   }
 };
