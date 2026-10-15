@@ -29,6 +29,8 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.47.0",
     "mongoose": "^9.3.3",
+    "nodemailer": "^10.1.1",
+    "nodemailer-otp": "^1.0.8",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "react": "^19.2.4",
