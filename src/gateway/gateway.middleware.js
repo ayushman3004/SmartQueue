@@ -114,6 +114,10 @@ export const gatewayErrorHandler = (err, req, res, _next) => {
     message = "Token expired";
   }
 
+  if (err.retryAfterSeconds) {
+    res.setHeader("Retry-After", err.retryAfterSeconds);
+  }
+
   if (statusCode >= 500) {
     console.error(`[${req.id}] Server Error:`, err);
   }
@@ -122,6 +126,7 @@ export const gatewayErrorHandler = (err, req, res, _next) => {
     success: false,
     statusCode,
     message,
+    ...(err.retryAfterSeconds ? { retryAfterSeconds: err.retryAfterSeconds } : {}),
     requestId: req.id,
     ...(process.env.NODE_ENV !== "production" && statusCode >= 500 ? { stack: err.stack } : {}),
   });

@@ -42,6 +42,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
   // Step 1: Send OTP
   const handleSendOtp = async (e) => {
     e?.preventDefault()
+    if (cooldown > 0) return
     const trimmedEmail = email.trim()
     if (!isValidEmail(trimmedEmail)) {
       toast.error('Please enter a valid email address')
@@ -58,6 +59,11 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
       setCooldown(30)
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to send verification code'
+      if (err.response?.status === 429) {
+        const match = msg.match(/(\d+)\s*sec/i)
+        const seconds = match ? parseInt(match[1], 10) : (err.response?.data?.retryAfterSeconds || 30)
+        setCooldown(seconds)
+      }
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -203,11 +209,17 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-3.5 px-6 rounded-2xl bg-[#FF5537] hover:bg-[#e04529] active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-orange-500/20 transition-all flex items-center justify-center gap-2"
+                disabled={loading || cooldown > 0}
+                className="w-full py-3.5 px-6 rounded-2xl bg-[#FF5537] hover:bg-[#e04529] active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               >
-                {loading ? 'Sending Code...' : 'Send Verification Code'}
+                {loading ? 'Sending Code...' : cooldown > 0 ? `Wait ${cooldown}s before resending` : 'Send Verification Code'}
               </button>
+
+              {cooldown > 0 && (
+                <p className="text-[11px] text-amber-600 font-semibold text-center">
+                  Verification code recently requested. Please check your inbox or wait {cooldown}s.
+                </p>
+              )}
             </motion.form>
           )}
 

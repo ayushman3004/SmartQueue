@@ -28,7 +28,9 @@ export const sendPasswordResetOtp = async (rawEmail) => {
   const existingOtp = await Otp.findOne({ email, purpose: "forgot_password" });
   if (existingOtp && Date.now() - new Date(existingOtp.lastResentAt).getTime() < 30000) {
     const waitSec = Math.ceil((30000 - (Date.now() - new Date(existingOtp.lastResentAt).getTime())) / 1000);
-    throw new ApiError(429, `Please wait ${waitSec} seconds before requesting a new verification code`);
+    const error = new ApiError(429, `Please wait ${waitSec} seconds before requesting a new verification code`);
+    error.retryAfterSeconds = waitSec;
+    throw error;
   }
 
   // Generate a cryptographically secure 6-digit numeric OTP
