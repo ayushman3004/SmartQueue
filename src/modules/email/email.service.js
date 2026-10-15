@@ -156,7 +156,6 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
       sent: false,
       simulated: true,
       message: "Transporter not configured. OTP printed to server logs.",
-      otp, // available in dev mode
     };
   }
 
@@ -183,7 +182,6 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
       sent: false,
       simulated: true,
       error: error.message,
-      otp,
     };
   }
 };

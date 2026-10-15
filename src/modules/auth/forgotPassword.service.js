@@ -58,8 +58,7 @@ export const sendPasswordResetOtp = async (rawEmail) => {
 
   return {
     email,
-    simulated: mailResult.simulated || false,
-    ...(process.env.NODE_ENV !== "production" && mailResult.simulated ? { debugOtp: otp } : {}),
+    sent: mailResult.sent,
   };
 };
 
