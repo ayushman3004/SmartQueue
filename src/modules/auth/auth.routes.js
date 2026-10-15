@@ -1,6 +1,17 @@
 import { Router } from "express";
 import passport from "passport";
-import { signup, signin, googleCallback, getMe, logout, updateMe, upgradeToOwner } from "./auth.controller.js";
+import {
+  signup,
+  signin,
+  googleCallback,
+  getMe,
+  logout,
+  updateMe,
+  upgradeToOwner,
+  forgotPasswordSendOtp,
+  forgotPasswordVerifyOtp,
+  forgotPasswordReset,
+} from "./auth.controller.js";
 import { protect } from "../../../middleware/auth.middleware.js";
 
 const router = Router();
@@ -12,6 +23,14 @@ router.post("/logout", logout);
 router.get("/me", protect, getMe);
 router.patch("/me", protect, updateMe);
 router.post("/upgrade-to-owner", protect, upgradeToOwner);
+
+// Forgot Password & Nodemailer OTP Verification
+router.post("/forgot-password", forgotPasswordSendOtp);
+router.post("/forgot-password/send-otp", forgotPasswordSendOtp);
+router.post("/verify-otp", forgotPasswordVerifyOtp);
+router.post("/forgot-password/verify-otp", forgotPasswordVerifyOtp);
+router.post("/reset-password", forgotPasswordReset);
+router.post("/forgot-password/reset-password", forgotPasswordReset);
 
 // Google OAuth
 router.get("/google", (req, res, next) => {

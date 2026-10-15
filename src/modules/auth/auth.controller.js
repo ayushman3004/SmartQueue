@@ -1,4 +1,5 @@
 import * as authService from "./auth.service.js";
+import * as forgotPasswordService from "./forgotPassword.service.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
 import { generateToken, setTokenCookie } from "../auth.utils.js";
@@ -49,4 +50,27 @@ export const logout = asyncHandler(async (_req, res) => {
     path: "/",
   });
   res.json(new ApiResponse(200, {}, "Logged out successfully"));
+});
+
+export const forgotPasswordSendOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const result = await forgotPasswordService.sendPasswordResetOtp(email);
+  res.status(200).json(new ApiResponse(200, result, "Verification code sent to your email"));
+});
+
+export const forgotPasswordVerifyOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  const result = await forgotPasswordService.verifyPasswordResetOtp(email, otp);
+  res.status(200).json(new ApiResponse(200, result, "Verification code verified successfully"));
+});
+
+export const forgotPasswordReset = asyncHandler(async (req, res) => {
+  const { email, resetToken, otp, newPassword } = req.body;
+  const result = await forgotPasswordService.resetPassword({
+    rawEmail: email,
+    resetToken,
+    otp,
+    newPassword,
+  });
+  res.status(200).json(new ApiResponse(200, result, "Password reset successfully. You can now log in."));
 });

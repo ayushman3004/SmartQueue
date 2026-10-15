@@ -6,6 +6,7 @@ import { signup, signin } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { isValidEmail, validatePasswordStrength } from '../utils/validators'
+import ForgotPasswordModal from '../components/ForgotPasswordModal'
 
 // Fluid Apple-style spring curve
 const SLIDE_TRANSITION = {
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [ownerMismatch, setOwnerMismatch] = useState(null)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
   const { logIn } = useAuth()
   const navigate = useNavigate()
 
@@ -389,9 +391,18 @@ export default function LoginPage() {
 
                       {/* Password */}
                       <div>
-                        <label className="text-xs font-bold text-zinc-700 block mb-1.5">
-                          Password
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-xs font-bold text-zinc-700 block">
+                            Password
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowForgotPassword(true)}
+                            className="text-xs font-semibold text-[#FF5537] hover:text-[#d94126] transition-colors"
+                          >
+                            Forgot password?
+                          </button>
+                        </div>
                         <div className="relative">
                           <input
                             type={showPassword ? 'text' : 'password'}
@@ -502,6 +513,13 @@ export default function LoginPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        initialEmail={form.email}
+      />
     </div>
   )
 }

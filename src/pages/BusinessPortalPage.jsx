@@ -8,6 +8,7 @@ import HubCommandCenter from '../components/HubCommandCenter'
 import { useSeo } from '../utils/useSeo'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { isValidEmail, validatePasswordStrength } from '../utils/validators'
+import ForgotPasswordModal from '../components/ForgotPasswordModal'
 
 // Fluid Apple-style spring curve
 const SLIDE_TRANSITION = {
@@ -77,6 +78,7 @@ export default function BusinessPortalPage() {
   // Role mismatch state for customers attempting to log in
   const [customerMismatch, setCustomerMismatch] = useState(null)
   const [upgrading, setUpgrading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
 
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin')
   const isCustomer = user && user.role === 'customer'
@@ -590,9 +592,18 @@ export default function BusinessPortalPage() {
 
                         {/* Password */}
                         <div>
-                          <label className="text-xs font-bold text-zinc-700 block mb-1.5">
-                            Password
-                          </label>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-bold text-zinc-700 block">
+                              Password
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setShowForgotPassword(true)}
+                              className="text-xs font-semibold text-[#FF5537] hover:text-[#d94126] transition-colors"
+                            >
+                              Forgot password?
+                            </button>
+                          </div>
                           <div className="relative">
                             <input
                               type={showPassword ? 'text' : 'password'}
@@ -797,6 +808,13 @@ export default function BusinessPortalPage() {
           <span className="text-teal-700 font-mono text-[11px] font-bold">serveq.tech/business</span>
         </div>
       </footer>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        initialEmail={form.email}
+      />
     </div>
   )
 }
