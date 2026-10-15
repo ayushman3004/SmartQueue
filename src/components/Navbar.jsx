@@ -54,12 +54,14 @@ export default function Navbar() {
         }`}>
           {/* Logo */}
           <Link to={user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/business' : '/customers'} className="flex items-center gap-3 no-underline group">
-            <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-teal-600/10 group-hover:scale-105 transition-transform duration-200 overflow-hidden border border-zinc-200/70 p-1">
-              <img src="/logo.png" alt="serveQ" className="w-full h-full object-cover rounded-xl" />
+            <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-orange-500/15 group-hover:scale-105 transition-transform duration-200 overflow-hidden border border-zinc-200/70 p-1">
+              <img src="/logo.png?v=2" alt="serveQ" className="w-full h-full object-contain" />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-black tracking-tight text-zinc-950 leading-none">serveQ</span>
-              <span className="text-[9px] font-extrabold uppercase tracking-[0.25em] text-teal-600 mt-0.5">Enterprise Hub</span>
+              <span className="text-lg font-black tracking-tight text-zinc-950 leading-none">
+                serve<span className="text-[#FF5537]">Q</span>
+              </span>
+              <span className="text-[9px] font-extrabold uppercase tracking-[0.25em] text-[#FF5537] mt-0.5">Enterprise Hub</span>
             </div>
           </Link>
 
