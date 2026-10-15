@@ -15,9 +15,9 @@ export default function NotFoundPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 no-underline group" aria-label="serveQ Homepage">
             <div className="w-9 h-9 rounded-xl bg-white border border-zinc-200/80 p-1 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <img src="/logo.png" alt="serveQ Logo" className="w-full h-full object-contain" width="36" height="36" />
+              <img src="/logo.png?v=2" alt="serveQ Logo" className="w-full h-full object-contain" width="36" height="36" />
             </div>
-            <span className="text-lg font-black tracking-tight text-zinc-950">serveQ</span>
+            <span className="text-lg font-black tracking-tight text-zinc-950">serve<span className="text-[#FF5537]">Q</span></span>
           </Link>
           <Link
             to="/"
