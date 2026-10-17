@@ -196,7 +196,23 @@ export const updateProfile = async (userId, data) => {
   delete data.role;
   delete data.walletBalance;
   delete data._id;
-  delete data.email; // Usually emails shouldn't be changed this way for security
+
+  // If phone changed, reset verification
+  if (data.phone !== undefined && data.phone !== user.phone) {
+    user.isPhoneVerified = false;
+  }
+
+  // If email is explicitly provided and changed
+  if (data.email && data.email.toLowerCase().trim() !== user.email) {
+    const normalizedEmail = data.email.toLowerCase().trim();
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing && existing._id.toString() !== user._id.toString()) {
+      throw new ApiError(400, "Email is already taken by another account");
+    }
+    user.email = normalizedEmail;
+    user.isEmailVerified = false;
+  }
+  delete data.email;
 
   Object.assign(user, data);
   await user.save();
@@ -204,7 +220,7 @@ export const updateProfile = async (userId, data) => {
 };
 
 // ─── Private Helpers ─────────────────────────────────────────
-const sanitize = (user) => ({
+export const sanitize = (user) => ({
   _id: user._id,
   name: user.name,
   email: user.email,
@@ -213,6 +229,8 @@ const sanitize = (user) => ({
   walletBalance: user.walletBalance ?? 0,
   authProvider: user.authProvider,
   phone: user.phone || "",
+  isPhoneVerified: Boolean(user.isPhoneVerified),
+  isEmailVerified: Boolean(user.isEmailVerified || user.authProvider === "google"),
   bio: user.bio || "",
   location: user.location || "",
 });

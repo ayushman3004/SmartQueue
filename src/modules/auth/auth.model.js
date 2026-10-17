@@ -45,6 +45,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
     bio: {
       type: String,
       default: "",

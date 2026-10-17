@@ -20,7 +20,12 @@ const otpSchema = new mongoose.Schema(
     },
     purpose: {
       type: String,
-      enum: ["phone_login", "forgot_password"],
+      enum: [
+        "phone_login",
+        "forgot_password",
+        "phone_verification",
+        "email_verification",
+      ],
       default: "forgot_password",
     },
     resetToken: {

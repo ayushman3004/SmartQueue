@@ -1,5 +1,7 @@
 import * as authService from "./auth.service.js";
 import * as forgotPasswordService from "./forgotPassword.service.js";
+import * as verificationService from "./verification.service.js";
+import User from "./auth.model.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
 import { generateToken, setTokenCookie } from "../auth.utils.js";
@@ -74,3 +76,65 @@ export const forgotPasswordReset = asyncHandler(async (req, res) => {
   });
   res.status(200).json(new ApiResponse(200, result, "Password reset successfully. You can now log in."));
 });
+
+// ─── Profile Contact Verification Controllers ─────────────────
+export const sendPhoneVerificationOtp = asyncHandler(async (req, res) => {
+  const phone = req.body.phone || req.body.phoneNumber || req.user.phone;
+  const result = await verificationService.sendPhoneVerificationOtp({
+    phone,
+    userId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, result, result.message));
+});
+
+export const verifyPhoneVerificationOtp = asyncHandler(async (req, res) => {
+  const phone = req.body.phone || req.body.phoneNumber || req.user.phone;
+  const { otp } = req.body;
+  const result = await verificationService.verifyPhoneVerificationOtp({
+    phone,
+    otp,
+    userId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, result, result.message));
+});
+
+export const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
+  const email = req.body.email || req.user.email;
+  const result = await verificationService.sendEmailVerificationOtp({
+    email,
+    userId: req.user._id,
+    userName: req.user.name,
+  });
+  res.status(200).json(new ApiResponse(200, result, result.message));
+});
+
+export const verifyEmailVerificationOtp = asyncHandler(async (req, res) => {
+  const email = req.body.email || req.user.email;
+  const { otp } = req.body;
+  const result = await verificationService.verifyEmailVerificationOtp({
+    email,
+    otp,
+    userId: req.user._id,
+  });
+  res.status(200).json(new ApiResponse(200, result, result.message));
+});
+
+export const verifyFirebasePhone = asyncHandler(async (req, res) => {
+  const phone = req.body.phone || req.user.phone;
+  if (!phone) {
+    return res.status(400).json(new ApiResponse(400, null, "Phone number is required"));
+  }
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    return res.status(404).json(new ApiResponse(404, null, "User account not found"));
+  }
+  user.phone = phone.trim();
+  user.isPhoneVerified = true;
+  await user.save();
+
+  res.status(200).json(
+    new ApiResponse(200, { user: authService.sanitize(user) }, "Phone number verified successfully via Firebase!")
+  );
+});
+
+

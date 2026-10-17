@@ -11,6 +11,11 @@ import {
   forgotPasswordSendOtp,
   forgotPasswordVerifyOtp,
   forgotPasswordReset,
+  sendPhoneVerificationOtp,
+  verifyPhoneVerificationOtp,
+  verifyFirebasePhone,
+  sendEmailVerificationOtp,
+  verifyEmailVerificationOtp,
 } from "./auth.controller.js";
 import { protect } from "../../../middleware/auth.middleware.js";
 
@@ -23,6 +28,13 @@ router.post("/logout", logout);
 router.get("/me", protect, getMe);
 router.patch("/me", protect, updateMe);
 router.post("/upgrade-to-owner", protect, upgradeToOwner);
+
+// Profile Contact Verification
+router.post("/phone/send-otp", protect, sendPhoneVerificationOtp);
+router.post("/phone/verify-otp", protect, verifyPhoneVerificationOtp);
+router.post("/phone/verify-firebase", protect, verifyFirebasePhone);
+router.post("/email/send-otp", protect, sendEmailVerificationOtp);
+router.post("/email/verify-otp", protect, verifyEmailVerificationOtp);
 
 // Forgot Password & Nodemailer OTP Verification
 router.post("/forgot-password", forgotPasswordSendOtp);
