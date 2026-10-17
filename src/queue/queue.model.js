@@ -15,6 +15,11 @@ const queueSchema = new mongoose.Schema(
           ref: "User",
           required: true,
         },
+        bookingId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Booking",
+          default: null,
+        },
         status: {
           type: String,
           enum: ["waiting", "serving", "done"],

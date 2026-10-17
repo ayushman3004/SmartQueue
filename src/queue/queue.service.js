@@ -220,8 +220,39 @@ export const joinQueue = async (businessId, userData, io = null) => {
     baseDuration: baseServiceTime,
   });
 
+  const isHead = !queueDS.head;
+  const initialStatus = isHead ? "serving" : "waiting";
+  const now = new Date();
+  const servicePrice = Math.max(Number(depositCharged) || 0, Number(price) || 0);
+
+  // Direct queue join creates a Booking record immediately so it counts as an appointment/booking,
+  // appears in customer history, and reflects in business hub revenue and analytics
+  let createdBooking = null;
+  try {
+    const BookingModel = mongoose.models.Booking || mongoose.model("Booking");
+    if (BookingModel && (mongoose.connection?.readyState === 1 || BookingModel.create !== mongoose.Model.create)) {
+      createdBooking = await BookingModel.create({
+        businessId,
+        userId: userData.userId,
+        startTime: now,
+        endTime: new Date(now.getTime() + serviceTime * 60000),
+        duration: serviceTime,
+        serviceType: finalServiceType,
+        services: selectedServicesList,
+        assignedStaff: assignedStaff || { name: "", role: "" },
+        status: initialStatus,
+        paidAmount: servicePrice,
+        pricingLabel: userData.pricingLabel || "",
+        notes: userData.notes || "Direct Live Queue Entry",
+      });
+    }
+  } catch (bErr) {
+    console.error("Warning: could not create booking for direct queue entry:", bErr);
+  }
+
   queueDS.enqueue({
     userId: userData.userId,
+    bookingId: createdBooking?._id || null,
     serviceTime,
     serviceType: finalServiceType,
     services: selectedServicesList,
@@ -233,13 +264,47 @@ export const joinQueue = async (businessId, userData, io = null) => {
   queueDoc.users = queueDS.toArray();
   await queueDoc.save();
 
+  if (io) {
+    io.to(`business:${businessId}`).emit("bookings:updated");
+    if (createdBooking) {
+      io.to(`user:${userData.userId}`).emit("booking:confirmed", { booking: createdBooking });
+    }
+  }
+
   return queueDoc;
 };
 
 // ❌ LEAVE QUEUE
-export const leaveQueue = async (businessId, userId) => {
+export const leaveQueue = async (businessId, userId, io = null) => {
   const queueDoc = await Queue.findOne({ businessId });
   if (!queueDoc) throw new ApiError(404, "Queue not found");
+
+  const leavingUser = queueDoc.users.find(
+    (u) => (u.userId?._id || u.userId)?.toString() === userId.toString()
+  );
+
+  if (leavingUser && leavingUser.bookingId) {
+    try {
+      const BookingModel = mongoose.models.Booking || mongoose.model("Booking");
+      if (BookingModel && (mongoose.connection?.readyState === 1 || BookingModel.findById !== mongoose.Model.findById)) {
+        const booking = await BookingModel.findById(leavingUser.bookingId);
+        if (booking && !["completed", "cancelled", "refunded"].includes(booking.status)) {
+          if (booking.paidAmount > 0 && leavingUser.paidAmount > 0) {
+            await refundToWallet(userId, leavingUser.paidAmount, "Direct queue exit refund", io);
+            booking.status = "refunded";
+          } else {
+            booking.status = "cancelled";
+          }
+          await booking.save();
+          if (io) {
+            io.to(`business:${businessId}`).emit("bookings:updated");
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error updating booking on leaveQueue:", err);
+    }
+  }
 
   const queueDS = QueueDS.fromArray(queueDoc.users);
   queueDS.remove(userId);
@@ -269,7 +334,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
   queue.users = queueDS.toArray();
   await queue.save();
 
-  // Create completed booking record so service history, revenue, analytics, and rating options are populated
+  // Create or update completed booking record so service history, revenue, analytics, and rating options are populated
   let completedBooking = null;
   if (previousHead && previousHead.userId) {
     try {
@@ -283,19 +348,35 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
       const startTime = previousHead.joinedAt || new Date(Date.now() - (previousHead.serviceTime || 15) * 60000);
       const endTime = new Date();
 
-      completedBooking = await Booking.create({
-        businessId,
-        userId: uId,
-        startTime,
-        endTime,
-        duration: previousHead.serviceTime || business.averageServiceTime || 15,
-        serviceType: previousHead.serviceType || "General Service",
-        services: previousHead.services || [],
-        assignedStaff: previousHead.assignedStaff || { name: "", role: "" },
-        status: "completed",
-        paidAmount: finalAmountEarned,
-        pricingLabel: previousHead.pricingLabel || "",
-      });
+      if (previousHead.bookingId) {
+        completedBooking = await Booking.findById(previousHead.bookingId);
+        if (completedBooking) {
+          completedBooking.status = "completed";
+          completedBooking.endTime = endTime;
+          if (!completedBooking.paidAmount || completedBooking.paidAmount === 0) {
+            completedBooking.paidAmount = finalAmountEarned;
+          }
+          if (typeof completedBooking.save === "function") {
+            await completedBooking.save();
+          }
+        }
+      }
+
+      if (!completedBooking) {
+        completedBooking = await Booking.create({
+          businessId,
+          userId: uId,
+          startTime,
+          endTime,
+          duration: previousHead.serviceTime || business.averageServiceTime || 15,
+          serviceType: previousHead.serviceType || "General Service",
+          services: previousHead.services || [],
+          assignedStaff: previousHead.assignedStaff || { name: "", role: "" },
+          status: "completed",
+          paidAmount: finalAmountEarned,
+          pricingLabel: previousHead.pricingLabel || "",
+        });
+      }
 
       // Update staff member customersServed count
       if (previousHead.assignedStaff?.name && Array.isArray(business.staff)) {
@@ -308,11 +389,21 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
         }
       }
     } catch (saveErr) {
-      console.error("Error creating completed booking from queue session:", saveErr);
+      console.error("Error creating/updating completed booking from queue session:", saveErr);
+    }
+  }
+
+  // Update new head to serving in bookings collection
+  if (queue.users.length > 0 && queue.users[0].bookingId) {
+    try {
+      await Booking.findByIdAndUpdate(queue.users[0].bookingId, { status: "serving" });
+    } catch {
+      // Non-critical
     }
   }
 
   if (io) {
+    io.to(`business:${businessId}`).emit("bookings:updated");
     // 1. Emit completed for previous head
     if (previousHead) {
       const uId = previousHead.userId?._id || previousHead.userId;

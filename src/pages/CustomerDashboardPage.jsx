@@ -167,12 +167,21 @@ export default function CustomerDashboardPage() {
       )
     }
 
+    const handleBookingsChange = () => {
+      getMyBookings().then(myBkRes => setMyBookings(myBkRes.data?.data?.bookings || [])).catch(() => {})
+    }
+
     socket.on('queue:update', handleQueueChange)
     socket.on('queue:updated', (data) => handleQueueChange(data?.queue))
     socket.on('queue:joined', (data) => handleQueueChange(data?.queue))
     socket.on('queue:left', (data) => handleQueueChange(data?.queue))
     socket.on('service:started', (data) => handleQueueChange(data?.queue))
-    socket.on('service:completed', (data) => handleQueueChange(data?.queue))
+    socket.on('service:completed', (data) => {
+      handleQueueChange(data?.queue)
+      handleBookingsChange()
+    })
+    socket.on('bookings:updated', handleBookingsChange)
+    socket.on('booking:confirmed', handleBookingsChange)
 
     return () => {
       unsubStatus?.()
@@ -182,6 +191,8 @@ export default function CustomerDashboardPage() {
       socket.off('queue:left')
       socket.off('service:started')
       socket.off('service:completed')
+      socket.off('bookings:updated', handleBookingsChange)
+      socket.off('booking:confirmed', handleBookingsChange)
     }
   }, [socket, onBusinessStatus])
 
@@ -253,6 +264,9 @@ export default function CustomerDashboardPage() {
         prev.map(b => (b._id === biz._id ? { ...b, activeQueue: updatedQ.users, queueLength: updatedQ.users.length } : b))
       )
 
+      // Refresh customer appointment bookings & history immediately
+      getMyBookings().then(myBkRes => setMyBookings(myBkRes.data?.data?.bookings || [])).catch(() => {})
+
       toast.success(`You joined the queue at ${biz.name}!`)
     } catch (err) {
       if (err.response?.status === 400 || err.response?.data?.message?.includes('already')) {
@@ -278,6 +292,9 @@ export default function CustomerDashboardPage() {
       setBusinesses(prev =>
         prev.map(b => (b._id === bizId ? { ...b, activeQueue: updatedQ.users, queueLength: updatedQ.users.length } : b))
       )
+
+      // Refresh customer appointment bookings & history immediately
+      getMyBookings().then(myBkRes => setMyBookings(myBkRes.data?.data?.bookings || [])).catch(() => {})
 
       toast.success(`Left queue at ${bizName}`)
     } catch (err) {

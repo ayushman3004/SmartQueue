@@ -656,6 +656,94 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
       Review.find = origReviewFind;
     }
   });
+
+  await t.test("Direct queue join creates an appointment/booking record and leaveQueue updates it to cancelled", async () => {
+    const { joinQueue, leaveQueue } = await import("../src/queue/queue.service.js");
+    const Queue = (await import("../src/queue/queue.model.js")).default;
+    const Business = (await import("../src/modules/business/business.model.js")).default;
+    const Booking = (await import("../src/booking/booking.model.js")).default;
+    const User = (await import("../src/modules/auth/auth.model.js")).default;
+
+    const fakeUserId = new mongoose.Types.ObjectId();
+    const fakeBizId = new mongoose.Types.ObjectId();
+    const mockBookingId = new mongoose.Types.ObjectId();
+
+    let createdBookingPayload = null;
+    const origBookingCreate = Booking.create;
+    Booking.create = async (payload) => {
+      createdBookingPayload = { ...payload, _id: mockBookingId, save: async () => {} };
+      return createdBookingPayload;
+    };
+
+    let bookedStatus = "waiting";
+    const origBookingFindById = Booking.findById;
+    Booking.findById = async (id) => {
+      if (id.toString() === mockBookingId.toString()) {
+        return {
+          _id: mockBookingId,
+          status: bookedStatus,
+          paidAmount: 500,
+          save: async function() { bookedStatus = this.status; },
+        };
+      }
+      return null;
+    };
+
+    const mockBusiness = {
+      _id: fakeBizId,
+      name: "Downtown Salon",
+      isOpen: true,
+      isActive: true,
+      category: "salon",
+      staff: [{ name: "Sam Stylist", isAvailable: true }],
+      queueSettings: { enableLiveQueue: true, maxQueueCapacity: 50 },
+      basePrice: 500,
+      averageServiceTime: 20,
+    };
+
+    const fakeQueueDoc = {
+      businessId: fakeBizId,
+      users: [],
+      save: async () => {},
+    };
+
+    const origBizFindById = Business.findById;
+    const origQueueFindOne = Queue.findOne;
+    const origUserFindById = User.findById;
+    const origUserFindOneAndUpdate = User.findOneAndUpdate;
+
+    try {
+      Business.findById = async () => mockBusiness;
+      Queue.findOne = async () => fakeQueueDoc;
+      User.findById = async () => ({ _id: fakeUserId, walletBalance: 1000 });
+      User.findOneAndUpdate = () => ({
+        select: async () => ({ _id: fakeUserId, walletBalance: 500 }),
+      });
+
+      // 1. Join queue directly
+      const q = await joinQueue(fakeBizId, {
+        userId: fakeUserId,
+        serviceType: "Haircut & Beard",
+        services: [{ name: "Haircut & Beard", duration: 30, price: 500 }],
+      });
+
+      assert.ok(createdBookingPayload, "Booking record must be created when directly joining queue");
+      assert.equal(createdBookingPayload.status, "serving"); // First in empty queue starts serving
+      assert.equal(createdBookingPayload.paidAmount, 500, "Should record service price as booking paidAmount");
+      assert.equal(q.users[0].bookingId.toString(), mockBookingId.toString(), "Queue user node must store bookingId");
+
+      // 2. Leave queue
+      await leaveQueue(fakeBizId, fakeUserId);
+      assert.equal(bookedStatus, "refunded", "Leaving queue should refund deposit and mark booking status");
+    } finally {
+      Booking.create = origBookingCreate;
+      Booking.findById = origBookingFindById;
+      Business.findById = origBizFindById;
+      Queue.findOne = origQueueFindOne;
+      User.findById = origUserFindById;
+      User.findOneAndUpdate = origUserFindOneAndUpdate;
+    }
+  });
 });
 
 

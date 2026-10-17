@@ -85,8 +85,8 @@ export const join = asyncHandler(async (req, res) => {
 // DELETE /api/queue/:businessId/leave
 export const leave = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
-  const queue = await queueService.leaveQueue(businessId, req.user._id);
   const io = req.app.get("io");
+  const queue = await queueService.leaveQueue(businessId, req.user._id, io);
 
   emitQueueUpdate(req, businessId, queue);
   if (io) {

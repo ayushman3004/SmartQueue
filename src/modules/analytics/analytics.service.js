@@ -37,6 +37,10 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
   }
 
   const liveQueueRevenue = liveQueueUsers.reduce((sum, u) => {
+    // Avoid double counting if this queue patron already has a corresponding booking in allBookings
+    if (u.bookingId && allBookings.some((b) => b._id?.toString() === u.bookingId?.toString())) {
+      return sum;
+    }
     const svcPrice = (u.services || []).reduce((sSum, s) => sSum + (Number(s.price) || 0), 0) || business.basePrice || u.paidAmount || 0;
     return sum + Math.max(Number(u.paidAmount) || 0, Number(svcPrice) || 0);
   }, 0);

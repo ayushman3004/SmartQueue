@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Booking from "./booking.model.js";
 import Business from "../modules/business/business.model.js";
 import User from "../modules/auth/auth.model.js";
@@ -487,6 +488,27 @@ export const startService = async (bookingId, requesterId, requesterRole) => {
 
   booking.status = "serving";
   await booking.save();
+
+  // Synchronize with live Queue if present
+  try {
+    const QueueModel = mongoose.models.Queue || mongoose.model("Queue");
+    if (QueueModel) {
+      const queueDoc = await QueueModel.findOne({ businessId: booking.businessId });
+      if (queueDoc && Array.isArray(queueDoc.users)) {
+        const u = queueDoc.users.find(
+          (user) => (user.bookingId && user.bookingId.toString() === booking._id.toString()) ||
+                    (user.userId && user.userId.toString() === booking.userId.toString() && user.status !== "done")
+        );
+        if (u) {
+          u.status = "serving";
+          await queueDoc.save();
+        }
+      }
+    }
+  } catch {
+    // Non-critical queue sync
+  }
+
   return booking;
 };
 
@@ -528,6 +550,29 @@ export const completeService = async (bookingId, requesterId, requesterRole) => 
       staffMember.customersServed = (staffMember.customersServed || 0) + 1;
       await business.save();
     }
+  }
+
+  // Synchronize and remove finished patron from live Queue if present
+  try {
+    const QueueModel = mongoose.models.Queue || mongoose.model("Queue");
+    const QueueDS = (await import("../queue/queue.ds.js")).default;
+    if (QueueModel && QueueDS) {
+      const queueDoc = await QueueModel.findOne({ businessId: booking.businessId });
+      if (queueDoc && Array.isArray(queueDoc.users)) {
+        const matchingUser = queueDoc.users.find(
+          (user) => (user.bookingId && user.bookingId.toString() === booking._id.toString()) ||
+                    (user.userId && user.userId.toString() === booking.userId.toString() && user.status !== "done")
+        );
+        if (matchingUser) {
+          const queueDS = QueueDS.fromArray(queueDoc.users);
+          queueDS.remove(matchingUser.userId);
+          queueDoc.users = queueDS.toArray();
+          await queueDoc.save();
+        }
+      }
+    }
+  } catch {
+    // Non-critical queue sync
   }
 
   return booking;
