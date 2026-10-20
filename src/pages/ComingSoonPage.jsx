@@ -1,11 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useSeo } from '../utils/useSeo'
+import api from '../api/axios'
 import './ComingSoon.css'
-
-const CONFIG = {
-  endpoint: '/api/waitlist',
-}
 
 const DEFAULT_NOTE = 'No spam. Just launch updates.'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -121,36 +118,27 @@ export default function ComingSoonPage() {
 
     setIsInvalid(false)
 
-    if (!CONFIG.endpoint) {
-      setNoteState({
-        text: "Signups aren't connected yet, so this address was not saved. Please try again soon.",
-        kind: 'error',
-      })
-      return
-    }
-
     setSubmitting(true)
     setBtnLabel('Sending…')
-    setNoteState({ text: 'Adding you to the list…', kind: '' })
+    setNoteState({ text: 'Securing your early access spot…', kind: '' })
 
     try {
-      const res = await fetch(CONFIG.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: cleanEmail }),
-      })
-
-      if (!res.ok) throw new Error('status ' + res.status)
+      const res = await api.post('/waitlist', { email: cleanEmail })
+      const message =
+        res.data?.message || "You're on the list! We've sent a launch confirmation email to your inbox."
 
       setEmail('')
       setSubmitted(true)
       setBtnLabel('Done')
-      setNoteState({ text: "You're on the list. We'll email you when serveQ launches.", kind: 'ok' })
-    } catch {
+      setNoteState({ text: message, kind: 'ok' })
+    } catch (err) {
       setSubmitting(false)
       setBtnLabel('Notify Me')
+      const errorMessage =
+        err.response?.data?.error ||
+        'Something went wrong and your email was not saved. Please try again.'
       setNoteState({
-        text: 'Something went wrong and your email was not saved. Please try again.',
+        text: errorMessage,
         kind: 'error',
       })
     }

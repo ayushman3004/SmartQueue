@@ -9,9 +9,17 @@ import axios from "axios";
  * In development: VITE_API_URL can be empty/undefined — baseURL becomes "/api"
  *                 which works with the Vite dev proxy.
  */
-const baseURL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : "/api";
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL}/api`;
+  }
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    return "https://api.serveq.tech/api";
+  }
+  return "/api";
+};
+
+const baseURL = getBaseUrl();
 
 const api = axios.create({
   baseURL,

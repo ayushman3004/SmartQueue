@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const waitlistSchema = new mongoose.Schema(
+const prelaunchCustomerSchema = new mongoose.Schema(
   {
     email: {
       type: String,
@@ -8,20 +8,46 @@ const waitlistSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, "Please enter a valid email"],
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, "Please enter a valid email address"],
+    },
+    role: {
+      type: String,
+      default: "prelaunch_customer",
+    },
+    tag: {
+      type: String,
+      default: "prelaunch_customer",
+    },
+    status: {
+      type: String,
+      default: "confirmed",
+    },
+    confirmationEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+    confirmationMessageId: {
+      type: String,
+      default: "",
     },
     source: {
       type: String,
-      default: "coming_soon",
+      default: "coming_soon_landing",
     },
     ip: {
       type: String,
+      default: "",
     },
   },
   {
     timestamps: true,
+    collection: "prelaunch_customers",
   }
 );
 
-const Waitlist = mongoose.model("Waitlist", waitlistSchema);
-export default Waitlist;
+const PrelaunchCustomer =
+  mongoose.models.PrelaunchCustomer ||
+  mongoose.model("PrelaunchCustomer", prelaunchCustomerSchema);
+
+export const Waitlist = PrelaunchCustomer;
+export default PrelaunchCustomer;
