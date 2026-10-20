@@ -8,6 +8,8 @@ import BackButton from './components/BackButton'
 import AIDesistant from './components/AIDesistant'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
+import LandingPageBackup from './pages/LandingPageBackup'
+import ComingSoonPage from './pages/ComingSoonPage'
 import CustomerDashboardPage from './pages/CustomerDashboardPage'
 import QueuePage from './pages/QueuePage'
 import BookingPage from './pages/BookingPage'
@@ -131,6 +133,9 @@ export default function App() {
               )
             }
           />
+          <Route path="/coming-soon" element={<ComingSoonPage />} />
+          <Route path="/home" element={<LandingPageBackup />} />
+          <Route path="/preview-landing" element={<LandingPageBackup />} />
           <Route
             path="/customers"
             element={

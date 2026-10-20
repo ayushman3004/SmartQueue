@@ -11,6 +11,7 @@ import adminRoutes from "../modules/admin/admin.routes.js";
 import chatRoutes from "../modules/chat/chat.routes.js";
 import chatbotRoutes from "../modules/chatbot/chatbot.routes.js";
 import otpRoutes from "../modules/auth/otp.routes.js";
+import waitlistRoutes from "../modules/waitlist/waitlist.routes.js";
 
 import { globalLimiter, authLimiter } from "./rateLimiter.js";
 import { requestIdMiddleware } from "./gateway.middleware.js";
@@ -92,6 +93,7 @@ export const createGatewayRouter = () => {
   router.use("/chat", chatRoutes);
   router.use("/chatbot", chatbotRoutes);
   router.use("/otp", otpRoutes);
+  router.use("/waitlist", waitlistRoutes);
 
   return router;
 };
