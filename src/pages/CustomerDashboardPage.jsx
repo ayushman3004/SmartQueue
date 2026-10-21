@@ -231,6 +231,79 @@ export default function CustomerDashboardPage() {
     return active
   }, [businesses, user?._id])
 
+  // Unified records merging Active Live Queues + Booked Appointments + Completed Service History
+  const unifiedServiceRecords = useMemo(() => {
+    const list = []
+    const seenBookingIds = new Set()
+    const activeBizIdsInQueue = new Set()
+
+    // 1. Add currently active Live Queues where customer is in line or in service
+    myActiveQueues.forEach((activeQ) => {
+      const qItem = activeQ.myQueueItem || {}
+      const biz = activeQ.business || {}
+      const bkId = qItem.bookingId ? qItem.bookingId.toString() : null
+      if (bkId) seenBookingIds.add(bkId)
+      if (biz._id) activeBizIdsInQueue.add(biz._id.toString())
+
+      list.push({
+        _id: bkId || `active_queue_${biz._id}_${user?._id}`,
+        bookingId: bkId,
+        businessId: biz,
+        businessName: biz.name || 'Local Venue',
+        serviceType: qItem.serviceType || 'General Service',
+        services: qItem.services || [],
+        assignedStaff: qItem.assignedStaff || { name: '', role: '' },
+        paidAmount: qItem.paidAmount || 0,
+        status: activeQ.isServing ? 'serving' : 'waiting',
+        startTime: qItem.joinedAt || qItem.estimatedStartTime || new Date(),
+        entryType: 'live_queue',
+        isLiveQueue: true,
+        queuePosition: activeQ.position,
+        tokenNumber: activeQ.position,
+        peopleAhead: activeQ.peopleAhead,
+        totalInQueue: activeQ.totalInQueue,
+        isServing: activeQ.isServing,
+        estimatedStartTime: activeQ.estimatedStartTime,
+      })
+    })
+
+    // 2. Add Bookings from myBookings, de-duplicating any active queues already represented
+    myBookings.forEach((bk) => {
+      const bId = bk._id ? bk._id.toString() : null
+      if (bId && seenBookingIds.has(bId)) {
+        return // already added from active live queue with real-time token/position
+      }
+
+      // Check if this booking corresponds to an active queue for the same business that was already added
+      const bizIdStr = (bk.businessId?._id || bk.businessId)?.toString()
+      if (['waiting', 'serving'].includes(bk.status) && bizIdStr && activeBizIdsInQueue.has(bizIdStr)) {
+        return
+      }
+
+      const isQ =
+        bk.isLiveQueue ||
+        bk.entryType === 'live_queue' ||
+        bk.notes?.includes('Live Queue') ||
+        ['waiting', 'serving'].includes(bk.status)
+
+      list.push({
+        ...bk,
+        entryType: isQ ? 'live_queue' : 'appointment',
+        isLiveQueue: isQ,
+        isAppointment: !isQ,
+        businessName: bk.businessId?.name || 'Local Venue',
+      })
+    })
+
+    // Sort: Active items (serving / waiting / confirmed / scheduled) first, then by date descending
+    return list.sort((a, b) => {
+      const aActive = ['serving', 'waiting', 'confirmed', 'scheduled'].includes(a.status) ? 1 : 0
+      const bActive = ['serving', 'waiting', 'confirmed', 'scheduled'].includes(b.status) ? 1 : 0
+      if (aActive !== bActive) return bActive - aActive
+      return new Date(b.startTime || b.createdAt || 0) - new Date(a.startTime || a.createdAt || 0)
+    })
+  }, [myActiveQueues, myBookings, user?._id])
+
   // Quick Join Queue Handler
   const handleJoinQueue = async (biz) => {
     if (biz.queueSettings?.enableLiveQueue === false) {
@@ -874,120 +947,228 @@ export default function CustomerDashboardPage() {
         )}
       </section>
 
-      {/* ── SECTION 3: SERVICE HISTORY & APPOINTMENT BOOKINGS ── */}
+      {/* ── SECTION 3: SERVICE HISTORY & APPOINTMENTS (LIVE QUEUES + BOOKINGS) ── */}
       <section className="space-y-4 pt-4 border-t border-zinc-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
               <span>Service History & Appointments</span>
             </h2>
-            <p className="text-xs text-zinc-500 font-medium">Complete history of services taken across all clinics, salons & hubs, with rating options.</p>
+            <p className="text-xs text-zinc-500 font-medium">
+              Complete history of live queue tokens and booked appointments across all clinics, salons & hubs, with rating options.
+            </p>
           </div>
-          <div className="flex items-center gap-1.5 self-start sm:self-auto bg-zinc-100 p-1 rounded-xl text-xs font-bold">
+          <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto bg-zinc-100 p-1 rounded-xl text-xs font-bold">
             <button
               onClick={() => setHistoryFilter('all')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${historyFilter === 'all' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'}`}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                historyFilter === 'all' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
             >
-              All ({myBookings.length})
+              All ({unifiedServiceRecords.length})
+            </button>
+            <button
+              onClick={() => setHistoryFilter('live_queue')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                historyFilter === 'live_queue' ? 'bg-white text-teal-800 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
+            >
+              Live Queues ({unifiedServiceRecords.filter((b) => b.isLiveQueue || b.entryType === 'live_queue').length})
+            </button>
+            <button
+              onClick={() => setHistoryFilter('appointment')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                historyFilter === 'appointment' ? 'bg-white text-blue-800 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
+            >
+              Appointments ({unifiedServiceRecords.filter((b) => b.isAppointment || b.entryType === 'appointment').length})
+            </button>
+            <button
+              onClick={() => setHistoryFilter('active')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                historyFilter === 'active' || historyFilter === 'upcoming' ? 'bg-white text-amber-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
+            >
+              In-Queue / Upcoming ({unifiedServiceRecords.filter((b) => ['waiting', 'serving', 'confirmed', 'scheduled'].includes(b.status)).length})
             </button>
             <button
               onClick={() => setHistoryFilter('completed')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${historyFilter === 'completed' ? 'bg-white text-emerald-800 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'}`}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                historyFilter === 'completed' ? 'bg-white text-emerald-800 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
             >
-              Completed ({myBookings.filter(b => b.status === 'completed').length})
-            </button>
-            <button
-              onClick={() => setHistoryFilter('upcoming')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${historyFilter === 'upcoming' ? 'bg-white text-teal-800 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'}`}
-            >
-              Upcoming ({myBookings.filter(b => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded').length})
+              Completed ({unifiedServiceRecords.filter((b) => b.status === 'completed').length})
             </button>
           </div>
         </div>
 
-        {myBookings.length === 0 ? (
+        {unifiedServiceRecords.length === 0 ? (
           <div className="p-8 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-2xl bg-white">
-            No service history or appointment bookings on record yet. Completed services will appear here with rating options.
+            No service history, live queues, or appointment bookings on record yet. Joined queues and appointments will appear here with live tracking & rating options.
           </div>
         ) : (
           <div className="overflow-x-auto bg-white rounded-3xl border border-zinc-200 shadow-sm">
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 text-zinc-500 font-bold uppercase border-b border-zinc-100">
                 <tr>
-                  <th className="py-3.5 px-4">Date & Time</th>
+                  <th className="py-3.5 px-4">Date & Service Type</th>
                   <th className="py-3.5 px-4">Business</th>
                   <th className="py-3.5 px-4">Service & Specialist</th>
                   <th className="py-3.5 px-4">Paid</th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Rating & Actions</th>
+                  <th className="py-3.5 px-4 text-right">Actions & Rating</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 font-medium">
-                {myBookings
+                {unifiedServiceRecords
                   .filter((b) => {
                     if (historyFilter === 'completed') return b.status === 'completed';
-                    if (historyFilter === 'upcoming') return b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded';
+                    if (historyFilter === 'active' || historyFilter === 'upcoming') {
+                      return ['waiting', 'serving', 'confirmed', 'scheduled'].includes(b.status);
+                    }
+                    if (historyFilter === 'live_queue') return b.isLiveQueue || b.entryType === 'live_queue';
+                    if (historyFilter === 'appointment') return b.isAppointment || b.entryType === 'appointment';
                     return true;
                   })
-                  .map((b) => (
-                  <tr key={b._id} className="hover:bg-zinc-50/70 transition-colors">
-                    <td className="py-4 px-4 font-bold text-zinc-950">
-                      {new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      <p className="text-[10px] text-zinc-400 font-normal">{new Date(b.startTime).toLocaleDateString()}</p>
-                    </td>
-                    <td className="py-4 px-4 font-bold text-zinc-900">
-                      {b.businessId?.name || 'Local Venue'}
-                    </td>
-                    <td className="py-4 px-4 text-zinc-700">
-                      <p className="font-semibold text-zinc-950">{b.serviceType}</p>
-                      {b.assignedStaff?.name && (
-                        <p className="text-[11px] font-bold text-teal-800 flex items-center gap-1 mt-0.5">
-                          <span>{b.assignedStaff.name}</span>
-                          <span className="text-[10px] text-zinc-400 font-normal">({b.assignedStaff.role || 'On-Duty'})</span>
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-4 px-4 font-bold text-teal-700">₹{b.paidAmount}</td>
-                    <td className="py-4 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                        b.status === 'completed'
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                          : b.status === 'serving'
-                          ? 'bg-emerald-100 text-emerald-800 animate-pulse'
-                          : b.status === 'cancelled'
-                          ? 'bg-rose-100 text-rose-700'
-                          : 'bg-teal-100 text-teal-800'
-                      }`}>
-                        {b.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-right space-x-2">
-                      {b.status === 'completed' && (
-                        b.review ? (
-                          <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold">
-                            <span className="text-amber-500 font-black">{b.review.rating} ★</span>
-                            <span className="text-[10px] text-amber-700 font-semibold">Rated</span>
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleOpenReview(b)}
-                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition-transform active:scale-95 inline-flex items-center gap-1"
+                  .map((b) => {
+                    const isQ = b.isLiveQueue || b.entryType === 'live_queue';
+                    const isServing = b.status === 'serving';
+                    const isWaiting = b.status === 'waiting';
+                    const isCompleted = b.status === 'completed';
+                    const isCancelled = b.status === 'cancelled' || b.status === 'refunded';
+                    const bizId = b.businessId?._id || b.businessId;
+                    const bizName = b.businessId?.name || b.businessName || 'Local Venue';
+
+                    return (
+                      <tr key={b._id} className={`transition-colors ${isServing ? 'bg-emerald-50/50 hover:bg-emerald-50/80' : 'hover:bg-zinc-50/70'}`}>
+                        <td className="py-4 px-4 font-bold text-zinc-950">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {isQ ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-teal-100 text-teal-800 border border-teal-200">
+                                {isServing || isWaiting ? (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-teal-600 animate-ping" />
+                                ) : (
+                                  <span>⚡</span>
+                                )}
+                                Live Queue {b.queuePosition ? `(Token #${b.queuePosition})` : ''}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-blue-100 text-blue-800 border border-blue-200">
+                                📅 Appointment
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            {new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <p className="text-[10px] text-zinc-400 font-normal">
+                              {new Date(b.startTime).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                            {isWaiting && b.peopleAhead !== undefined && (
+                              <p className="text-[10px] text-teal-700 font-semibold mt-0.5">
+                                {b.peopleAhead === 0 ? 'You are next in line!' : `${b.peopleAhead} people ahead`}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 font-bold text-zinc-900">
+                          <div>
+                            <p className="text-zinc-950 font-black">{bizName}</p>
+                            {b.businessId?.category && (
+                              <p className="text-[10px] text-zinc-400 font-semibold uppercase">{b.businessId.category}</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-zinc-700">
+                          <p className="font-bold text-zinc-950">{b.serviceType || 'General Service'}</p>
+                          {b.assignedStaff?.name && (
+                            <p className="text-[11px] font-bold text-teal-800 flex items-center gap-1 mt-0.5">
+                              <span>{b.assignedStaff.name}</span>
+                              <span className="text-[10px] text-zinc-400 font-normal">({b.assignedStaff.role || 'Specialist'})</span>
+                            </p>
+                          )}
+                          {b.services && b.services.length > 1 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {b.services.map((s, idx) => (
+                                <span key={idx} className="text-[9px] font-bold bg-zinc-100 text-zinc-700 px-1.5 py-0.5 rounded">
+                                  {s.name} (₹{s.price})
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 font-black text-teal-700">
+                          {b.paidAmount > 0 ? `₹${b.paidAmount}` : '₹0 • Pay at Venue'}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase inline-flex items-center gap-1.5 ${
+                              isCompleted
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                : isServing
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse'
+                                : isWaiting
+                                ? 'bg-teal-100 text-teal-800 border border-teal-300'
+                                : isCancelled
+                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                : 'bg-blue-100 text-blue-800 border border-blue-200'
+                            }`}
                           >
-                            <span>★ Rate Service</span>
-                          </button>
-                        )
-                      )}
-                      {(b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'waiting') && (
-                        <button
-                          onClick={() => handleCancelBooking(b._id)}
-                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg font-bold text-[11px]"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                            {isServing && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />}
+                            {isServing
+                              ? 'SERVING NOW'
+                              : isWaiting
+                              ? `IN QUEUE (TOKEN #${b.queuePosition || 1})`
+                              : b.status === 'confirmed' || b.status === 'scheduled'
+                              ? 'CONFIRMED APPT'
+                              : b.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right space-x-2">
+                          {(isWaiting || isServing) && bizId && (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => navigate(`/queue/${bizId}`)}
+                                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs shadow-xs transition-transform active:scale-95 inline-flex items-center gap-1"
+                              >
+                                <span>Track Live Screen</span>
+                              </button>
+                              <button
+                                onClick={() => handleLeaveQueue(bizId, bizName)}
+                                disabled={leavingBizId === bizId}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs transition-colors disabled:opacity-50"
+                                title="Leave Queue"
+                              >
+                                {leavingBizId === bizId ? 'Leaving...' : 'Leave'}
+                              </button>
+                            </div>
+                          )}
+                          {!isWaiting && !isServing && (b.status === 'scheduled' || b.status === 'confirmed') && (
+                            <button
+                              onClick={() => handleCancelBooking(b._id)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-[11px] transition-colors"
+                            >
+                              Cancel Booking
+                            </button>
+                          )}
+                          {isCompleted && (
+                            b.review ? (
+                              <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold">
+                                <span className="text-amber-500 font-black">{b.review.rating} ★</span>
+                                <span className="text-[10px] text-amber-700 font-semibold">Rated</span>
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleOpenReview(b)}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition-transform active:scale-95 inline-flex items-center gap-1"
+                              >
+                                <span>★ Rate Service</span>
+                              </button>
+                            )
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

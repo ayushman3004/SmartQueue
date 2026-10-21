@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import Booking from "./booking.model.js";
 import Business from "../modules/business/business.model.js";
 import User from "../modules/auth/auth.model.js";
+import Queue from "../queue/queue.model.js";
+import Review from "../modules/review/review.model.js";
 import ApiError from "../../utils/ApiError.js";
 import { deductWalletBalance, refundToWallet } from "../modules/payment/payment.service.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
@@ -580,31 +582,110 @@ export const completeService = async (bookingId, requesterId, requesterRole) => 
 
 // ─── Queries & Cancel ─────────────────────────────────────────
 export const getMyBookings = async (userId) => {
-  const bookings = await Booking.find({ userId })
+  let bookings = await Booking.find({ userId })
     .populate("businessId", "name category address location phone averageServiceTime")
     .sort({ startTime: -1, createdAt: -1 });
 
+  // Convert mongoose documents to plain objects for mutation
+  bookings = bookings.map((b) => (typeof b.toObject === "function" ? b.toObject() : { ...b }));
+
+  // Check active queues where user is currently waiting or serving
+  try {
+    const activeQueues = await Queue.find({ "users.userId": userId }).populate(
+      "businessId",
+      "name category address location phone averageServiceTime"
+    );
+
+    for (const qDoc of activeQueues) {
+      const idx = (qDoc.users || []).findIndex(
+        (u) => (u.userId?._id || u.userId)?.toString() === userId.toString()
+      );
+      if (idx !== -1) {
+        const qUser = qDoc.users[idx];
+        const position = idx + 1;
+        const isServing = qUser.status === "serving" || idx === 0;
+        const peopleAhead = Math.max(0, idx);
+
+        const existingBooking = bookings.find(
+          (b) =>
+            (qUser.bookingId && b._id?.toString() === qUser.bookingId?.toString()) ||
+            (b.businessId?._id?.toString() === qDoc.businessId?._id?.toString() &&
+              ["waiting", "serving"].includes(b.status))
+        );
+
+        if (existingBooking) {
+          existingBooking.entryType = "live_queue";
+          existingBooking.isLiveQueue = true;
+          existingBooking.queuePosition = position;
+          existingBooking.tokenNumber = position;
+          existingBooking.totalInQueue = qDoc.users.length;
+          existingBooking.peopleAhead = peopleAhead;
+          existingBooking.isServing = isServing;
+          existingBooking.status = isServing ? "serving" : "waiting";
+        } else {
+          // Prepend active live queue entry
+          const qBooking = {
+            _id: qUser.bookingId || `live_q_${qDoc._id}_${userId}`,
+            businessId: qDoc.businessId,
+            userId,
+            startTime: qUser.joinedAt || new Date(),
+            endTime: new Date(Date.now() + (qUser.serviceTime || 15) * 60000),
+            duration: qUser.serviceTime || 15,
+            serviceType: qUser.serviceType || "General Service",
+            services: qUser.services || [],
+            assignedStaff: qUser.assignedStaff || { name: "", role: "" },
+            status: isServing ? "serving" : "waiting",
+            paidAmount: qUser.paidAmount || 0,
+            entryType: "live_queue",
+            isLiveQueue: true,
+            queuePosition: position,
+            tokenNumber: position,
+            totalInQueue: qDoc.users.length,
+            peopleAhead,
+            isServing,
+            notes: "Direct Live Queue Entry",
+            createdAt: qUser.joinedAt || new Date(),
+          };
+          bookings.unshift(qBooking);
+        }
+      }
+    }
+  } catch (qErr) {
+    console.error("Error attaching active live queues to getMyBookings:", qErr);
+  }
+
+  // Tag entryType for all bookings
+  bookings.forEach((b) => {
+    if (!b.entryType) {
+      if (b.notes?.includes("Live Queue") || ["waiting", "serving"].includes(b.status)) {
+        b.entryType = "live_queue";
+        b.isLiveQueue = true;
+      } else {
+        b.entryType = "appointment";
+        b.isAppointment = true;
+      }
+    }
+  });
+
   // Attach reviews if present
   try {
-    const Review = mongoose.models.Review || mongoose.model("Review");
-    if (Review && bookings.length > 0) {
-      const bookingIds = bookings.map((b) => b._id);
+    if (bookings.length > 0) {
+      const bookingIds = bookings.map((b) => b._id).filter((id) => mongoose.Types.ObjectId.isValid(id));
       const reviews = await Review.find({ bookingId: { $in: bookingIds } });
       const reviewMap = new Map();
       reviews.forEach((r) => reviewMap.set(r.bookingId?.toString(), r));
 
       return bookings.map((b) => {
-        const obj = typeof b.toObject === "function" ? b.toObject() : { ...b };
         const rev = reviewMap.get(b._id?.toString());
         if (rev) {
-          obj.review = {
+          b.review = {
             _id: rev._id,
             rating: rev.rating,
             comment: rev.comment,
             createdAt: rev.createdAt,
           };
         }
-        return obj;
+        return b;
       });
     }
   } catch (err) {
