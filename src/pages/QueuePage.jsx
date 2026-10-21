@@ -557,15 +557,15 @@ export default function QueuePage() {
               </p>
             </div>
 
-            {/* Decorative Banner Illustration with Boy character */}
-            <div className="hidden md:flex items-end justify-center shrink-0 pr-4 z-10 self-end -mb-6 sm:-mb-8">
-              <div className="relative w-36 sm:w-44 h-32 sm:h-36 flex items-end justify-center">
+            {/* Decorative Banner Illustration with Boy character (Background completely removed) */}
+            <div className="hidden md:flex items-end justify-end shrink-0 z-10 self-end -mb-6 sm:-mb-8 pr-2 lg:pr-6 pointer-events-none select-none">
+              <div className="relative w-40 sm:w-48 lg:w-56 h-36 sm:h-40 lg:h-44 flex items-end justify-end">
                 <img
-                  src="/queue-hero-boy.png"
+                  src="/queue-hero-boy-transparent.png"
                   alt="Patron checking queue on phone"
-                  className="max-h-full max-w-full object-contain drop-shadow-md rounded-2xl"
+                  className="max-h-full max-w-full object-contain drop-shadow-xl"
                   onError={(e) => {
-                    e.currentTarget.src = '/hero-banner.png'
+                    e.currentTarget.src = '/queue-hero-boy.png'
                   }}
                 />
               </div>
