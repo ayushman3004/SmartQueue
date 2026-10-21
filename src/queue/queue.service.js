@@ -8,7 +8,7 @@ import ApiError from "../../utils/ApiError.js";
 import { deductWalletBalance, refundToWallet } from "../modules/payment/payment.service.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
 
-// ➕ JOIN QUEUE
+//  JOIN QUEUE
 export const joinQueue = async (businessId, userData, io = null) => {
   let queueDoc = await Queue.findOne({ businessId });
   if (!queueDoc) {
@@ -33,7 +33,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   const queueDS = QueueDS.fromArray(queueDoc.users);
 
-  // 🚫 Prevent duplicate joins
+  //  Prevent duplicate joins
   if (queueDoc.users.some((u) => (u.userId?._id || u.userId)?.toString() === userData.userId?.toString())) {
     throw new ApiError(400, "You are already in this queue");
   }
@@ -112,7 +112,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
     const candidate = staffList.find(
       (s) => s.name.toLowerCase() === staffNameRequested.toLowerCase() && s.isAvailable !== false
     );
-    if (candidate && !currentlyServingStaff.includes(candidate.name.toLowerCase())) {
+    if (candidate) {
       assignedStaff = {
         name: candidate.name,
         role: candidate.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
@@ -122,62 +122,48 @@ export const joinQueue = async (businessId, userData, io = null) => {
     }
   }
 
-  // Auto-fallback if requested staff unavailable or not specified
+  // Auto-fallback if requested staff unavailable or not specified ('any')
   if (!assignedStaff) {
-    if (isClinic) {
-      // Find on-duty available General Physician
-      const activeDocs = staffList.filter(
-        (s) => s.isAvailable !== false && !currentlyServingStaff.includes(s.name.toLowerCase())
-      );
-      const freeDocs = [];
-      for (const doc of activeDocs) {
-        const text = `${doc.role || ""} ${doc.specialties || ""} ${doc.name || ""}`.toLowerCase();
-        const isGP =
-          text.includes("general") ||
-          text.includes("physician") ||
-          text.includes("primary") ||
-          text.includes("family") ||
-          text.includes("mbbs") ||
-          text.includes("medicine");
-        freeDocs.push({ doc, isGP });
-      }
-      const chosen = freeDocs.find((d) => d.isGP)?.doc || freeDocs[0]?.doc;
-      if (chosen) {
-        assignedStaff = {
-          name: chosen.name,
-          role: chosen.role || "General Physician",
-          specialties: chosen.specialties || "General Medicine & Primary Care",
-          autoAssigned: true,
+    const availableStaff = staffList.filter((s) => s.isAvailable !== false);
+    if (availableStaff.length > 0) {
+      // Find the available staff member with the least rush in their personal queue
+      const staffLoads = availableStaff.map((staffMember) => {
+        const staffKey = staffMember.name.toLowerCase().trim();
+        const queuedForStaff = queueDoc.users.filter(
+          (u) => (u.assignedStaff?.name || "").toLowerCase().trim() === staffKey
+        );
+        const isServing =
+          queuedForStaff.some((u) => u.status === "serving") ||
+          currentlyServingStaff.includes(staffKey);
+        return {
+          staff: staffMember,
+          queueCount: queuedForStaff.length,
+          isServing,
         };
-      } else {
-        assignedStaff = {
-          name: "Dr. On-Duty (General Physician)",
-          role: "General Physician",
-          specialties: "General Medicine & Primary Care",
-          autoAssigned: true,
-        };
-      }
+      });
+
+      // Sort: 1) free/not serving first, 2) fewest total queued
+      staffLoads.sort((a, b) => {
+        if (a.isServing !== b.isServing) {
+          return a.isServing ? 1 : -1;
+        }
+        return a.queueCount - b.queueCount;
+      });
+
+      const chosen = staffLoads[0].staff;
+      assignedStaff = {
+        name: chosen.name,
+        role: chosen.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+        specialties: chosen.specialties || "",
+        autoAssigned: true,
+      };
     } else {
-      // Salon: assign any available barber
-      const activeBarbers = staffList.filter(
-        (s) => s.isAvailable !== false && !currentlyServingStaff.includes(s.name.toLowerCase())
-      );
-      const chosenBarber = activeBarbers[0];
-      if (chosenBarber) {
-        assignedStaff = {
-          name: chosenBarber.name,
-          role: chosenBarber.role || "Barber / Stylist",
-          specialties: chosenBarber.specialties || "Hair Styling & Grooming",
-          autoAssigned: true,
-        };
-      } else {
-        assignedStaff = {
-          name: "On-Duty Stylist",
-          role: "Barber / Stylist",
-          specialties: "Hair Styling & Grooming",
-          autoAssigned: true,
-        };
-      }
+      assignedStaff = {
+        name: isClinic ? "Dr. On-Duty (General Physician)" : "On-Duty Specialist",
+        role: isClinic ? "General Physician" : "Barber / Stylist",
+        specialties: isClinic ? "General Medicine & Primary Care" : "Hair & Grooming",
+        autoAssigned: true,
+      };
     }
   }
 
@@ -220,8 +206,12 @@ export const joinQueue = async (businessId, userData, io = null) => {
     baseDuration: baseServiceTime,
   });
 
-  const isHead = !queueDS.head;
-  const initialStatus = isHead ? "serving" : "waiting";
+  const staffKey = (assignedStaff?.name || "").toLowerCase().trim();
+  const staffCurrentlyServing = queueDoc.users.some(
+    (u) => u.status === "serving" && (u.assignedStaff?.name || "").toLowerCase().trim() === staffKey
+  ) || currentlyServingStaff.includes(staffKey);
+
+  const initialStatus = staffCurrentlyServing ? "waiting" : "serving";
   const now = new Date();
   const servicePrice = Math.max(Number(depositCharged) || 0, Number(price) || 0);
 
@@ -302,7 +292,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
   return queueDoc;
 };
 
-// ❌ LEAVE QUEUE
+//  LEAVE QUEUE
 export const leaveQueue = async (businessId, userId, io = null) => {
   const queueDoc = await Queue.findOne({ businessId });
   if (!queueDoc) throw new ApiError(404, "Queue not found");
@@ -352,7 +342,7 @@ export const leaveQueue = async (businessId, userId, io = null) => {
 };
 
 // ⏭️ CALL NEXT
-export const callNext = async (businessId, requesterId, requesterRole, io) => {
+export const callNext = async (businessId, requesterId, requesterRole, io, staffName, targetUserId) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
@@ -363,7 +353,19 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
   const queue = await Queue.findOne({ businessId });
   if (!queue || !queue.users.length) throw new ApiError(400, "Queue is already empty");
 
-  const previousHead = queue.users[0];
+  let previousHead = null;
+  if (targetUserId) {
+    const tId = targetUserId.toString();
+    previousHead = queue.users.find((u) => (u.userId?._id || u.userId)?.toString() === tId);
+  }
+  if (!previousHead && staffName) {
+    previousHead = queue.users.find(
+      (u) => u.status === "serving" && (u.assignedStaff?.name || "").toLowerCase().trim() === staffName.toLowerCase().trim()
+    );
+  }
+  if (!previousHead) {
+    previousHead = queue.users.find((u) => u.status === "serving") || queue.users[0];
+  }
   const uId = previousHead.userId?._id || previousHead.userId;
 
   // Calculate earnings and details for the finished user
@@ -472,17 +474,19 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
 
   // Dequeue user and update queue state
   const queueDS = QueueDS.fromArray(queue.users);
-  queueDS.dequeue();
+  queueDS.remove(uId);
 
   queue.users = queueDS.toArray();
   await queue.save();
 
-  // Update new head to serving in bookings collection
-  if (queue.users.length > 0 && queue.users[0].bookingId) {
-    try {
-      await Booking.findByIdAndUpdate(queue.users[0].bookingId, { status: "serving" });
-    } catch {
-      // Non-critical
+  // Update any newly serving users' bookings to serving in database
+  for (const u of queue.users) {
+    if (u.status === "serving" && u.bookingId) {
+      try {
+        await Booking.findByIdAndUpdate(u.bookingId, { status: "serving" });
+      } catch {
+        // Non-critical
+      }
     }
   }
 
@@ -536,7 +540,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
   return queue;
 };
 
-// 📊 GET QUEUE
+//  GET QUEUE
 export const getQueue = async (businessId, io = null, requesterId = null) => {
   let queue = await Queue.findOne({ businessId });
   if (!queue) {
@@ -566,7 +570,7 @@ export const getQueue = async (businessId, io = null, requesterId = null) => {
   return queue;
 };
 
-// 🧠 ESTIMATE WAIT TIME
+//  ESTIMATE WAIT TIME
 export const estimateWaitTime = async (businessId, userId) => {
   const queue = await Queue.findOne({ businessId });
   const business = await Business.findById(businessId);
@@ -646,7 +650,7 @@ export const extendTime = async (businessId, userId, minutes = 5, requesterId, r
   return queue;
 };
 
-// 🎟️ CANCEL DELAY WITH REFUND
+// ️ CANCEL DELAY WITH REFUND
 export const handleCancelDelay = async (businessId, userId, io = null) => {
   const queueDoc = await Queue.findOne({ businessId });
   if (!queueDoc) throw new ApiError(404, "Queue not found");

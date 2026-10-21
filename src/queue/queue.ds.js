@@ -25,7 +25,7 @@ class QueueDS {
     this.map = new Map(); // userId -> node
   }
 
-  // 🧪 Auto-remove abandoned/stale services (older than 12 hours)
+  //  Auto-remove abandoned/stale services (older than 12 hours)
   cleanup(maxAgeHours = 12) {
     let wasCleaned = false;
     const now = new Date();
@@ -40,7 +40,7 @@ class QueueDS {
         : null;
 
       if (entryTime && entryTime < cutoff) {
-        console.log(`🕒 Auto-removing stale/abandoned queue entry for user: ${this.head.userId}`);
+        console.log(` Auto-removing stale/abandoned queue entry for user: ${this.head.userId}`);
         this.dequeue();
         wasCleaned = true;
       } else {
@@ -50,49 +50,67 @@ class QueueDS {
     return wasCleaned;
   }
 
-  // 🔁 Recalculate ETA for whole queue
+  //  Recalculate ETA and status per staff member's personal queue
   recalculate() {
-    let current = this.head;
-    let time = new Date();
-
-    // The serving user's start time is fixed to when they actually started.
-    // We only recalculate for waiting users relative to the serving user's end time.
-    if (current && current.status === "serving" && current.estimatedStartTime) {
-      time = new Date(current.estimatedStartTime);
-    }
-
     const BUFFER = 15; // 15-minute buffer between slots as requested
+    const now = new Date();
 
+    // Track per-staff running finish time: staffKey -> finishTimeMs
+    const staffFinishMap = new Map();
+
+    let current = this.head;
     while (current) {
-      current.estimatedStartTime = new Date(time);
-      // Next person starts after current person ends + 15 min buffer
-      time = new Date(time.getTime() + (current.serviceTime + BUFFER) * 60000);
+      const staffKey = (current.assignedStaff?.name || "__unassigned__").toLowerCase().trim();
+
+      if (!staffFinishMap.has(staffKey)) {
+        // First active patron in line for this specific staff member is serving
+        current.status = "serving";
+        if (!current.estimatedStartTime) {
+          current.estimatedStartTime = new Date(now);
+        } else {
+          current.estimatedStartTime = new Date(current.estimatedStartTime);
+        }
+
+        const duration = Math.max(1, Number(current.serviceTime) || 15);
+        const finishMs = current.estimatedStartTime.getTime() + (duration + BUFFER) * 60000;
+        staffFinishMap.set(staffKey, finishMs);
+      } else {
+        // Subsequent patrons for this specific staff member wait in their personal queue
+        current.status = "waiting";
+        const previousFinishMs = staffFinishMap.get(staffKey);
+        const startMs = Math.max(now.getTime(), previousFinishMs);
+        current.estimatedStartTime = new Date(startMs);
+
+        const duration = Math.max(1, Number(current.serviceTime) || 15);
+        const nextFinishMs = startMs + (duration + BUFFER) * 60000;
+        staffFinishMap.set(staffKey, nextFinishMs);
+      }
+
       current = current.next;
     }
   }
 
-  // ➕ JOIN
+  //  JOIN
   enqueue(user) {
-    if (this.map.has(user.userId)) {
+    const uId = (user.userId?._id || user.userId)?.toString();
+    if (uId && this.map.has(uId)) {
       throw new Error("User already in queue");
     }
 
     const node = new QueueNode(user);
-    node.estimatedStartTime = user.estimatedStartTime || null;
+    node.estimatedStartTime = user.estimatedStartTime ? new Date(user.estimatedStartTime) : null;
+    node.status = user.status || "waiting";
 
     if (!this.head) {
       this.head = this.tail = node;
-      node.status = "serving";
-      // If just starting, set to now
-      if (!node.estimatedStartTime) node.estimatedStartTime = new Date();
     } else {
       this.tail.next = node;
       node.prev = this.tail;
       this.tail = node;
     }
 
-    if (user.userId) {
-      this.map.set(user.userId.toString(), node);
+    if (uId) {
+      this.map.set(uId, node);
     }
     this.recalculate();
   }
@@ -101,15 +119,15 @@ class QueueDS {
   dequeue() {
     if (!this.head) return;
 
-    this.map.delete(this.head.userId.toString());
+    const uId = (this.head.userId?._id || this.head.userId)?.toString();
+    if (uId) {
+      this.map.delete(uId);
+    }
 
     this.head = this.head.next;
 
     if (this.head) {
       this.head.prev = null;
-      this.head.status = "serving";
-      // New head starts now
-      this.head.estimatedStartTime = new Date();
     } else {
       this.tail = null;
     }
@@ -117,28 +135,31 @@ class QueueDS {
     this.recalculate();
   }
 
-  // ❌ LEAVE
+  //  LEAVE / COMPLETE SPECIFIC USER
   remove(userId) {
-    const node = this.map.get(userId.toString());
-    if (!node) return;
+    if (!userId) return null;
+    const uId = (userId._id || userId).toString();
+    const node = this.map.get(uId);
+    if (!node) return null;
 
-    if (node.prev) node.prev.next = node.next;
-    if (node.next) node.next.prev = node.prev;
-
-    if (node === this.head) {
+    if (node.prev) {
+      node.prev.next = node.next;
+    } else {
       this.head = node.next;
-      if (this.head) {
-        this.head.status = "serving";
-        this.head.estimatedStartTime = new Date();
-      }
     }
-    if (node === this.tail) this.tail = node.prev;
 
-    this.map.delete(userId.toString());
+    if (node.next) {
+      node.next.prev = node.prev;
+    } else {
+      this.tail = node.prev;
+    }
+
+    this.map.delete(uId);
     this.recalculate();
+    return node;
   }
 
-  // 📤 Convert → DB
+  //  Convert → DB
   toArray() {
     const arr = [];
     let current = this.head;
@@ -163,7 +184,7 @@ class QueueDS {
     return arr;
   }
 
-  // 📥 Load from DB
+  //  Load from DB
   static fromArray(users) {
     const queue = new QueueDS();
 

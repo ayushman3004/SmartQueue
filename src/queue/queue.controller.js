@@ -104,13 +104,16 @@ export const leave = asyncHandler(async (req, res) => {
 // POST /api/queue/:businessId/next (owner or admin only)
 export const callNext = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
+  const { staffName, userId } = req.body || req.query || {};
   const io = req.app.get("io");
 
   const queue = await queueService.callNext(
     businessId,
     req.user._id,
     req.user.role,
-    io
+    io,
+    staffName,
+    userId
   );
 
   emitQueueUpdate(req, businessId, queue);

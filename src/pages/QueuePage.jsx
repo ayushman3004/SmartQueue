@@ -47,6 +47,13 @@ export default function QueuePage() {
   const myPosition = myQueueData ? users.indexOf(myQueueData) + 1 : 0
   const isServing = myQueueData?.status === 'serving'
 
+  const staffName = (myQueueData?.assignedStaff?.name || '').toLowerCase().trim()
+  const myStaffQueue = staffName
+    ? users.filter((u) => (u.assignedStaff?.name || '').toLowerCase().trim() === staffName)
+    : users
+  const myStaffPosition = myQueueData ? myStaffQueue.indexOf(myQueueData) + 1 : 0
+  const peopleAheadInStaffQueue = Math.max(0, myStaffPosition - 1)
+
   // Next Live Queue Slot calculation with 15-minute buffer
   const nextSlotInfo = useMemo(() => {
     if (!users || users.length === 0) return { nextSlotTimeStr: null, estWaitMins: 0 }
@@ -374,6 +381,11 @@ export default function QueuePage() {
                           Live Ticket
                         </span>
                         <h2 className="text-2xl font-black text-zinc-950 tracking-tight leading-none mt-1">In Queue</h2>
+                        {myQueueData?.assignedStaff?.name && (
+                          <p className="text-[11px] text-teal-700 font-bold mt-1">
+                            Position #{myStaffPosition} for {myQueueData.assignedStaff.name} ({peopleAheadInStaffQueue} ahead)
+                          </p>
+                        )}
                       </div>
                     </div>
 
