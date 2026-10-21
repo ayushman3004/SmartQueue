@@ -23,6 +23,7 @@ import {
   User,
   Map,
   X,
+  Check,
   CheckCircle,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -160,6 +161,42 @@ export default function CustomerDashboardPage() {
     fetchData()
   }, [fetchData])
 
+  // Join socket rooms for all businesses to ensure live queue reception
+  useEffect(() => {
+    if (!socket || businesses.length === 0) return
+    businesses.forEach((b) => {
+      if (b._id) {
+        socket.emit('join:room', { businessId: b._id })
+      }
+    })
+  }, [socket, businesses])
+
+  // Periodic background fallback sync every 12 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      getAllBusinesses({
+        search: debouncedSearch,
+        category: categoryFilter,
+        location: debouncedLocation,
+        includeAll: false,
+      })
+        .then((res) => {
+          const bizList = res.data?.data?.businesses || []
+          if (bizList.length > 0) {
+            setBusinesses((prev) =>
+              bizList.map((nb) => {
+                const existing = prev.find((ob) => ob._id === nb._id)
+                return existing ? { ...existing, ...nb } : nb
+              })
+            )
+          }
+        })
+        .catch(() => {})
+    }, 12000)
+
+    return () => clearInterval(timer)
+  }, [debouncedSearch, categoryFilter, debouncedLocation])
+
   // Real-time socket listeners
   useEffect(() => {
     if (!socket) return
@@ -172,13 +209,14 @@ export default function CustomerDashboardPage() {
       )
     })
 
-    const handleQueueChange = (updatedQueue) => {
-      if (!updatedQueue) return
-      const targetBizId = updatedQueue.businessId?._id || updatedQueue.businessId
+    const handleQueueChange = (payload) => {
+      if (!payload) return
+      const updatedQueue = payload.queue || payload
+      const targetBizId = (updatedQueue.businessId?._id || updatedQueue.businessId || payload.businessId)?.toString()
 
       setBusinesses((prev) =>
         prev.map((b) => {
-          if (b._id === targetBizId || b._id === updatedQueue._id) {
+          if (b._id.toString() === targetBizId || b._id.toString() === updatedQueue._id?.toString()) {
             const users = updatedQueue.users || []
             let waitMins = 0
             if (users.length > 0) {
@@ -204,12 +242,12 @@ export default function CustomerDashboardPage() {
     }
 
     socket.on('queue:update', handleQueueChange)
-    socket.on('queue:updated', (data) => handleQueueChange(data?.queue))
-    socket.on('queue:joined', (data) => handleQueueChange(data?.queue))
-    socket.on('queue:left', (data) => handleQueueChange(data?.queue))
-    socket.on('service:started', (data) => handleQueueChange(data?.queue))
+    socket.on('queue:updated', handleQueueChange)
+    socket.on('queue:joined', handleQueueChange)
+    socket.on('queue:left', handleQueueChange)
+    socket.on('service:started', handleQueueChange)
     socket.on('service:completed', (data) => {
-      handleQueueChange(data?.queue)
+      handleQueueChange(data)
       handleBookingsChange()
     })
     socket.on('bookings:updated', handleBookingsChange)
@@ -218,10 +256,10 @@ export default function CustomerDashboardPage() {
     return () => {
       unsubStatus?.()
       socket.off('queue:update', handleQueueChange)
-      socket.off('queue:updated')
-      socket.off('queue:joined')
-      socket.off('queue:left')
-      socket.off('service:started')
+      socket.off('queue:updated', handleQueueChange)
+      socket.off('queue:joined', handleQueueChange)
+      socket.off('queue:left', handleQueueChange)
+      socket.off('service:started', handleQueueChange)
       socket.off('service:completed')
       socket.off('bookings:updated', handleBookingsChange)
       socket.off('booking:confirmed', handleBookingsChange)
@@ -349,6 +387,29 @@ export default function CustomerDashboardPage() {
     if (categoryFilter === 'salon') return salonsList
     return businesses
   }, [categoryFilter, clinicsList, salonsList, businesses])
+
+  // Toggle selection of service for a business
+  const handleToggleService = (bizId, service) => {
+    setSelectedServices((prev) => {
+      const curList = prev[bizId] || []
+      const exists = curList.some((s) => s.name === service.name)
+      if (exists) {
+        if (curList.length <= 1) {
+          toast('At least one service must be selected')
+          return prev
+        }
+        return {
+          ...prev,
+          [bizId]: curList.filter((s) => s.name !== service.name),
+        }
+      } else {
+        return {
+          ...prev,
+          [bizId]: [...curList, service],
+        }
+      }
+    })
+  }
 
   // Quick Join Queue Handler
   const handleJoinQueue = async (biz) => {
@@ -483,15 +544,18 @@ export default function CustomerDashboardPage() {
     }
   }
 
-  // Helper to render Business Card matching the exact screenshot design
+  // Helper to render Business Card matching the exact design with real-time data & selection
   const renderBusinessCard = (biz, defaultImg) => {
     const isUserInQueue = myActiveQueues.some((q) => q.business._id === biz._id)
     const userQInfo = myActiveQueues.find((q) => q.business._id === biz._id)
     const activeUsers = biz.activeQueue || []
-    const servingUser = activeUsers.find((u) => u.status === 'serving') || activeUsers[0]
-    const servingTokenNum = servingUser ? String(activeUsers.indexOf(servingUser) + 1).padStart(2, '0') : '01'
-    const waitingCount = Math.max(0, activeUsers.length - (servingUser ? 1 : 0))
-    const estWaitMins = activeUsers.length > 0 ? (biz.estimatedWait || activeUsers.length * 12) : 0
+    
+    // Real-time Queue Status:
+    const servingUser = activeUsers.find((u) => u.status === 'serving')
+    const servingTokenNum = servingUser
+      ? String(activeUsers.indexOf(servingUser) + 1).padStart(2, '0')
+      : null
+    const waitingCount = activeUsers.filter((u) => u.status === 'waiting').length
 
     const photoUrl =
       biz.coverImage ||
@@ -503,7 +567,24 @@ export default function CustomerDashboardPage() {
     const reviewCount = biz.reviewCount || 320
     const servicesList = biz.services?.length
       ? biz.services
-      : [{ name: 'General Consultation' }, { name: 'Health Checkup' }]
+      : [{ name: 'General Consultation', duration: 15, price: 400 }]
+
+    // Active chosen services for this card
+    const curChosenServices =
+      selectedServices[biz._id] && selectedServices[biz._id].length > 0
+        ? selectedServices[biz._id]
+        : servicesList.length > 0
+        ? [servicesList[0]]
+        : []
+
+    // Calculate dynamic estimated wait
+    const chosenDuration = curChosenServices.reduce((sum, s) => sum + (Number(s.duration) || 15), 0)
+    const estWaitMins =
+      waitingCount > 0
+        ? (biz.estimatedWait || waitingCount * (biz.averageServiceTime || 15))
+        : 0
+
+    const totalPrice = curChosenServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0)
 
     return (
       <div
@@ -563,11 +644,13 @@ export default function CustomerDashboardPage() {
             </p>
           </div>
 
-          {/* 3-Column Live Queue Panel */}
+          {/* 3-Column Real-Time Live Queue Panel */}
           <div className="bg-[#F4F8F5] border border-[#E3EDE5] rounded-2xl p-2.5 grid grid-cols-3 text-center divide-x divide-[#E0EBE2]">
             <div className="px-1">
               <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Now Serving</p>
-              <p className="text-sm sm:text-base font-black text-[#114227] mt-0.5">#{servingTokenNum}</p>
+              <p className="text-sm sm:text-base font-black text-[#114227] mt-0.5">
+                {servingTokenNum ? `#${servingTokenNum}` : '--'}
+              </p>
             </div>
             <div className="px-1">
               <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Waiting</p>
@@ -583,18 +666,82 @@ export default function CustomerDashboardPage() {
             </div>
           </div>
 
-          {/* Service Pills */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {servicesList.slice(0, 3).map((s, idx) => (
-              <span
-                key={idx}
-                className="px-2.5 py-1 rounded-xl text-[10px] font-semibold bg-zinc-100/90 text-zinc-700 border border-zinc-200/60 inline-flex items-center gap-1"
-              >
-                <User className="w-2.5 h-2.5 text-zinc-400" />
-                <span className="line-clamp-1">{s.name}</span>
-              </span>
-            ))}
+          {/* Interactive Service Selector Pills */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between text-[11px] text-zinc-500 font-semibold">
+              <span>Choose Services:</span>
+              {totalPrice > 0 && (
+                <span className="text-[#114227] font-bold">
+                  ₹{totalPrice} • {chosenDuration} min
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {servicesList.map((s, idx) => {
+                const isSelected = curChosenServices.some((cs) => cs.name === s.name)
+                return (
+                  <button
+                    key={s._id || idx}
+                    type="button"
+                    onClick={() => handleToggleService(biz._id, s)}
+                    className={`px-2.5 py-1.5 rounded-xl text-[10px] font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#EAF5EC] text-[#114227] border border-[#16A34A] shadow-xs'
+                        : 'bg-zinc-100/90 hover:bg-zinc-200/80 text-zinc-700 border border-zinc-200/70'
+                    }`}
+                  >
+                    {isSelected ? (
+                      <Check className="w-2.5 h-2.5 text-[#114227]" />
+                    ) : (
+                      <User className="w-2.5 h-2.5 text-zinc-400" />
+                    )}
+                    <span className="line-clamp-1">{s.name}</span>
+                    {s.price !== undefined && s.price > 0 && (
+                      <span className={`text-[9px] font-bold ${isSelected ? 'text-[#16A34A]' : 'text-zinc-500'}`}>
+                        ₹{s.price}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
+
+          {/* Specialist / Staff Selector */}
+          {biz.staff && biz.staff.length > 0 && (
+            <div className="pt-2 border-t border-zinc-100/80 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-zinc-500 shrink-0 flex items-center gap-1">
+                <User className="w-3 h-3 text-zinc-400" />
+                <span>Specialist:</span>
+              </span>
+              <div className="relative flex-1 max-w-[200px]">
+                <select
+                  value={
+                    typeof selectedStaff[biz._id] === 'string'
+                      ? selectedStaff[biz._id]
+                      : selectedStaff[biz._id]?.name || 'any'
+                  }
+                  onChange={(e) => {
+                    const chosenName = e.target.value
+                    const found = biz.staff.find((st) => st.name === chosenName)
+                    setSelectedStaff((prev) => ({
+                      ...prev,
+                      [biz._id]: found || 'any',
+                    }))
+                  }}
+                  className="w-full text-xs font-bold text-zinc-800 bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/90 rounded-xl pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer appearance-none truncate"
+                >
+                  <option value="any">Any Available Specialist</option>
+                  {biz.staff.map((st) => (
+                    <option key={st._id || st.name} value={st.name}>
+                      {st.name} {st.role ? `(${st.role})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-zinc-400 absolute right-2.5 top-2.5 pointer-events-none" />
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
@@ -636,7 +783,14 @@ export default function CustomerDashboardPage() {
             )}
 
             <button
-              onClick={() => navigate(`/booking/${biz._id}`)}
+              onClick={() => {
+                navigate(`/booking/${biz._id}`, {
+                  state: {
+                    selectedServices: curChosenServices,
+                    selectedStaff: selectedStaff[biz._id],
+                  },
+                })
+              }}
               disabled={biz.bookingSettings?.enableAppointments === false}
               className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
             >
