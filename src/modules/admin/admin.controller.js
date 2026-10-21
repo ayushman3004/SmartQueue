@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import User from "../auth/auth.model.js";
 import Business from "../business/business.model.js";
 import Booking from "../../booking/booking.model.js";
+import PrelaunchCustomer from "../waitlist/waitlist.model.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
 import ApiError from "../../../utils/ApiError.js";
@@ -14,11 +15,12 @@ import {
 } from "../../../realtime/socket.js";
 
 export const getStats = asyncHandler(async (_req, res) => {
-  const [userCount, businessCount, bookingCount, completedBookings] = await Promise.all([
+  const [userCount, businessCount, bookingCount, completedBookings, prelaunchCount] = await Promise.all([
     User.countDocuments(),
     Business.countDocuments(),
     Booking.countDocuments(),
     Booking.find({ status: "completed" }),
+    PrelaunchCustomer.countDocuments(),
   ]);
 
   const totalSystemRevenue = completedBookings.reduce((sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0), 0);
@@ -36,6 +38,7 @@ export const getStats = asyncHandler(async (_req, res) => {
       revenue: totalSystemRevenue,
       onlineUsers: onlineUserIds.length,
       onlineHubs: onlineHubIds.length,
+      prelaunchCustomers: prelaunchCount,
     },
     recent: { businesses: recentBusinesses, bookings: recentBookings },
   }, "Admin stats retrieved successfully"));
@@ -292,5 +295,47 @@ export const getAllUsers = asyncHandler(async (req, res) => {
     onlineCount: enriched.filter((u) => u.isOnline).length,
     totalCount: enriched.length,
   }));
+});
+
+export const getPrelaunchCustomers = asyncHandler(async (req, res) => {
+  const { search, status } = req.query;
+  const filter = {};
+
+  if (search) {
+    const regex = { $regex: search, $options: "i" };
+    filter.$or = [{ email: regex }, { ip: regex }, { source: regex }];
+  }
+
+  if (status === "confirmed") {
+    filter.status = "confirmed";
+  } else if (status === "email_sent") {
+    filter.confirmationEmailSent = true;
+  } else if (status === "email_pending") {
+    filter.confirmationEmailSent = false;
+  }
+
+  const customers = await PrelaunchCustomer.find(filter).sort({ createdAt: -1 });
+  const totalCount = await PrelaunchCustomer.countDocuments();
+  const emailSentCount = await PrelaunchCustomer.countDocuments({ confirmationEmailSent: true });
+
+  res.json(
+    new ApiResponse(
+      200,
+      {
+        customers,
+        totalCount,
+        emailSentCount,
+      },
+      "Prelaunch customers retrieved successfully"
+    )
+  );
+});
+
+export const deletePrelaunchCustomer = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const customer = await PrelaunchCustomer.findByIdAndDelete(id);
+  if (!customer) throw new ApiError(404, "Prelaunch customer record not found");
+
+  res.json(new ApiResponse(200, null, "Prelaunch customer record removed"));
 });
 

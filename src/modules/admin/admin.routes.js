@@ -14,5 +14,7 @@ router.get("/business/:id", adminController.getBusinessDetail);
 router.patch("/business/:id/moderate", adminController.moderateBusiness);
 router.patch("/business/:id/toggle", adminController.toggleBusinessStatus);
 router.delete("/business/:id", adminController.deleteBusiness);
+router.get("/prelaunch-customers", adminController.getPrelaunchCustomers);
+router.delete("/prelaunch-customers/:id", adminController.deletePrelaunchCustomer);
 
 export default router;
