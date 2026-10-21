@@ -116,10 +116,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 bg-[#fafaf9]/85 backdrop-blur-md border-b border-zinc-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 no-underline group" aria-label="serveQ Homepage">
-            <div className="w-9 h-9 rounded-xl bg-white border border-zinc-200/80 p-1 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <img src="/logo.png?v=2" alt="serveQ Logo" className="w-full h-full object-contain" width="36" height="36" />
-            </div>
-            <span className="text-lg font-black tracking-tight text-zinc-950">serve<span className="text-[#FF5537]">Q</span></span>
+            <img src="/serveq-logo.png" alt="serveQ Logo" className="h-7.5 w-auto object-contain transition-transform group-hover:scale-105" />
           </Link>
 
           <nav id="tour-header-nav" className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-600">
@@ -515,8 +512,7 @@ export default function LandingPage() {
       <footer className="border-t border-zinc-200/80 py-10 bg-white text-xs text-zinc-500">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png?v=2" alt="serveQ Logo" className="w-5 h-5 object-contain" width="20" height="20" />
-            <span className="font-bold text-zinc-900">serve<span className="text-[#FF5537]">Q</span></span>
+            <img src="/serveq-logo.png" alt="serveQ Logo" className="h-5 w-auto object-contain" />
             <span>• Smart Virtual Queuing</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">

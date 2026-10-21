@@ -203,7 +203,7 @@ export const sendEmailVerificationOtp = async ({ email, userId, userName }) => {
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 32px 16px;">
         <div style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
           <div style="font-size: 22px; font-weight: 900; color: #0f172a; margin-bottom: 8px;">
-            serve<span style="color: #FF5537;">Q</span> Verification
+            serve<span style="border-bottom: 3.5px solid #89AB33; padding-bottom: 2px;">q</span> Verification
           </div>
           <p style="font-size: 14px; color: #475569; margin-bottom: 20px;">
             Hi ${recipientName}, use this one-time passcode to verify your email terminal on serveQ:
@@ -360,7 +360,7 @@ export const sendPhoneVerificationOtp = async ({ phone, userId }) => {
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 32px 16px;">
       <div style="max-width: 480px; margin: 0 auto; background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
         <div style="font-size: 22px; font-weight: 900; color: #0f172a; margin-bottom: 8px;">
-          serve<span style="color: #FF5537;">Q</span> Security
+          serve<span style="border-bottom: 3.5px solid #89AB33; padding-bottom: 2px;">q</span> Security
         </div>
         <h3 style="font-size: 16px; font-weight: 800; color: #1e293b; margin-top: 0; margin-bottom: 12px;">
           Phone Number Verification

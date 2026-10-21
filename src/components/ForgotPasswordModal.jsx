@@ -163,18 +163,12 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-2.5 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-orange-50 border border-orange-200/70 flex items-center justify-center p-1.5 shadow-xs">
-            <img src="/logo.png?v=2" alt="serveQ" className="w-full h-full object-contain" />
-          </div>
-          <div>
-            <h3 className="text-lg font-black tracking-tight text-zinc-950 leading-none">
-              Reset Password
-            </h3>
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-              serve<span className="text-[#FF5537]">Q</span> Security
-            </span>
-          </div>
+        <div className="flex items-center gap-3 mb-6">
+          <img src="/serveq-logo.png" alt="serveQ" className="h-7 w-auto object-contain" />
+          <div className="h-4 w-px bg-zinc-200" />
+          <h3 className="text-sm font-bold tracking-tight text-zinc-900 leading-none">
+            Reset Password
+          </h3>
         </div>
 
         <AnimatePresence mode="wait">

@@ -258,22 +258,10 @@ export default function BusinessPortalPage() {
       <header className="max-w-5xl mx-auto w-full mb-6">
         <div className="flex items-center justify-between py-2">
           <Link to="/" className="flex items-center gap-2.5 no-underline group">
-            <div className="w-9 h-9 rounded-2xl bg-white border border-zinc-200/80 p-0.5 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-              <img src="/logo.png?v=2" alt="serveQ Logo" className="w-full h-full object-contain" />
-            </div>
-            <div className="flex flex-col text-left">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-black tracking-tight text-zinc-950 leading-none">
-                  serve<span className="text-[#FF5537]">Q</span>
-                </span>
-                <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-100 text-[#FF5537] border border-orange-200">
-                  Business
-                </span>
-              </div>
-              <span className="text-[10px] font-bold text-zinc-500">
-                Hub Owner Portal
-              </span>
-            </div>
+            <img src="/serveq-logo.png" alt="serveQ Logo" className="h-7.5 w-auto object-contain transition-transform group-hover:scale-105" />
+            <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB]">
+              Business Hub
+            </span>
           </Link>
 
           <div className="flex items-center gap-3">

@@ -92,11 +92,11 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
                 <tr>
                   <td style="vertical-align: middle;">
                     <div style="font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #0f172a;">
-                      serve<span style="color: #FF5537;">Q</span>
+                      serve<span style="border-bottom: 3.5px solid #89AB33; padding-bottom: 2px;">q</span>
                     </div>
                   </td>
                   <td style="vertical-align: middle; padding-left: 10px;">
-                    <span style="display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.25em; text-transform: uppercase; color: #FF5537; background-color: #fff1ef; padding: 4px 8px; border-radius: 6px;">Security</span>
+                    <span style="display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.25em; text-transform: uppercase; color: #114227; background-color: #EAF7EE; padding: 4px 8px; border-radius: 6px;">Security</span>
                   </td>
                 </tr>
               </table>
@@ -308,7 +308,7 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
                 <tr>
                   <td style="vertical-align: middle;">
                     <div style="font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: #17131D;">
-                      serve<span style="color: #8E6BDB;">Q</span>
+                      serve<span style="border-bottom: 3.5px solid #89AB33; padding-bottom: 2px;">q</span>
                     </div>
                   </td>
                   <td style="vertical-align: middle; text-align: right;">

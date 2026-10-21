@@ -991,10 +991,8 @@ export default function CustomerDashboardPage() {
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2 group text-decoration-none">
-            <span className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950 font-sans flex items-center">
-              serve<span className="text-emerald-600">q</span>
-            </span>
+          <Link to="/" className="flex items-center group text-decoration-none">
+            <img src="/serveq-logo.png" alt="serveQ" className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105" />
           </Link>
         </div>
 
@@ -1153,7 +1151,6 @@ export default function CustomerDashboardPage() {
                   (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
                 ).length,
               },
-              { id: 'reviews', label: 'Reviews', icon: Star, count: null },
               { id: 'history', label: 'History', icon: Clock, count: null },
             ].map((item) => {
               const isActive = activeNavTab === item.id
@@ -1187,7 +1184,7 @@ export default function CustomerDashboardPage() {
                       } else {
                         navigate('/booking')
                       }
-                    } else if (item.id === 'history' || item.id === 'reviews') {
+                    } else if (item.id === 'history') {
                       navigate('/history')
                     }
                   }}

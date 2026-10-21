@@ -337,10 +337,8 @@ export default function QueuePage() {
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-3">
-          <Link to="/customers" className="flex items-center gap-2 group text-decoration-none">
-            <span className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950 font-sans flex items-center">
-              serve<span className="text-[#16A34A]">q</span>
-            </span>
+          <Link to="/customers" className="flex items-center group text-decoration-none">
+            <img src="/serveq-logo.png" alt="serveQ" className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105" />
           </Link>
         </div>
 
@@ -491,7 +489,6 @@ export default function QueuePage() {
                 ).length,
                 route: '/booking',
               },
-              { id: 'reviews', label: 'Reviews', icon: Star, route: '/history' },
               { id: 'history', label: 'History', icon: Clock, route: '/history' },
             ].map((item) => {
               const isActive = item.id === 'my-queues'

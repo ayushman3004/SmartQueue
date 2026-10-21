@@ -132,10 +132,7 @@ export default function LoginPage() {
 
             {/* Top Logo */}
             <Link to="/" className="flex items-center gap-2.5 relative z-10 no-underline group" aria-label="serveQ Homepage">
-              <div className="w-8 h-8 rounded-xl bg-white border border-zinc-200/80 p-0.5 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-                <img src="/logo.png?v=2" alt="serveQ Logo" className="w-full h-full object-contain" />
-              </div>
-              <span className="text-base font-black tracking-tight text-zinc-900 drop-shadow-xs">serve<span className="text-[#FF5537]">Q</span></span>
+              <img src="/serveq-logo.png" alt="serveQ Logo" className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105" />
             </Link>
 
             {/* Central Animated Greeting Title */}
