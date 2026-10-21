@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Clock } from 'lucide-react'
+import { Clock, User, Users, CheckCircle, Sparkles, Activity } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getQueue, leaveQueue, cancelDelay } from '../api/queue.api'
@@ -79,6 +79,120 @@ export default function QueuePage() {
       estWaitMins: Math.max(1, Math.round((nextSlotMs - Date.now()) / 60000)),
     }
   }, [users, business?.averageServiceTime])
+
+  // Group live queues by staff member
+  const staffGroups = useMemo(() => {
+    const rawStaff = Array.isArray(business?.staff) ? [...business.staff] : []
+
+    // Collect any staff assigned to active users that aren't in rawStaff
+    users.forEach((u) => {
+      const sName = u.assignedStaff?.name
+      if (
+        sName &&
+        !rawStaff.some((st) => st.name?.toLowerCase().trim() === sName.toLowerCase().trim())
+      ) {
+        rawStaff.push({
+          name: sName,
+          role: u.assignedStaff.role || (business?.category === 'clinic' ? 'Doctor / Specialist' : 'Specialist'),
+          specialties: u.assignedStaff.specialties || '',
+        })
+      }
+    })
+
+    // If no staff found at all, create a single default on-duty staff
+    if (rawStaff.length === 0) {
+      rawStaff.push({
+        name: business?.category === 'clinic' ? 'Dr. On-Duty (General Physician)' : 'On-Duty Specialist',
+        role: business?.category === 'clinic' ? 'General Physician' : 'Barber / Stylist',
+        specialties: '',
+      })
+    }
+
+    const BUFFER_MINS = 15
+
+    const groups = rawStaff.map((st) => {
+      const staffKey = (st.name || '').toLowerCase().trim()
+      const staffUsers = users.filter((u) => {
+        const uStaff = (u.assignedStaff?.name || '').toLowerCase().trim()
+        return uStaff === staffKey || (!uStaff && rawStaff.length === 1)
+      })
+
+      const servingUser = staffUsers.find((u) => u.status === 'serving')
+      const waitingUsers = staffUsers.filter((u) => u.status === 'waiting')
+      const isServing = Boolean(servingUser)
+      const isMyStaff = Boolean(
+        myQueueData && (myQueueData.assignedStaff?.name || '').toLowerCase().trim() === staffKey
+      )
+
+      let nextSlotStr = 'Immediate'
+      let waitMins = 0
+
+      if (isServing && servingUser) {
+        let headStartMs = servingUser.estimatedStartTime
+          ? new Date(servingUser.estimatedStartTime).getTime()
+          : servingUser.joinedAt
+          ? new Date(servingUser.joinedAt).getTime()
+          : Date.now()
+
+        let runningFinishMs =
+          headStartMs + (Number(servingUser.serviceTime) || business?.averageServiceTime || 15) * 60000
+
+        for (let i = 0; i < waitingUsers.length; i++) {
+          const u = waitingUsers[i]
+          const uStartMs = Math.max(Date.now(), runningFinishMs + BUFFER_MINS * 60000)
+          const uDurationMs = (Number(u.serviceTime) || business?.averageServiceTime || 15) * 60000
+          runningFinishMs = uStartMs + uDurationMs
+        }
+
+        const effectiveFinishMs = Math.max(Date.now(), runningFinishMs)
+        const nextSlotMs = effectiveFinishMs + BUFFER_MINS * 60000
+        waitMins = Math.max(1, Math.round((nextSlotMs - Date.now()) / 60000))
+        nextSlotStr = new Date(nextSlotMs).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      }
+
+      return {
+        staff: st,
+        staffKey,
+        staffUsers,
+        servingUser,
+        waitingUsers,
+        totalCount: staffUsers.length,
+        isServing,
+        isMyStaff,
+        nextSlotStr,
+        waitMins,
+      }
+    })
+
+    // Also include an unassigned group if there are tickets without staff and multiple staff exist
+    const assignedStaffKeys = new Set(rawStaff.map((s) => (s.name || '').toLowerCase().trim()))
+    const unassignedUsers = users.filter(
+      (u) => !u.assignedStaff?.name || !assignedStaffKeys.has(u.assignedStaff.name.toLowerCase().trim())
+    )
+
+    if (unassignedUsers.length > 0 && rawStaff.length > 1) {
+      groups.push({
+        staff: {
+          name: 'General Queue Desk',
+          role: 'Unassigned Queue',
+        },
+        staffKey: '__unassigned__',
+        staffUsers: unassignedUsers,
+        servingUser: unassignedUsers.find((u) => u.status === 'serving'),
+        waitingUsers: unassignedUsers.filter((u) => u.status === 'waiting'),
+        totalCount: unassignedUsers.length,
+        isServing: unassignedUsers.some((u) => u.status === 'serving'),
+        isMyStaff: false,
+        nextSlotStr: 'Next Available',
+        waitMins: 15,
+      })
+    }
+
+    return groups
+  }, [business?.staff, business?.category, business?.averageServiceTime, users, myQueueData])
 
   // FETCH DATA
   const fetchData = useCallback(async () => {
@@ -498,29 +612,118 @@ export default function QueuePage() {
                 </div>
               </div>
 
-              {/* Queue List */}
-              <div className="space-y-2.5">
-                {users.length === 0 ? (
-                  <div className="text-center py-16 bg-zinc-50/60 rounded-2xl border border-dashed border-zinc-200">
-                    <p className="text-xs font-black text-zinc-700 uppercase tracking-wider">Queue Is Currently Clear</p>
-                    <p className="text-[11px] text-zinc-400 mt-1">Immediate service available upon check-in.</p>
-                  </div>
-                ) : (
-                  <AnimatePresence>
-                    {users.map((u, i) => (
-                      <QueueCard
-                        key={(u.userId?._id || u.userId)?.toString() || i}
-                        user={u}
-                        position={i + 1}
-                        isMe={
-                          (u.userId?._id || u.userId)?.toString() === user?._id?.toString()
-                        }
-                        totalUsers={users.length}
-                      />
-                    ))}
-                  </AnimatePresence>
-                )}
-              </div>
+              {/* Queue Columns — Flex Column-wise for Staff */}
+              {users.length === 0 ? (
+                <div className="text-center py-16 bg-zinc-50/60 rounded-2xl border border-dashed border-zinc-200">
+                  <p className="text-xs font-black text-zinc-700 uppercase tracking-wider">Queue Is Currently Clear</p>
+                  <p className="text-[11px] text-zinc-400 mt-1">Immediate service available upon check-in.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col md:flex-row gap-4 items-stretch overflow-x-auto pb-3">
+                  {staffGroups.map((group) => {
+                    const st = group.staff
+                    const staffUsers = group.staffUsers
+
+                    return (
+                      <div
+                        key={group.staffKey}
+                        className={`flex-1 min-w-[270px] sm:min-w-[300px] rounded-2xl border transition-all flex flex-col justify-between overflow-hidden ${
+                          group.isMyStaff
+                            ? 'bg-teal-50/20 border-teal-300 shadow-sm ring-1 ring-teal-500/20'
+                            : 'bg-zinc-50/60 border-zinc-200/90'
+                        }`}
+                      >
+                        {/* Staff Header */}
+                        <div className="px-3.5 py-3 bg-white border-b border-zinc-100 flex flex-col gap-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border ${
+                                  group.isMyStaff
+                                    ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                                    : 'bg-zinc-100 text-zinc-700 border-zinc-200'
+                                }`}
+                              >
+                                <User className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h3 className="font-black text-sm text-zinc-950 tracking-tight truncate">
+                                    {st.name}
+                                  </h3>
+                                  {group.isMyStaff && (
+                                    <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
+                                      Your Queue
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10.5px] text-zinc-500 font-medium truncate">
+                                  {st.role || (business?.category === 'clinic' ? 'Doctor / Specialist' : 'Specialist')}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-100/70">
+                            {/* Staff Live Status Badge */}
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 border shadow-2xs ${
+                                group.isServing
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : 'bg-zinc-100 text-zinc-600 border-zinc-200'
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  group.isServing ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'
+                                }`}
+                              />
+                              <span>
+                                {group.isServing ? 'Serving Now' : 'Queue Clear'}
+                              </span>
+                            </span>
+
+                            <span className="px-2 py-0.5 rounded-lg bg-white border border-zinc-200 text-[10px] font-bold text-zinc-700 shadow-2xs">
+                              {staffUsers.length} in line
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Tickets Queue Under This Staff Member */}
+                        <div className="p-3 space-y-2 flex-1 flex flex-col justify-start">
+                          {staffUsers.length === 0 ? (
+                            <div className="py-8 px-3 bg-white/60 rounded-xl border border-dashed border-zinc-200 text-center flex-1 flex flex-col items-center justify-center">
+                              <p className="text-[11px] font-bold text-zinc-500">
+                                No patrons waiting for {st.name}
+                              </p>
+                              <p className="text-[10px] text-zinc-400 mt-0.5">
+                                Next check-in starts immediately.
+                              </p>
+                            </div>
+                          ) : (
+                            <AnimatePresence>
+                              {staffUsers.map((u) => {
+                                const overallPosition = users.indexOf(u) + 1
+                                const isMe = (u.userId?._id || u.userId)?.toString() === user?._id?.toString()
+
+                                return (
+                                  <QueueCard
+                                    key={(u.userId?._id || u.userId)?.toString() || overallPosition}
+                                    user={u}
+                                    position={overallPosition}
+                                    isMe={isMe}
+                                    totalUsers={users.length}
+                                  />
+                                )
+                              })}
+                            </AnimatePresence>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
