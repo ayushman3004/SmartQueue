@@ -95,6 +95,8 @@ export default function App() {
     }
   }, [])
 
+  const isCustomerDashboard = location.pathname === '/customers'
+
   return (
     <div className="page-wrapper">
       <Toaster 
@@ -110,14 +112,14 @@ export default function App() {
           },
         }}
       />
-      {user && !isOnboarding && <Navbar />}
-      {user && !isOnboarding && (
+      {user && !isOnboarding && !isCustomerDashboard && <Navbar />}
+      {user && !isOnboarding && !isCustomerDashboard && (
         <>
           <BackButton />
-          <AIDesistant />
         </>
       )}
-      <main className={user && !isOnboarding ? "main-content" : ""}>
+      {user && !isOnboarding && <AIDesistant />}
+      <main className={user && !isOnboarding && !isCustomerDashboard ? "main-content" : ""}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
