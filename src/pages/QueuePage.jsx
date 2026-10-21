@@ -1,733 +1,983 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Clock, User, Users, CheckCircle, Sparkles, Activity } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import {
+  MapPin,
+  Search,
+  Wallet,
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  LayoutDashboard,
+  Stethoscope,
+  Scissors,
+  Ticket,
+  Calendar,
+  Star,
+  Clock,
+  HelpCircle,
+  LogOut,
+  User,
+  Users,
+  Check,
+  CheckCircle,
+  Eye,
+  Sparkles,
+  X,
+  Gift,
+  ArrowRight,
+  RefreshCw,
+  Activity,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getQueue, leaveQueue, cancelDelay } from '../api/queue.api'
-import { getBusiness } from '../api/business.api'
-import { submitReview } from '../api/review.api'
-import QueueCard from '../components/QueueCard'
+import { getQueue, leaveQueue } from '../api/queue.api'
+import { getAllBusinesses, getBusiness } from '../api/business.api'
+import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
+import { useDebounce } from '../hooks/useDebounce'
+
+const POPULAR_LOCATIONS = [
+  'Kolkata, West Bengal',
+  'Bardhaman, West Bengal',
+  'Salt Lake, Kolkata',
+  'New Town, Kolkata',
+  'Park Street, Kolkata',
+]
+
+const DEFAULT_SALON_IMAGE = '/hubs/salon.png'
+const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 
 export default function QueuePage() {
-  const { businessId } = useParams()
-  const { user } = useAuth()
-  const { socket, joinRoom, joinUser, leaveRoom, onQueueUpdate, onQueueDelay, onBusinessStatus, connected } = useSocket()
+  const { businessId: paramBizId } = useParams()
+  const { user, logOut } = useAuth()
+  const { socket, joinRoom } = useSocket()
   const navigate = useNavigate()
 
-  const [business, setBusiness] = useState(null)
-  const [queue, setQueue] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
-  const [timer, setTimer] = useState('')
-  const [delayInfo, setDelayInfo] = useState(null)
-  const [completedBooking, setCompletedBooking] = useState(null)
-  const [reviewRating, setReviewRating] = useState(5)
-  const [reviewComment, setReviewComment] = useState('')
-  const [reviewSubmitted, setReviewSubmitted] = useState(false)
-  const [submittingReview, setSubmittingReview] = useState(false)
-
   useSeo({
-    title: business?.name ? `${business.name} — Live Queue Pass` : 'Live Queue Pass',
-    description: 'Track your live queue position, estimated wait time, and counter status in real time.',
+    title: 'Live Queue Pass & Status | serveQ',
+    description: 'Track your live queue position, estimated finish time, and specialist turn in real time.',
     robots: 'noindex, nofollow',
   })
 
-  const users = queue?.users || []
+  // Data states
+  const [businesses, setBusinesses] = useState([])
+  const [myBookings, setMyBookings] = useState([])
+  const [selectedBizId, setSelectedBizId] = useState(paramBizId || null)
+  const [currentQueue, setCurrentQueue] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [leavingQueue, setLeavingQueue] = useState(false)
 
-  // SAFE myQueueData
-  const myQueueData = user?._id
-    ? users.find(
-        u => (u.userId?._id || u.userId)?.toString() === user._id.toString()
-      )
-    : null
+  // Header & Navigation states
+  const [selectedCity, setSelectedCity] = useState(POPULAR_LOCATIONS[0])
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
+  const [showUserMenu, setShowUserMenu] = useState(false)
 
-  const myPosition = myQueueData ? users.indexOf(myQueueData) + 1 : 0
-  const isServing = myQueueData?.status === 'serving'
+  // Live Queue Modal / Full View
+  const [showLiveStreamModal, setShowLiveStreamModal] = useState(false)
 
-  const staffName = (myQueueData?.assignedStaff?.name || '').toLowerCase().trim()
-  const myStaffQueue = staffName
-    ? users.filter((u) => (u.assignedStaff?.name || '').toLowerCase().trim() === staffName)
-    : users
-  const myStaffPosition = myQueueData ? myStaffQueue.indexOf(myQueueData) + 1 : 0
-  const peopleAheadInStaffQueue = Math.max(0, myStaffPosition - 1)
-
-  // Next Live Queue Slot calculation with 15-minute buffer
-  const nextSlotInfo = useMemo(() => {
-    if (!users || users.length === 0) return { nextSlotTimeStr: null, estWaitMins: 0 }
-    const BUFFER_MINS = 15
-    const serving = users.find((u) => u.status === 'serving') || users[0]
-    let startMs = serving.estimatedStartTime
-      ? new Date(serving.estimatedStartTime).getTime()
-      : serving.joinedAt
-      ? new Date(serving.joinedAt).getTime()
-      : Date.now()
-    let finishMs = startMs + (Number(serving.serviceTime) || business?.averageServiceTime || 15) * 60000
-
-    for (let i = 1; i < users.length; i++) {
-      const u = users[i]
-      const uStartMs = Math.max(Date.now(), finishMs + BUFFER_MINS * 60000)
-      finishMs = uStartMs + (Number(u.serviceTime) || business?.averageServiceTime || 15) * 60000
-    }
-
-    const nextSlotMs = Math.max(Date.now(), finishMs) + BUFFER_MINS * 60000
-    const nextSlotDate = new Date(nextSlotMs)
-    return {
-      nextSlotTimeStr: nextSlotDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      estWaitMins: Math.max(1, Math.round((nextSlotMs - Date.now()) / 60000)),
-    }
-  }, [users, business?.averageServiceTime])
-
-  // Group live queues by staff member
-  const staffGroups = useMemo(() => {
-    const rawStaff = Array.isArray(business?.staff) ? [...business.staff] : []
-
-    // Collect any staff assigned to active users that aren't in rawStaff
-    users.forEach((u) => {
-      const sName = u.assignedStaff?.name
-      if (
-        sName &&
-        !rawStaff.some((st) => st.name?.toLowerCase().trim() === sName.toLowerCase().trim())
-      ) {
-        rawStaff.push({
-          name: sName,
-          role: u.assignedStaff.role || (business?.category === 'clinic' ? 'Doctor / Specialist' : 'Specialist'),
-          specialties: u.assignedStaff.specialties || '',
-        })
-      }
-    })
-
-    // If no staff found at all, create a single default on-duty staff
-    if (rawStaff.length === 0) {
-      rawStaff.push({
-        name: business?.category === 'clinic' ? 'Dr. On-Duty (General Physician)' : 'On-Duty Specialist',
-        role: business?.category === 'clinic' ? 'General Physician' : 'Barber / Stylist',
-        specialties: '',
-      })
-    }
-
-    const BUFFER_MINS = 15
-
-    const groups = rawStaff.map((st) => {
-      const staffKey = (st.name || '').toLowerCase().trim()
-      const staffUsers = users.filter((u) => {
-        const uStaff = (u.assignedStaff?.name || '').toLowerCase().trim()
-        return uStaff === staffKey || (!uStaff && rawStaff.length === 1)
-      })
-
-      const servingUser = staffUsers.find((u) => u.status === 'serving')
-      const waitingUsers = staffUsers.filter((u) => u.status === 'waiting')
-      const isServing = Boolean(servingUser)
-      const isMyStaff = Boolean(
-        myQueueData && (myQueueData.assignedStaff?.name || '').toLowerCase().trim() === staffKey
-      )
-
-      let nextSlotStr = 'Immediate'
-      let waitMins = 0
-
-      if (isServing && servingUser) {
-        let headStartMs = servingUser.estimatedStartTime
-          ? new Date(servingUser.estimatedStartTime).getTime()
-          : servingUser.joinedAt
-          ? new Date(servingUser.joinedAt).getTime()
-          : Date.now()
-
-        let runningFinishMs =
-          headStartMs + (Number(servingUser.serviceTime) || business?.averageServiceTime || 15) * 60000
-
-        for (let i = 0; i < waitingUsers.length; i++) {
-          const u = waitingUsers[i]
-          const uStartMs = Math.max(Date.now(), runningFinishMs + BUFFER_MINS * 60000)
-          const uDurationMs = (Number(u.serviceTime) || business?.averageServiceTime || 15) * 60000
-          runningFinishMs = uStartMs + uDurationMs
-        }
-
-        const effectiveFinishMs = Math.max(Date.now(), runningFinishMs)
-        const nextSlotMs = effectiveFinishMs + BUFFER_MINS * 60000
-        waitMins = Math.max(1, Math.round((nextSlotMs - Date.now()) / 60000))
-        nextSlotStr = new Date(nextSlotMs).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      }
-
-      return {
-        staff: st,
-        staffKey,
-        staffUsers,
-        servingUser,
-        waitingUsers,
-        totalCount: staffUsers.length,
-        isServing,
-        isMyStaff,
-        nextSlotStr,
-        waitMins,
-      }
-    })
-
-    // Also include an unassigned group if there are tickets without staff and multiple staff exist
-    const assignedStaffKeys = new Set(rawStaff.map((s) => (s.name || '').toLowerCase().trim()))
-    const unassignedUsers = users.filter(
-      (u) => !u.assignedStaff?.name || !assignedStaffKeys.has(u.assignedStaff.name.toLowerCase().trim())
-    )
-
-    if (unassignedUsers.length > 0 && rawStaff.length > 1) {
-      groups.push({
-        staff: {
-          name: 'General Queue Desk',
-          role: 'Unassigned Queue',
-        },
-        staffKey: '__unassigned__',
-        staffUsers: unassignedUsers,
-        servingUser: unassignedUsers.find((u) => u.status === 'serving'),
-        waitingUsers: unassignedUsers.filter((u) => u.status === 'waiting'),
-        totalCount: unassignedUsers.length,
-        isServing: unassignedUsers.some((u) => u.status === 'serving'),
-        isMyStaff: false,
-        nextSlotStr: 'Next Available',
-        waitMins: 15,
-      })
-    }
-
-    return groups
-  }, [business?.staff, business?.category, business?.averageServiceTime, users, myQueueData])
-
-  // FETCH DATA
+  // Fetch initial data
   const fetchData = useCallback(async () => {
     try {
-      const [bRes, qRes] = await Promise.all([
-        getBusiness(businessId),
-        getQueue(businessId).catch(() => ({
-          data: { data: { queue: { users: [] } } }
-        })),
+      setLoading(true)
+      const [allRes, myBkRes] = await Promise.all([
+        getAllBusinesses({ includeAll: false }),
+        getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
       ])
 
-      setBusiness(bRes?.data?.data?.business || null)
-      setQueue(qRes?.data?.data?.queue || { users: [] })
-    } catch {
-      toast.error('Failed to load queue')
+      const bizList = allRes.data?.data?.businesses || []
+      setBusinesses(bizList)
+      setMyBookings(myBkRes.data?.data?.bookings || [])
+    } catch (err) {
+      console.error('Failed to load queue data:', err)
+      toast.error('Unable to fetch live queues')
     } finally {
       setLoading(false)
     }
-  }, [businessId])
+  }, [])
 
-  // INITIAL DATA FETCH (runs regardless of socket state)
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // SOCKET SETUP (re-fetches when socket connects for freshest data)
+  // Join socket rooms for live queue broadcasts
   useEffect(() => {
-    if (connected) fetchData()
-
-    joinRoom(businessId)
-    if (user?._id) joinUser(user._id)
-
-    const unsubUpdate = onQueueUpdate((updatedQueue) => {
-      setQueue(updatedQueue || { users: [] })
+    if (!socket || businesses.length === 0) return
+    businesses.forEach((b) => {
+      if (b._id) {
+        socket.emit('join:room', { businessId: b._id })
+      }
     })
 
-    const unsubDelay = onQueueDelay((delayData) => {
-      setDelayInfo(delayData)
-      toast.error(`Queue delayed by ${delayData?.delay || 0} mins`)
-    })
+    const handleQueueUpdate = (payload) => {
+      if (!payload) return
+      const updatedQ = payload.queue || payload
+      const targetBizId = (updatedQ.businessId?._id || updatedQ.businessId || payload.businessId)?.toString()
 
-    const unsubStatus = onBusinessStatus((statusData) => {
-      setBusiness(prev =>
-        prev ? { ...prev, isOpen: statusData?.isOpen } : null
+      setBusinesses((prev) =>
+        prev.map((b) => {
+          if (b._id.toString() === targetBizId || b._id.toString() === updatedQ._id?.toString()) {
+            return {
+              ...b,
+              activeQueue: updatedQ.users || [],
+              queueLength: (updatedQ.users || []).length,
+            }
+          }
+          return b
+        })
       )
-    })
 
-    const handleServiceCompleted = (data) => {
-      const uId = data.userId?._id || data.userId;
-      if (uId?.toString() === user?._id?.toString()) {
-        setCompletedBooking(data.booking || { businessId, serviceType: 'Completed Service' })
-        toast.success('Your service is completed! Please rate your experience.')
+      if (selectedBizId && (selectedBizId.toString() === targetBizId || selectedBizId.toString() === updatedQ._id?.toString())) {
+        setCurrentQueue(updatedQ)
       }
     }
-    socket?.on('service:completed', handleServiceCompleted)
+
+    socket.on('queue:update', handleQueueUpdate)
+    socket.on('queue:updated', handleQueueUpdate)
+    socket.on('queue:joined', handleQueueUpdate)
+    socket.on('queue:left', handleQueueUpdate)
+    socket.on('service:started', handleQueueUpdate)
+    socket.on('service:completed', handleQueueUpdate)
 
     return () => {
-      leaveRoom(businessId)
-      unsubUpdate?.()
-      unsubDelay?.()
-      unsubStatus?.()
-      socket?.off('service:completed', handleServiceCompleted)
+      socket.off('queue:update', handleQueueUpdate)
+      socket.off('queue:updated', handleQueueUpdate)
+      socket.off('queue:joined', handleQueueUpdate)
+      socket.off('queue:left', handleQueueUpdate)
+      socket.off('service:started', handleQueueUpdate)
+      socket.off('service:completed', handleQueueUpdate)
     }
-  }, [businessId, fetchData, connected, user])
+  }, [socket, businesses, selectedBizId])
 
-  // TIMER FIX
-  useEffect(() => {
-    if (!myQueueData?.estimatedStartTime || myQueueData?.status === 'serving') {
-      setTimer('')
-      return
-    }
+  // Identify businesses that ACTUALLY have active queue participants
+  const businessesWithActiveQueue = useMemo(() => {
+    return businesses.filter((b) => {
+      const q = b.activeQueue || []
+      return q.length > 0
+    })
+  }, [businesses])
 
-    const interval = setInterval(() => {
-      const start = new Date(myQueueData.estimatedStartTime)
-      const now = new Date()
-      const diff = start - now
+  // Active queues where current logged-in user is currently in line
+  const myActiveQueues = useMemo(() => {
+    if (!user?._id) return []
+    const myIdStr = user._id.toString()
+    const active = []
 
-      if (diff <= 0) {
-        setTimer('Ready now!')
-        clearInterval(interval)
-      } else {
-        const mins = Math.floor(diff / 60000)
-        const secs = Math.floor((diff % 60000) / 1000)
-        setTimer(`${mins}m ${secs}s`)
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [myQueueData])
-
-  // LEAVE QUEUE
-  const handleLeave = async () => {
-    if (!window.confirm('Leave queue?')) return
-
-    setActionLoading(true)
-    try {
-      const res = await leaveQueue(businessId)
-      setQueue(res?.data?.data?.queue || { users: [] })
-      toast.success('Left queue')
-    } catch {
-      toast.error('Failed to leave')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  // CANCEL DELAY WITH FULL REFUND
-  const handleCancelDelay = async () => {
-    if (!window.confirm('Cancel your queue booking and request an automated refund due to service delay?')) return
-
-    setActionLoading(true)
-    try {
-      await cancelDelay(businessId)
-      setDelayInfo(null)
-      toast.success('Queue booking cancelled and refunded successfully.')
-      fetchData()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to cancel delay')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  // SUBMIT REVIEW
-  const handleQueueReviewSubmit = async (e) => {
-    e.preventDefault()
-    setSubmittingReview(true)
-    try {
-      await submitReview({
-        bookingId: completedBooking?._id || undefined,
-        businessId,
-        rating: reviewRating,
-        comment: reviewComment,
+    businesses.forEach((biz) => {
+      const qUsers = biz.activeQueue || []
+      const foundIdx = qUsers.findIndex((u) => {
+        const uId = (u.userId?._id || u.userId)?.toString()
+        return uId === myIdStr
       })
-      setReviewSubmitted(true)
-      toast.success('Thank you! Your rating has been recorded.')
+
+      if (foundIdx !== -1) {
+        const myItem = qUsers[foundIdx]
+        const position = foundIdx + 1
+        active.push({
+          business: biz,
+          myQueueItem: myItem,
+          position,
+          peopleAhead: Math.max(0, foundIdx),
+          totalInQueue: qUsers.length,
+          isServing: myItem.status === 'serving' || foundIdx === 0,
+          estimatedStartTime: myItem.estimatedStartTime,
+        })
+      }
+    })
+
+    return active
+  }, [businesses, user?._id])
+
+  // Choose the active business to display
+  // RULE: If there is no person in any business and no active booking, do not show any business.
+  const activeBusiness = useMemo(() => {
+    // 1. If user is in an active queue, prioritize that business
+    if (myActiveQueues.length > 0) {
+      if (selectedBizId) {
+        const matchingUserQ = myActiveQueues.find((mq) => mq.business._id === selectedBizId)
+        if (matchingUserQ) return matchingUserQ.business
+      }
+      return myActiveQueues[0].business
+    }
+
+    // 2. If user explicitly selected a business and that business HAS an active queue
+    if (selectedBizId) {
+      const found = businessesWithActiveQueue.find((b) => b._id === selectedBizId)
+      if (found) return found
+    }
+
+    // 3. Otherwise, fallback to the first business with an ACTIVE queue
+    if (businessesWithActiveQueue.length > 0) {
+      return businessesWithActiveQueue[0]
+    }
+
+    // 4. No active queue anywhere -> null (do NOT show empty business)
+    return null
+  }, [myActiveQueues, selectedBizId, businessesWithActiveQueue])
+
+  // Active users in line for the chosen active business
+  const activeUsers = useMemo(() => {
+    if (!activeBusiness) return []
+    return activeBusiness.activeQueue || []
+  }, [activeBusiness])
+
+  // Check if current user is in this active business queue
+  const myQueueItem = useMemo(() => {
+    if (!user?._id || !activeBusiness) return null
+    const myIdStr = user._id.toString()
+    return activeUsers.find((u) => {
+      const uId = (u.userId?._id || u.userId)?.toString()
+      return uId === myIdStr
+    })
+  }, [user?._id, activeBusiness, activeUsers])
+
+  const myPosition = myQueueItem ? activeUsers.indexOf(myQueueItem) + 1 : 1
+  const isUserServing = myQueueItem?.status === 'serving'
+  const isUserWaiting = myQueueItem?.status === 'waiting'
+  const peopleAhead = Math.max(0, myPosition - 1)
+
+  // Serving user at this business
+  const servingUser = useMemo(() => {
+    return activeUsers.find((u) => u.status === 'serving') || activeUsers[0] || null
+  }, [activeUsers])
+
+  const waitingUsers = useMemo(() => {
+    return activeUsers.filter((u) => u.status === 'waiting')
+  }, [activeUsers])
+
+  // Specialist Details
+  const assignedSpecialist = useMemo(() => {
+    if (myQueueItem?.assignedStaff?.name) {
+      return {
+        name: myQueueItem.assignedStaff.name,
+        role: myQueueItem.assignedStaff.role || (activeBusiness?.category === 'clinic' ? 'Doctor / Specialist' : 'Barber / Stylist'),
+      }
+    }
+    if (servingUser?.assignedStaff?.name) {
+      return {
+        name: servingUser.assignedStaff.name,
+        role: servingUser.assignedStaff.role || (activeBusiness?.category === 'clinic' ? 'Doctor / Specialist' : 'Barber / Stylist'),
+      }
+    }
+    if (activeBusiness?.staff?.length > 0) {
+      return {
+        name: activeBusiness.staff[0].name,
+        role: activeBusiness.staff[0].role || (activeBusiness?.category === 'clinic' ? 'General Physician' : 'On-Duty Stylist'),
+      }
+    }
+    return {
+      name: activeBusiness?.category === 'clinic' ? 'Dr. On-Duty' : 'On-Duty Stylist',
+      role: activeBusiness?.category === 'clinic' ? 'Physician' : 'Barber / Stylist',
+    }
+  }, [myQueueItem, servingUser, activeBusiness])
+
+  // Calculated Times for Current Slot & Stepper
+  const timeMetrics = useMemo(() => {
+    const now = Date.now()
+    const targetItem = myQueueItem || servingUser
+
+    let joinedTimeStr = '05:12 PM'
+    let servingTimeStr = '05:30 PM'
+    let finishEtaStr = '06:00 PM'
+
+    if (targetItem) {
+      const joinedDate = targetItem.joinedAt ? new Date(targetItem.joinedAt) : new Date(now - 18 * 60000)
+      joinedTimeStr = joinedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+
+      const servingDate = targetItem.estimatedStartTime
+        ? new Date(targetItem.estimatedStartTime)
+        : new Date(now)
+      servingTimeStr = servingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+
+      const durationMins = Number(targetItem.serviceTime) || activeBusiness?.averageServiceTime || 30
+      const finishDate = new Date(servingDate.getTime() + durationMins * 60000)
+      finishEtaStr = finishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+    }
+
+    return { joinedTimeStr, servingTimeStr, finishEtaStr }
+  }, [myQueueItem, servingUser, activeBusiness])
+
+  // Service Name
+  const currentServiceName = useMemo(() => {
+    if (myQueueItem?.serviceType) return myQueueItem.serviceType
+    if (myQueueItem?.services?.length > 0) return myQueueItem.services[0].name
+    if (servingUser?.serviceType) return servingUser.serviceType
+    if (activeBusiness?.services?.length > 0) return activeBusiness.services[0].name
+    return activeBusiness?.category === 'clinic' ? 'Consultation & Checkup' : 'Haircut & Styling'
+  }, [myQueueItem, servingUser, activeBusiness])
+
+  const serviceDuration = myQueueItem?.serviceTime || activeBusiness?.averageServiceTime || 30
+
+  // Leave Queue Handler
+  const handleLeaveQueue = async () => {
+    if (!activeBusiness) return
+    if (!window.confirm(`Leave queue at ${activeBusiness.name}? You will step out of line.`)) return
+
+    try {
+      setLeavingQueue(true)
+      await leaveQueue(activeBusiness._id)
+      toast.success(`You stepped out of the queue at ${activeBusiness.name}`)
+      await fetchData()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error submitting review')
+      toast.error(err.response?.data?.message || 'Could not leave queue')
     } finally {
-      setSubmittingReview(false)
+      setLeavingQueue(false)
     }
   }
 
-  // LOADING UI
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <div className="w-10 h-10 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  const categoryLabel = activeBusiness?.category === 'clinic' ? 'Clinic Hub' : 'Salon Hub'
+  const isSalon = activeBusiness?.category === 'salon' || activeBusiness?.category === 'barbershop'
 
   return (
-    <div className="container py-12 px-4 sm:px-6">
+    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans">
+      {/* ── TOP HEADER BAR (MATCHING SCREENSHOT) ── */}
+      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        {/* Left: Brand Logo */}
+        <div className="flex items-center gap-3">
+          <Link to="/customers" className="flex items-center gap-2 group text-decoration-none">
+            <span className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950 font-sans flex items-center">
+              serve<span className="text-[#16A34A]">q</span>
+            </span>
+          </Link>
+        </div>
 
-      {/* DELAY ALERT */}
-      <AnimatePresence>
-        {delayInfo && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="mb-8 p-6 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center font-black text-amber-700 shadow-xs border border-amber-100">!</div>
-              <div>
-                <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-0.5">Queue Delay Detected</p>
-                <p className="text-xs font-bold text-amber-600">Service delayed by {delayInfo?.delay || 0} minutes. You may cancel for a full refund.</p>
-              </div>
-            </div>
+        {/* Center: Location Pill & Search Bar */}
+        <div className="hidden md:flex items-center gap-2 flex-1 max-w-2xl mx-4">
+          <div className="relative">
             <button
-              onClick={handleCancelDelay}
-              disabled={actionLoading}
-              className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition-all active:scale-95 shadow-xs whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setShowLocationPicker((prev) => !prev)}
+              className="px-3.5 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/60 text-xs font-semibold text-zinc-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
             >
-              {actionLoading ? 'Processing...' : 'Cancel & Refund'}
+              <MapPin className="w-3.5 h-3.5 text-zinc-500" />
+              <span>{selectedCity}</span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
-
-        {/* LEFT COLUMN — Your Status */}
-        <div className="lg:col-span-4 space-y-6">
-
-          {completedBooking ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bezel-shell"
-            >
-              <div className="bezel-core p-7 space-y-4 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto text-xl font-black">
-                  
-                </div>
-                <div>
-                  <span className="badge-eyebrow bg-emerald-50 text-emerald-800 border-emerald-200">
-                    Service Completed
-                  </span>
-                  <h3 className="text-xl font-black text-zinc-950 mt-1">
-                    How was your experience?
-                  </h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    Rate and review your visit at {business?.name || 'this hub'}.
-                  </p>
-                </div>
-
-                {reviewSubmitted ? (
-                  <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200 text-teal-800 font-bold text-xs space-y-2">
-                    <p>Thank you for submitting your rating!</p>
-                    <button
-                      onClick={() => navigate('/customers')}
-                      className="px-4 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700"
-                    >
-                      View Service History →
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleQueueReviewSubmit} className="space-y-4 text-left">
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase text-zinc-500 mb-1">Rating</label>
-                      <div className="flex items-center gap-1.5 justify-center py-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            type="button"
-                            key={star}
-                            onClick={() => setReviewRating(star)}
-                            className={`text-2xl transition-transform hover:scale-125 ${star <= reviewRating ? 'text-amber-400' : 'text-zinc-200'}`}
-                          >
-                            
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase text-zinc-500 mb-1">Feedback</label>
-                      <textarea
-                        rows={3}
-                        value={reviewComment}
-                        onChange={(e) => setReviewComment(e.target.value)}
-                        placeholder="Share your thoughts on the care, wait time, or service..."
-                        className="w-full p-2.5 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={submittingReview}
-                      className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs shadow-xs disabled:opacity-50"
-                    >
-                      {submittingReview ? 'Submitting...' : 'Submit Rating'}
-                    </button>
-                  </form>
-                )}
+            {showLocationPicker && (
+              <div className="absolute top-full left-0 mt-1.5 w-60 bg-white border border-zinc-200 rounded-2xl shadow-xl p-2 z-50 space-y-1">
+                <p className="text-[10px] font-bold uppercase text-zinc-400 px-2 py-1">Select Location</p>
+                {POPULAR_LOCATIONS.map((loc) => (
+                  <button
+                    key={loc}
+                    onClick={() => {
+                      setSelectedCity(loc)
+                      setShowLocationPicker(false)
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer ${
+                      selectedCity === loc ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-zinc-100 text-zinc-700'
+                    }`}
+                  >
+                    <MapPin className="w-3 h-3 text-zinc-400" />
+                    <span>{loc}</span>
+                  </button>
+                ))}
               </div>
-            </motion.div>
-          ) : myQueueData ? (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-              className="bezel-shell"
+            )}
+          </div>
+
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Search clinic or salon..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-full bg-zinc-100/90 border border-zinc-200/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all"
+            />
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-2 text-xs text-zinc-400 hover:text-zinc-600 flex items-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Wallet Balance, Notifications, Profile Avatar */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate('/wallet')}
+            className="px-3.5 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] hover:bg-[#DDF3E3] text-xs font-bold text-[#114227] flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+          >
+            <Wallet className="w-3.5 h-3.5 text-[#114227]" />
+            <span>₹{(user?.walletBalance ?? 0).toLocaleString()}</span>
+          </button>
+
+          <button
+            onClick={() => toast('No new notifications', { icon: 'info' })}
+            className="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors relative cursor-pointer"
+          >
+            <Bell className="w-4 h-4 text-zinc-600" />
+            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white" />
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu((prev) => !prev)}
+              className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer"
             >
-              <div className="bezel-core p-6 sm:p-7 relative overflow-hidden">
-                {isServing ? (
-                  <>
-                    <div className="flex items-center gap-3.5 mb-5 pb-4 border-b border-zinc-100">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-300 flex items-center justify-center text-emerald-700 shadow-xs">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <span className="badge-eyebrow bg-emerald-50 text-emerald-700 border-emerald-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-radar" />
-                          Ready For You
-                        </span>
-                        <h2 className="text-2xl font-black text-zinc-950 tracking-tight leading-none mt-1">Your Turn!</h2>
-                      </div>
-                    </div>
-                    <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-center shadow-xs mb-6">
-                      <p className="text-xs font-black text-emerald-700 uppercase tracking-wider">Please proceed to service desk</p>
-                      {myQueueData?.assignedStaff?.name && (
-                        <p className="text-xs font-black text-emerald-900 mt-2">
-                          {business?.category === 'clinic' ? 'Assigned Doctor:' : 'Assigned Specialist:'} {myQueueData.assignedStaff.name} {myQueueData.assignedStaff.role ? `(${myQueueData.assignedStaff.role})` : ''}
-                        </p>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3.5 mb-5 pb-4 border-b border-zinc-100">
-                      <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center text-lg font-black shadow-md shadow-teal-600/20">
-                        #{myPosition}
-                      </div>
-                      <div>
-                        <span className="badge-eyebrow">
-                          <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                          Live Ticket
-                        </span>
-                        <h2 className="text-2xl font-black text-zinc-950 tracking-tight leading-none mt-1">In Queue</h2>
-                        {myQueueData?.assignedStaff?.name && (
-                          <p className="text-[11px] text-teal-700 font-bold mt-1">
-                            Position #{myStaffPosition} for {myQueueData.assignedStaff.name} ({peopleAheadInStaffQueue} ahead)
-                          </p>
-                        )}
-                      </div>
-                    </div>
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-700 text-white flex items-center justify-center font-bold text-xs border border-zinc-200">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'C'}
+              </div>
+              <span className="text-xs font-bold text-zinc-900 hidden sm:inline">
+                {user?.name?.split(' ')[0] || 'Customer'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
+            </button>
 
-                    <div className="grid grid-cols-2 gap-3 mb-5">
-                      <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 text-center shadow-xs">
-                        <p className="text-xl font-black text-teal-700 leading-none mb-1 tabular-nums">{timer || '--'}</p>
-                        <p className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400">Estimated Turn</p>
-                      </div>
-                      <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 text-center shadow-xs">
-                        <p className="text-xl font-black text-zinc-950 leading-none mb-1 capitalize">{myQueueData?.status}</p>
-                        <p className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-400">Status</p>
-                      </div>
-                    </div>
-
-                    {myQueueData?.serviceType && (
-                      <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/70 mb-3 text-left">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Selected Service</p>
-                        <p className="text-xs font-black text-teal-900">{myQueueData.serviceType}</p>
-                      </div>
-                    )}
-
-                    {myQueueData?.assignedStaff?.name && (
-                      <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/70 mb-5 text-left">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">
-                          {business?.category === 'clinic' ? 'Assigned Doctor' : 'Assigned Specialist'}
-                        </p>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs font-black text-teal-900">{myQueueData.assignedStaff.name}</p>
-                          {myQueueData.assignedStaff.role && (
-                            <span className="text-[10px] text-teal-700 font-medium">({myQueueData.assignedStaff.role})</span>
-                          )}
-                          {myQueueData.assignedStaff.autoAssigned && (
-                            <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.2 rounded font-semibold">
-                              Auto
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
+            {showUserMenu && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-zinc-200 rounded-2xl shadow-xl p-1.5 z-50 space-y-1">
+                <div className="px-3 py-2 border-b border-zinc-100">
+                  <p className="text-xs font-bold text-zinc-900 line-clamp-1">{user?.name || 'Customer'}</p>
+                  <p className="text-[10px] text-zinc-400 line-clamp-1">{user?.email}</p>
+                </div>
                 <button
-                  onClick={handleLeave}
-                  disabled={actionLoading}
-                  className="w-full py-3.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-white border border-rose-200 text-rose-600 hover:bg-rose-50/80 hover:border-rose-300 transition-all active:scale-[0.97] shadow-xs"
+                  onClick={() => {
+                    navigate('/profile')
+                    setShowUserMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
                 >
-                  {actionLoading ? 'Processing...' : 'Leave Queue & Step Out'}
+                  <User className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>View Profile</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/wallet')
+                    setShowUserMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <Wallet className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Wallet & Top-up</span>
+                </button>
+                <button
+                  onClick={() => {
+                    logOut()
+                    navigate('/login')
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Sign Out</span>
                 </button>
               </div>
-            </motion.div>
+            )}
+          </div>
+        </div>
+      </header>
 
-          ) : (
-            <div className="bezel-shell">
-              <div className="bezel-core p-8 text-center space-y-3">
-                <h3 className="text-base font-black text-zinc-800">You are not in line</h3>
-                <p className="text-xs text-zinc-400 font-medium">Join this queue from the hub dashboard to receive live updates.</p>
+      {/* ── BODY: SIDEBAR + MAIN CANVAS (MATCHING SCREENSHOT) ── */}
+      <div className="flex-1 flex w-full">
+        {/* LEFT SIDEBAR */}
+        <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100vh-61px)] bg-white/40">
+          <nav className="space-y-1">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/customers' },
+              { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: '/customers?category=clinic' },
+              { id: 'salons', label: 'Salons', icon: Scissors, route: '/customers?category=salon' },
+              { id: 'my-queues', label: 'My Queues', icon: Ticket, count: myActiveQueues.length, route: '/queue' },
+              {
+                id: 'appointments',
+                label: 'Appointments',
+                icon: Calendar,
+                count: myBookings.filter(
+                  (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
+                ).length,
+                route: '/booking',
+              },
+              { id: 'reviews', label: 'Reviews', icon: Star, route: '/history' },
+              { id: 'history', label: 'History', icon: Clock, route: '/history' },
+            ].map((item) => {
+              const isActive = item.id === 'my-queues'
+              const IconComponent = item.icon
+              return (
                 <button
-                  onClick={() => navigate('/')}
-                  className="btn-island py-3 px-5 text-xs mt-2"
+                  key={item.id}
+                  onClick={() => navigate(item.route)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-[#EAF5EC] text-[#114227] shadow-xs'
+                      : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
+                  }`}
                 >
-                  Return to Dashboard
+                  <div className="flex items-center gap-3">
+                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.count !== undefined && item.count > 0 && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        isActive ? 'bg-[#114227] text-white' : 'bg-zinc-200 text-zinc-700'
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* Bottom Sidebar: Refer & Earn and Help & Support */}
+          <div className="pt-4 border-t border-zinc-100 space-y-1">
+            <button
+              onClick={() => toast.success('Referral code copied to clipboard!')}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+            >
+              <Gift className="w-4 h-4 text-purple-600" />
+              <span>Refer & Earn</span>
+            </button>
+            <button
+              onClick={() => toast('Support hotline: help@serveq.tech', { icon: 'info' })}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4 text-zinc-500" />
+              <span>Help & Support</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN CANVAS */}
+        <main className="flex-1 px-4 py-5 sm:px-8 sm:py-7 space-y-6 min-w-0 max-w-6xl">
+          {/* ── TOP GREETING BANNER (MATCHING SCREENSHOT) ── */}
+          <div className="rounded-3xl bg-gradient-to-r from-[#F4F9F5] via-[#EBF5ED] to-[#E2F0E5] border border-[#DCEDE0] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-2xs">
+            <div className="space-y-1.5 z-10">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-zinc-950 tracking-tight font-sans">
+                Welcome back,{' '}
+                <span className="text-[#16A34A]">{user?.name?.split(' ')[0] || 'Patron'}!</span>
+              </h1>
+              <p className="text-xs sm:text-sm text-zinc-600 font-medium">
+                Here's your current queue and updates.
+              </p>
+            </div>
+
+            {/* Decorative Banner Illustration with Boy character */}
+            <div className="hidden md:flex items-end justify-center shrink-0 pr-4 z-10 self-end -mb-6 sm:-mb-8">
+              <div className="relative w-36 sm:w-44 h-32 sm:h-36 flex items-end justify-center">
+                <img
+                  src="/queue-hero-boy.png"
+                  alt="Patron checking queue on phone"
+                  className="max-h-full max-w-full object-contain drop-shadow-md rounded-2xl"
+                  onError={(e) => {
+                    e.currentTarget.src = '/hero-banner.png'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Soft decorative ambient circles */}
+            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-200/30 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute right-40 -top-10 w-36 h-36 bg-teal-100/40 rounded-full blur-xl pointer-events-none" />
+          </div>
+
+          {/* Business Switcher if multiple venues have active queues */}
+          {businessesWithActiveQueue.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <span className="text-xs font-bold text-zinc-400 shrink-0 uppercase tracking-wider">
+                Active Queues:
+              </span>
+              {businessesWithActiveQueue.map((b) => {
+                const isSelected = activeBusiness?._id === b._id
+                return (
+                  <button
+                    key={b._id}
+                    onClick={() => setSelectedBizId(b._id)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#114227] text-white shadow-xs'
+                        : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                    }`}
+                  >
+                    {b.name} ({b.activeQueue?.length || 0} in line)
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* ── CORE ACTIVE QUEUE VIEW (OR STRICT EMPTY STATE) ── */}
+          {loading ? (
+            <div className="p-16 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-3">
+              <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="font-semibold text-zinc-600">Connecting to live queue stream...</p>
+            </div>
+          ) : !activeBusiness || activeUsers.length === 0 ? (
+            /* ── EMPTY STATE: IF NO PERSON IN ANY BUSINESS / NO ACTIVE QUEUE, DO NOT SHOW EMPTY BUSINESS ── */
+            <div className="bg-white rounded-3xl border border-dashed border-zinc-300/80 p-10 sm:p-14 text-center space-y-4 shadow-2xs">
+              <div className="w-16 h-16 rounded-3xl bg-[#EAF7EE] text-[#16A34A] border border-[#BDE8CB] flex items-center justify-center mx-auto shadow-2xs">
+                <Ticket className="w-8 h-8" />
+              </div>
+              <div className="space-y-1.5 max-w-md mx-auto">
+                <h3 className="text-lg sm:text-xl font-black text-zinc-950">No Active Queues Right Now</h3>
+                <p className="text-xs sm:text-sm text-zinc-500">
+                  You are not currently in any live queue, and there are currently no waiting queues active across any partner clinics or salons.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+                <button
+                  onClick={() => navigate('/customers?category=clinic')}
+                  className="px-5 py-2.5 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                >
+                  Browse Clinics
+                </button>
+                <button
+                  onClick={() => navigate('/customers?category=salon')}
+                  className="px-5 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-800 hover:bg-zinc-50 font-bold text-xs shadow-2xs transition-colors cursor-pointer"
+                >
+                  Browse Salons
+                </button>
+                <button
+                  onClick={() => navigate('/booking')}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Book Appointment
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── ACTIVE QUEUE UI (EXACT SCREENSHOT LAYOUT) ── */
+            <div className="space-y-6">
+              {/* 2-Column Main Queue Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
+                {/* ── LEFT CARD: YOUR TURN / QUEUE STATUS (4 cols on lg) ── */}
+                <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs flex flex-col justify-between relative overflow-hidden">
+                  <div>
+                    {/* Top Status Badge & Graphic Header */}
+                    <div className="flex items-center justify-between">
+                      <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1.5 bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
+                        <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+                        <span>{isUserServing || activeUsers[0]?.status === 'serving' ? 'READY FOR YOU' : `IN LINE (TOKEN #${myPosition})`}</span>
+                      </span>
+
+                      {/* Cute Phone / Sparkles badge */}
+                      <div className="w-11 h-11 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] flex items-center justify-center relative text-[#16A34A] shadow-2xs">
+                        <Ticket className="w-5 h-5" />
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500 absolute -top-1 -right-1" />
+                      </div>
+                    </div>
+
+                    {/* Headline */}
+                    <div className="mt-5 space-y-1">
+                      <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight font-sans">
+                        {isUserServing || activeUsers[0]?.status === 'serving' ? 'Your Turn!' : `Token #${myPosition}`}
+                      </h2>
+                      <p className="text-xs sm:text-sm text-zinc-500 font-medium">
+                        {isUserServing || activeUsers[0]?.status === 'serving'
+                          ? 'Please proceed to the service desk.'
+                          : `${peopleAhead} people ahead of you • Please stay nearby`}
+                      </p>
+                    </div>
+
+                    {/* Assigned Specialist Box */}
+                    <div className="bg-[#F4FAF6] border border-[#D5EFE0] rounded-2xl p-4 flex items-center gap-3.5 mt-6">
+                      <div className="w-11 h-11 rounded-full bg-[#D8F3E2] border border-[#BCE6CB] text-[#16A34A] flex items-center justify-center shrink-0">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                          Assigned Specialist
+                        </p>
+                        <p className="font-bold text-zinc-950 text-sm sm:text-base truncate">
+                          {assignedSpecialist.name}
+                        </p>
+                        <p className="text-xs text-zinc-500 truncate">
+                          {assignedSpecialist.role}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Red Leave Queue Button */}
+                  <div className="pt-6">
+                    <button
+                      type="button"
+                      disabled={leavingQueue}
+                      onClick={handleLeaveQueue}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-[#FF4D5E] hover:bg-[#E83C4D] disabled:bg-zinc-200 disabled:text-zinc-400 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-transform active:scale-98 cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>{leavingQueue ? 'Stepping out...' : 'Leave Queue & Step Out'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── RIGHT CARD: LIVE QUEUE STREAM & TRACKING (7 cols on lg) ── */}
+                <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs space-y-5 flex flex-col justify-between">
+                  <div>
+                    {/* Top Row: Business Thumbnail, Name, Waiting Count & Open Pill */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      {/* Left: Thumbnail & Name */}
+                      <div className="flex items-center gap-3.5">
+                        <img
+                          src={
+                            activeBusiness.images?.[0] ||
+                            (isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE)
+                          }
+                          alt={activeBusiness.name}
+                          className="w-14 h-14 rounded-2xl object-cover border border-zinc-200 shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.src = isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE
+                          }}
+                        />
+                        <div>
+                          <h3 className="font-black text-xl text-zinc-950 tracking-tight">
+                            {activeBusiness.name}
+                          </h3>
+                          <p className="text-xs text-zinc-500 font-medium">
+                            {categoryLabel} • Live Synchronous Stream
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right: Waiting Badge & Open Status */}
+                      <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                        <div className="border border-zinc-200 rounded-2xl px-3.5 py-1.5 text-center min-w-[70px]">
+                          <p className="font-black text-zinc-950 text-base leading-tight">
+                            {waitingUsers.length}
+                          </p>
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">
+                            WAITING
+                          </p>
+                        </div>
+                        <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
+                          <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
+                          <span>{activeBusiness.isOpen ? 'OPEN' : 'CLOSED'}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Current Slot Banner */}
+                    <div className="mt-5 rounded-2xl border border-[#BDE8CB] bg-[#F4FAF6] p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                      {/* Left Tag + Info */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="bg-[#00A854] text-white font-black text-xs px-2.5 py-1 rounded-lg shrink-0">
+                          NOW
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-zinc-900 text-xs sm:text-sm">
+                              Your Current Slot
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4] inline-flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
+                              <span>SERVING</span>
+                            </span>
+                          </div>
+                          <p className="text-xs text-zinc-500 truncate mt-0.5">
+                            {currentServiceName} • {serviceDuration} min block •{' '}
+                            <span className="font-semibold text-zinc-700">{assignedSpecialist.name}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right: Finish ETA */}
+                      <div className="text-right shrink-0 pl-2">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">
+                          FINISH ETA
+                        </p>
+                        <p className="font-black text-sm sm:text-base text-[#114227]">
+                          {timeMetrics.finishEtaStr}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Stepper / Progress Bar (4 Milestones) */}
+                    <div className="mt-7 px-2">
+                      <div className="relative flex items-center justify-between">
+                        {/* Connecting Line background */}
+                        <div className="absolute top-3 left-4 right-4 h-0.5 bg-zinc-200 -z-0" />
+                        <div className="absolute top-3 left-4 w-1/3 h-0.5 bg-[#16A34A] -z-0" />
+
+                        {/* Step 1: Joined Queue */}
+                        <div className="flex flex-col items-center text-center relative z-10 space-y-1">
+                          <div className="w-6 h-6 rounded-full bg-[#16A34A] text-white flex items-center justify-center shadow-xs">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </div>
+                          <p className="text-[11px] font-bold text-zinc-900">Joined Queue</p>
+                          <p className="text-[10px] text-zinc-400 font-medium">
+                            {timeMetrics.joinedTimeStr}
+                          </p>
+                        </div>
+
+                        {/* Step 2: Now Serving */}
+                        <div className="flex flex-col items-center text-center relative z-10 space-y-1">
+                          <div className="w-6 h-6 rounded-full border-2 border-[#16A34A] bg-white flex items-center justify-center p-0.5 shadow-xs">
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#16A34A]" />
+                          </div>
+                          <p className="text-[11px] font-bold text-[#16A34A]">Now Serving</p>
+                          <p className="text-[10px] text-zinc-400 font-medium">
+                            {timeMetrics.servingTimeStr}
+                          </p>
+                        </div>
+
+                        {/* Step 3: Almost Done */}
+                        <div className="flex flex-col items-center text-center relative z-10 space-y-1">
+                          <div className="w-6 h-6 rounded-full border-2 border-zinc-300 bg-white shadow-2xs" />
+                          <p className="text-[11px] font-medium text-zinc-500">Almost Done</p>
+                          <p className="text-[10px] text-zinc-400 font-medium">
+                            ~{timeMetrics.finishEtaStr}
+                          </p>
+                        </div>
+
+                        {/* Step 4: Completed */}
+                        <div className="flex flex-col items-center text-center relative z-10 space-y-1">
+                          <div className="w-6 h-6 rounded-full border-2 border-zinc-200 bg-white shadow-2xs" />
+                          <p className="text-[11px] font-medium text-zinc-400">Completed</p>
+                          <p className="text-[10px] text-zinc-300 font-medium">--</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Action Buttons: View Live Queue & Reschedule / Booking */}
+                  <div className="flex items-center gap-3 pt-4 border-t border-zinc-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowLiveStreamModal(true)}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-100 hover:bg-zinc-200/80 text-zinc-800 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4 text-zinc-600" />
+                      <span>View Live Queue</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/booking/${activeBusiness._id}`)}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-zinc-100 hover:bg-zinc-200/80 text-zinc-800 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Calendar className="w-4 h-4 text-zinc-600" />
+                      <span>Reschedule / Booking</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── BOTTOM CALLOUT CARD: BOOK APPOINTMENT INSTEAD (MATCHING SCREENSHOT) ── */}
+              <div className="rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] text-[#16A34A] flex items-center justify-center shrink-0">
+                    <Calendar className="w-6 h-6 text-[#16A34A]" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-zinc-950 text-sm sm:text-base">
+                      Need to book a different time?
+                    </h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      You can also book an appointment instead of joining the live queue.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate(`/booking/${activeBusiness._id}`)}
+                  className="px-5 py-2.5 rounded-full border border-[#16A34A] text-[#114227] hover:bg-emerald-50 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                >
+                  <span>Book Appointment</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           )}
+        </main>
+      </div>
 
-        </div>
-
-        {/* RIGHT COLUMN — Queue Feed */}
-        <div className="lg:col-span-8">
-          <div className="bezel-shell">
-            <div className="bezel-core p-6 sm:p-8 relative overflow-hidden">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-zinc-100">
+      {/* ── LIVE QUEUE STREAM MODAL (COLUMNS BY STAFF) ── */}
+      <AnimatePresence>
+        {showLiveStreamModal && activeBusiness && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight leading-none mb-1">
-                    {business?.name || 'Business'}
-                  </h1>
-                  <p className="text-xs font-semibold text-zinc-500 capitalize">
-                    {business?.category || 'General'} Hub &bull; Live Synchronous Stream
+                  <h3 className="text-lg font-black text-zinc-950">
+                    {activeBusiness.name} — Live Queue Counter Stream
+                  </h3>
+                  <p className="text-xs text-zinc-500">
+                    Real-time tickets and assigned counters per doctor / specialist.
                   </p>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="bg-zinc-50 border border-zinc-200/80 px-4 py-2 rounded-2xl flex items-baseline gap-1.5 shadow-xs">
-                    <span className="text-xl font-black text-zinc-950">{users.length}</span>
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">In Line</span>
-                  </div>
-                  {nextSlotInfo.nextSlotTimeStr && (
-                    <div className="bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-2xl flex items-center gap-2 shadow-xs">
-                      <Clock className="w-3.5 h-3.5 text-emerald-700" />
-                      <div className="text-left">
-                        <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Next Live Slot</p>
-                        <p className="text-xs font-black text-emerald-800 leading-tight">
-                          {nextSlotInfo.nextSlotTimeStr} <span className="text-[10px] font-medium text-emerald-600">(+15m buf)</span>
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {business?.isOpen !== undefined && (
-                    <div className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-[10px] font-black uppercase tracking-wider ${
-                      business.isOpen 
-                        ? 'bg-emerald-50 border-emerald-200/80 text-emerald-700' 
-                        : 'bg-rose-50 border-rose-200 text-rose-700'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${business.isOpen ? 'bg-emerald-500 animate-radar' : 'bg-rose-500'}`} />
-                      {business.isOpen ? 'Open' : 'Closed'}
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setShowLiveStreamModal(false)}
+                  className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Queue Columns — Flex Column-wise for Staff */}
-              {users.length === 0 ? (
-                <div className="text-center py-16 bg-zinc-50/60 rounded-2xl border border-dashed border-zinc-200">
-                  <p className="text-xs font-black text-zinc-700 uppercase tracking-wider">Queue Is Currently Clear</p>
-                  <p className="text-[11px] text-zinc-400 mt-1">Immediate service available upon check-in.</p>
-                </div>
-              ) : (
-                <div className="flex flex-col md:flex-row gap-4 items-stretch overflow-x-auto pb-3">
-                  {staffGroups.map((group) => {
-                    const st = group.staff
-                    const staffUsers = group.staffUsers
-
-                    return (
-                      <div
-                        key={group.staffKey}
-                        className={`flex-1 min-w-[270px] sm:min-w-[300px] rounded-2xl border transition-all flex flex-col justify-between overflow-hidden ${
-                          group.isMyStaff
-                            ? 'bg-teal-50/20 border-teal-300 shadow-sm ring-1 ring-teal-500/20'
-                            : 'bg-zinc-50/60 border-zinc-200/90'
-                        }`}
-                      >
-                        {/* Staff Header */}
-                        <div className="px-3.5 py-3 bg-white border-b border-zinc-100 flex flex-col gap-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div
-                                className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border ${
-                                  group.isMyStaff
-                                    ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
-                                    : 'bg-zinc-100 text-zinc-700 border-zinc-200'
-                                }`}
-                              >
-                                <User className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <h3 className="font-black text-sm text-zinc-950 tracking-tight truncate">
-                                    {st.name}
-                                  </h3>
-                                  {group.isMyStaff && (
-                                    <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
-                                      Your Queue
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[10.5px] text-zinc-500 font-medium truncate">
-                                  {st.role || (business?.category === 'clinic' ? 'Doctor / Specialist' : 'Specialist')}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-100/70">
-                            {/* Staff Live Status Badge */}
+              {/* Counter Columns */}
+              <div className="space-y-4">
+                {activeUsers.length === 0 ? (
+                  <p className="text-xs text-zinc-400 py-6 text-center">No active tickets right now.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {activeUsers.map((u, idx) => {
+                      const isMe = (u.userId?._id || u.userId)?.toString() === user?._id?.toString()
+                      const isServ = u.status === 'serving'
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-4 rounded-2xl border transition-all ${
+                            isMe
+                              ? 'bg-[#EAF7EE] border-[#BDE8CB] ring-2 ring-[#16A34A]/20'
+                              : 'bg-zinc-50 border-zinc-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-sm text-zinc-900">
+                              Token #{idx + 1}
+                            </span>
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 border shadow-2xs ${
-                                group.isServing
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  : 'bg-zinc-100 text-zinc-600 border-zinc-200'
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                isServ
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-zinc-200 text-zinc-700'
                               }`}
                             >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  group.isServing ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'
-                                }`}
-                              />
-                              <span>
-                                {group.isServing ? 'Serving Now' : 'Queue Clear'}
-                              </span>
-                            </span>
-
-                            <span className="px-2 py-0.5 rounded-lg bg-white border border-zinc-200 text-[10px] font-bold text-zinc-700 shadow-2xs">
-                              {staffUsers.length} in line
+                              {isServ ? 'SERVING NOW' : 'WAITING'}
                             </span>
                           </div>
-                        </div>
-
-                        {/* Tickets Queue Under This Staff Member */}
-                        <div className="p-3 space-y-2 flex-1 flex flex-col justify-start">
-                          {staffUsers.length === 0 ? (
-                            <div className="py-8 px-3 bg-white/60 rounded-xl border border-dashed border-zinc-200 text-center flex-1 flex flex-col items-center justify-center">
-                              <p className="text-[11px] font-bold text-zinc-500">
-                                No patrons waiting for {st.name}
-                              </p>
-                              <p className="text-[10px] text-zinc-400 mt-0.5">
-                                Next check-in starts immediately.
-                              </p>
-                            </div>
-                          ) : (
-                            <AnimatePresence>
-                              {staffUsers.map((u) => {
-                                const overallPosition = users.indexOf(u) + 1
-                                const isMe = (u.userId?._id || u.userId)?.toString() === user?._id?.toString()
-
-                                return (
-                                  <QueueCard
-                                    key={(u.userId?._id || u.userId)?.toString() || overallPosition}
-                                    user={u}
-                                    position={overallPosition}
-                                    isMe={isMe}
-                                    totalUsers={users.length}
-                                  />
-                                )
-                              })}
-                            </AnimatePresence>
+                          <p className="text-xs font-semibold text-zinc-700 mt-1">
+                            {u.serviceType || 'General Service'}
+                          </p>
+                          <p className="text-[11px] text-zinc-500 flex items-center gap-1 mt-0.5">
+                            <User className="w-3 h-3 text-zinc-400" />
+                            <span>{u.assignedStaff?.name || 'On-Duty Specialist'}</span>
+                          </p>
+                          {isMe && (
+                            <p className="text-[11px] font-bold text-[#16A34A] mt-2">
+                              This is your ticket!
+                            </p>
                           )}
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-zinc-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowLiveStreamModal(false)}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-[#114227] text-white cursor-pointer"
+                >
+                  Close Live View
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

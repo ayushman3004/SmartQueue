@@ -88,7 +88,6 @@ export default function CustomerDashboardPage() {
   const [locationQuery, setLocationQuery] = useState('')
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [historyFilter, setHistoryFilter] = useState('all') // 'all' | 'live_queue' | 'appointment' | 'completed' | 'upcoming'
   const [sortBy, setSortBy] = useState('nearest') // 'nearest' | 'wait_time' | 'rating'
   const [showMapModal, setShowMapModal] = useState(false)
 
@@ -98,16 +97,6 @@ export default function CustomerDashboardPage() {
   // Selected services & staff for inline join
   const [selectedServices, setSelectedServices] = useState({})
   const [selectedStaff, setSelectedStaff] = useState({})
-
-  // Live Queue & Staff Rush Modal
-  const [liveQueueModalBiz, setLiveQueueModalBiz] = useState(null)
-
-  // Review modal
-  const [reviewModalOpen, setReviewModalOpen] = useState(false)
-  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null)
-  const [rating, setRating] = useState(5)
-  const [reviewComment, setReviewComment] = useState('')
-  const [submittingReview, setSubmittingReview] = useState(false)
 
   // Fetch initial dashboard data
   const fetchData = useCallback(async () => {
@@ -533,34 +522,6 @@ export default function CustomerDashboardPage() {
     }
   }
 
-  const handleOpenReview = (booking) => {
-    setSelectedBookingForReview(booking)
-    setRating(5)
-    setReviewComment('')
-    setReviewModalOpen(true)
-  }
-
-  const handleSubmitReview = async (e) => {
-    e.preventDefault()
-    if (!selectedBookingForReview) return
-    setSubmittingReview(true)
-    try {
-      await submitReview({
-        bookingId: selectedBookingForReview._id,
-        businessId: selectedBookingForReview.businessId?._id || selectedBookingForReview.businessId,
-        rating,
-        comment: reviewComment,
-      })
-      toast.success('Thank you! Review submitted successfully.')
-      setReviewModalOpen(false)
-      getMyBookings().then((r) => setMyBookings(r.data.data.bookings || []))
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit review')
-    } finally {
-      setSubmittingReview(false)
-    }
-  }
-
   // Helper to compute per-staff queue breakdown, personal wait times, and rush level
   const getStaffQueueBreakdown = useCallback((biz) => {
     if (!biz) return []
@@ -834,19 +795,19 @@ export default function CustomerDashboardPage() {
             </div>
           </div>
 
-          {/* View Live Queue & Staff Rush Action Bar */}
+          {/* View Live Queue Redirect Button */}
           <button
             type="button"
-            onClick={() => setLiveQueueModalBiz(biz)}
-            className="w-full py-2 px-3 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 border border-emerald-200/90 text-emerald-900 text-[11px] font-bold flex items-center justify-between transition-colors cursor-pointer group/rush shadow-2xs"
+            onClick={() => navigate(`/queue/${biz._id}`)}
+            className="w-full py-2.5 px-3 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 border border-emerald-200/90 text-emerald-900 text-xs font-bold flex items-center justify-between transition-colors cursor-pointer group/rush shadow-2xs"
           >
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-2">
               <Eye className="w-3.5 h-3.5 text-emerald-700" />
-              <span>View Live Queue & Staff Rush</span>
+              <span>View Live Queue</span>
             </span>
-            <span className="text-[10px] font-semibold text-emerald-700 flex items-center gap-1 group-hover/rush:translate-x-0.5 transition-transform">
-              <span>{staffBreakdown.length} {biz.category === 'clinic' ? 'Doctors' : 'Staff'} Status</span>
-              <ChevronRight className="w-3 h-3" />
+            <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1 group-hover/rush:translate-x-0.5 transition-transform">
+              <span>Queue Page</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </span>
           </button>
 
@@ -1205,8 +1166,29 @@ export default function CustomerDashboardPage() {
                     if (item.id === 'clinics') setCategoryFilter('clinic')
                     else if (item.id === 'salons') setCategoryFilter('salon')
                     else if (item.id === 'dashboard') setCategoryFilter('all')
-                    else if (item.id === 'history') {
-                      document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })
+                    else if (item.id === 'my-queues') {
+                      if (myActiveQueues.length > 0 && myActiveQueues[0].business?._id) {
+                        navigate(`/queue/${myActiveQueues[0].business._id}`)
+                      } else if (businesses.length > 0) {
+                        navigate(`/queue/${businesses[0]._id}`)
+                      } else {
+                        navigate('/queue')
+                      }
+                    } else if (item.id === 'appointments') {
+                      const upcomingBooking = myBookings.find(
+                        (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
+                      )
+                      const targetBizId =
+                        upcomingBooking?.businessId?._id ||
+                        upcomingBooking?.businessId ||
+                        businesses[0]?._id
+                      if (targetBizId) {
+                        navigate(`/booking/${targetBizId}`)
+                      } else {
+                        navigate('/booking')
+                      }
+                    } else if (item.id === 'history' || item.id === 'reviews') {
+                      navigate('/history')
                     }
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
@@ -1424,226 +1406,6 @@ export default function CustomerDashboardPage() {
               </div>
             )}
           </section>
-
-          {/* ── SECTION 3: SERVICE HISTORY & APPOINTMENTS (LIVE QUEUES + BOOKINGS) ── */}
-          <section id="history-section" className="space-y-4 pt-4 border-t border-zinc-200/80">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200/70 pb-3">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-                  <span>Service History & Appointments</span>
-                </h2>
-                <p className="text-xs text-zinc-500 font-medium">
-                  Complete history of services taken across all clinics, salons & hubs, with rating options.
-                </p>
-              </div>
-
-              {/* Filter Pills matching exact tabs */}
-              <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto bg-zinc-100 p-1 rounded-xl text-xs font-bold">
-                <button
-                  onClick={() => setHistoryFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    historyFilter === 'all'
-                      ? 'bg-white text-zinc-950 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-900'
-                  }`}
-                >
-                  All ({unifiedServiceRecords.length})
-                </button>
-                <button
-                  onClick={() => setHistoryFilter('live_queue')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    historyFilter === 'live_queue'
-                      ? 'bg-white text-teal-800 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-900'
-                  }`}
-                >
-                  Live Queues (
-                  {unifiedServiceRecords.filter((b) => b.isLiveQueue || b.entryType === 'live_queue').length})
-                </button>
-                <button
-                  onClick={() => setHistoryFilter('appointment')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    historyFilter === 'appointment'
-                      ? 'bg-white text-blue-800 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-900'
-                  }`}
-                >
-                  Appointments (
-                  {unifiedServiceRecords.filter((b) => b.isAppointment || b.entryType === 'appointment').length})
-                </button>
-                <button
-                  onClick={() => setHistoryFilter('completed')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    historyFilter === 'completed'
-                      ? 'bg-white text-emerald-800 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-900'
-                  }`}
-                >
-                  Completed ({unifiedServiceRecords.filter((b) => b.status === 'completed').length})
-                </button>
-                <button
-                  onClick={() => setHistoryFilter('upcoming')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    historyFilter === 'upcoming'
-                      ? 'bg-white text-amber-800 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-900'
-                  }`}
-                >
-                  Upcoming (
-                  {
-                    unifiedServiceRecords.filter(
-                      (b) => ['waiting', 'serving', 'confirmed', 'scheduled'].includes(b.status)
-                    ).length
-                  }
-                  )
-                </button>
-              </div>
-            </div>
-
-            {unifiedServiceRecords.length === 0 ? (
-              <div className="p-8 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white">
-                No service history or appointment bookings on record yet. Completed services will appear here with rating options.
-              </div>
-            ) : (
-              <div className="overflow-x-auto bg-white rounded-3xl border border-zinc-200 shadow-xs">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-zinc-50 text-zinc-500 font-bold uppercase border-b border-zinc-100">
-                    <tr>
-                      <th className="py-3.5 px-4">Date & Time</th>
-                      <th className="py-3.5 px-4">Business</th>
-                      <th className="py-3.5 px-4">Service & Specialist</th>
-                      <th className="py-3.5 px-4">Paid</th>
-                      <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4 text-right">Rating & Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100 font-medium">
-                    {unifiedServiceRecords
-                      .filter((b) => {
-                        if (historyFilter === 'completed') return b.status === 'completed'
-                        if (historyFilter === 'upcoming')
-                          return ['waiting', 'serving', 'confirmed', 'scheduled'].includes(b.status)
-                        if (historyFilter === 'live_queue') return b.isLiveQueue || b.entryType === 'live_queue'
-                        if (historyFilter === 'appointment')
-                          return b.isAppointment || b.entryType === 'appointment'
-                        return true
-                      })
-                      .map((b) => {
-                        const isQ = b.isLiveQueue || b.entryType === 'live_queue'
-                        const isServing = b.status === 'serving'
-                        const isWaiting = b.status === 'waiting'
-                        const isCompleted = b.status === 'completed'
-                        const isCancelled = b.status === 'cancelled' || b.status === 'refunded'
-                        const bizId = b.businessId?._id || b.businessId
-                        const bizName = b.businessId?.name || b.businessName || 'Local Venue'
-
-                        return (
-                          <tr
-                            key={b._id}
-                            className={`transition-colors ${
-                              isServing ? 'bg-emerald-50/60' : 'hover:bg-zinc-50/70'
-                            }`}
-                          >
-                            <td className="py-4 px-4 font-bold text-zinc-950">
-                              {new Date(b.startTime).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                              <p className="text-[10px] text-zinc-400 font-normal">
-                                {new Date(b.startTime).toLocaleDateString([], {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                })}
-                              </p>
-                            </td>
-
-                            <td className="py-4 px-4 font-bold text-zinc-900">{bizName}</td>
-
-                            <td className="py-4 px-4 text-zinc-700">
-                              <p className="font-semibold text-zinc-950">{b.serviceType || 'General Service'}</p>
-                              {b.assignedStaff?.name && (
-                                <p className="text-[11px] font-bold text-teal-800 flex items-center gap-1 mt-0.5">
-                                  <span>{b.assignedStaff.name}</span>
-                                  <span className="text-[10px] text-zinc-400 font-normal">
-                                    ({b.assignedStaff.role || 'Dentist'})
-                                  </span>
-                                </p>
-                              )}
-                            </td>
-
-                            <td className="py-4 px-4 font-bold text-teal-700">₹{b.paidAmount}</td>
-
-                            <td className="py-4 px-4">
-                              <span
-                                className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                                  isCompleted
-                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                    : isServing
-                                    ? 'bg-emerald-100 text-emerald-800 animate-pulse border border-emerald-300'
-                                    : isWaiting
-                                    ? 'bg-teal-100 text-teal-800 border border-teal-300'
-                                    : isCancelled
-                                    ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                                    : 'bg-blue-100 text-blue-800 border border-blue-200'
-                                }`}
-                              >
-                                {isCompleted
-                                  ? 'COMPLETED'
-                                  : isServing
-                                  ? 'SERVING NOW'
-                                  : isWaiting
-                                  ? `IN QUEUE (Token #${b.queuePosition || 1})`
-                                  : b.status}
-                              </span>
-                            </td>
-
-                            <td className="py-4 px-4 text-right space-x-2">
-                              {isCompleted &&
-                                (b.review ? (
-                                  <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold">
-                                    <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                                    <span className="text-amber-500 font-black">{b.review.rating}</span>
-                                    <span className="text-[10px] text-amber-700 font-semibold">Rated</span>
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={() => handleOpenReview(b)}
-                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition-transform active:scale-95 inline-flex items-center gap-1.5"
-                                  >
-                                    <Star className="w-3.5 h-3.5 text-white fill-white" />
-                                    <span>Rate Service</span>
-                                  </button>
-                                ))}
-
-                              {(isWaiting || isServing) && bizId && (
-                                <button
-                                  onClick={() => navigate(`/queue/${bizId}`)}
-                                  className="px-3 py-1.5 bg-[#114227] hover:bg-[#0D361F] text-white rounded-xl font-bold text-xs shadow-xs"
-                                >
-                                  Track Queue
-                                </button>
-                              )}
-
-                              {!isWaiting &&
-                                !isServing &&
-                                (b.status === 'scheduled' || b.status === 'confirmed') && (
-                                  <button
-                                    onClick={() => handleCancelBooking(b._id)}
-                                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg font-bold text-[11px]"
-                                  >
-                                    Cancel
-                                  </button>
-                                )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
         </main>
       </div>
 
@@ -1677,285 +1439,6 @@ export default function CustomerDashboardPage() {
               >
                 Close Map
               </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ── REVIEW MODAL ── */}
-      <AnimatePresence>
-        {reviewModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5"
-            >
-              <h3 className="text-lg font-black text-zinc-950">Leave a Verified Review</h3>
-              <form onSubmit={handleSubmitReview} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Rating</label>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        type="button"
-                        key={star}
-                        onClick={() => setRating(star)}
-                        className={`text-2xl transition-transform hover:scale-110 ${
-                          star <= rating ? 'text-amber-400' : 'text-zinc-200'
-                        }`}
-                      >
-                        <Star className={`w-6 h-6 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-zinc-200 fill-zinc-200'}`} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">
-                    Your Experience (Optional)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Tell other patrons how your service went..."
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-zinc-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
-                  <button
-                    type="button"
-                    onClick={() => setReviewModalOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-500 hover:bg-zinc-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submittingReview}
-                    className="px-5 py-2 rounded-xl text-xs font-bold bg-[#114227] text-white shadow-xs"
-                  >
-                    {submittingReview ? 'Submitting...' : 'Post Review'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ── LIVE STAFF QUEUES & RUSH BREAKDOWN MODAL ── */}
-      <AnimatePresence>
-        {liveQueueModalBiz && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-zinc-950/50 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white border border-zinc-200 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between border-b border-zinc-100 pb-4 shrink-0">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      Live Queue Feed
-                    </span>
-                    <span className="text-[11px] font-bold text-zinc-500 capitalize">
-                      {liveQueueModalBiz.category || 'Service'} Hub
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-black text-zinc-950 tracking-tight mt-1">
-                    {liveQueueModalBiz.name}
-                  </h3>
-                  <p className="text-xs text-zinc-500 font-medium mt-0.5">
-                    Real-time per-staff rush breakdown. Pick the doctor or specialist with your preferred slot and join their queue.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setLiveQueueModalBiz(null)}
-                  className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Staff Breakdown Scrollable Content */}
-              <div className="overflow-y-auto py-4 space-y-3.5 flex-1 pr-1">
-                {(() => {
-                  const staffList = getStaffQueueBreakdown(liveQueueModalBiz)
-                  const isUserInBizQueue = myActiveQueues.some((q) => q.business._id === liveQueueModalBiz._id)
-                  const activeUsers = liveQueueModalBiz.activeQueue || []
-
-                  if (staffList.length === 0) {
-                    return (
-                      <div className="p-8 text-center bg-zinc-50 rounded-2xl border border-zinc-200">
-                        <Users className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
-                        <p className="text-xs font-bold text-zinc-700">No staff currently listed.</p>
-                      </div>
-                    )
-                  }
-
-                  return staffList.map((st) => {
-                    const isSelected =
-                      (selectedStaff[liveQueueModalBiz._id] === st.member.name) ||
-                      (selectedStaff[liveQueueModalBiz._id]?.name === st.member.name)
-
-                    return (
-                      <div
-                        key={st.member._id || st.member.name}
-                        className={`rounded-2xl border p-4 transition-all ${
-                          isSelected
-                            ? 'bg-[#F4F9F5] border-[#16A34A] shadow-xs'
-                            : 'bg-white border-zinc-200/90 hover:border-zinc-300 shadow-2xs'
-                        }`}
-                      >
-                        {/* Top Info */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-700 font-black text-sm shrink-0">
-                              <User className="w-5 h-5 text-zinc-600" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-black text-sm text-zinc-950">{st.member.name}</h4>
-                                {isSelected && (
-                                  <span className="px-2 py-0.2 rounded-full text-[9px] font-bold bg-[#EAF5EC] text-[#114227] border border-[#16A34A]">
-                                    Selected
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-zinc-500 font-medium">
-                                {st.member.role || (liveQueueModalBiz.category === 'clinic' ? 'Doctor / Specialist' : 'Specialist')}
-                                {st.member.specialties ? ` • ${st.member.specialties}` : ''}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Live Rush Badge */}
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider flex items-center gap-1.5 border shadow-2xs ${
-                                st.isServing
-                                  ? 'bg-amber-50 text-amber-900 border-amber-200'
-                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              }`}
-                            >
-                              <span
-                                className={`w-2 h-2 rounded-full ${
-                                  st.isServing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
-                                }`}
-                              />
-                              <span>{st.isServing ? 'Serving Now' : 'Available Immediately'}</span>
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Metrics Bar */}
-                        <div className="mt-3 grid grid-cols-3 gap-2 bg-zinc-50/80 border border-zinc-200/70 rounded-xl p-2.5 text-center text-xs">
-                          <div>
-                            <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">In Their Queue</p>
-                            <p className="font-black text-zinc-900 mt-0.5">
-                              {st.totalCount} <span className="text-[10px] font-normal text-zinc-500">({st.waitingUsers.length} waiting)</span>
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Est. Wait</p>
-                            <p className="font-black text-amber-700 mt-0.5">
-                              ~{st.waitMins} min
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Next Live Slot</p>
-                            <p className="font-black text-[#114227] mt-0.5 truncate">
-                              {st.nextSlotTimeStr}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Active Tickets List for this staff member */}
-                        {st.staffUsers.length > 0 ? (
-                          <div className="mt-2.5 pt-2.5 border-t border-zinc-100 text-[11px] space-y-1.5">
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Current Tickets in Line:</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {st.servingUser && (
-                                <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2 py-0.5 rounded-lg font-bold text-[10px]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                  <span>Now Serving: Token #{activeUsers.indexOf(st.servingUser) + 1}</span>
-                                </span>
-                              )}
-                              {st.waitingUsers.map((u, uIdx) => (
-                                <span
-                                  key={uIdx}
-                                  className="inline-flex items-center gap-1 bg-zinc-100 border border-zinc-200 text-zinc-700 px-2 py-0.5 rounded-lg font-medium text-[10px]"
-                                >
-                                  <span>Waiting: Token #{activeUsers.indexOf(u) + 1}</span>
-                                  {u.estimatedStartTime && (
-                                    <span className="text-zinc-400 font-normal">
-                                      (~{new Date(u.estimatedStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
-                                    </span>
-                                  )}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="mt-2 text-[11px] text-emerald-700 font-medium">
-                            No queue for this staff member. You will be their first and immediate patron.
-                          </p>
-                        )}
-
-                        {/* Action CTA */}
-                        <div className="mt-3 pt-2.5 border-t border-zinc-100 flex items-center justify-between gap-3">
-                          <p className="text-[11px] text-zinc-500 font-medium">
-                            {st.isServing
-                              ? 'Will place you into their personal queue after current patron.'
-                              : 'Immediate start upon arrival.'}
-                          </p>
-                          <button
-                            type="button"
-                            disabled={!liveQueueModalBiz.isOpen || isUserInBizQueue || joiningBizId === liveQueueModalBiz._id}
-                            onClick={() => {
-                              setSelectedStaff((prev) => ({
-                                ...prev,
-                                [liveQueueModalBiz._id]: st.member.name,
-                              }))
-                              setLiveQueueModalBiz(null)
-                              handleJoinQueue(liveQueueModalBiz, st.member.name)
-                            }}
-                            className="py-2 px-3.5 rounded-xl bg-[#114227] hover:bg-[#0D361F] disabled:bg-zinc-200 disabled:text-zinc-400 text-white font-bold text-xs flex items-center gap-1.5 transition-transform active:scale-98 cursor-pointer shadow-xs"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>
-                              {isUserInBizQueue
-                                ? 'Already in Queue'
-                                : `Book & Join ${st.member.name}'s Queue`}
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })
-                })()}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="pt-3 border-t border-zinc-100 flex items-center justify-between shrink-0">
-                <span className="text-[11px] text-zinc-500">
-                  Buffer time of 15 minutes is automatically synced between consecutive turns.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLiveQueueModalBiz(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 hover:bg-zinc-100 transition-colors"
-                >
-                  Close Live View
-                </button>
-              </div>
             </motion.div>
           </div>
         )}

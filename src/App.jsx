@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Toaster, toast } from 'react-hot-toast'
 import { useAuth } from './context/AuthContext'
 import { useSocket } from './context/SocketContext'
+import { getAllBusinesses } from './api/business.api'
 import Navbar from './components/Navbar'
 import BackButton from './components/BackButton'
 import AIDesistant from './components/AIDesistant'
@@ -11,6 +12,7 @@ import LandingPage from './pages/LandingPage'
 import LandingPageBackup from './pages/LandingPageBackup'
 import ComingSoonPage from './pages/ComingSoonPage'
 import CustomerDashboardPage from './pages/CustomerDashboardPage'
+import HistoryPage from './pages/HistoryPage'
 import QueuePage from './pages/QueuePage'
 import BookingPage from './pages/BookingPage'
 import BusinessDashboard from './pages/BusinessDashboard'
@@ -32,6 +34,45 @@ const LoadingScreen = () => (
     </div>
   </div>
 )
+
+const QueueRedirect = () => {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  useEffect(() => {
+    getAllBusinesses({ includeAll: false })
+      .then((res) => {
+        const bizList = res.data?.data?.businesses || []
+        if (bizList.length > 0) {
+          const myIdStr = user?._id?.toString()
+          const activeBiz = bizList.find((b) =>
+            (b.activeQueue || []).some((u) => (u.userId?._id || u.userId)?.toString() === myIdStr)
+          )
+          navigate(`/queue/${(activeBiz || bizList[0])._id}`, { replace: true })
+        } else {
+          navigate('/customers', { replace: true })
+        }
+      })
+      .catch(() => navigate('/customers', { replace: true }))
+  }, [user, navigate])
+  return <LoadingScreen />
+}
+
+const BookingRedirect = () => {
+  const navigate = useNavigate()
+  useEffect(() => {
+    getAllBusinesses({ includeAll: false })
+      .then((res) => {
+        const bizList = res.data?.data?.businesses || []
+        if (bizList.length > 0) {
+          navigate(`/booking/${bizList[0]._id}`, { replace: true })
+        } else {
+          navigate('/customers', { replace: true })
+        }
+      })
+      .catch(() => navigate('/customers', { replace: true }))
+  }, [navigate])
+  return <LoadingScreen />
+}
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth()
@@ -95,7 +136,10 @@ export default function App() {
     }
   }, [])
 
-  const isCustomerDashboard = location.pathname === '/customers'
+  const isCustomerDashboard =
+    location.pathname === '/customers' ||
+    location.pathname === '/history' ||
+    location.pathname.startsWith('/queue')
 
   return (
     <div className="page-wrapper">
@@ -148,10 +192,34 @@ export default function App() {
           />
           <Route path="/customer" element={<Navigate to="/customers" replace />} />
           <Route
+            path="/history"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <HistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/queue"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <QueuePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/queue/:businessId"
             element={
               <ProtectedRoute allowedRoles={['customer', 'admin']}>
                 <QueuePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/booking"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <BookingRedirect />
               </ProtectedRoute>
             }
           />
