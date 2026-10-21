@@ -1,6 +1,30 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
+import {
+  MapPin,
+  Search,
+  Wallet,
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  ArrowRight,
+  LayoutDashboard,
+  Stethoscope,
+  Scissors,
+  Ticket,
+  Calendar,
+  Star,
+  Clock,
+  HelpCircle,
+  MessageSquare,
+  LogOut,
+  Users,
+  User,
+  Map,
+  X,
+  CheckCircle,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses } from '../api/business.api'
@@ -60,7 +84,7 @@ export default function CustomerDashboardPage() {
   const [locationQuery, setLocationQuery] = useState('')
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [historyFilter, setHistoryFilter] = useState('all') // 'all' | 'live_queue' | 'appointment' | 'active' | 'completed'
+  const [historyFilter, setHistoryFilter] = useState('all') // 'all' | 'live_queue' | 'appointment' | 'completed' | 'upcoming'
   const [sortBy, setSortBy] = useState('nearest') // 'nearest' | 'wait_time' | 'rating'
   const [showMapModal, setShowMapModal] = useState(false)
 
@@ -77,9 +101,6 @@ export default function CustomerDashboardPage() {
   const [rating, setRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
-
-  // Service customizer drawer
-  const [customizingBiz, setCustomizingBiz] = useState(null)
 
   // Fetch initial dashboard data
   const fetchData = useCallback(async () => {
@@ -100,7 +121,6 @@ export default function CustomerDashboardPage() {
       setMyBookings(myBkRes.data.data.bookings || [])
       setCoupons(coupRes.data.data.coupons || [])
 
-      // Initialize default selected services and staff for each business
       setSelectedServices((prev) => {
         const next = { ...prev }
         bizList.forEach((b) => {
@@ -249,7 +269,6 @@ export default function CustomerDashboardPage() {
     const seenBookingIds = new Set()
     const activeBizIdsInQueue = new Set()
 
-    // 1. Add active live queues
     myActiveQueues.forEach((activeQ) => {
       const qItem = activeQ.myQueueItem || {}
       const biz = activeQ.business || {}
@@ -279,7 +298,6 @@ export default function CustomerDashboardPage() {
       })
     })
 
-    // 2. Add Bookings from myBookings
     myBookings.forEach((bk) => {
       const bId = bk._id ? bk._id.toString() : null
       if (bId && seenBookingIds.has(bId)) {
@@ -314,7 +332,6 @@ export default function CustomerDashboardPage() {
     })
   }, [myActiveQueues, myBookings, user?._id])
 
-  // Clinics and Salons separation for sections
   const clinicsList = useMemo(() => {
     return businesses.filter(
       (b) => b.category === 'clinic' || b.category === 'healthcare' || b.category === 'doctor'
@@ -510,8 +527,8 @@ export default function CustomerDashboardPage() {
           </div>
 
           <div className="absolute top-3 right-3">
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-zinc-800 bg-white/95 backdrop-blur-xs border border-zinc-200/80 shadow-xs flex items-center gap-1">
-              <span>📍</span>
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-zinc-800 bg-white/95 backdrop-blur-xs border border-zinc-200/80 shadow-xs flex items-center gap-1.5">
+              <MapPin className="w-3 h-3 text-zinc-500" />
               <span>{distanceDisplay}</span>
             </span>
           </div>
@@ -524,13 +541,13 @@ export default function CustomerDashboardPage() {
             <h3 className="font-black text-lg text-zinc-950 tracking-tight leading-snug line-clamp-1">
               {biz.name}
             </h3>
-            <div className="flex items-center gap-2 mt-1 text-xs">
-              <span className="text-amber-500 font-black">★</span>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
               <span className="font-black text-zinc-900">{avgRating.toFixed(1)}</span>
               <span className="text-zinc-500 font-medium">({reviewCount}+ reviews)</span>
             </div>
             <p className="text-zinc-500 text-xs mt-1 flex items-center gap-1 line-clamp-1">
-              <span>📍</span>
+              <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
               <span>{biz.location || biz.address || 'Kolkata, West Bengal'}</span>
             </p>
           </div>
@@ -562,7 +579,7 @@ export default function CustomerDashboardPage() {
                 key={idx}
                 className="px-2.5 py-1 rounded-xl text-[10px] font-semibold bg-zinc-100/90 text-zinc-700 border border-zinc-200/60 inline-flex items-center gap-1"
               >
-                <span>👤</span>
+                <User className="w-2.5 h-2.5 text-zinc-400" />
                 <span className="line-clamp-1">{s.name}</span>
               </span>
             ))}
@@ -581,10 +598,10 @@ export default function CustomerDashboardPage() {
                 <button
                   onClick={() => handleLeaveQueue(biz._id, biz.name)}
                   disabled={leavingBizId === biz._id}
-                  className="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200"
+                  className="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 flex items-center justify-center"
                   title="Leave Queue"
                 >
-                  ✕
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
@@ -600,7 +617,7 @@ export default function CustomerDashboardPage() {
                   </>
                 ) : (
                   <>
-                    <span>👥</span>
+                    <Users className="w-3.5 h-3.5" />
                     <span>Join Live Queue</span>
                   </>
                 )}
@@ -612,7 +629,7 @@ export default function CustomerDashboardPage() {
               disabled={biz.bookingSettings?.enableAppointments === false}
               className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
             >
-              <span>📅</span>
+              <Calendar className="w-3.5 h-3.5 text-zinc-500" />
               <span>Book Appointment</span>
             </button>
           </div>
@@ -642,9 +659,9 @@ export default function CustomerDashboardPage() {
               onClick={() => setShowLocationPicker((prev) => !prev)}
               className="px-3.5 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/60 text-xs font-semibold text-zinc-800 flex items-center gap-1.5 transition-colors whitespace-nowrap"
             >
-              <span className="text-zinc-500">📍</span>
+              <MapPin className="w-3.5 h-3.5 text-zinc-500" />
               <span>{selectedCity}</span>
-              <span className="text-zinc-400 text-[10px]">▼</span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
 
             {/* Location dropdown */}
@@ -659,11 +676,12 @@ export default function CustomerDashboardPage() {
                       setLocationQuery(loc.split(',')[0])
                       setShowLocationPicker(false)
                     }}
-                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors ${
+                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 ${
                       selectedCity === loc ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-zinc-100 text-zinc-700'
                     }`}
                   >
-                    📍 {loc}
+                    <MapPin className="w-3 h-3 text-zinc-400" />
+                    <span>{loc}</span>
                   </button>
                 ))}
               </div>
@@ -679,13 +697,13 @@ export default function CustomerDashboardPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-full bg-zinc-100/90 border border-zinc-200/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all"
             />
-            <span className="absolute left-3 top-2.5 text-zinc-400 text-xs">🔍</span>
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-3 top-2 text-xs text-zinc-400 hover:text-zinc-600"
+                className="absolute right-3 top-2 text-xs text-zinc-400 hover:text-zinc-600 flex items-center"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -698,17 +716,17 @@ export default function CustomerDashboardPage() {
             onClick={() => navigate('/wallet')}
             className="px-3.5 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] hover:bg-[#DDF3E3] text-xs font-bold text-[#114227] flex items-center gap-2 transition-all shadow-xs"
           >
-            <span className="text-sm">💳</span>
+            <Wallet className="w-3.5 h-3.5 text-[#114227]" />
             <span>₹{(user?.walletBalance ?? 0).toLocaleString()}</span>
           </button>
 
           {/* Notifications Bell */}
           <div className="relative">
             <button
-              onClick={() => toast('No new notifications', { icon: '🔔' })}
+              onClick={() => toast('No new notifications', { icon: 'info' })}
               className="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors relative"
             >
-              <span>🔔</span>
+              <Bell className="w-4 h-4 text-zinc-600" />
               <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white" />
             </button>
           </div>
@@ -725,7 +743,7 @@ export default function CustomerDashboardPage() {
               <span className="text-xs font-bold text-zinc-900 hidden sm:inline">
                 {user?.name?.split(' ')[0] || 'Customer'}
               </span>
-              <span className="text-zinc-400 text-[10px]">▼</span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
 
             {showUserMenu && (
@@ -739,27 +757,30 @@ export default function CustomerDashboardPage() {
                     navigate('/profile')
                     setShowUserMenu(false)
                   }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2"
                 >
-                  👤 View Profile
+                  <User className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>View Profile</span>
                 </button>
                 <button
                   onClick={() => {
                     navigate('/wallet')
                     setShowUserMenu(false)
                   }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2"
                 >
-                  💳 Wallet & Top-up
+                  <Wallet className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Wallet & Top-up</span>
                 </button>
                 <button
                   onClick={() => {
                     logOut()
                     navigate('/login')
                   }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-2"
                 >
-                  🚪 Sign Out
+                  <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             )}
@@ -773,22 +794,23 @@ export default function CustomerDashboardPage() {
         <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-6 pr-6 border-r border-zinc-200/70 min-h-[calc(100vh-68px)]">
           <nav className="space-y-1">
             {[
-              { id: 'dashboard', label: 'Dashboard', icon: '🏠', count: null },
-              { id: 'clinics', label: 'Clinics', icon: '🩺', count: clinicsList.length },
-              { id: 'salons', label: 'Salons', icon: '✂️', count: salonsList.length },
-              { id: 'my-queues', label: 'My Queues', icon: '🎫', count: myActiveQueues.length },
+              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, count: null },
+              { id: 'clinics', label: 'Clinics', icon: Stethoscope, count: clinicsList.length },
+              { id: 'salons', label: 'Salons', icon: Scissors, count: salonsList.length },
+              { id: 'my-queues', label: 'My Queues', icon: Ticket, count: myActiveQueues.length },
               {
                 id: 'appointments',
                 label: 'Appointments',
-                icon: '📅',
+                icon: Calendar,
                 count: myBookings.filter(
                   (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
                 ).length,
               },
-              { id: 'reviews', label: 'Reviews', icon: '⭐', count: null },
-              { id: 'history', label: 'History', icon: '🕒', count: null },
+              { id: 'reviews', label: 'Reviews', icon: Star, count: null },
+              { id: 'history', label: 'History', icon: Clock, count: null },
             ].map((item) => {
               const isActive = activeNavTab === item.id
+              const IconComponent = item.icon
               return (
                 <button
                   key={item.id}
@@ -797,6 +819,9 @@ export default function CustomerDashboardPage() {
                     if (item.id === 'clinics') setCategoryFilter('clinic')
                     else if (item.id === 'salons') setCategoryFilter('salon')
                     else if (item.id === 'dashboard') setCategoryFilter('all')
+                    else if (item.id === 'history') {
+                      document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })
+                    }
                   }}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-2xl text-xs font-bold transition-all ${
                     isActive
@@ -805,7 +830,7 @@ export default function CustomerDashboardPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-base">{item.icon}</span>
+                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
                     <span>{item.label}</span>
                   </div>
                   {item.count !== null && item.count > 0 && (
@@ -825,10 +850,10 @@ export default function CustomerDashboardPage() {
           {/* Bottom Sidebar: Help & Support */}
           <div className="pt-4 border-t border-zinc-100">
             <button
-              onClick={() => toast('Support hotline: help@serveq.tech', { icon: '💬' })}
+              onClick={() => toast('Support hotline: help@serveq.tech', { icon: 'info' })}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors"
             >
-              <span className="text-base">❓</span>
+              <HelpCircle className="w-4 h-4 text-zinc-500" />
               <span>Help & Support</span>
             </button>
           </div>
@@ -878,89 +903,14 @@ export default function CustomerDashboardPage() {
           )}
 
           {/* ── HERO BANNER ── */}
-          <div className="bg-gradient-to-r from-[#EBF7EE] via-[#E7F5EC] to-[#F1FAF3] rounded-3xl p-6 sm:p-8 lg:p-9 border border-[#D5EEDB] relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-6 shadow-xs">
-            {/* Left Headline */}
-            <div className="max-w-md z-10 space-y-2.5 text-left">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.1] text-zinc-950">
-                Skip the wait.
-                <span className="block text-[#16A34A] mt-0.5">Live smarter.</span>
-              </h1>
-              <p className="text-xs sm:text-sm text-zinc-600 font-medium leading-relaxed">
-                Join live queues or book appointments at trusted clinics and salons near you.
-              </p>
-            </div>
-
-            {/* Center: Friendly Character Mascot + Floating Live Queue Pill */}
-            <div className="relative flex items-center justify-center z-10">
-              <div className="relative w-44 sm:w-52 h-44 sm:h-52 flex items-center justify-center">
-                <img
-                  src="/hero-character.jpg"
-                  alt="Skip the wait"
-                  className="w-full h-full object-contain rounded-2xl drop-shadow-md"
-                />
-
-                {/* Overlaid Floating Live Queue Pill */}
-                <div className="absolute top-4 -left-6 sm:-left-8 bg-white/95 backdrop-blur-xs border border-zinc-200/90 shadow-md px-3.5 py-1.5 rounded-full flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[11px] font-black text-zinc-800 whitespace-nowrap">
-                    Live Queue <span className="text-zinc-500 font-semibold">~10 min</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Quick Action Cards */}
-            <div className="flex flex-col gap-3 w-full sm:w-72 z-10 shrink-0">
-              {/* Clinics Quick Card */}
-              <button
-                onClick={() => {
-                  setCategoryFilter('clinic')
-                  setActiveNavTab('clinics')
-                  document.getElementById('clinics-section')?.scrollIntoView({ behavior: 'smooth' })
-                }}
-                className="bg-[#EDF7EF] border border-[#D5EEDB] hover:border-[#BCE3C6] p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3 transition-all hover:shadow-xs group text-left cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-lg">
-                    🩺
-                  </div>
-                  <div>
-                    <h4 className="font-black text-sm text-zinc-900 group-hover:text-emerald-800 transition-colors">
-                      Clinics
-                    </h4>
-                    <p className="text-[11px] text-zinc-500 font-medium">Find doctors & join live queues</p>
-                  </div>
-                </div>
-                <span className="text-emerald-700 font-black text-sm group-hover:translate-x-0.5 transition-transform">
-                  ›
-                </span>
-              </button>
-
-              {/* Salons Quick Card */}
-              <button
-                onClick={() => {
-                  setCategoryFilter('salon')
-                  setActiveNavTab('salons')
-                  document.getElementById('salons-section')?.scrollIntoView({ behavior: 'smooth' })
-                }}
-                className="bg-[#FDF2EE] border border-[#FBE2D8] hover:border-[#F7C9B9] p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3 transition-all hover:shadow-xs group text-left cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center text-lg">
-                    ✂️
-                  </div>
-                  <div>
-                    <h4 className="font-black text-sm text-zinc-900 group-hover:text-orange-800 transition-colors">
-                      Salons
-                    </h4>
-                    <p className="text-[11px] text-zinc-500 font-medium">Book your favourite salons nearby</p>
-                  </div>
-                </div>
-                <span className="text-orange-600 font-black text-sm group-hover:translate-x-0.5 transition-transform">
-                  ›
-                </span>
-              </button>
-            </div>
+          <div className="w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-[#D5EEDB] shadow-xs bg-[#EAF7EE]">
+            <img
+              src="/hero-banner.png"
+              srcSet="/hero-banner.png 1x, /hero-banner@2x.png 2x"
+              alt="Skip the wait. Live smarter. Join live queues, book appointments and get real-time updates at your favourite clinics, salons and more."
+              className="w-full h-auto object-cover block select-none"
+              loading="eager"
+            />
           </div>
 
           {/* ── FILTER & SORT CONTROLS BAR ── */}
@@ -978,7 +928,7 @@ export default function CustomerDashboardPage() {
                     : 'bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-50'
                 }`}
               >
-                <span>🩺</span>
+                <Stethoscope className={`w-3.5 h-3.5 ${categoryFilter === 'clinic' ? 'text-white' : 'text-zinc-500'}`} />
                 <span>Clinics</span>
               </button>
 
@@ -993,7 +943,7 @@ export default function CustomerDashboardPage() {
                     : 'bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-50'
                 }`}
               >
-                <span>✂️</span>
+                <Scissors className={`w-3.5 h-3.5 ${categoryFilter === 'salon' ? 'text-white' : 'text-zinc-500'}`} />
                 <span>Salons</span>
               </button>
 
@@ -1019,14 +969,14 @@ export default function CustomerDashboardPage() {
                 className="px-3.5 py-2 rounded-xl bg-white border border-zinc-200/90 text-xs font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-1.5 transition-colors shadow-xs"
               >
                 <span>Sort by: {sortBy === 'nearest' ? 'Nearest' : sortBy === 'wait_time' ? 'Shortest Wait' : 'Top Rated'}</span>
-                <span className="text-[10px] text-zinc-400">▼</span>
+                <ChevronDown className="w-3 h-3 text-zinc-400" />
               </button>
 
               <button
                 onClick={() => setShowMapModal(true)}
                 className="px-3.5 py-2 rounded-xl bg-white border border-zinc-200/90 text-xs font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-1.5 transition-colors shadow-xs"
               >
-                <span>🗺️</span>
+                <Map className="w-3.5 h-3.5 text-zinc-600" />
                 <span>Map View</span>
               </button>
             </div>
@@ -1052,7 +1002,7 @@ export default function CustomerDashboardPage() {
                   className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 group"
                 >
                   <span>View All</span>
-                  <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
 
@@ -1090,7 +1040,7 @@ export default function CustomerDashboardPage() {
                   className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 group"
                 >
                   <span>View All</span>
-                  <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
 
@@ -1285,15 +1235,17 @@ export default function CustomerDashboardPage() {
                               {isCompleted &&
                                 (b.review ? (
                                   <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold">
-                                    <span className="text-amber-500 font-black">{b.review.rating} ★</span>
+                                    <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                                    <span className="text-amber-500 font-black">{b.review.rating}</span>
                                     <span className="text-[10px] text-amber-700 font-semibold">Rated</span>
                                   </span>
                                 ) : (
                                   <button
                                     onClick={() => handleOpenReview(b)}
-                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition-transform active:scale-95 inline-flex items-center gap-1"
+                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition-transform active:scale-95 inline-flex items-center gap-1.5"
                                   >
-                                    <span>★ Rate Service</span>
+                                    <Star className="w-3.5 h-3.5 text-white fill-white" />
+                                    <span>Rate Service</span>
                                   </button>
                                 ))}
 
@@ -1342,13 +1294,13 @@ export default function CustomerDashboardPage() {
                 <h3 className="text-lg font-black text-zinc-950">Nearby Clinics & Salons Map</h3>
                 <button
                   onClick={() => setShowMapModal(false)}
-                  className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600"
+                  className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600"
                 >
-                  ✕
+                  <X className="w-4 h-4" />
                 </button>
               </div>
               <div className="h-64 rounded-2xl bg-zinc-100 border border-zinc-200 flex flex-col items-center justify-center text-center p-6 space-y-2">
-                <span className="text-4xl">🗺️</span>
+                <Map className="w-10 h-10 text-emerald-800" />
                 <p className="text-xs font-bold text-zinc-800">Showing {businesses.length} Hubs near {selectedCity}</p>
                 <p className="text-[11px] text-zinc-500">Live GPS tracking and walking routes enabled.</p>
               </div>
@@ -1387,7 +1339,7 @@ export default function CustomerDashboardPage() {
                           star <= rating ? 'text-amber-400' : 'text-zinc-200'
                         }`}
                       >
-                        ★
+                        <Star className={`w-6 h-6 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-zinc-200 fill-zinc-200'}`} />
                       </button>
                     ))}
                   </div>
