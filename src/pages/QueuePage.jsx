@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getQueue, leaveQueue, cancelDelay } from '../api/queue.api'
@@ -36,7 +37,7 @@ export default function QueuePage() {
 
   const users = queue?.users || []
 
-  // ✅ SAFE myQueueData
+  // SAFE myQueueData
   const myQueueData = user?._id
     ? users.find(
         u => (u.userId?._id || u.userId)?.toString() === user._id.toString()
@@ -46,7 +47,33 @@ export default function QueuePage() {
   const myPosition = myQueueData ? users.indexOf(myQueueData) + 1 : 0
   const isServing = myQueueData?.status === 'serving'
 
-  // ✅ FETCH DATA
+  // Next Live Queue Slot calculation with 15-minute buffer
+  const nextSlotInfo = useMemo(() => {
+    if (!users || users.length === 0) return { nextSlotTimeStr: null, estWaitMins: 0 }
+    const BUFFER_MINS = 15
+    const serving = users.find((u) => u.status === 'serving') || users[0]
+    let startMs = serving.estimatedStartTime
+      ? new Date(serving.estimatedStartTime).getTime()
+      : serving.joinedAt
+      ? new Date(serving.joinedAt).getTime()
+      : Date.now()
+    let finishMs = startMs + (Number(serving.serviceTime) || business?.averageServiceTime || 15) * 60000
+
+    for (let i = 1; i < users.length; i++) {
+      const u = users[i]
+      const uStartMs = Math.max(Date.now(), finishMs + BUFFER_MINS * 60000)
+      finishMs = uStartMs + (Number(u.serviceTime) || business?.averageServiceTime || 15) * 60000
+    }
+
+    const nextSlotMs = Math.max(Date.now(), finishMs) + BUFFER_MINS * 60000
+    const nextSlotDate = new Date(nextSlotMs)
+    return {
+      nextSlotTimeStr: nextSlotDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      estWaitMins: Math.max(1, Math.round((nextSlotMs - Date.now()) / 60000)),
+    }
+  }, [users, business?.averageServiceTime])
+
+  // FETCH DATA
   const fetchData = useCallback(async () => {
     try {
       const [bRes, qRes] = await Promise.all([
@@ -65,12 +92,12 @@ export default function QueuePage() {
     }
   }, [businessId])
 
-  // ✅ INITIAL DATA FETCH (runs regardless of socket state)
+  // INITIAL DATA FETCH (runs regardless of socket state)
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // ✅ SOCKET SETUP (re-fetches when socket connects for freshest data)
+  // SOCKET SETUP (re-fetches when socket connects for freshest data)
   useEffect(() => {
     if (connected) fetchData()
 
@@ -110,7 +137,7 @@ export default function QueuePage() {
     }
   }, [businessId, fetchData, connected, user])
 
-  // ✅ TIMER FIX
+  // TIMER FIX
   useEffect(() => {
     if (!myQueueData?.estimatedStartTime || myQueueData?.status === 'serving') {
       setTimer('')
@@ -135,7 +162,7 @@ export default function QueuePage() {
     return () => clearInterval(interval)
   }, [myQueueData])
 
-  // ✅ LEAVE QUEUE
+  // LEAVE QUEUE
   const handleLeave = async () => {
     if (!window.confirm('Leave queue?')) return
 
@@ -151,7 +178,7 @@ export default function QueuePage() {
     }
   }
 
-  // ✅ CANCEL DELAY WITH FULL REFUND
+  // CANCEL DELAY WITH FULL REFUND
   const handleCancelDelay = async () => {
     if (!window.confirm('Cancel your queue booking and request an automated refund due to service delay?')) return
 
@@ -168,7 +195,7 @@ export default function QueuePage() {
     }
   }
 
-  // ✅ SUBMIT REVIEW
+  // SUBMIT REVIEW
   const handleQueueReviewSubmit = async (e) => {
     e.preventDefault()
     setSubmittingReview(true)
@@ -188,7 +215,7 @@ export default function QueuePage() {
     }
   }
 
-  // ✅ LOADING UI
+  // LOADING UI
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
@@ -240,7 +267,7 @@ export default function QueuePage() {
             >
               <div className="bezel-core p-7 space-y-4 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto text-xl font-black">
-                  ✓
+                  
                 </div>
                 <div>
                   <span className="badge-eyebrow bg-emerald-50 text-emerald-800 border-emerald-200">
@@ -276,7 +303,7 @@ export default function QueuePage() {
                             onClick={() => setReviewRating(star)}
                             className={`text-2xl transition-transform hover:scale-125 ${star <= reviewRating ? 'text-amber-400' : 'text-zinc-200'}`}
                           >
-                            ★
+                            
                           </button>
                         ))}
                       </div>
@@ -430,11 +457,22 @@ export default function QueuePage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <div className="bg-zinc-50 border border-zinc-200/80 px-4 py-2 rounded-2xl flex items-baseline gap-1.5 shadow-xs">
                     <span className="text-xl font-black text-zinc-950">{users.length}</span>
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Waiting</span>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">In Line</span>
                   </div>
+                  {nextSlotInfo.nextSlotTimeStr && (
+                    <div className="bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-2xl flex items-center gap-2 shadow-xs">
+                      <Clock className="w-3.5 h-3.5 text-emerald-700" />
+                      <div className="text-left">
+                        <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Next Live Slot</p>
+                        <p className="text-xs font-black text-emerald-800 leading-tight">
+                          {nextSlotInfo.nextSlotTimeStr} <span className="text-[10px] font-medium text-emerald-600">(+15m buf)</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {business?.isOpen !== undefined && (
                     <div className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-[10px] font-black uppercase tracking-wider ${
                       business.isOpen 

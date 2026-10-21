@@ -549,13 +549,52 @@ export default function CustomerDashboardPage() {
     const isUserInQueue = myActiveQueues.some((q) => q.business._id === biz._id)
     const userQInfo = myActiveQueues.find((q) => q.business._id === biz._id)
     const activeUsers = biz.activeQueue || []
-    
+
     // Real-time Queue Status:
     const servingUser = activeUsers.find((u) => u.status === 'serving')
     const servingTokenNum = servingUser
       ? String(activeUsers.indexOf(servingUser) + 1).padStart(2, '0')
       : null
     const waitingCount = activeUsers.filter((u) => u.status === 'waiting').length
+
+    // Compute exact synced finish time of the queue + 15 min buffer:
+    const BUFFER_MINS = 15
+    let nextSlotTimeStr = null
+    let estWaitMins = 0
+
+    if (activeUsers.length > 0) {
+      const serving = servingUser || activeUsers[0]
+      let headStartMs = serving.estimatedStartTime
+        ? new Date(serving.estimatedStartTime).getTime()
+        : serving.joinedAt
+        ? new Date(serving.joinedAt).getTime()
+        : Date.now()
+
+      let runningFinishMs =
+        headStartMs + (Number(serving.serviceTime) || biz.averageServiceTime || 15) * 60000
+
+      // Chain waiting users: each user's slot has the service time + 15m buffer
+      for (let i = 1; i < activeUsers.length; i++) {
+        const u = activeUsers[i]
+        const uStartMs = Math.max(Date.now(), runningFinishMs + BUFFER_MINS * 60000)
+        const uDurationMs = (Number(u.serviceTime) || biz.averageServiceTime || 15) * 60000
+        runningFinishMs = uStartMs + uDurationMs
+      }
+
+      // Ensure running finish time is at least current time
+      const effectiveFinishMs = Math.max(Date.now(), runningFinishMs)
+
+      // The next live queue slot for a new customer begins at finish time + 15m buffer
+      const nextSlotMs = effectiveFinishMs + BUFFER_MINS * 60000
+      const nextSlotDate = new Date(nextSlotMs)
+      nextSlotTimeStr = nextSlotDate.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+
+      // Wait time from now until the new customer's turn begins:
+      estWaitMins = Math.max(1, Math.round((nextSlotMs - Date.now()) / 60000))
+    }
 
     const photoUrl =
       biz.coverImage ||
@@ -577,13 +616,7 @@ export default function CustomerDashboardPage() {
         ? [servicesList[0]]
         : []
 
-    // Calculate dynamic estimated wait
     const chosenDuration = curChosenServices.reduce((sum, s) => sum + (Number(s.duration) || 15), 0)
-    const estWaitMins =
-      waitingCount > 0
-        ? (biz.estimatedWait || waitingCount * (biz.averageServiceTime || 15))
-        : 0
-
     const totalPrice = curChosenServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0)
 
     return (
@@ -651,20 +684,45 @@ export default function CustomerDashboardPage() {
               <p className="text-sm sm:text-base font-black text-[#114227] mt-0.5">
                 {servingTokenNum ? `#${servingTokenNum}` : '--'}
               </p>
+              <p className="text-[9px] text-zinc-400 font-medium">
+                {servingUser ? 'In Consultation' : 'Available'}
+              </p>
             </div>
             <div className="px-1">
               <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Waiting</p>
               <p className="text-xs sm:text-sm font-bold text-zinc-800 mt-0.5">
-                {waitingCount} <span className="text-[10px] text-zinc-500 font-normal">in line</span>
+                {activeUsers.length} <span className="text-[10px] text-zinc-500 font-normal">in line</span>
+              </p>
+              <p className="text-[9px] text-zinc-400 font-medium">
+                {activeUsers.length === 1 && servingUser ? '1 Serving' : `${waitingCount} waiting`}
               </p>
             </div>
             <div className="px-1">
               <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Est. Wait</p>
               <p className="text-xs sm:text-sm font-black text-amber-700 mt-0.5">
-                ~{estWaitMins} <span className="text-[10px] text-amber-600 font-normal">min</span>
+                {nextSlotTimeStr ? `~${estWaitMins} min` : '~0 min'}
+              </p>
+              <p
+                className="text-[9px] text-emerald-800 font-bold truncate"
+                title={nextSlotTimeStr ? `Next Slot: ${nextSlotTimeStr} (+15m buffer)` : 'Queue Ready'}
+              >
+                {nextSlotTimeStr ? `Next: ${nextSlotTimeStr}` : 'Queue Ready'}
               </p>
             </div>
           </div>
+
+          {/* Next Available Slot Notification Banner when busy */}
+          {nextSlotTimeStr && (
+            <div className="bg-[#EBF7EE] border border-[#CDEBD4] rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px]">
+              <span className="font-bold text-[#114227] flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-[#16A34A]" />
+                <span>Next Live Slot:</span>
+              </span>
+              <span className="font-black text-[#114227]">
+                {nextSlotTimeStr} <span className="text-[9px] text-zinc-500 font-medium">(+15m buffer)</span>
+              </span>
+            </div>
+          )}
 
           {/* Interactive Service Selector Pills */}
           <div className="space-y-1.5 pt-1">
