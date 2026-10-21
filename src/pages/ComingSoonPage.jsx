@@ -23,32 +23,6 @@ export default function ComingSoonPage() {
   const cardRef = useRef(null)
   const inputRef = useRef(null)
 
-  // 1. Keeps desktop layout on every screen: below 1024px wide scales down to fit.
-  useEffect(() => {
-    const DESIGN_W = 1024
-    const root = document.documentElement
-
-    const fit = () => {
-      const w = window.innerWidth
-      const hgt = window.innerHeight
-      const z = w < DESIGN_W ? w / DESIGN_W : 1
-      root.style.zoom = z === 1 ? '' : String(z)
-      root.style.setProperty('--vw', w / z / 100 + 'px')
-      root.style.setProperty('--vh', hgt / z / 100 + 'px')
-    }
-
-    fit()
-    window.addEventListener('resize', fit)
-    window.addEventListener('orientationchange', fit)
-
-    return () => {
-      window.removeEventListener('resize', fit)
-      window.removeEventListener('orientationchange', fit)
-      root.style.zoom = ''
-      root.style.removeProperty('--vw')
-      root.style.removeProperty('--vh')
-    }
-  }, [])
 
   // 2. Liquid glass refraction detection & interactive pointer lighting on the card
   useEffect(() => {
