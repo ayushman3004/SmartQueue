@@ -139,7 +139,8 @@ export default function App() {
   const isCustomerDashboard =
     location.pathname === '/customers' ||
     location.pathname === '/history' ||
-    location.pathname.startsWith('/queue')
+    location.pathname.startsWith('/queue') ||
+    location.pathname.startsWith('/booking')
 
   return (
     <div className="page-wrapper">
@@ -219,7 +220,7 @@ export default function App() {
             path="/booking"
             element={
               <ProtectedRoute allowedRoles={['customer', 'admin']}>
-                <BookingRedirect />
+                <BookingPage />
               </ProtectedRoute>
             }
           />

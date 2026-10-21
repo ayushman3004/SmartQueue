@@ -1,9 +1,40 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import {
+  MapPin,
+  Search,
+  Wallet,
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  LayoutDashboard,
+  Stethoscope,
+  Scissors,
+  Ticket,
+  Calendar,
+  Star,
+  Clock,
+  HelpCircle,
+  LogOut,
+  User,
+  Users,
+  Check,
+  CheckCircle,
+  Eye,
+  Sparkles,
+  X,
+  Gift,
+  ArrowRight,
+  Phone,
+  ShieldCheck,
+  Tag,
+  CreditCard,
+  Building,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getBusiness } from '../api/business.api'
+import { getAllBusinesses, getBusiness } from '../api/business.api'
 import {
   getAvailableSlots,
   createBooking,
@@ -15,35 +46,45 @@ import { submitReview } from '../api/review.api'
 import { STAFF_PRESETS } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
+import { useDebounce } from '../hooks/useDebounce'
+
+const POPULAR_LOCATIONS = [
+  'Kolkata, West Bengal',
+  'Bardhaman, West Bengal',
+  'Salt Lake, Kolkata',
+  'New Town, Kolkata',
+  'Park Street, Kolkata',
+]
+
+const DEFAULT_SALON_IMAGE = '/hubs/salon.png'
+const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 
 export default function BookingPage() {
-  const { businessId } = useParams()
-  const { user, setUser } = useAuth()
+  const { businessId: paramBizId } = useParams()
+  const { user, setUser, logOut } = useAuth()
   const { socket } = useSocket()
   const navigate = useNavigate()
 
+  // Data states
+  const [businesses, setBusinesses] = useState([])
+  const [selectedBizId, setSelectedBizId] = useState(paramBizId || null)
   const [business, setBusiness] = useState(null)
-
-  useSeo({
-    title: business?.name ? `${business.name} — Book Appointment` : 'Book Appointment',
-    description: 'Select services, choose available practitioners, and reserve priority slots on serveQ.',
-    robots: 'noindex, nofollow',
-  })
   const [slots, setSlots] = useState([])
   const [myBookings, setMyBookings] = useState([])
   const [meta, setMeta] = useState({ avgServiceTime: 10, aiBuffer: 0, ratePerMinute: 20 })
   const [loading, setLoading] = useState(true)
 
-  // Booking Form State: Multiple Services & Doctor/Barber Selection
+  // Booking Form State
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [selectedServices, setSelectedServices] = useState([])
-  const [selectedStaff, setSelectedStaff] = useState('any') // 'any' or staff member object
+  const [selectedStaff, setSelectedStaff] = useState('any')
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [validatingCoupon, setValidatingCoupon] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [bookingInProgress, setBookingInProgress] = useState(false)
+  const [paymentChoice, setPaymentChoice] = useState('PAY_AT_BUSINESS')
 
   // Review Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
@@ -51,14 +92,49 @@ export default function BookingPage() {
   const [rating, setRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
-  const [paymentChoice, setPaymentChoice] = useState('PAY_AT_BUSINESS')
 
+  // Header & Navigation states
+  const [selectedCity, setSelectedCity] = useState(POPULAR_LOCATIONS[0])
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+
+  useSeo({
+    title: business?.name ? `${business.name} — Book Appointment | serveQ` : 'Book Appointment | serveQ',
+    description: 'Select services, choose available practitioners, and reserve priority slots on serveQ.',
+    robots: 'noindex, nofollow',
+  })
+
+  // Load all businesses first (to support /booking without param and venue switcher)
+  useEffect(() => {
+    getAllBusinesses({ includeAll: false })
+      .then((res) => {
+        const bizList = res.data?.data?.businesses || []
+        setBusinesses(bizList)
+        if (!selectedBizId && bizList.length > 0) {
+          setSelectedBizId(bizList[0]._id)
+        }
+      })
+      .catch(() => {})
+  }, [selectedBizId])
+
+  // Sync selectedBizId with paramBizId if URL changes
+  useEffect(() => {
+    if (paramBizId) {
+      setSelectedBizId(paramBizId)
+    }
+  }, [paramBizId])
+
+  // Fetch business details, available slots, and bookings
   const fetchData = useCallback(async () => {
+    if (!selectedBizId) return
     try {
+      setLoading(true)
       const [bRes, sRes, mRes] = await Promise.all([
-        getBusiness(businessId),
-        getAvailableSlots(businessId, selectedDate),
-        getMyBookings(),
+        getBusiness(selectedBizId),
+        getAvailableSlots(selectedBizId, selectedDate),
+        getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
       ])
 
       const biz = bRes.data.data.business
@@ -71,29 +147,38 @@ export default function BookingPage() {
         setPaymentChoice('PAY_AT_BUSINESS')
       }
 
+      // Default select first service if none selected or if switching venue
       if (biz.services?.length > 0 && selectedServices.length === 0) {
         setSelectedServices([biz.services[0]])
       }
 
       setSlots(sRes.data.data.slots || [])
       setMeta({
-        avgServiceTime: sRes.data.data.avgServiceTime,
-        aiBuffer: sRes.data.data.aiBuffer,
-        ratePerMinute: sRes.data.data.ratePerMinute,
+        avgServiceTime: sRes.data.data.avgServiceTime || 15,
+        aiBuffer: sRes.data.data.aiBuffer || 0,
+        ratePerMinute: sRes.data.data.ratePerMinute || 20,
       })
-      setMyBookings(mRes.data.data.bookings.filter(b => b.businessId?._id === businessId || b.businessId === businessId))
+
+      const allBks = mRes.data.data.bookings || []
+      setMyBookings(
+        allBks.filter(
+          (b) =>
+            (b.businessId?._id || b.businessId)?.toString() === selectedBizId.toString()
+        )
+      )
     } catch (err) {
       console.error('Failed to load booking data', err)
+      toast.error('Unable to fetch appointment slots')
     } finally {
       setLoading(false)
     }
-  }, [businessId, selectedDate, selectedServices.length])
+  }, [selectedBizId, selectedDate, selectedServices.length])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // Socket updates
+  // Real-time socket updates
   useEffect(() => {
     if (!socket) return
 
@@ -110,6 +195,7 @@ export default function BookingPage() {
     socket.on('queue:update', handleUpdate)
     socket.on('service:started', handleUpdate)
     socket.on('service:completed', handleUpdate)
+
     return () => {
       socket.off('booking:delayed', handleDelay)
       socket.off('bookings:updated', handleUpdate)
@@ -119,27 +205,28 @@ export default function BookingPage() {
     }
   }, [socket, user, fetchData])
 
-  // Multiple services toggle handler
+  // Toggle multiple services
   const handleToggleService = (svc) => {
-    setSelectedServices(prev => {
-      const exists = prev.some(s => s.name === svc.name)
+    setSelectedServices((prev) => {
+      const exists = prev.some((s) => s.name === svc.name)
       if (exists) {
         if (prev.length <= 1) {
-          toast.error("Please keep at least one service selected")
+          toast.error('Please keep at least one service selected')
           return prev
         }
-        return prev.filter(s => s.name !== svc.name)
+        return prev.filter((s) => s.name !== svc.name)
       } else {
         return [...prev, svc]
       }
     })
   }
 
+  // Coupon handling
   const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) return
+    if (!couponCode.trim() || !selectedBizId) return
     setValidatingCoupon(true)
     try {
-      const res = await validateCoupon(couponCode.trim(), businessId)
+      const res = await validateCoupon(couponCode.trim(), selectedBizId)
       setAppliedCoupon(res.data.data)
       toast.success(`Coupon applied! Saved ₹${res.data.data.discountAmount}`)
     } catch (err) {
@@ -150,6 +237,7 @@ export default function BookingPage() {
     }
   }
 
+  // Select slot
   const handleSlotSelect = (slot) => {
     if (selectedServices.length === 0) {
       toast.error('Please select at least one service before choosing a time slot')
@@ -159,8 +247,9 @@ export default function BookingPage() {
     setPaymentModalOpen(true)
   }
 
+  // Confirm booking
   const handleConfirmBooking = async () => {
-    if (!selectedSlot) return
+    if (!selectedSlot || !selectedBizId) return
     if (selectedServices.length === 0) {
       toast.error('Please select at least one service')
       return
@@ -168,11 +257,11 @@ export default function BookingPage() {
 
     setBookingInProgress(true)
     try {
-      const combinedServiceNames = selectedServices.map(s => s.name).join(' + ')
-      const preferredStaffName = selectedStaff === 'any' ? null : (selectedStaff?.name || selectedStaff)
+      const combinedServiceNames = selectedServices.map((s) => s.name).join(' + ')
+      const preferredStaffName = selectedStaff === 'any' ? null : selectedStaff?.name || selectedStaff
 
       const res = await createBooking({
-        businessId,
+        businessId: selectedBizId,
         startTime: selectedSlot.startTime,
         services: selectedServices,
         serviceType: combinedServiceNames,
@@ -184,12 +273,14 @@ export default function BookingPage() {
 
       const newBal = res.data.data.newBalance
       if (newBal !== undefined) {
-        setUser(prev => prev ? { ...prev, walletBalance: newBal } : prev)
+        setUser((prev) => (prev ? { ...prev, walletBalance: newBal } : prev))
       }
 
       const assigned = res.data.data?.assignedStaff || res.data.data?.booking?.assignedStaff
       if (assigned?.name) {
-        toast.success(`Booking confirmed! Assigned to ${assigned.name}${assigned.autoAssigned ? ' (On-Duty)' : ''}`)
+        toast.success(
+          `Booking confirmed! Assigned to ${assigned.name}${assigned.autoAssigned ? ' (On-Duty)' : ''}`
+        )
       } else {
         toast.success(res.data.message || 'Booking confirmed!')
       }
@@ -204,13 +295,16 @@ export default function BookingPage() {
     }
   }
 
+  // Cancel booking
   const handleCancel = async (id) => {
-    if (!window.confirm("Cancel this booking? Amount will be refunded to your wallet.")) return
+    if (!window.confirm('Cancel this booking? Amount will be refunded to your wallet.')) return
     try {
       const res = await cancelBooking(id)
-      toast.success(res.data.message || 'Booking cancelled')
+      toast.success(res.data.message || 'Booking cancelled and refunded')
       if (res.data.data?.refunded) {
-        setUser(prev => prev ? { ...prev, walletBalance: (prev.walletBalance || 0) + res.data.data.refunded } : prev)
+        setUser((prev) =>
+          prev ? { ...prev, walletBalance: (prev.walletBalance || 0) + res.data.data.refunded } : prev
+        )
       }
       fetchData()
     } catch (err) {
@@ -218,6 +312,7 @@ export default function BookingPage() {
     }
   }
 
+  // Review handling
   const handleOpenReview = (booking) => {
     setSelectedBookingForReview(booking)
     setRating(5)
@@ -236,483 +331,833 @@ export default function BookingPage() {
         rating,
         comment: reviewComment,
       })
-      toast.success("Review submitted! Thank you.")
+      toast.success('Thank you! Review submitted successfully.')
       setReviewModalOpen(false)
+      fetchData()
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to submit review")
+      toast.error(err.response?.data?.message || 'Failed to submit review')
     } finally {
       setSubmittingReview(false)
     }
   }
 
   const formatTime = (iso) => {
-    return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+    if (!iso) return ''
+    return new Date(iso).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
   }
 
   const isClinic = business?.category === 'clinic' || business?.category === 'healthcare'
+  const isSalon = business?.category === 'salon' || business?.category === 'barbershop'
   const staffRoleLabel = isClinic ? 'Doctor / Specialist' : 'Barber / Stylist'
-  const staffRoleIcon = ''
 
-  // Available staff list (use registered business staff or standard presets if empty)
-  const availableStaffList = (business?.staff && business.staff.length > 0)
-    ? business.staff
-    : (STAFF_PRESETS[isClinic ? 'clinic' : 'salon']?.defaults || [])
+  // Available staff
+  const availableStaffList = useMemo(() => {
+    if (business?.staff && business.staff.length > 0) return business.staff
+    return STAFF_PRESETS[isClinic ? 'clinic' : 'salon']?.defaults || []
+  }, [business?.staff, isClinic])
 
-  // Price and duration aggregations across multiple selected services
-  const totalServiceDuration = selectedServices.reduce((sum, s) => sum + (Number(s.duration) || 15), 0)
+  // Price calculations
+  const totalServiceDuration = selectedServices.reduce(
+    (sum, s) => sum + (Number(s.duration) || 15),
+    0
+  )
   const totalServicePrice = selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0)
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0
   const finalPrice = Math.max(0, totalServicePrice - discountAmount)
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-      <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-
   return (
-    <div className="container max-w-7xl py-10 px-4 sm:px-6 space-y-8">
-      {/* Top Header */}
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-zinc-950 px-4 py-2 rounded-xl bg-slate-50 border border-zinc-200 hover:bg-white transition-all"
-        >
-          ← Back to Directory
-        </button>
-        <button
-          onClick={() => navigate(`/queue/${businessId}`)}
-          className="flex items-center gap-2 text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 px-4 py-2 rounded-xl hover:bg-teal-100 transition-all"
-        >
-          View Live Queue ({business?.queueLength || 0} waiting) →
-        </button>
-      </div>
+    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans">
+      {/* ── TOP HEADER BAR (UNIFIED WITH OTHER PAGES) ── */}
+      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        {/* Left: Brand Logo */}
+        <div className="flex items-center gap-3">
+          <Link to="/customers" className="flex items-center gap-2 group text-decoration-none">
+            <span className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950 font-sans flex items-center">
+              serve<span className="text-[#16A34A]">q</span>
+            </span>
+          </Link>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Venue Info, Service Selection & My Bookings */}
-        <div className="lg:col-span-4 space-y-6">
-          {business && (
-            <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h1 className="text-2xl font-black text-zinc-950 tracking-tight">{business.name}</h1>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${business.isOpen ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                    {business.isOpen ? 'OPEN' : 'CLOSED'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 capitalize">{business.category} • {business.address || business.location || 'Local Hub'}</p>
-                {business.phone && (
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Phone:{' '}
-                    <a
-                      href={`tel:${business.phone}`}
-                      className="text-teal-700 hover:text-teal-800 font-semibold underline underline-offset-2 transition-colors"
-                    >
-                      {business.phone}
-                    </a>
-                  </p>
-                )}
-              </div>
+        {/* Center: Location Pill & Search Bar */}
+        <div className="hidden md:flex items-center gap-2 flex-1 max-w-2xl mx-4">
+          <div className="relative">
+            <button
+              onClick={() => setShowLocationPicker((prev) => !prev)}
+              className="px-3.5 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/60 text-xs font-semibold text-zinc-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+            >
+              <MapPin className="w-3.5 h-3.5 text-zinc-500" />
+              <span>{selectedCity}</span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
+            </button>
 
-              {/* Multi-Service Selection */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">
-                    Select Services (Choose Multiple)
-                  </label>
-                  <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
-                    {selectedServices.length} Selected • {totalServiceDuration}m
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  {(business.services || [{ name: 'General Consultation', duration: 15, price: business.basePrice || 0 }]).map((svc, i) => {
-                    const isSelected = selectedServices.some(s => s.name === svc.name)
-                    return (
-                      <div
-                        key={i}
-                        onClick={() => handleToggleService(svc)}
-                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                          isSelected
-                            ? 'bg-teal-50/80 border-teal-500 shadow-xs ring-1 ring-teal-500/30'
-                            : 'bg-slate-50 border-zinc-200 hover:bg-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center text-xs font-black transition-colors ${
-                            isSelected ? 'bg-teal-600 border-teal-600 text-white' : 'border-zinc-300 bg-white text-transparent'
-                          }`}>
-                            ✓
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-zinc-900 leading-tight">{svc.name}</p>
-                            <p className="text-xs text-slate-400 mt-0.5 font-medium">{svc.duration} minutes</p>
-                          </div>
-                        </div>
-                        <span className="text-sm font-black text-teal-800">₹{svc.price ?? business.basePrice ?? 0}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="p-2.5 rounded-xl bg-teal-50/50 border border-teal-100 flex items-center justify-between text-xs">
-                  <span className="text-zinc-600 font-medium">Selected Total:</span>
-                  <span className="font-black text-teal-800">
-                    {totalServiceDuration} mins • ₹{totalServicePrice}
-                  </span>
-                </div>
-              </div>
-
-              {/* Doctor / Barber Selection */}
-              {business?.bookingSettings?.allowStaffSelection === false ? (
-                <div className="p-3.5 bg-zinc-50 border border-zinc-200 rounded-2xl text-xs space-y-1">
-                  <span className="font-bold text-zinc-800 flex items-center gap-1.5">
-                    <span>Automated Staff Allocation</span>
-                  </span>
-                  <p className="text-zinc-500 text-[11px] leading-snug">
-                    Staff members are assigned automatically by the venue management based on real-time on-duty availability.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3 pt-4 border-t border-zinc-100">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">
-                      Select {staffRoleLabel}
-                    </label>
-                    <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
-                      Auto-Fallback
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                    {/* Option 1: Any Available / Auto-Assign */}
-                    <div
-                      onClick={() => setSelectedStaff('any')}
-                      className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                        selectedStaff === 'any'
-                          ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500/30'
-                          : 'bg-slate-50 border-zinc-200 hover:bg-white'
-                      }`}
-                    >
-                    <div>
-                      <p className="text-xs font-black text-zinc-900 flex items-center gap-1.5">
-                        <span>Any Available {isClinic ? 'General Physician / Doctor' : 'Barber / Stylist'}</span>
-                      </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        Auto-assigned to on-duty {isClinic ? 'General Physician' : 'Barber'} at selected slot
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-black uppercase bg-teal-100 text-teal-800 px-2 py-0.5 rounded-md flex-shrink-0">
-                      Recommended
-                    </span>
-                  </div>
-
-                  {/* Individual Staff Cards */}
-                  {availableStaffList.map((member, idx) => {
-                    const isOccupied = Boolean(member.isOccupied) || (
-                      business?.activeQueue?.some(u => u.status === 'serving' && u.assignedStaff?.name?.toLowerCase() === member.name?.toLowerCase())
-                    )
-                    const isSelected = selectedStaff?._id === member._id || selectedStaff?.name === member.name
-                    return (
-                      <div
-                        key={member._id || idx}
-                        onClick={() => {
-                          if (isOccupied) {
-                            toast.error(`${member.name} is currently in service with a patron. Auto-fallback will assign an on-duty ${isClinic ? 'General Physician' : 'Barber'}.`)
-                          }
-                          setSelectedStaff(member)
-                        }}
-                        className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                          isOccupied
-                            ? 'bg-rose-50/70 border-rose-200'
-                            : isSelected
-                              ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500/30'
-                              : 'bg-slate-50 border-zinc-200 hover:bg-white'
-                        }`}
-                      >
-                        <div className="min-w-0 pr-2">
-                          <p className="text-xs font-bold text-zinc-900 truncate flex items-center gap-1.5">
-                            <span>{member.name}</span>
-                            {isOccupied && (
-                              <span className="text-[9px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded-md">
-                                In Service
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[10px] text-slate-500 truncate">
-                            {member.role || staffRoleLabel} {member.specialties ? `• ${Array.isArray(member.specialties) ? member.specialties.join(', ') : member.specialties}` : ''}
-                          </p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <span className={`text-[10px] font-bold block ${
-                            isOccupied ? 'text-rose-600 font-extrabold' : member.isAvailable !== false ? 'text-emerald-700' : 'text-slate-400'
-                          }`}>
-                            {isOccupied ? 'In Service (Occupied)' : member.isAvailable !== false ? 'Available' : 'Off-Duty'}
-                          </span>
-                          <span className="text-[10px] text-amber-500 font-bold">Rating: {member.rating ? Number(member.rating).toFixed(1) : '5.0'}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Auto-Assignment Guarantee Alert */}
-                <div className="p-3 bg-teal-50/60 border border-teal-200/80 rounded-2xl text-[11px] text-teal-950 space-y-1">
-                  <p className="font-bold flex items-center gap-1.5 text-teal-800">
-                    <span>Guaranteed On-Duty Coverage</span>
-                  </p>
-                  <p className="text-slate-600 leading-snug">
-                    If your chosen {isClinic ? 'doctor' : 'barber'} is busy or unavailable at your slot, you will automatically be paired with {isClinic ? 'an on-duty General Physician' : 'any available Barber'} at that time.
-                  </p>
-                </div>
-              </div>
-              )}
-
-              {/* Coupon Section */}
-              <div className="space-y-2 pt-4 border-t border-zinc-100">
-                <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider">Have a coupon?</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter code (e.g. SERVEQ15)"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    className="flex-1 px-3 py-2 rounded-xl border border-zinc-200 text-xs uppercase font-bold focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
+            {showLocationPicker && (
+              <div className="absolute top-full left-0 mt-1.5 w-60 bg-white border border-zinc-200 rounded-2xl shadow-xl p-2 z-50 space-y-1">
+                <p className="text-[10px] font-bold uppercase text-zinc-400 px-2 py-1">Select Location</p>
+                {POPULAR_LOCATIONS.map((loc) => (
                   <button
-                    type="button"
-                    onClick={handleApplyCoupon}
-                    disabled={validatingCoupon || !couponCode}
-                    className="px-4 py-2 bg-zinc-900 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 disabled:opacity-50"
+                    key={loc}
+                    onClick={() => {
+                      setSelectedCity(loc)
+                      setShowLocationPicker(false)
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer ${
+                      selectedCity === loc ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-zinc-100 text-zinc-700'
+                    }`}
                   >
-                    Apply
+                    <MapPin className="w-3 h-3 text-zinc-400" />
+                    <span>{loc}</span>
                   </button>
-                </div>
-                {appliedCoupon && (
-                  <p className="text-xs text-emerald-700 font-bold">✓ Coupon active: -₹{appliedCoupon.discountAmount}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* User's Existing Bookings for this business */}
-          <div className="bg-white border border-zinc-200 p-6 rounded-3xl shadow-sm space-y-4">
-            <h3 className="text-xs font-black uppercase text-zinc-950 tracking-wider">Your Bookings at this Venue</h3>
-            {myBookings.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4 border border-dashed border-zinc-200 rounded-2xl">
-                No past or pending bookings here yet.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {myBookings.map((b) => (
-                  <div key={b._id} className="p-4 rounded-2xl bg-slate-50 border border-zinc-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-900">{formatTime(b.startTime)}</span>
-                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
-                        b.status === 'completed' ? 'bg-slate-200 text-slate-700' :
-                        b.status === 'serving' ? 'bg-emerald-100 text-emerald-700' :
-                        b.status === 'cancelled' || b.status === 'refunded' ? 'bg-rose-100 text-rose-700' :
-                        'bg-teal-100 text-teal-800'
-                      }`}>
-                        {b.status}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-slate-700 font-bold leading-tight">{b.serviceType}</p>
-
-                    {/* Assigned Doctor / Barber Badge */}
-                    {b.assignedStaff?.name && (
-                      <div className="p-2 rounded-xl bg-teal-50 border border-teal-200/80 text-[11px] text-teal-900 flex items-center justify-between">
-                        <span className="font-bold flex items-center gap-1">
-                          <span>{staffRoleIcon}</span>
-                          <span>{b.assignedStaff.name}</span>
-                          <span className="text-[10px] text-slate-500 font-normal">({b.assignedStaff.role || staffRoleLabel})</span>
-                        </span>
-                        {b.assignedStaff.autoAssigned && (
-                          <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
-                            On-Duty
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    <p className="text-[11px] text-slate-500 font-medium">Paid: ₹{b.paidAmount}</p>
-
-                    <div className="flex items-center gap-2 pt-2 border-t border-zinc-200">
-                      {b.status === 'completed' ? (
-                        <button
-                          onClick={() => handleOpenReview(b)}
-                          className="text-xs font-bold text-teal-700 hover:underline"
-                        >
-                          Leave Review
-                        </button>
-                      ) : b.status === 'scheduled' || b.status === 'confirmed' ? (
-                        <button
-                          onClick={() => handleCancel(b._id)}
-                          className="text-xs font-bold text-rose-600 hover:underline"
-                        >
-                          Cancel Booking
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
 
-        {/* Right Column: Date Selection & Available Slots */}
-        <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white border border-zinc-200 p-8 rounded-3xl shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 pb-6">
-              <div>
-                <h2 className="text-2xl font-black text-zinc-950">Select Time Slot</h2>
-                <p className="text-xs text-slate-500 font-medium">Slots calculated dynamically with AI extension buffering.</p>
-              </div>
-              <input
-                type="date"
-                value={selectedDate}
-                min={new Date().toISOString().split('T')[0]}
-                onChange={(e) => { setSelectedDate(e.target.value); setLoading(true) }}
-                className="px-4 py-2.5 rounded-xl border border-zinc-200 text-sm font-bold bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </div>
-
-            {meta.aiBuffer > 0 && (
-              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-900 flex items-center gap-2">
-                <span><strong>AI Pacing Active:</strong> +{meta.aiBuffer} mins safety buffer added based on historical extensions.</span>
-              </div>
-            )}
-
-            {/* Appointments Disabled Warning */}
-            {business?.bookingSettings?.enableAppointments === false ? (
-              <div className="py-12 px-6 text-center border border-amber-200 bg-amber-50 rounded-2xl space-y-3">
-                <h3 className="text-lg font-bold text-amber-950">Advance Bookings Disabled</h3>
-                <p className="text-xs text-amber-800 max-w-md mx-auto">
-                  This venue does not accept advance scheduled appointments. You can visit in person or join the live queue on the customer dashboard.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/queue/${businessId}`)}
-                  className="px-4 py-2 bg-amber-800 text-white text-xs font-bold rounded-xl hover:bg-amber-900 transition-colors"
-                >
-                  Go to Live Queue
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Slots Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {slots.map((slot, i) => {
-                    const isPast = new Date(slot.startTime) < new Date()
-                    const isAvailable = slot.available && !isPast
-
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        disabled={!isAvailable}
-                        onClick={() => handleSlotSelect(slot)}
-                        className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-h-[90px] ${
-                          isAvailable
-                            ? 'bg-slate-50 border-zinc-200 hover:border-teal-500 hover:bg-teal-50/40 cursor-pointer shadow-xs'
-                            : 'bg-zinc-50 border-zinc-100 text-slate-300 cursor-not-allowed opacity-60'
-                        }`}
-                      >
-                        <span className="text-sm font-black text-zinc-900">{formatTime(slot.startTime)}</span>
-                        <span className="text-[10px] text-slate-400 font-bold">{slot.duration} mins</span>
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md mt-1 ${
-                          isAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
-                        }`}>
-                          {isAvailable ? 'Available' : 'Booked'}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {slots.length === 0 && (
-                  <div className="py-16 text-center text-slate-400 border border-dashed border-zinc-200 rounded-3xl">
-                    No slots available on this date. Please try another day.
-                  </div>
-                )}
-              </>
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Search clinic or salon for appointment..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-full bg-zinc-100/90 border border-zinc-200/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all"
+            />
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-2 text-xs text-zinc-400 hover:text-zinc-600 flex items-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Payment Confirmation Modal */}
-      <AnimatePresence>
-        {paymentModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+        {/* Right: Wallet Balance, Notifications, Profile Avatar */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => navigate('/wallet')}
+            className="px-3.5 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] hover:bg-[#DDF3E3] text-xs font-bold text-[#114227] flex items-center gap-2 transition-all shadow-xs cursor-pointer"
           >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-6"
+            <Wallet className="w-3.5 h-3.5 text-[#114227]" />
+            <span>₹{(user?.walletBalance ?? 0).toLocaleString()}</span>
+          </button>
+
+          <button
+            onClick={() => toast('No new notifications', { icon: 'info' })}
+            className="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors relative cursor-pointer"
+          >
+            <Bell className="w-4 h-4 text-zinc-600" />
+            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white" />
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu((prev) => !prev)}
+              className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer"
             >
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
-                <div>
-                  <h3 className="text-xl font-black text-zinc-950">Payment Confirmation</h3>
-                  <p className="text-xs text-slate-400">Order Summary & Confirmation</p>
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-700 text-white flex items-center justify-center font-bold text-xs border border-zinc-200">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'C'}
+              </div>
+              <span className="text-xs font-bold text-zinc-900 hidden sm:inline">
+                {user?.name?.split(' ')[0] || 'Customer'}
+              </span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
+            </button>
+
+            {showUserMenu && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-zinc-200 rounded-2xl shadow-xl p-1.5 z-50 space-y-1">
+                <div className="px-3 py-2 border-b border-zinc-100">
+                  <p className="text-xs font-bold text-zinc-900 line-clamp-1">{user?.name || 'Customer'}</p>
+                  <p className="text-[10px] text-zinc-400 line-clamp-1">{user?.email}</p>
                 </div>
-                <button onClick={() => setPaymentModalOpen(false)} className="text-slate-400 hover:text-zinc-900 font-bold">✕</button>
+                <button
+                  onClick={() => {
+                    navigate('/profile')
+                    setShowUserMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>View Profile</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/wallet')
+                    setShowUserMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <Wallet className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Wallet & Top-up</span>
+                </button>
+                <button
+                  onClick={() => {
+                    logOut()
+                    navigate('/login')
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* ── BODY: SIDEBAR + MAIN CANVAS (UNIFIED DESIGN) ── */}
+      <div className="flex-1 flex w-full">
+        {/* LEFT SIDEBAR */}
+        <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100vh-61px)] bg-white/40">
+          <nav className="space-y-1">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/customers' },
+              { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: '/customers?category=clinic' },
+              { id: 'salons', label: 'Salons', icon: Scissors, route: '/customers?category=salon' },
+              { id: 'my-queues', label: 'My Queues', icon: Ticket, route: '/queue' },
+              {
+                id: 'appointments',
+                label: 'Appointments',
+                icon: Calendar,
+                count: myBookings.filter(
+                  (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
+                ).length,
+                route: '/booking',
+              },
+              { id: 'reviews', label: 'Reviews', icon: Star, route: '/history' },
+              { id: 'history', label: 'History', icon: Clock, route: '/history' },
+            ].map((item) => {
+              const isActive = item.id === 'appointments'
+              const IconComponent = item.icon
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.route)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-[#EAF5EC] text-[#114227] shadow-xs'
+                      : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.count !== undefined && item.count > 0 && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        isActive ? 'bg-[#114227] text-white' : 'bg-zinc-200 text-zinc-700'
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* Bottom Sidebar: Refer & Earn and Help & Support */}
+          <div className="pt-4 border-t border-zinc-100 space-y-1">
+            <button
+              onClick={() => toast.success('Referral code copied to clipboard!')}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+            >
+              <Gift className="w-4 h-4 text-purple-600" />
+              <span>Refer & Earn</span>
+            </button>
+            <button
+              onClick={() => toast('Support hotline: help@serveq.tech', { icon: 'info' })}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4 text-zinc-500" />
+              <span>Help & Support</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN CANVAS */}
+        <main className="flex-1 px-4 py-5 sm:px-8 sm:py-7 space-y-6 min-w-0 max-w-6xl">
+          {/* Header Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight font-sans">
+                Book an Appointment
+              </h1>
+              <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
+                Reserve guaranteed priority slots at verified clinics and salons with zero waiting.
+              </p>
+            </div>
+
+            {business && (
+              <button
+                onClick={() => navigate(`/queue/${business._id}`)}
+                className="self-start sm:self-auto px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 font-bold text-xs flex items-center gap-2 shadow-2xs transition-colors cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                <span>View Live Queue ({business.activeQueue?.length || business.queueLength || 0} in line)</span>
+                <ChevronRight className="w-3 h-3 text-emerald-600" />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Venue Switcher (Pill Row) */}
+          {businesses.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <span className="text-xs font-bold text-zinc-400 shrink-0 uppercase tracking-wider">
+                Select Venue:
+              </span>
+              {businesses.map((b) => {
+                const isSelected = (selectedBizId || business?._id) === b._id
+                return (
+                  <button
+                    key={b._id}
+                    onClick={() => {
+                      setSelectedBizId(b._id)
+                      navigate(`/booking/${b._id}`)
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-[#114227] text-white shadow-xs'
+                        : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <span>{b.name}</span>
+                    <span
+                      className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-md ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500'
+                      }`}
+                    >
+                      {b.category === 'clinic' ? 'Clinic' : 'Salon'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="p-16 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-3">
+              <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="font-semibold text-zinc-600">Loading appointment availability...</p>
+            </div>
+          ) : !business ? (
+            <div className="p-12 text-center text-zinc-500 border border-dashed border-zinc-300 rounded-3xl bg-white space-y-3">
+              <Building className="w-10 h-10 text-zinc-400 mx-auto" />
+              <p className="font-bold text-zinc-800 text-base">No venue selected</p>
+              <p className="text-xs text-zinc-500">Please choose a clinic or salon to book your appointment.</p>
+              <button
+                onClick={() => navigate('/customers')}
+                className="mt-2 px-5 py-2.5 rounded-xl bg-[#114227] text-white font-bold text-xs"
+              >
+                Explore Venues
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* ── LEFT COLUMN: VENUE INFO, MULTI-SERVICE SELECTION & SPECIALIST ── */}
+              <div className="lg:col-span-5 space-y-6">
+                {/* Venue Overview Card */}
+                <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                  <div className="flex items-start gap-4">
+                    <img
+                      src={
+                        business.images?.[0] ||
+                        (isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE)
+                      }
+                      alt={business.name}
+                      className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.src = isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h2 className="text-lg font-black text-zinc-950 truncate tracking-tight">
+                          {business.name}
+                        </h2>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                            business.isOpen
+                              ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}
+                        >
+                          {business.isOpen ? 'OPEN' : 'CLOSED'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500 capitalize mt-0.5">
+                        {business.category || 'Service Hub'} • {business.address || business.location || 'Local Hub'}
+                      </p>
+                      {business.phone && (
+                        <p className="text-xs text-zinc-600 mt-1 flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-zinc-400" />
+                          <a
+                            href={`tel:${business.phone}`}
+                            className="text-[#114227] hover:underline font-semibold"
+                          >
+                            {business.phone}
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Multi-Service Selection */}
+                <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                        Select Services
+                      </h3>
+                      <p className="text-xs text-zinc-600 font-bold mt-0.5">
+                        {selectedServices.length} Selected • {totalServiceDuration} mins total
+                      </p>
+                    </div>
+                    <span className="text-[11px] font-black text-[#114227] bg-[#EAF7EE] border border-[#BDE8CB] px-2.5 py-1 rounded-xl">
+                      ₹{totalServicePrice}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(business.services || [
+                      { name: 'General Consultation', duration: 15, price: business.basePrice || 0 },
+                    ]).map((svc, i) => {
+                      const isSelected = selectedServices.some((s) => s.name === svc.name)
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => handleToggleService(svc)}
+                          className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                            isSelected
+                              ? 'bg-emerald-50/80 border-[#16A34A] ring-1 ring-[#16A34A]/30 shadow-2xs'
+                              : 'bg-zinc-50/60 border-zinc-200 hover:bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`w-5 h-5 rounded-lg border flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${
+                                isSelected
+                                  ? 'bg-[#114227] border-[#114227] text-white'
+                                  : 'border-zinc-300 bg-white text-transparent'
+                              }`}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-zinc-950 truncate leading-tight">
+                                {svc.name}
+                              </p>
+                              <p className="text-[11px] text-zinc-400 font-medium mt-0.5">
+                                {svc.duration} minutes
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-xs font-black text-[#114227] shrink-0 pl-2">
+                            ₹{svc.price ?? business.basePrice ?? 0}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Doctor / Specialist Selector */}
+                {business?.bookingSettings?.allowStaffSelection !== false && (
+                  <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                        Choose {staffRoleLabel}
+                      </h3>
+                      <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        Auto-Fallback Included
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {/* Option 1: Any Available */}
+                      <div
+                        onClick={() => setSelectedStaff('any')}
+                        className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                          selectedStaff === 'any'
+                            ? 'bg-emerald-50/90 border-[#16A34A] ring-1 ring-[#16A34A]/30'
+                            : 'bg-zinc-50 border-zinc-200 hover:bg-white'
+                        }`}
+                      >
+                        <div>
+                          <p className="text-xs font-black text-zinc-950">
+                            Any Available {isClinic ? 'Doctor' : 'Stylist'}
+                          </p>
+                          <p className="text-[10px] text-zinc-500 mt-0.5">
+                            Auto-assigns fastest available on-duty staff at your slot
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-black uppercase bg-[#114227] text-white px-2 py-0.5 rounded-md shrink-0">
+                          Recommended
+                        </span>
+                      </div>
+
+                      {/* Individual Staff Cards */}
+                      {availableStaffList.map((member, idx) => {
+                        const isOccupied =
+                          Boolean(member.isOccupied) ||
+                          business?.activeQueue?.some(
+                            (u) =>
+                              u.status === 'serving' &&
+                              u.assignedStaff?.name?.toLowerCase() === member.name?.toLowerCase()
+                          )
+                        const isSelected =
+                          selectedStaff?._id === member._id || selectedStaff?.name === member.name
+
+                        return (
+                          <div
+                            key={member._id || idx}
+                            onClick={() => {
+                              if (isOccupied) {
+                                toast(
+                                  `${member.name} is currently with a patron. If still occupied at slot time, auto-fallback will assign an on-duty specialist.`
+                                )
+                              }
+                              setSelectedStaff(member)
+                            }}
+                            className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                              isOccupied
+                                ? 'bg-amber-50/60 border-amber-200'
+                                : isSelected
+                                ? 'bg-emerald-50/90 border-[#16A34A] ring-1 ring-[#16A34A]/30'
+                                : 'bg-zinc-50 border-zinc-200 hover:bg-white'
+                            }`}
+                          >
+                            <div className="min-w-0 pr-2">
+                              <p className="text-xs font-bold text-zinc-950 truncate flex items-center gap-1.5">
+                                <span>{member.name}</span>
+                                {isOccupied && (
+                                  <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-md">
+                                    Serving
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-[10px] text-zinc-500 truncate">
+                                {member.role || staffRoleLabel}
+                                {member.specialties ? ` • ${member.specialties}` : ''}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span
+                                className={`text-[10px] font-bold block ${
+                                  isOccupied
+                                    ? 'text-amber-700'
+                                    : member.isAvailable !== false
+                                    ? 'text-[#16A34A]'
+                                    : 'text-zinc-400'
+                                }`}
+                              >
+                                {isOccupied ? 'In Service' : member.isAvailable !== false ? 'Available' : 'Off-Duty'}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Coupon Code Section */}
+                <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-3">
+                  <label className="block text-xs font-bold uppercase text-zinc-400 tracking-wider">
+                    Have a promo coupon?
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. SERVEQ15"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs uppercase font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-zinc-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={validatingCoupon || !couponCode}
+                      className="px-4 py-2.5 bg-[#114227] hover:bg-[#0D361F] text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-colors cursor-pointer"
+                    >
+                      {validatingCoupon ? 'Validating...' : 'Apply'}
+                    </button>
+                  </div>
+                  {appliedCoupon && (
+                    <p className="text-xs text-[#16A34A] font-bold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Coupon applied: -₹{appliedCoupon.discountAmount} saved!</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* User's Existing Bookings at This Venue */}
+                <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                    Your Bookings at {business.name}
+                  </h3>
+                  {myBookings.length === 0 ? (
+                    <p className="text-xs text-zinc-400 text-center py-4 border border-dashed border-zinc-200 rounded-2xl">
+                      No past or pending bookings here yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {myBookings.map((b) => (
+                        <div
+                          key={b._id}
+                          className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-zinc-900">{formatTime(b.startTime)}</span>
+                            <span
+                              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                                b.status === 'completed'
+                                  ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
+                                  : b.status === 'serving'
+                                  ? 'bg-emerald-100 text-emerald-800 animate-pulse'
+                                  : b.status === 'cancelled' || b.status === 'refunded'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-teal-100 text-teal-800'
+                              }`}
+                            >
+                              {b.status}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-zinc-800 font-bold leading-tight">{b.serviceType}</p>
+
+                          {b.assignedStaff?.name && (
+                            <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+                              <User className="w-3 h-3 text-zinc-400" />
+                              <span>{b.assignedStaff.name}</span>
+                              <span className="text-[10px] text-zinc-400 font-normal">
+                                ({b.assignedStaff.role || staffRoleLabel})
+                              </span>
+                            </p>
+                          )}
+
+                          <div className="flex items-center justify-between pt-2 border-t border-zinc-200/70">
+                            <span className="font-bold text-emerald-800">Paid: ₹{b.paidAmount}</span>
+                            <div>
+                              {b.status === 'completed' ? (
+                                <button
+                                  onClick={() => handleOpenReview(b)}
+                                  className="text-xs font-bold text-[#114227] hover:underline cursor-pointer"
+                                >
+                                  Leave Review
+                                </button>
+                              ) : b.status === 'scheduled' || b.status === 'confirmed' ? (
+                                <button
+                                  onClick={() => handleCancel(b._id)}
+                                  className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
+                                >
+                                  Cancel Booking
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-zinc-100 text-xs">
-                <div className="flex justify-between text-slate-600">
+              {/* ── RIGHT COLUMN: DATE & TIME SLOTS SELECTION ── */}
+              <div className="lg:col-span-7 space-y-6">
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-zinc-200/80 shadow-xs space-y-6">
+                  {/* Date Selector Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 pb-5">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight">
+                        Select Appointment Slot
+                      </h2>
+                      <p className="text-xs text-zinc-500 font-medium mt-0.5">
+                        Choose your preferred date and verified time slot.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        min={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => {
+                          setSelectedDate(e.target.value)
+                          setLoading(true)
+                        }}
+                        className="px-4 py-2 rounded-xl border border-zinc-200 text-xs font-bold bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* AI Safety Buffer Notice */}
+                  {meta.aiBuffer > 0 && (
+                    <div className="p-3 bg-[#EAF7EE] border border-[#BDE8CB] rounded-2xl text-xs text-[#114227] flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-[#16A34A] shrink-0" />
+                      <span>
+                        <strong>AI Pacing Active:</strong> +{meta.aiBuffer} mins safety buffer added based
+                        on recent service completion velocity.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Advance Bookings Disabled Notice */}
+                  {business?.bookingSettings?.enableAppointments === false ? (
+                    <div className="py-12 px-6 text-center border border-amber-200 bg-amber-50 rounded-3xl space-y-3">
+                      <h3 className="text-base font-bold text-amber-950">Advance Bookings Disabled</h3>
+                      <p className="text-xs text-amber-800 max-w-md mx-auto">
+                        This venue does not accept advance scheduled appointments. You can join their live
+                        queue directly.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/queue/${business._id}`)}
+                        className="px-5 py-2.5 bg-[#114227] text-white text-xs font-bold rounded-xl hover:bg-[#0D361F] transition-colors"
+                      >
+                        Go to Live Queue
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Slots Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {slots.map((slot, i) => {
+                          const isPast = new Date(slot.startTime) < new Date()
+                          const isAvailable = slot.available && !isPast
+
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              disabled={!isAvailable}
+                              onClick={() => handleSlotSelect(slot)}
+                              className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between min-h-[95px] ${
+                                isAvailable
+                                  ? 'bg-zinc-50/70 border-zinc-200 hover:border-[#16A34A] hover:bg-emerald-50/50 cursor-pointer shadow-2xs hover:scale-102'
+                                  : 'bg-zinc-100/50 border-zinc-100 text-zinc-300 cursor-not-allowed opacity-60'
+                              }`}
+                            >
+                              <span className="text-xs sm:text-sm font-black text-zinc-950">
+                                {formatTime(slot.startTime)}
+                              </span>
+                              <span className="text-[10px] text-zinc-400 font-bold">
+                                {slot.duration || totalServiceDuration} mins
+                              </span>
+                              <span
+                                className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md mt-1 ${
+                                  isAvailable
+                                    ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
+                                    : 'bg-zinc-200 text-zinc-400'
+                                }`}
+                              >
+                                {isAvailable ? 'Available' : 'Booked'}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {slots.length === 0 && (
+                        <div className="py-16 text-center text-zinc-400 border border-dashed border-zinc-200 rounded-3xl text-xs space-y-2">
+                          <p className="font-bold text-zinc-600 text-sm">No slots available on this date</p>
+                          <p className="text-zinc-400">Please choose another day from the calendar picker above.</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Summary & Sticky Checkout Prompt */}
+                  <div className="p-5 rounded-3xl bg-[#F4FAF6] border border-[#BDE8CB] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                        Booking Summary
+                      </p>
+                      <p className="font-black text-zinc-950 text-sm mt-0.5">
+                        {selectedServices.map((s) => s.name).join(' + ')}
+                      </p>
+                      <p className="text-xs text-zinc-500 font-medium">
+                        {totalServiceDuration} mins • {selectedStaff === 'any' ? 'On-duty auto staff' : selectedStaff?.name}
+                      </p>
+                    </div>
+
+                    <div className="text-left sm:text-right shrink-0">
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                        Total Payable
+                      </p>
+                      <p className="text-lg font-black text-[#114227]">₹{finalPrice}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* ── PAYMENT CONFIRMATION MODAL ── */}
+      <AnimatePresence>
+        {paymentModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                <div>
+                  <h3 className="text-lg font-black text-zinc-950">Confirm Appointment</h3>
+                  <p className="text-xs text-zinc-500">Order Summary & Payment Mode</p>
+                </div>
+                <button
+                  onClick={() => setPaymentModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Order breakdown */}
+              <div className="space-y-2.5 bg-zinc-50 p-4 rounded-2xl border border-zinc-100 text-xs">
+                <div className="flex justify-between text-zinc-600">
                   <span>Venue</span>
-                  <span className="font-bold text-zinc-900">{business?.name}</span>
+                  <span className="font-bold text-zinc-950">{business?.name}</span>
                 </div>
 
-                {/* Multiple Services List */}
-                <div className="space-y-1.5 py-1 border-t border-b border-zinc-200/60">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                    Selected Services ({selectedServices.length})
+                <div className="space-y-1 py-1 border-t border-b border-zinc-200/60">
+                  <span className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
+                    Services ({selectedServices.length})
                   </span>
                   {selectedServices.map((svc, i) => (
                     <div key={i} className="flex justify-between items-center text-zinc-800">
-                      <span className="font-medium">• {svc.name} ({svc.duration}m)</span>
-                      <span className="font-bold text-teal-800">₹{svc.price}</span>
+                      <span>• {svc.name} ({svc.duration}m)</span>
+                      <span className="font-bold text-[#114227]">₹{svc.price}</span>
                     </div>
                   ))}
-                  <div className="flex justify-between text-[11px] text-zinc-500 font-semibold pt-1">
-                    <span>Total Service Time:</span>
-                    <span>{totalServiceDuration} minutes</span>
-                  </div>
                 </div>
 
-                {/* Assigned Staff */}
-                <div className="flex justify-between items-start text-slate-600">
-                  <span>{staffRoleLabel}</span>
-                  <div className="text-right">
-                    <span className="font-bold text-teal-800 flex items-center gap-1 justify-end">
-                      <span>{selectedStaff === 'any' ? (`Any Available ${isClinic ? 'General Physician' : 'Barber'}`) : selectedStaff?.name}</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">
-                      {selectedStaff === 'any' ? 'On-duty auto-assignment' : (selectedStaff?.role || 'Staff')}
-                    </span>
-                  </div>
+                <div className="flex justify-between text-zinc-600">
+                  <span>Assigned Specialist</span>
+                  <span className="font-bold text-zinc-950">
+                    {selectedStaff === 'any' ? 'On-Duty Specialist' : selectedStaff?.name}
+                  </span>
                 </div>
 
-                <div className="flex justify-between text-slate-600">
-                  <span>Time Slot</span>
-                  <span className="font-bold text-zinc-900">{formatTime(selectedSlot?.startTime)}</span>
-                </div>
-
-                <div className="flex justify-between text-slate-600">
-                  <span>Services Subtotal</span>
-                  <span className="font-bold text-zinc-900">₹{totalServicePrice}</span>
+                <div className="flex justify-between text-zinc-600">
+                  <span>Slot Time</span>
+                  <span className="font-bold text-zinc-950">{formatTime(selectedSlot?.startTime)}</span>
                 </div>
 
                 {discountAmount > 0 && (
-                  <div className="flex justify-between text-emerald-700 font-bold">
+                  <div className="flex justify-between text-[#16A34A] font-bold">
                     <span>Coupon ({appliedCoupon?.coupon?.code})</span>
                     <span>-₹{discountAmount}</span>
                   </div>
@@ -720,21 +1165,21 @@ export default function BookingPage() {
 
                 <div className="pt-2 border-t border-zinc-200 flex justify-between text-sm font-black text-zinc-950">
                   <span>Total Payable</span>
-                  <span className="text-teal-700">₹{finalPrice}</span>
+                  <span className="text-[#114227]">₹{finalPrice}</span>
                 </div>
               </div>
 
-              {/* Payment Mode Selector / Details */}
-              {business?.paymentConfiguration?.paymentMode === 'BOTH' ? (
+              {/* Payment Mode Selector */}
+              {business?.paymentConfiguration?.paymentMode === 'BOTH' && (
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-700 block">Select Payment Method</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setPaymentChoice('PAY_AT_BUSINESS')}
-                      className={`p-3 rounded-xl border text-left transition-all ${
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                         paymentChoice === 'PAY_AT_BUSINESS'
-                          ? 'border-teal-500 bg-teal-50/50 text-teal-950 font-bold'
+                          ? 'border-[#16A34A] bg-[#EAF7EE] text-[#114227] font-bold'
                           : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
                       }`}
                     >
@@ -744,9 +1189,9 @@ export default function BookingPage() {
                     <button
                       type="button"
                       onClick={() => setPaymentChoice('WALLET')}
-                      className={`p-3 rounded-xl border text-left transition-all ${
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                         paymentChoice === 'WALLET'
-                          ? 'border-teal-500 bg-teal-50/50 text-teal-950 font-bold'
+                          ? 'border-[#16A34A] bg-[#EAF7EE] text-[#114227] font-bold'
                           : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
                       }`}
                     >
@@ -755,103 +1200,110 @@ export default function BookingPage() {
                     </button>
                   </div>
                 </div>
-              ) : null}
-
-              {/* Provider Notice */}
-              {paymentChoice === 'PAY_AT_BUSINESS' ? (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-950">
-                  <p className="font-bold mb-0.5">Pay at Business (Zero Advance Online Charge)</p>
-                  <p className="text-emerald-700 opacity-90">
-                    Your appointment slot is confirmed immediately. Pay ₹{finalPrice} directly to the merchant upon arrival via cash or UPI.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-[11px] text-teal-900">
-                  <p className="font-bold mb-0.5">Online Payment (Customer Wallet)</p>
-                  <p className="text-teal-700 opacity-90">
-                    Deducted from your wallet balance: ₹{user?.walletBalance ?? 0}.
-                    {user?.walletBalance < finalPrice && (
-                      <span className="text-rose-600 font-bold block mt-1">Warning: Balance is less than ₹{finalPrice}.</span>
-                    )}
-                  </p>
-                </div>
               )}
 
-              <div className="flex items-center gap-3">
+              {/* Notice */}
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-[11px] text-[#114227]">
+                {paymentChoice === 'PAY_AT_BUSINESS' ? (
+                  <p>
+                    <strong>Pay upon arrival:</strong> Your slot is reserved immediately. You can pay ₹{finalPrice} at the counter.
+                  </p>
+                ) : (
+                  <p>
+                    <strong>Wallet deduction:</strong> ₹{finalPrice} will be debited from your serveQ wallet balance (Current: ₹{user?.walletBalance ?? 0}).
+                  </p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setPaymentModalOpen(false)}
-                  className="flex-1 py-3 rounded-xl border border-zinc-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+                  className="flex-1 py-3 rounded-2xl border border-zinc-200 text-zinc-600 font-bold text-xs hover:bg-zinc-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmBooking}
-                  disabled={bookingInProgress || (paymentChoice === 'WALLET' && (user?.walletBalance || 0) < finalPrice)}
-                  className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 disabled:opacity-50"
+                  disabled={
+                    bookingInProgress ||
+                    (paymentChoice === 'WALLET' && (user?.walletBalance || 0) < finalPrice)
+                  }
+                  className="flex-1 py-3 rounded-2xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {bookingInProgress
-                    ? 'Processing...'
+                    ? 'Reserving Slot...'
                     : paymentChoice === 'PAY_AT_BUSINESS'
-                    ? `Confirm Booking (Pay ₹${finalPrice} at Venue)`
+                    ? `Confirm Booking (₹${finalPrice})`
                     : `Confirm & Pay ₹${finalPrice}`}
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* Review Modal */}
+      {/* ── REVIEW MODAL ── */}
       <AnimatePresence>
         {reviewModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          >
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-6"
+              initial={{ scale: 0.95, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-5"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
-                  <h3 className="text-xl font-black text-zinc-950">Review Service</h3>
-                  <p className="text-xs text-slate-500">{business?.name}</p>
+                  <h3 className="text-lg font-black text-zinc-950">Leave a Verified Review</h3>
+                  <p className="text-xs text-zinc-500">{business?.name}</p>
                 </div>
-                <button onClick={() => setReviewModalOpen(false)} className="text-slate-400 hover:text-zinc-900 font-bold">✕</button>
+                <button
+                  onClick={() => setReviewModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
               <form onSubmit={handleSubmitReview} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Rating</label>
+                  <label className="block text-xs font-bold uppercase text-zinc-400 mb-2">Rating</label>
                   <div className="flex items-center gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         type="button"
                         key={star}
                         onClick={() => setRating(star)}
-                        className={`text-2xl transition-transform hover:scale-110 ${star <= rating ? 'text-amber-400' : 'text-slate-200'}`}
+                        className={`text-2xl transition-transform hover:scale-110 cursor-pointer ${
+                          star <= rating ? 'text-amber-400' : 'text-zinc-200'
+                        }`}
                       >
-                        ★
+                        <Star
+                          className={`w-6 h-6 ${
+                            star <= rating
+                              ? 'text-amber-400 fill-amber-400'
+                              : 'text-zinc-200 fill-zinc-200'
+                          }`}
+                        />
                       </button>
                     ))}
-                    <span className="text-xs font-bold text-slate-600 ml-2">{rating} / 5 Stars</span>
+                    <span className="text-xs font-bold text-zinc-600 ml-2">{rating} / 5 Stars</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Comments</label>
+                  <label className="block text-xs font-bold uppercase text-zinc-400 mb-2">
+                    Comments (Optional)
+                  </label>
                   <textarea
                     rows={4}
                     placeholder="Share details of your experience..."
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full p-3.5 rounded-2xl border border-zinc-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-zinc-50"
                   />
                 </div>
 
@@ -859,21 +1311,21 @@ export default function BookingPage() {
                   <button
                     type="button"
                     onClick={() => setReviewModalOpen(false)}
-                    className="flex-1 py-3 rounded-xl border border-zinc-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+                    className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-zinc-600 font-bold text-xs hover:bg-zinc-50 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submittingReview}
-                    className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 disabled:opacity-50"
+                    className="flex-1 py-2.5 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    {submittingReview ? 'Submitting...' : 'Submit Review'}
+                    {submittingReview ? 'Submitting...' : 'Post Review'}
                   </button>
                 </div>
               </form>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
