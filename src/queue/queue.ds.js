@@ -25,22 +25,26 @@ class QueueDS {
     this.map = new Map(); // userId -> node
   }
 
-  // 🧪 Auto-remove finished services
-  cleanup() {
+  // 🧪 Auto-remove abandoned/stale services (older than 12 hours)
+  cleanup(maxAgeHours = 12) {
     let wasCleaned = false;
-    // Loop until the head is not serving or the current head still has time left
-    while (this.head && this.head.status === "serving") {
-      const now = new Date();
-      const endTime = new Date(
-        this.head.estimatedStartTime.getTime() + this.head.serviceTime * 60000
-      );
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - maxAgeHours * 60 * 60 * 1000);
 
-      if (now > endTime) {
-        console.log(`🕒 Auto-removing finished service for user: ${this.head.userId}`);
+    // Only clean up entries that have been abandoned from earlier days (older than cutoff)
+    while (this.head) {
+      const entryTime = this.head.joinedAt
+        ? new Date(this.head.joinedAt)
+        : this.head.estimatedStartTime
+        ? new Date(this.head.estimatedStartTime)
+        : null;
+
+      if (entryTime && entryTime < cutoff) {
+        console.log(`🕒 Auto-removing stale/abandoned queue entry for user: ${this.head.userId}`);
         this.dequeue();
         wasCleaned = true;
       } else {
-        break; // head still has time, stop checking
+        break; // active patron within normal hours, keep in queue
       }
     }
     return wasCleaned;

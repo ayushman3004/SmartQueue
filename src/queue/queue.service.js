@@ -229,25 +229,53 @@ export const joinQueue = async (businessId, userData, io = null) => {
   // appears in customer history, and reflects in business hub revenue and analytics
   let createdBooking = null;
   try {
-    const BookingModel = mongoose.models.Booking || mongoose.model("Booking");
-    if (BookingModel && (mongoose.connection?.readyState === 1 || BookingModel.create !== mongoose.Model.create)) {
-      createdBooking = await BookingModel.create({
-        businessId,
-        userId: userData.userId,
-        startTime: now,
-        endTime: new Date(now.getTime() + serviceTime * 60000),
-        duration: serviceTime,
-        serviceType: finalServiceType,
-        services: selectedServicesList,
-        assignedStaff: assignedStaff || { name: "", role: "" },
-        status: initialStatus,
-        paidAmount: servicePrice,
-        pricingLabel: userData.pricingLabel || "",
-        notes: userData.notes || "Direct Live Queue Entry",
-      });
-    }
+    const sanitizedServices = (selectedServicesList || []).map((s) => ({
+      name: s.name || finalServiceType || "General Service",
+      duration: Math.max(1, Number(s.duration) || 15),
+      price: Math.max(0, Number(s.price) || 0),
+    }));
+
+    createdBooking = await Booking.create({
+      businessId,
+      userId: userData.userId,
+      startTime: now,
+      endTime: new Date(now.getTime() + Math.max(1, Number(serviceTime) || 15) * 60000),
+      duration: Math.max(1, Number(serviceTime) || 15),
+      serviceType: finalServiceType || "General Service",
+      services: sanitizedServices,
+      assignedStaff: assignedStaff || { name: "", role: "" },
+      status: initialStatus,
+      paidAmount: servicePrice,
+      pricingLabel: userData.pricingLabel || "",
+      notes: userData.notes || "Direct Live Queue Entry",
+    });
   } catch (bErr) {
     console.error("Warning: could not create booking for direct queue entry:", bErr);
+    if (bErr.code === 11000) {
+      try {
+        await mongoose.connection.collection("bookings").dropIndex("businessId_1_userId_1_scheduledAt_1");
+        createdBooking = await Booking.create({
+          businessId,
+          userId: userData.userId,
+          startTime: now,
+          endTime: new Date(now.getTime() + Math.max(1, Number(serviceTime) || 15) * 60000),
+          duration: Math.max(1, Number(serviceTime) || 15),
+          serviceType: finalServiceType || "General Service",
+          services: (selectedServicesList || []).map((s) => ({
+            name: s.name || finalServiceType || "General Service",
+            duration: Math.max(1, Number(s.duration) || 15),
+            price: Math.max(0, Number(s.price) || 0),
+          })),
+          assignedStaff: assignedStaff || { name: "", role: "" },
+          status: initialStatus,
+          paidAmount: servicePrice,
+          pricingLabel: userData.pricingLabel || "",
+          notes: userData.notes || "Direct Live Queue Entry",
+        });
+      } catch (retryErr) {
+        console.error("Retry creating booking failed:", retryErr);
+      }
+    }
   }
 
   queueDS.enqueue({
@@ -258,7 +286,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
     services: selectedServicesList,
     assignedStaff,
     pricingLabel: userData.pricingLabel || "",
-    paidAmount: depositCharged,
+    paidAmount: servicePrice,
   });
 
   queueDoc.users = queueDS.toArray();
@@ -283,22 +311,30 @@ export const leaveQueue = async (businessId, userId, io = null) => {
     (u) => (u.userId?._id || u.userId)?.toString() === userId.toString()
   );
 
-  if (leavingUser && leavingUser.bookingId) {
+  if (leavingUser) {
     try {
-      const BookingModel = mongoose.models.Booking || mongoose.model("Booking");
-      if (BookingModel && (mongoose.connection?.readyState === 1 || BookingModel.findById !== mongoose.Model.findById)) {
-        const booking = await BookingModel.findById(leavingUser.bookingId);
-        if (booking && !["completed", "cancelled", "refunded"].includes(booking.status)) {
-          if (booking.paidAmount > 0 && leavingUser.paidAmount > 0) {
-            await refundToWallet(userId, leavingUser.paidAmount, "Direct queue exit refund", io);
-            booking.status = "refunded";
-          } else {
-            booking.status = "cancelled";
-          }
-          await booking.save();
-          if (io) {
-            io.to(`business:${businessId}`).emit("bookings:updated");
-          }
+      let booking = null;
+      if (leavingUser.bookingId) {
+        booking = await Booking.findById(leavingUser.bookingId);
+      }
+      if (!booking) {
+        booking = await Booking.findOne({
+          businessId,
+          userId: leavingUser.userId?._id || leavingUser.userId,
+          status: { $in: ["waiting", "serving", "confirmed"] },
+        }).sort({ createdAt: -1 });
+      }
+
+      if (booking && !["completed", "cancelled", "refunded"].includes(booking.status)) {
+        if (booking.paidAmount > 0 && leavingUser.paidAmount > 0) {
+          await refundToWallet(userId, leavingUser.paidAmount, "Direct queue exit refund", io);
+          booking.status = "refunded";
+        } else {
+          booking.status = "cancelled";
+        }
+        await booking.save();
+        if (io) {
+          io.to(`business:${businessId}`).emit("bookings:updated");
         }
       }
     } catch (err) {
@@ -328,53 +364,75 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
   if (!queue || !queue.users.length) throw new ApiError(400, "Queue is already empty");
 
   const previousHead = queue.users[0];
-  const queueDS = QueueDS.fromArray(queue.users);
-  queueDS.dequeue();
+  const uId = previousHead.userId?._id || previousHead.userId;
 
-  queue.users = queueDS.toArray();
-  await queue.save();
+  // Calculate earnings and details for the finished user
+  const totalServicePrice = (previousHead.services || []).reduce(
+    (sum, s) => sum + (Number(s.price) || 0),
+    0
+  ) || business.basePrice || previousHead.paidAmount || 0;
+  const finalAmountEarned = Math.max(Number(previousHead.paidAmount) || 0, Number(totalServicePrice) || 0);
+
+  const startTime = previousHead.joinedAt || new Date(Date.now() - (Number(previousHead.serviceTime) || 15) * 60000);
+  const endTime = new Date();
 
   // Create or update completed booking record so service history, revenue, analytics, and rating options are populated
   let completedBooking = null;
-  if (previousHead && previousHead.userId) {
+  if (uId) {
     try {
-      const totalServicePrice = (previousHead.services || []).reduce(
-        (sum, s) => sum + (Number(s.price) || 0),
-        0
-      ) || business.basePrice || previousHead.paidAmount || 0;
-      const finalAmountEarned = Math.max(Number(previousHead.paidAmount) || 0, Number(totalServicePrice) || 0);
-      const uId = previousHead.userId?._id || previousHead.userId;
-
-      const startTime = previousHead.joinedAt || new Date(Date.now() - (previousHead.serviceTime || 15) * 60000);
-      const endTime = new Date();
-
       if (previousHead.bookingId) {
         completedBooking = await Booking.findById(previousHead.bookingId);
-        if (completedBooking) {
-          completedBooking.status = "completed";
-          completedBooking.endTime = endTime;
-          if (!completedBooking.paidAmount || completedBooking.paidAmount === 0) {
-            completedBooking.paidAmount = finalAmountEarned;
-          }
-          if (typeof completedBooking.save === "function") {
-            await completedBooking.save();
-          }
-        }
       }
 
+      // Fallback: if bookingId wasn't stored or not found, find an active/waiting booking for this user and business
       if (!completedBooking) {
+        completedBooking = await Booking.findOne({
+          businessId,
+          userId: uId,
+          status: { $in: ["serving", "waiting", "confirmed"] },
+        }).sort({ createdAt: -1 });
+      }
+
+      if (completedBooking) {
+        completedBooking.status = "completed";
+        completedBooking.endTime = endTime;
+        if (!completedBooking.paidAmount || completedBooking.paidAmount === 0) {
+          completedBooking.paidAmount = finalAmountEarned;
+        }
+        await completedBooking.save();
+      } else {
+        // Build clean sanitized services array
+        const sanitizedServices = (previousHead.services || []).map((s) => ({
+          name: s.name || previousHead.serviceType || "General Service",
+          duration: Math.max(1, Number(s.duration) || 15),
+          price: Math.max(0, Number(s.price) || 0),
+        }));
+        if (sanitizedServices.length === 0) {
+          sanitizedServices.push({
+            name: previousHead.serviceType || "General Service",
+            duration: Math.max(1, Number(previousHead.serviceTime) || 15),
+            price: finalAmountEarned,
+          });
+        }
+
         completedBooking = await Booking.create({
           businessId,
           userId: uId,
           startTime,
           endTime,
-          duration: previousHead.serviceTime || business.averageServiceTime || 15,
+          duration: Math.max(1, Number(previousHead.serviceTime) || business.averageServiceTime || 15),
           serviceType: previousHead.serviceType || "General Service",
-          services: previousHead.services || [],
-          assignedStaff: previousHead.assignedStaff || { name: "", role: "" },
+          services: sanitizedServices,
+          assignedStaff: previousHead.assignedStaff ? {
+            name: previousHead.assignedStaff.name || "",
+            role: previousHead.assignedStaff.role || "",
+            specialties: previousHead.assignedStaff.specialties || "",
+            autoAssigned: Boolean(previousHead.assignedStaff.autoAssigned),
+          } : { name: "", role: "", specialties: "", autoAssigned: false },
           status: "completed",
           paidAmount: finalAmountEarned,
           pricingLabel: previousHead.pricingLabel || "",
+          notes: "Direct Live Queue Entry - Completed",
         });
       }
 
@@ -390,8 +448,34 @@ export const callNext = async (businessId, requesterId, requesterRole, io) => {
       }
     } catch (saveErr) {
       console.error("Error creating/updating completed booking from queue session:", saveErr);
+      if (saveErr.code === 11000) {
+        try {
+          await mongoose.connection.collection("bookings").dropIndex("businessId_1_userId_1_scheduledAt_1");
+          completedBooking = await Booking.create({
+            businessId,
+            userId: uId,
+            startTime,
+            endTime,
+            duration: Math.max(1, Number(previousHead.serviceTime) || business.averageServiceTime || 15),
+            serviceType: previousHead.serviceType || "General Service",
+            services: [{ name: previousHead.serviceType || "General Service", duration: 15, price: finalAmountEarned }],
+            assignedStaff: previousHead.assignedStaff || { name: "", role: "" },
+            status: "completed",
+            paidAmount: finalAmountEarned,
+          });
+        } catch (retryErr) {
+          console.error("Retry booking completion failed:", retryErr);
+        }
+      }
     }
   }
+
+  // Dequeue user and update queue state
+  const queueDS = QueueDS.fromArray(queue.users);
+  queueDS.dequeue();
+
+  queue.users = queueDS.toArray();
+  await queue.save();
 
   // Update new head to serving in bookings collection
   if (queue.users.length > 0 && queue.users[0].bookingId) {
