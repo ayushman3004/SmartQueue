@@ -1,6 +1,39 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
+import {
+  Users,
+  Calendar,
+  Scissors,
+  Stethoscope,
+  Sparkles,
+  TrendingUp,
+  Settings,
+  Building2,
+  Ticket,
+  Wallet,
+  User,
+  UserCheck,
+  LogOut,
+  HelpCircle,
+  Menu,
+  X,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Store,
+  Layers,
+  Activity,
+  Clock,
+  MapPin,
+  RefreshCw,
+  Bell,
+  CheckCircle2,
+  AlertCircle,
+  Check,
+  Shield,
+  ArrowRight,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getQueue, callNext, extendUserTime, assignQueueStaff } from '../api/queue.api'
@@ -18,12 +51,33 @@ import { useSeo } from '../utils/useSeo'
 
 export default function BusinessDashboard() {
   const { businessId } = useParams()
-  const { user } = useAuth()
+  const { user, logOut } = useAuth()
   const { joinAdmin, leaveRoom, onQueueUpdate, socket } = useSocket()
   const navigate = useNavigate()
 
-  const [activeTab, setActiveTab] = useState('queue') // 'queue' | 'appointments' | 'profile' | 'analytics'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const validTabs = ['queue', 'appointments', 'services', 'staff', 'analytics', 'profile']
+  const initialTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(
+    initialTab && validTabs.includes(initialTab) ? initialTab : 'queue'
+  )
   const [business, setBusiness] = useState(null)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+
+  // Sync tab with URL search parameter
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab')
+    if (tabFromUrl && validTabs.includes(tabFromUrl) && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl)
+    }
+  }, [searchParams])
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId)
+    setSearchParams({ tab: tabId }, { replace: true })
+    setMobileSidebarOpen(false)
+  }
 
   useSeo({
     title: business?.name ? `${business.name} — Venue Command Console` : 'Venue Command Console',
@@ -397,96 +451,543 @@ export default function BusinessDashboard() {
   )
 
   const users = queue?.users || []
-  const serving = users.find(u => u.status === 'serving')
+  const serving = users.find((u) => u.status === 'serving')
 
-  return (
-    <div className="container max-w-7xl pt-8 pb-20 px-4 sm:px-6 space-y-8">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-zinc-200 pb-6">
-        <div>
-          <button
-            onClick={() => navigate('/')}
-            className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-zinc-950 mb-3 flex items-center gap-1"
-          >
-            ← Back to Overview
-          </button>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-2xl font-black text-teal-800">
-              {business?.name?.[0]}
+  const renderSidebarContent = (isMobile = false) => (
+    <div className="flex flex-col justify-between h-full space-y-6">
+      <div className="space-y-6">
+        {/* Hub Identity Card in Sidebar */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border border-[#BDE8CB] shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#114227] text-white flex items-center justify-center font-black text-lg shrink-0 shadow-xs">
+              {business?.name?.[0] || 'V'}
             </div>
-            <div>
-              <h1 className="text-3xl font-black text-zinc-950 tracking-tight">{business?.name}</h1>
-              <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-                <span className="capitalize">{business?.category}</span>
-                <span>•</span>
-                <span>{business?.address || 'No address set'}</span>
-                <span>•</span>
-                <span className={`font-bold ${business?.isOpen ? 'text-emerald-700' : 'text-rose-600'}`}>
-                  {business?.isOpen ? 'OPEN' : 'CLOSED'}
-                </span>
-              </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-black text-xs text-zinc-950 truncate leading-tight">
+                {business?.name || 'Venue Console'}
+              </h3>
+              <p className="text-[10px] text-zinc-500 font-medium truncate capitalize">
+                {business?.category || 'Service Venue'} • Hub
+              </p>
             </div>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-[#BDE8CB]/60 flex items-center justify-between text-[11px]">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+              Service Desk
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 ${
+                business?.isOpen
+                  ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
+                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${business?.isOpen ? 'bg-[#16A34A] animate-pulse' : 'bg-rose-500'}`} />
+              <span>{business?.isOpen ? 'OPEN' : 'CLOSED'}</span>
+            </span>
           </div>
         </div>
 
+        {/* Section 1: Command Operations (Tabs) */}
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1">
+            Operations Console
+          </p>
+          {[
+            {
+              id: 'queue',
+              label: 'Live Queue & Floor',
+              icon: Users,
+              count: users.length,
+              badgeHighlight: Boolean(serving),
+            },
+            {
+              id: 'appointments',
+              label: 'Appointments',
+              icon: Calendar,
+              count: bookings.length,
+            },
+            {
+              id: 'services',
+              label: 'Services Catalog',
+              icon: isClinic ? Stethoscope : Scissors,
+              count: profileForm.services?.length || 0,
+            },
+            {
+              id: 'staff',
+              label: isClinic ? 'Doctors & Specialists' : 'Barbers & Stylists',
+              icon: UserCheck,
+              count: business?.staff?.length || 0,
+            },
+            {
+              id: 'analytics',
+              label: 'AI Analytics & Traffic',
+              icon: TrendingUp,
+              badge: 'AI',
+            },
+            {
+              id: 'profile',
+              label: 'Hub Settings',
+              icon: Settings,
+            },
+          ].map((item) => {
+            const isActive = activeTab === item.id
+            const IconComponent = item.icon
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleTabChange(item.id)}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-[#EAF5EC] text-[#114227] shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
+                  <span className="truncate">{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-teal-100 text-teal-800 border border-teal-200">
+                    {item.badge}
+                  </span>
+                )}
+                {item.count !== undefined && item.count > 0 && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                      isActive
+                        ? 'bg-[#114227] text-white'
+                        : item.badgeHighlight
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-zinc-200 text-zinc-700'
+                    }`}
+                  >
+                    {item.count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Section 2: Platform & Route Switchers */}
+        <div className="space-y-1 pt-2 border-t border-zinc-100">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1">
+            Navigate & Views
+          </p>
+
+          {/* All My Venues */}
+          <button
+            type="button"
+            onClick={() => {
+              navigate('/business')
+              if (isMobile) setMobileSidebarOpen(false)
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Building2 className="w-4 h-4 text-zinc-500 shrink-0" />
+              <span className="truncate">All My Venues</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+          </button>
+
+          {/* Live Customer Queue Pass */}
+          <button
+            type="button"
+            onClick={() => {
+              navigate(`/queue/${businessId}`)
+              if (isMobile) setMobileSidebarOpen(false)
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Ticket className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="truncate">Customer Live Queue</span>
+            </div>
+            <ExternalLink className="w-3 h-3 text-zinc-400" />
+          </button>
+
+          {/* Customer Directory */}
+          <button
+            type="button"
+            onClick={() => {
+              navigate('/customers')
+              if (isMobile) setMobileSidebarOpen(false)
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Store className="w-4 h-4 text-zinc-500 shrink-0" />
+              <span className="truncate">Customer Portal</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+          </button>
+
+          {/* Wallet */}
+          <button
+            type="button"
+            onClick={() => {
+              navigate('/wallet')
+              if (isMobile) setMobileSidebarOpen(false)
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Wallet className="w-4 h-4 text-teal-600 shrink-0" />
+              <span className="truncate">Venue Wallet</span>
+            </div>
+            <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
+              ₹{(user?.walletBalance ?? 0).toLocaleString()}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Sidebar: User snapshot, Help & Logout */}
+      <div className="pt-4 border-t border-zinc-100 space-y-1">
+        {/* User Card */}
+        <button
+          type="button"
+          onClick={() => {
+            navigate('/profile')
+            if (isMobile) setMobileSidebarOpen(false)
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-2xl hover:bg-zinc-100/80 transition-colors cursor-pointer text-left"
+        >
+          <div className="w-8 h-8 rounded-full bg-emerald-700 text-white font-bold text-xs flex items-center justify-center shrink-0">
+            {user?.name?.[0]?.toUpperCase() || 'O'}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-zinc-900 truncate">{user?.name || 'Hub Owner'}</p>
+            <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => toast('Support Hotline: help@serveq.tech', { icon: 'ℹ️' })}
+          className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+        >
+          <HelpCircle className="w-4 h-4 text-zinc-500" />
+          <span>Help & Support</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            logOut()
+            navigate('/login')
+          }}
+          className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-4 h-4 text-rose-500" />
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans">
+      {/* ── TOP STICKY HEADER BAR ── */}
+      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        {/* Left: Mobile Menu Toggle + ServeQ Logo */}
         <div className="flex items-center gap-3">
           <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="lg:hidden p-2 rounded-xl text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <Link to="/business" className="flex items-center gap-2.5 text-decoration-none group">
+            <img
+              src="/serveq-logo.png"
+              alt="serveQ"
+              className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105"
+            />
+            <span className="hidden sm:inline-block text-[9px] font-black uppercase tracking-[0.2em] text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
+              Console
+            </span>
+          </Link>
+        </div>
+
+        {/* Center: Venue Details Pill */}
+        <div className="hidden md:flex items-center gap-3 bg-zinc-50/80 border border-zinc-200/70 px-4 py-1.5 rounded-full">
+          <div className="w-6 h-6 rounded-full bg-[#114227] text-white flex items-center justify-center text-xs font-black shrink-0">
+            {business?.name?.[0] || 'V'}
+          </div>
+          <span className="font-bold text-xs text-zinc-900 truncate max-w-[200px]">
+            {business?.name || 'Loading venue...'}
+          </span>
+          <span className="text-zinc-300">•</span>
+          <span className="text-xs font-semibold text-zinc-500 capitalize">
+            {business?.category || 'venue'}
+          </span>
+          <span className="text-zinc-300">•</span>
+          <span
+            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              business?.isOpen
+                ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
+                : 'bg-rose-50 text-rose-700 border border-rose-200'
+            }`}
+          >
+            {business?.isOpen ? 'OPEN' : 'CLOSED'}
+          </span>
+        </div>
+
+        {/* Right: Actions (Open/Close Services, Serve Next, Wallet, Profile) */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Quick Toggle Open/Close */}
+          <button
+            type="button"
             onClick={handleToggleOpen}
             disabled={toggling || !business?.isActive}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs border transition-all ${
+            className={`px-3.5 py-1.5 rounded-full font-bold text-xs border transition-all cursor-pointer ${
               !business?.isActive
                 ? 'bg-zinc-100 text-slate-400 cursor-not-allowed'
                 : business?.isOpen
                 ? 'bg-white border-zinc-200 text-rose-600 hover:bg-rose-50'
-                : 'bg-teal-600 text-white border-teal-500 hover:bg-teal-700'
+                : 'bg-[#114227] text-white border-[#114227] hover:bg-[#0D361F]'
             }`}
           >
             {toggling ? 'Updating...' : business?.isOpen ? 'Close Services' : 'Open Services'}
           </button>
+
+          {/* Quick Serve Next */}
           <button
+            type="button"
             onClick={handleCallNext}
             disabled={calling || users.length === 0}
-            className="px-6 py-2.5 rounded-xl bg-zinc-950 text-white font-bold text-xs hover:bg-zinc-800 disabled:opacity-40 transition-all flex items-center gap-2"
+            className="px-4 py-1.5 rounded-full bg-zinc-950 text-white font-bold text-xs hover:bg-zinc-800 disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            {calling ? 'Processing...' : 'Serve Next in Queue'}
-          </button>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 overflow-x-auto custom-scrollbar">
-        {[
-          { id: 'queue', label: 'Live Queue & Floor', count: users.length },
-          { id: 'appointments', label: 'Appointments', count: bookings.length },
-          { id: 'services', label: 'Services Catalog', count: profileForm.services?.length || 0 },
-          {
-            id: 'staff',
-            label: isClinic ? 'Doctors & Specialists' : 'Barbers & Stylists',
-            count: business?.staff?.length || 0,
-          },
-          { id: 'analytics', label: 'AI Analytics & Daily Traffic' },
-          { id: 'profile', label: 'Hub Settings' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-              activeTab === tab.id
-                ? 'bg-teal-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <span>{tab.label}</span>
-            {tab.count !== undefined && (
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                activeTab === tab.id ? 'bg-teal-800 text-white' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {tab.count}
+            <span>{calling ? 'Calling...' : 'Serve Next'}</span>
+            {users.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-zinc-950 text-[10px] font-black">
+                {users.length}
               </span>
             )}
           </button>
-        ))}
-      </div>
+
+          {/* Wallet */}
+          <button
+            type="button"
+            onClick={() => navigate('/wallet')}
+            className="hidden sm:flex px-3.5 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] hover:bg-[#DDF3E3] text-xs font-bold text-[#114227] items-center gap-2 transition-all shadow-xs cursor-pointer"
+          >
+            <Wallet className="w-3.5 h-3.5 text-[#114227]" />
+            <span>₹{(user?.walletBalance ?? 0).toLocaleString()}</span>
+          </button>
+
+          {/* Profile Menu */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowUserMenu((prev) => !prev)}
+              className="flex items-center gap-1.5 p-1 pl-1.5 pr-2 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-700 text-white flex items-center justify-center font-bold text-xs border border-zinc-200">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'O'}
+              </div>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
+            </button>
+
+            {showUserMenu && (
+              <div className="absolute top-full right-0 mt-2 w-52 bg-white border border-zinc-200 rounded-2xl shadow-xl p-1.5 z-50 space-y-1">
+                <div className="px-3 py-2 border-b border-zinc-100">
+                  <p className="text-xs font-bold text-zinc-900 truncate">{user?.name || 'Hub Owner'}</p>
+                  <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/profile')
+                    setShowUserMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Account Profile</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/business')
+                    setShowUserMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>All Venues</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/wallet')
+                    setShowUserMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <Wallet className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Wallet & Payouts</span>
+                </button>
+                <div className="border-t border-zinc-100 my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    logOut()
+                    navigate('/login')
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
+      <div className="flex-1 flex w-full">
+        {/* Desktop Left Sidebar */}
+        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100vh-61px)] bg-white/60 backdrop-blur-xs sticky top-[61px] self-start max-h-[calc(100vh-61px)] overflow-y-auto">
+          {renderSidebarContent(false)}
+        </aside>
+
+        {/* Mobile Left Sidebar Drawer */}
+        <AnimatePresence>
+          {mobileSidebarOpen && (
+            <div className="fixed inset-0 z-50 lg:hidden flex">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setMobileSidebarOpen(false)}
+                className="fixed inset-0 bg-zinc-950/40 backdrop-blur-xs"
+              />
+              <motion.div
+                initial={{ x: -280 }}
+                animate={{ x: 0 }}
+                exit={{ x: -280 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="relative w-72 max-w-[85vw] bg-white h-full z-10 shadow-2xl p-4 flex flex-col justify-between overflow-y-auto"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 mb-3">
+                  <div className="flex items-center gap-2">
+                    <img src="/serveq-logo.png" alt="serveQ" className="h-6 w-auto" />
+                    <span className="text-[10px] font-black uppercase text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full">
+                      Console
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className="p-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-600 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {renderSidebarContent(true)}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MAIN CANVAS */}
+        <main className="flex-1 px-4 py-5 sm:px-8 sm:py-7 space-y-6 min-w-0 max-w-7xl">
+          {/* Top Venue Overview Card / Hero Banner */}
+          <div className="rounded-3xl bg-gradient-to-r from-[#F4F9F5] via-[#EBF5ED] to-[#E2F0E5] border border-[#DCEDE0] p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-2xs">
+            <div className="space-y-1.5 z-10">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#114227]">
+                  Venue Command Center
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">
+                {business?.name || 'Your Venue Hub'}
+              </h1>
+              <p className="text-xs sm:text-sm text-zinc-600 font-medium">
+                Live queue control, appointment slots, staff rosters, and AI operational insights.
+              </p>
+            </div>
+
+            {/* 4 Quick Metric Tiles */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full md:w-auto z-10">
+              <div className="bg-white/80 backdrop-blur-xs border border-[#BDE8CB] rounded-2xl p-3 text-center min-w-[95px] shadow-2xs">
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Serving</p>
+                <p className="font-black text-sm text-zinc-900 mt-0.5 truncate">
+                  {serving ? `Token #${users.indexOf(serving) + 1}` : 'Idle'}
+                </p>
+              </div>
+              <div className="bg-white/80 backdrop-blur-xs border border-[#BDE8CB] rounded-2xl p-3 text-center min-w-[95px] shadow-2xs">
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">In Line</p>
+                <p className="font-black text-sm text-zinc-900 mt-0.5">
+                  {users.filter((u) => u.status === 'waiting').length} waiting
+                </p>
+              </div>
+              <div className="bg-white/80 backdrop-blur-xs border border-[#BDE8CB] rounded-2xl p-3 text-center min-w-[95px] shadow-2xs">
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Bookings</p>
+                <p className="font-black text-sm text-[#16A34A] mt-0.5">
+                  {bookings.length} slots
+                </p>
+              </div>
+              <div className="bg-white/80 backdrop-blur-xs border border-[#BDE8CB] rounded-2xl p-3 text-center min-w-[95px] shadow-2xs">
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Staff</p>
+                <p className="font-black text-sm text-zinc-900 mt-0.5">
+                  {(business?.staff || []).length || 1} active
+                </p>
+              </div>
+            </div>
+
+            {/* Soft ambient blur circle */}
+            <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-emerald-200/40 rounded-full blur-2xl pointer-events-none" />
+          </div>
+
+          {/* Quick Tabs Pill Switcher */}
+          <div className="flex items-center gap-2 border-b border-zinc-200/80 pb-2 overflow-x-auto scrollbar-none">
+            {[
+              { id: 'queue', label: 'Live Queue & Floor', count: users.length },
+              { id: 'appointments', label: 'Appointments', count: bookings.length },
+              { id: 'services', label: 'Services Catalog', count: profileForm.services?.length || 0 },
+              {
+                id: 'staff',
+                label: isClinic ? 'Doctors & Specialists' : 'Barbers & Stylists',
+                count: business?.staff?.length || 0,
+              },
+              { id: 'analytics', label: 'AI Analytics & Daily Traffic' },
+              { id: 'profile', label: 'Hub Settings' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
+                  activeTab === tab.id
+                    ? 'bg-[#114227] text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
+                }`}
+              >
+                <span>{tab.label}</span>
+                {tab.count !== undefined && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      activeTab === tab.id ? 'bg-[#0D361F] text-emerald-200' : 'bg-zinc-200 text-zinc-700'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
 
       {/* TAB 1: LIVE QUEUE */}
       {activeTab === 'queue' && (
@@ -1676,6 +2177,8 @@ export default function BusinessDashboard() {
           </div>
         </div>
       )}
+        </main>
+      </div>
     </div>
   )
 }

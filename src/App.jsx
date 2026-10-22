@@ -140,7 +140,9 @@ export default function App() {
     location.pathname === '/customers' ||
     location.pathname === '/history' ||
     location.pathname.startsWith('/queue') ||
-    location.pathname.startsWith('/booking')
+    location.pathname.startsWith('/booking') ||
+    location.pathname === '/business' ||
+    (location.pathname.startsWith('/business/') && location.pathname.includes('/manage'))
 
   return (
     <div className="page-wrapper">
