@@ -116,7 +116,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 bg-[#fafaf9]/85 backdrop-blur-md border-b border-zinc-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 no-underline group" aria-label="serveQ Homepage">
-            <img src="/serveq-logo.png" alt="serveQ Logo" className="h-7.5 w-auto object-contain transition-transform group-hover:scale-105" />
+            <img src="/serveq-logo.png" alt="serveQ Logo" className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105" />
           </Link>
 
           <nav id="tour-header-nav" className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-600">
@@ -132,7 +132,7 @@ export default function LandingPage() {
             </button>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             <Link
               to="/business"
               className="hidden sm:inline-flex text-xs font-bold text-zinc-700 hover:text-zinc-950 px-3 py-2 rounded-lg hover:bg-zinc-100 transition-colors"
@@ -141,13 +141,13 @@ export default function LandingPage() {
             </Link>
             <Link
               to="/login"
-              className="text-xs font-bold text-zinc-800 hover:text-zinc-950 px-3 sm:px-3.5 py-2 rounded-lg hover:bg-zinc-100 transition-colors"
+              className="hidden min-[420px]:inline-flex text-xs font-bold text-zinc-800 hover:text-zinc-950 px-2.5 sm:px-3.5 py-2 rounded-lg hover:bg-zinc-100 transition-colors"
             >
               Sign In
             </Link>
             <button
               onClick={() => navigate('/login')}
-              className="text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white px-3.5 sm:px-4 py-2 rounded-full shadow-sm hover:shadow transition-all active:scale-95"
+              className="text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm hover:shadow transition-all active:scale-95"
             >
               Get Started
             </button>
@@ -247,7 +247,7 @@ export default function LandingPage() {
                 Live Virtual Queue Management
               </div>
 
-              <h1 className="text-4xl sm:text-6xl font-black text-zinc-950 tracking-tight leading-[1.08]">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-zinc-950 tracking-tight leading-[1.1]">
                 Wait from anywhere, <br />
                 <span className="text-teal-600">not in line.</span>
               </h1>
@@ -275,20 +275,20 @@ export default function LandingPage() {
               </div>
 
               {/* Accurate Value Props */}
-              <div className="pt-6 border-t border-zinc-200/80 grid grid-cols-3 gap-3 sm:flex sm:items-center sm:justify-start sm:gap-8 text-left">
+              <div className="pt-6 border-t border-zinc-200/80 grid grid-cols-3 gap-2 sm:gap-8 sm:flex sm:items-center sm:justify-start text-left">
                 <div>
-                  <p className="text-base sm:text-xl font-black text-zinc-950">Real-Time</p>
-                  <p className="text-[10px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">WebSocket Sync</p>
+                  <p className="text-sm sm:text-xl font-black text-zinc-950">Real-Time</p>
+                  <p className="text-[9px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">WebSocket Sync</p>
                 </div>
                 <div className="hidden sm:block w-px h-8 bg-zinc-200" />
                 <div>
-                  <p className="text-base sm:text-xl font-black text-zinc-950">Virtual</p>
-                  <p className="text-[10px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Queue Position</p>
+                  <p className="text-sm sm:text-xl font-black text-zinc-950">Virtual</p>
+                  <p className="text-[9px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Queue Position</p>
                 </div>
                 <div className="hidden sm:block w-px h-8 bg-zinc-200" />
                 <div>
-                  <p className="text-base sm:text-xl font-black text-teal-600">Automated</p>
-                  <p className="text-[10px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Token Alerts</p>
+                  <p className="text-sm sm:text-xl font-black text-teal-600">Automated</p>
+                  <p className="text-[9px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Token Alerts</p>
                 </div>
               </div>
             </div>
@@ -300,10 +300,10 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full max-w-sm bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xl shadow-zinc-950/5 space-y-5 text-left"
+                className="w-full max-w-sm bg-white rounded-3xl p-4.5 sm:p-6 border border-zinc-200/80 shadow-xl shadow-zinc-950/5 space-y-4 sm:space-y-5 text-left"
               >
                 {/* Live Pass Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-100">
                   <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse" />
                     <span className="text-xs font-bold text-zinc-900 tracking-wide">Live Queue Pass</span>
@@ -321,9 +321,9 @@ export default function LandingPage() {
                 </div>
 
                 {/* Token Display */}
-                <div className="bg-zinc-50 rounded-2xl p-5 border border-zinc-100 text-center space-y-1">
+                <div className="bg-zinc-50 rounded-2xl p-4 sm:p-5 border border-zinc-100 text-center space-y-1">
                   <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Your Token Number</p>
-                  <p className="text-5xl font-black tracking-tight text-teal-600">#24</p>
+                  <p className="text-4xl sm:text-5xl font-black tracking-tight text-teal-600">#24</p>
                   <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-zinc-600 pt-1">
                     <span>Now Serving:</span>
                     <span className="text-zinc-950 font-black">#22</span>
@@ -401,7 +401,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {VENUES.map((v) => (
               <div
                 key={v.title}
@@ -473,14 +473,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── Call To Action Banner ── */}
-      <section className="py-20">
+      <section className="py-16 sm:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div id="tour-cta-banner" className="bg-zinc-950 text-white rounded-3xl p-8 sm:p-14 text-center sm:text-left flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl">
+          <div id="tour-cta-banner" className="bg-zinc-950 text-white rounded-3xl p-6 sm:p-10 md:p-14 text-center sm:text-left flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl">
             <div className="space-y-3 max-w-xl">
               <span className="text-[10px] font-black uppercase tracking-widest text-teal-400 bg-teal-950/80 px-3 py-1 rounded-full border border-teal-800">
                 Start Today
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white">
                 Ready to skip the wait?
               </h2>
               <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">

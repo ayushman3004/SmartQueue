@@ -136,14 +136,19 @@ export default function ComingSoonPage() {
         </filter>
       </svg>
 
-      {/* Transparent Header */}
+      {/* Responsive Header */}
       <header className="header">
         <Link to="/" className="logo" aria-label="serveQ home">
-          <img src="/serveq-logo.png" alt="serveQ" className="h-8 w-auto object-contain" />
+          <img src="/serveq-logo.png" alt="serveQ" className="h-7 sm:h-8 w-auto object-contain transition-transform hover:scale-105" />
         </Link>
-        <div className="pill">
-          <i />
-          Launching Soon
+        <div className="header-actions">
+          <div className="pill">
+            <i />
+            <span>Launching Soon</span>
+          </div>
+          <Link to="/login" className="header-link">
+            Sign In
+          </Link>
         </div>
       </header>
 

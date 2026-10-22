@@ -165,9 +165,9 @@ export default function Footer() {
       {/* Bottom Sub-bar */}
       <div className="border-t border-zinc-100 bg-[#FAFBFB] py-5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500">
-          <p>© {currentYear} ServeQ Technologies. All rights reserved.</p>
+          <p className="text-center sm:text-left">© {currentYear} ServeQ Technologies. All rights reserved.</p>
 
-          <div className="flex items-center gap-4 text-xs font-medium">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs font-medium">
             <Link to="/privacy" className="text-zinc-500 hover:text-zinc-900 transition-colors">
               Privacy
             </Link>

@@ -112,6 +112,9 @@
 
 .cs-page .header {
   height: 84px;
+  max-width: 1200px;
+  width: 100%;
+  margin-inline: auto;
   padding-top: env(safe-area-inset-top, 0px);
   padding-inline: max(var(--gutter), env(safe-area-inset-left, 0px)) max(var(--gutter), env(safe-area-inset-right, 0px));
   display: flex;
@@ -119,6 +122,39 @@
   justify-content: space-between;
   gap: 16px;
   animation: cs-fade 0.8s ease both;
+}
+
+.cs-page .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cs-page .header-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(120, 95, 150, 0.2);
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cs-page .header-link:hover {
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--ink);
+    border-color: rgba(120, 95, 150, 0.4);
+  }
 }
 
 .cs-page .logo {
@@ -492,16 +528,37 @@
 
 /* ---------- Responsive Breakpoints ---------- */
 
-/* Tablet & Smaller Desktops */
+/* Tablets & Small Laptops (<= 900px) */
+@media (max-width: 900px) {
+  :root {
+    --gutter: 28px;
+  }
+  .cs-page .card {
+    padding: 36px 32px 30px;
+    max-width: 580px;
+  }
+}
+
+/* Tablet & Large Mobile (<= 768px) */
 @media (max-width: 768px) {
   :root {
     --gutter: 20px;
   }
   .cs-page .header {
     height: auto;
-    min-height: 64px;
-    padding-top: max(12px, env(safe-area-inset-top, 0px));
-    padding-bottom: 12px;
+    min-height: 60px;
+    padding-top: max(14px, env(safe-area-inset-top, 0px));
+    padding-bottom: 10px;
+  }
+  .cs-page .main {
+    padding-block: 20px 36px;
+  }
+  .cs-page .card {
+    padding: 32px 24px 28px;
+    margin-block: auto;
+  }
+  .cs-page h1 {
+    font-size: clamp(28px, 6vw, 38px);
   }
   .cs-page .footer__inner {
     display: flex;
@@ -520,18 +577,19 @@
   }
 }
 
-/* Mobile Screens (Phones < 540px) */
-@media (max-width: 540px) {
+/* Medium & Small Mobile (<= 600px) */
+@media (max-width: 600px) {
   :root {
     --gutter: 16px;
   }
   .cs-page .main {
-    padding-block: 16px 36px;
+    padding-block: 16px 32px;
     padding-inline: max(14px, env(safe-area-inset-left, 0px)) max(14px, env(safe-area-inset-right, 0px));
   }
   .cs-page .card {
-    padding: 30px 18px 24px;
+    padding: 28px 18px 24px;
     border-radius: 20px;
+    margin-block: auto;
   }
   .cs-page .eyebrow {
     margin-bottom: 10px;
@@ -542,14 +600,15 @@
     width: 18px;
   }
   .cs-page h1 {
-    font-size: clamp(26px, 7.5vw, 34px);
+    font-size: clamp(25px, 7.5vw, 32px);
     margin-bottom: 12px;
     line-height: 1.18;
+    padding-bottom: 0;
   }
   .cs-page .lede {
     font-size: 14px;
     line-height: 1.55;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
   }
   .cs-page .cta {
     font-size: 13px;
@@ -574,7 +633,7 @@
     width: 100%;
     height: 50px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.78);
     border: 1px solid rgba(255, 255, 255, 0.95);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.9),
@@ -588,7 +647,7 @@
     transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
   }
   .cs-page .row .field:focus {
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.95);
     border-color: rgba(191, 160, 235, 0.95);
     box-shadow:
       inset 0 2px 6px rgba(86, 58, 128, 0.08),
@@ -609,6 +668,8 @@
     height: 50px;
     font-size: 15px;
     padding: 0 20px;
+    border-radius: 999px;
+    touch-action: manipulation;
   }
   .cs-page .pill {
     padding: 5px 11px 5px 9px;
@@ -618,6 +679,10 @@
   .cs-page .pill i {
     width: 6px;
     height: 6px;
+  }
+  .cs-page .header-link {
+    font-size: 12px;
+    padding: 5px 11px;
   }
 }
 
@@ -630,21 +695,35 @@
     gap: 8px;
   }
   .cs-page .logo img {
-    height: 26px;
+    height: 24px;
   }
   .cs-page .pill {
     padding: 4px 8px;
     font-size: 11px;
+    gap: 4px;
+  }
+  .cs-page .header-link {
+    padding: 4px 9px;
+    font-size: 11px;
   }
   .cs-page .card {
-    padding: 24px 14px 20px;
+    padding: 22px 12px 18px;
     border-radius: 16px;
   }
   .cs-page h1 {
-    font-size: 24px;
+    font-size: 22px;
   }
   .cs-page .lede {
-    font-size: 13.5px;
+    font-size: 13px;
+  }
+  .cs-page .row .field {
+    height: 46px;
+    font-size: 16px;
+    padding: 0 14px;
+  }
+  .cs-page .row .btn {
+    height: 46px;
+    font-size: 14px;
   }
 }
 
