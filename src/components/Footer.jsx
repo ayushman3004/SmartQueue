@@ -20,7 +20,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
           
           {/* Brand & Mission (lg:col-span-4) */}
-          <div className="lg:col-span-4 space-y-4">
+          <div className="lg:col-span-4 space-y-4 flex flex-col items-center md:items-start text-center md:text-left">
             <Link to="/" className="inline-flex items-center group text-decoration-none">
               <img
                 src="/serveq-logo.png"
@@ -29,12 +29,12 @@ export default function Footer() {
               />
             </Link>
 
-            <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed max-w-sm font-medium">
+            <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed max-w-sm font-medium mx-auto md:mx-0">
               Smarter queues. Better experiences. We help clinics, salons, and service businesses eliminate crowded waiting rooms with live virtual queueing and easy appointments.
             </p>
 
             {/* Operational Status Pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] text-xs font-bold shadow-2xs">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] text-xs font-bold shadow-2xs mx-auto md:mx-0">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
@@ -42,7 +42,7 @@ export default function Footer() {
               <span>All Systems Operational</span>
             </div>
 
-            <div className="pt-2 text-xs text-zinc-500 space-y-1">
+            <div className="pt-2 text-xs text-zinc-500 space-y-1 text-center md:text-left">
               <p>
                 Inquiries &amp; Support:{' '}
                 <a
@@ -65,11 +65,11 @@ export default function Footer() {
           </div>
 
           {/* Navigation Column 1: For Customers (lg:col-span-3) */}
-          <div className="lg:col-span-3 space-y-3">
+          <div className="lg:col-span-3 space-y-3 flex flex-col items-center md:items-start text-center md:text-left">
             <h4 className="text-xs font-black text-zinc-950 uppercase tracking-wider">
               For Customers
             </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-medium">
+            <ul className="space-y-2 text-xs sm:text-sm font-medium flex flex-col items-center md:items-start">
               <li>
                 <Link to="/customers" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
                   Customer Portal
@@ -99,11 +99,11 @@ export default function Footer() {
           </div>
 
           {/* Navigation Column 2: For Businesses (lg:col-span-3) */}
-          <div className="lg:col-span-3 space-y-3">
+          <div className="lg:col-span-3 space-y-3 flex flex-col items-center md:items-start text-center md:text-left">
             <h4 className="text-xs font-black text-zinc-950 uppercase tracking-wider">
               For Businesses
             </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-medium">
+            <ul className="space-y-2 text-xs sm:text-sm font-medium flex flex-col items-center md:items-start">
               <li>
                 <Link to="/business" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
                   Business Hub Console
@@ -131,11 +131,11 @@ export default function Footer() {
           </div>
 
           {/* Navigation Column 3: Trust & Company (lg:col-span-2) */}
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-2 space-y-3 flex flex-col items-center md:items-start text-center md:text-left">
             <h4 className="text-xs font-black text-zinc-950 uppercase tracking-wider">
               Support &amp; Trust
             </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-medium">
+            <ul className="space-y-2 text-xs sm:text-sm font-medium flex flex-col items-center md:items-start">
               <li>
                 <Link to="/support" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
                   Help Center

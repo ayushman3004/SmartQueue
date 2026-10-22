@@ -23,12 +23,14 @@ import {
   User,
   Map,
   X,
+  Menu,
   Check,
   CheckCircle,
   Eye,
   Sparkles,
   Activity,
 } from 'lucide-react'
+import CustomerSidebar from '../components/CustomerSidebar'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses } from '../api/business.api'
@@ -88,6 +90,7 @@ export default function CustomerDashboardPage() {
   const [locationQuery, setLocationQuery] = useState('')
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sortBy, setSortBy] = useState('nearest') // 'nearest' | 'wait_time' | 'rating'
   const [showMapModal, setShowMapModal] = useState(false)
 
@@ -989,8 +992,16 @@ export default function CustomerDashboardPage() {
     <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans">
       {/* ── TOP HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-        {/* Left: Brand Logo */}
-        <div className="flex items-center gap-3">
+        {/* Left: Hamburger + Brand Logo */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="lg:hidden p-2 -ml-1 rounded-xl text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
           <Link to="/" className="flex items-center group text-decoration-none">
             <img src="/serveq-logo.png" alt="serveQ" className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105" />
           </Link>
@@ -1135,94 +1146,48 @@ export default function CustomerDashboardPage() {
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS (FULL SCREEN) ── */}
       <div className="flex-1 flex w-full">
-        {/* LEFT SIDEBAR */}
-        <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100vh-61px)] bg-white/40">
-          <nav className="space-y-1">
-            {[
-              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, count: null },
-              { id: 'clinics', label: 'Clinics', icon: Stethoscope, count: clinicsList.length },
-              { id: 'salons', label: 'Salons', icon: Scissors, count: salonsList.length },
-              { id: 'my-queues', label: 'My Queues', icon: Ticket, count: myActiveQueues.length },
-              {
-                id: 'appointments',
-                label: 'Appointments',
-                icon: Calendar,
-                count: myBookings.filter(
-                  (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
-                ).length,
-              },
-              { id: 'history', label: 'History', icon: Clock, count: null },
-            ].map((item) => {
-              const isActive = activeNavTab === item.id
-              const IconComponent = item.icon
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveNavTab(item.id)
-                    if (item.id === 'clinics') setCategoryFilter('clinic')
-                    else if (item.id === 'salons') setCategoryFilter('salon')
-                    else if (item.id === 'dashboard') setCategoryFilter('all')
-                    else if (item.id === 'my-queues') {
-                      if (myActiveQueues.length > 0 && myActiveQueues[0].business?._id) {
-                        navigate(`/queue/${myActiveQueues[0].business._id}`)
-                      } else if (businesses.length > 0) {
-                        navigate(`/queue/${businesses[0]._id}`)
-                      } else {
-                        navigate('/queue')
-                      }
-                    } else if (item.id === 'appointments') {
-                      const upcomingBooking = myBookings.find(
-                        (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
-                      )
-                      const targetBizId =
-                        upcomingBooking?.businessId?._id ||
-                        upcomingBooking?.businessId ||
-                        businesses[0]?._id
-                      if (targetBizId) {
-                        navigate(`/booking/${targetBizId}`)
-                      } else {
-                        navigate('/booking')
-                      }
-                    } else if (item.id === 'history') {
-                      navigate('/history')
-                    }
-                  }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-                    isActive
-                      ? 'bg-[#EAF5EC] text-[#114227] shadow-xs'
-                      : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.count !== null && item.count > 0 && (
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                        isActive ? 'bg-[#114227] text-white' : 'bg-zinc-200 text-zinc-700'
-                      }`}
-                    >
-                      {item.count}
-                    </span>
-                  )}
-                </button>
+        {/* CUSTOMER SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
+        <CustomerSidebar
+          activeNavTab={activeNavTab}
+          onSelectTab={(tabId) => {
+            setActiveNavTab(tabId)
+            if (tabId === 'clinics') setCategoryFilter('clinic')
+            else if (tabId === 'salons') setCategoryFilter('salon')
+            else if (tabId === 'dashboard') setCategoryFilter('all')
+            else if (tabId === 'my-queues') {
+              if (myActiveQueues.length > 0 && myActiveQueues[0].business?._id) {
+                navigate(`/queue/${myActiveQueues[0].business._id}`)
+              } else if (businesses.length > 0) {
+                navigate(`/queue/${businesses[0]._id}`)
+              } else {
+                navigate('/queue')
+              }
+            } else if (tabId === 'appointments') {
+              const upcomingBooking = myBookings.find(
+                (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
               )
-            })}
-          </nav>
-
-          {/* Bottom Sidebar: Help & Support */}
-          <div className="pt-4 border-t border-zinc-100">
-            <button
-              onClick={() => navigate('/support')}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
-            >
-              <HelpCircle className="w-4 h-4 text-zinc-500" />
-              <span>Help & Support</span>
-            </button>
-          </div>
-        </aside>
+              const targetBizId =
+                upcomingBooking?.businessId?._id ||
+                upcomingBooking?.businessId ||
+                businesses[0]?._id
+              if (targetBizId) {
+                navigate(`/booking/${targetBizId}`)
+              } else {
+                navigate('/booking')
+              }
+            } else if (tabId === 'history') {
+              navigate('/history')
+            }
+          }}
+          clinicsCount={clinicsList.length}
+          salonsCount={salonsList.length}
+          myActiveQueuesCount={myActiveQueues.length}
+          myBookingsCount={myBookings.filter(
+            (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
+          ).length}
+          mobileOpen={mobileSidebarOpen}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
+        />
 
         {/* MAIN CANVAS */}
         <main className="flex-1 px-4 py-4 sm:px-6 sm:py-5 space-y-6 min-w-0">
