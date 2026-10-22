@@ -69,3 +69,18 @@ export const allowRoles = (...roles) =>
     }
     next();
   });
+
+/**
+ * Require verified email address for sensitive operations like business onboarding
+ */
+export const requireVerifiedEmail = asyncHandler(async (req, _res, next) => {
+  if (!req.user) throw new ApiError(401, "Not authenticated");
+  const isVerified = Boolean(req.user.isEmailVerified || req.user.authProvider === "google");
+  if (!isVerified) {
+    throw new ApiError(
+      403,
+      "Email verification required: You must verify your email address with an OTP before onboarding a business hub."
+    );
+  }
+  next();
+});

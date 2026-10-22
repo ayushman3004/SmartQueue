@@ -142,6 +142,7 @@ export default function App() {
     location.pathname.startsWith('/queue') ||
     location.pathname.startsWith('/booking') ||
     location.pathname === '/business' ||
+    location.pathname === '/admin' ||
     (location.pathname.startsWith('/business/') && location.pathname.includes('/manage'))
 
   return (

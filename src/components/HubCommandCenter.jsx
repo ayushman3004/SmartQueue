@@ -31,6 +31,7 @@ import {
   SlidersHorizontal,
   Lock,
   Compass,
+  AlertTriangle,
 } from 'lucide-react'
 
 export default function HubCommandCenter() {
@@ -48,6 +49,16 @@ export default function HubCommandCenter() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'live' | 'onboarding' | 'closed'
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Email verification check
+  const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
+
+  const handleRegisterHubClick = () => {
+    if (!isEmailVerified) {
+      toast.error('Email verification required! Please verify your email before onboarding.')
+    }
+    navigate('/business/onboarding')
+  }
 
   const loadHubs = useCallback(async () => {
     setFetchingHubs(true)
@@ -310,7 +321,7 @@ export default function HubCommandCenter() {
           <button
             type="button"
             onClick={() => {
-              navigate('/business/onboarding')
+              handleRegisterHubClick()
               if (isMobile) setMobileSidebarOpen(false)
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100/80 border border-emerald-200/60 transition-colors cursor-pointer"
@@ -416,7 +427,7 @@ export default function HubCommandCenter() {
           {/* Quick Register New Hub */}
           <button
             type="button"
-            onClick={() => navigate('/business/onboarding')}
+            onClick={handleRegisterHubClick}
             className="px-4 py-1.5 rounded-full bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -575,7 +586,7 @@ export default function HubCommandCenter() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => navigate('/business/onboarding')}
+                onClick={handleRegisterHubClick}
                 className="px-5 py-2.5 rounded-full bg-[#114227] hover:bg-[#0D361F] text-white font-black text-xs uppercase tracking-wider shadow-sm hover:shadow transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
@@ -583,6 +594,36 @@ export default function HubCommandCenter() {
               </button>
             </div>
           </div>
+
+          {/* Email Verification Required Banner if unverified */}
+          {!isEmailVerified && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-transparent border-2 border-amber-300 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left shadow-2xs">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-amber-700" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                    Verification Required
+                  </span>
+                  <h3 className="text-base font-black text-zinc-950 mt-1">
+                    Email verification is required before onboarding new venues
+                  </h3>
+                  <p className="text-xs text-zinc-600 mt-0.5">
+                    Your account email <span className="font-bold text-zinc-900">{user?.email}</span> must be verified with an OTP before you can register new hubs or resume setup.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/profile')}
+                className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                <span>Verify Email (OTP)</span>
+                <span>→</span>
+              </button>
+            </div>
+          )}
 
           {/* In-Progress Onboarding Notification Banner */}
           {myBusinesses.some((b) => b.onboarding?.status === 'IN_PROGRESS') && (
