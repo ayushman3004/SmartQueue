@@ -24,6 +24,7 @@ import BusinessPortalPage from './pages/BusinessPortalPage'
 import BusinessOnboardingPage from './pages/BusinessOnboardingPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsPage from './pages/TermsPage'
+import HelpSupportPage from './pages/HelpSupportPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 const LoadingScreen = () => (
@@ -143,6 +144,8 @@ export default function App() {
     location.pathname.startsWith('/booking') ||
     location.pathname === '/business' ||
     location.pathname === '/admin' ||
+    location.pathname === '/support' ||
+    location.pathname === '/help' ||
     (location.pathname.startsWith('/business/') && location.pathname.includes('/manage'))
 
   return (
@@ -283,6 +286,8 @@ export default function App() {
             path="/admin"
             element={<AdminDashboard />}
           />
+          <Route path="/support" element={<HelpSupportPage />} />
+          <Route path="/help" element={<Navigate to="/support" replace />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="*" element={<NotFoundPage />} />

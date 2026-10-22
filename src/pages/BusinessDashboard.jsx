@@ -668,7 +668,7 @@ export default function BusinessDashboard() {
 
         <button
           type="button"
-          onClick={() => toast('Support Hotline: help@serveq.tech', { icon: 'ℹ️' })}
+          onClick={() => navigate('/support')}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
         >
           <HelpCircle className="w-4 h-4 text-zinc-500" />

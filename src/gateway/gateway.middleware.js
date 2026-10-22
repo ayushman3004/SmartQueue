@@ -62,6 +62,32 @@ export const gatewayAuthenticate = async (req, res, next) => {
 };
 
 /**
+ * Optional Gateway JWT authentication middleware.
+ * If token is present, populates `req.user`. If not, continues without error.
+ */
+export const gatewayOptionalAuth = async (req, res, next) => {
+  try {
+    let token = null;
+
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies?.token) {
+      token = req.cookies.token;
+    }
+
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id).select("-password");
+      if (user) req.user = user;
+    }
+  } catch (_err) {
+    // Continue silently if invalid or expired
+  }
+  next();
+};
+
+
+/**
  * Gateway Role Authorization Middleware.
  * Usage: gatewayAuthorize("owner", "admin")
  */

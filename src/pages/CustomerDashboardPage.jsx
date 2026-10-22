@@ -1215,8 +1215,8 @@ export default function CustomerDashboardPage() {
           {/* Bottom Sidebar: Help & Support */}
           <div className="pt-4 border-t border-zinc-100">
             <button
-              onClick={() => toast('Support hotline: help@serveq.tech', { icon: 'info' })}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors"
+              onClick={() => navigate('/support')}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
             >
               <HelpCircle className="w-4 h-4 text-zinc-500" />
               <span>Help & Support</span>
