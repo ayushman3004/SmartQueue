@@ -25,6 +25,7 @@ import BusinessOnboardingPage from './pages/BusinessOnboardingPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsPage from './pages/TermsPage'
 import HelpSupportPage from './pages/HelpSupportPage'
+import Footer from './components/Footer'
 import NotFoundPage from './pages/NotFoundPage'
 
 const LoadingScreen = () => (
@@ -148,6 +149,10 @@ export default function App() {
     location.pathname === '/help' ||
     (location.pathname.startsWith('/business/') && location.pathname.includes('/manage'))
 
+  const isLoginPage =
+    location.pathname === '/login' ||
+    location.pathname === '/auth/callback'
+
   return (
     <div className="page-wrapper">
       <Toaster 
@@ -170,7 +175,7 @@ export default function App() {
         </>
       )}
       {user && !isOnboarding && <AIDesistant />}
-      <main className={user && !isOnboarding && !isCustomerDashboard ? "main-content" : ""}>
+      <main className={user && !isOnboarding && !isCustomerDashboard ? "main-content flex-1" : "flex-1"}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
@@ -293,6 +298,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
+      {!isLoginPage && <Footer />}
     </div>
   )
 }

@@ -775,28 +775,6 @@ export default function BusinessPortalPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="max-w-5xl mx-auto w-full pt-8 mt-10 border-t border-zinc-200 text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          &copy; {new Date().getFullYear()} serveQ Infrastructure. Enterprise Venue Command.
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
-          <Link to="/" className="text-zinc-600 hover:text-zinc-900 transition-colors no-underline font-medium">
-            Customer Home
-          </Link>
-          <Link to="/login" className="text-zinc-600 hover:text-zinc-900 transition-colors no-underline font-medium">
-            Customer Portal
-          </Link>
-          <Link to="/privacy" className="text-zinc-600 hover:text-zinc-900 transition-colors no-underline font-medium">
-            Privacy Policy
-          </Link>
-          <Link to="/terms" className="text-zinc-600 hover:text-zinc-900 transition-colors no-underline font-medium">
-            Terms & Conditions
-          </Link>
-          <span className="text-teal-700 font-mono text-[11px] font-bold">serveq.tech/business</span>
-        </div>
-      </footer>
-
       {/* Forgot Password Modal */}
       <ForgotPasswordModal
         isOpen={showForgotPassword}

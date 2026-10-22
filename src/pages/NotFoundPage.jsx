@@ -70,11 +70,6 @@ export default function NotFoundPage() {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-zinc-200/80 py-6 bg-white text-xs text-zinc-500 text-center">
-        <p>© {new Date().getFullYear()} serveQ. All rights reserved.</p>
-      </footer>
     </div>
   )
 }

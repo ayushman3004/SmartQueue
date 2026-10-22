@@ -88,11 +88,11 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
               <table role="presentation" cellspacing="0" cellpadding="0">
                 <tr>
                   <td style="vertical-align: middle;">
-                    <div style="font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #0f172a;">
-                      Serve<span style="border-bottom: 3.5px solid #89AB33; padding-bottom: 2px;">Q</span>
-                    </div>
+                    <a href="https://serveq.tech" style="text-decoration: none; display: block;">
+                      <img src="https://www.serveq.tech/serveq-logo.png" alt="serveQ" height="28" style="height: 28px; width: auto; max-width: 135px; display: block; border: 0; outline: none;" />
+                    </a>
                   </td>
-                  <td style="vertical-align: middle; padding-left: 10px;">
+                  <td style="vertical-align: middle; padding-left: 12px;">
                     <span style="display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.25em; text-transform: uppercase; color: #114227; background-color: #EAF7EE; padding: 4px 8px; border-radius: 6px;">Security</span>
                   </td>
                 </tr>
@@ -278,17 +278,12 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
           <tr>
             <td style="background-color: #0a1118; padding: 36px 36px 36px 36px; text-align: left;">
               <!-- Brand Logo -->
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom: 26px;">
                 <tr>
-                  <td style="vertical-align: middle;">
-                    <div style="background-color: #ffffff; color: #0a1118; width: 34px; height: 34px; border-radius: 8px; font-weight: 800; font-size: 22px; text-align: center; line-height: 34px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                      S
-                    </div>
-                  </td>
-                  <td style="vertical-align: middle; padding-left: 12px;">
-                    <span style="color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                      ServeQ
-                    </span>
+                  <td style="background-color: #ffffff; padding: 6px 14px; border-radius: 10px; display: inline-block;">
+                    <a href="https://serveq.tech" style="text-decoration: none; display: block;">
+                      <img src="https://www.serveq.tech/serveq-logo.png" alt="serveQ" height="24" style="height: 24px; width: auto; max-width: 130px; display: block; border: 0; outline: none;" />
+                    </a>
                   </td>
                 </tr>
               </table>
@@ -528,16 +523,17 @@ export const sendSupportTicketEmail = async ({
           <!-- Obsidian Header -->
           <tr>
             <td style="background-color: #0a1118; padding: 32px 36px; text-align: left;">
+              <!-- Brand Logo -->
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
                 <tr>
-                  <td style="vertical-align: middle;">
-                    <div style="background-color: #ffffff; color: #0a1118; width: 32px; height: 32px; border-radius: 8px; font-weight: 800; font-size: 20px; text-align: center; line-height: 32px;">
-                      S
-                    </div>
+                  <td style="background-color: #ffffff; padding: 6px 14px; border-radius: 10px; display: inline-block; vertical-align: middle;">
+                    <a href="https://serveq.tech" style="text-decoration: none; display: block;">
+                      <img src="https://www.serveq.tech/serveq-logo.png" alt="serveQ" height="22" style="height: 22px; width: auto; max-width: 120px; display: block; border: 0; outline: none;" />
+                    </a>
                   </td>
                   <td style="vertical-align: middle; padding-left: 12px;">
-                    <span style="color: #ffffff; font-size: 20px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                      ServeQ HelpDesk
+                    <span style="color: #ffffff; font-size: 18px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                      HelpDesk
                     </span>
                   </td>
                 </tr>
@@ -699,17 +695,13 @@ export const sendSupportUserAcknowledgementEmail = async ({
           <!-- Obsidian Hero Header -->
           <tr>
             <td style="background-color: #0a1118; padding: 36px 36px 32px 36px; text-align: left;">
+              <!-- Brand Logo -->
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
                 <tr>
-                  <td style="vertical-align: middle;">
-                    <div style="background-color: #ffffff; color: #0a1118; width: 34px; height: 34px; border-radius: 8px; font-weight: 800; font-size: 22px; text-align: center; line-height: 34px;">
-                      S
-                    </div>
-                  </td>
-                  <td style="vertical-align: middle; padding-left: 12px;">
-                    <span style="color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">
-                      ServeQ
-                    </span>
+                  <td style="background-color: #ffffff; padding: 6px 14px; border-radius: 10px; display: inline-block;">
+                    <a href="https://serveq.tech" style="text-decoration: none; display: block;">
+                      <img src="https://www.serveq.tech/serveq-logo.png" alt="serveQ" height="24" style="height: 24px; width: auto; max-width: 130px; display: block; border: 0; outline: none;" />
+                    </a>
                   </td>
                 </tr>
               </table>

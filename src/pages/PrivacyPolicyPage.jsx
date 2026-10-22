@@ -173,22 +173,6 @@ export default function PrivacyPolicyPage() {
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-zinc-200/80 py-8 bg-white text-xs text-zinc-500">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img src="/serveq-logo.png" alt="serveQ Logo" className="h-5 w-auto object-contain" />
-            <span>• Smart Virtual Queuing</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6 justify-center">
-            <Link to="/" className="hover:text-zinc-900 transition-colors">Home</Link>
-            <Link to="/terms" className="hover:text-zinc-900 transition-colors">Terms and Conditions</Link>
-            <Link to="/business" className="hover:text-zinc-900 transition-colors">Business Portal</Link>
-          </div>
-          <p>© {new Date().getFullYear()} serveQ. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   )
 }

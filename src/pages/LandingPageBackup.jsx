@@ -508,30 +508,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Simple Minimal Footer ── */}
-      <footer className="border-t border-zinc-200/80 py-10 bg-white text-xs text-zinc-500">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <img src="/serveq-logo.png" alt="serveQ Logo" className="h-5 w-auto object-contain" />
-            <span>• Smart Virtual Queuing</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-            <button
-              type="button"
-              onClick={() => setTourTrigger((c) => c + 1)}
-              className="text-teal-700 hover:text-teal-900 font-bold transition-colors cursor-pointer"
-            >
-              ✨ Take Tour
-            </button>
-            <Link to="/business" className="hover:text-zinc-900 transition-colors">Business Portal</Link>
-            <Link to="/login" className="hover:text-zinc-900 transition-colors">Sign In</Link>
-            <a href="#how-it-works" className="hover:text-zinc-900 transition-colors">How It Works</a>
-            <Link to="/privacy" className="hover:text-zinc-900 transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-zinc-900 transition-colors">Terms & Conditions</Link>
-          </div>
-          <p>© {new Date().getFullYear()} serveQ. All rights reserved.</p>
-        </div>
-      </footer>
 
       {/* 5-Step Interactive Website Tour */}
       <WebsiteTour manualTrigger={tourTrigger} />

@@ -197,15 +197,6 @@ export default function ComingSoonPage() {
           </form>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="footer">
-        <div className="footer__inner">
-          <div className="footer__brand">serveQ</div>
-          <p className="footer__tag">A Better Way to Get Things Done.</p>
-          <p className="footer__copy">© 2026 serveQ. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   )
 }
