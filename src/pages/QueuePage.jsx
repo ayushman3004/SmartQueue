@@ -28,10 +28,13 @@ import {
   ArrowRight,
   RefreshCw,
   Activity,
+  Plus,
+  Play,
+  Info,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getQueue, leaveQueue } from '../api/queue.api'
+import { getQueue, joinQueue, leaveQueue } from '../api/queue.api'
 import { getAllBusinesses, getBusiness } from '../api/business.api'
 import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
@@ -68,6 +71,16 @@ export default function QueuePage() {
   const [currentQueue, setCurrentQueue] = useState(null)
   const [loading, setLoading] = useState(true)
   const [leavingQueue, setLeavingQueue] = useState(false)
+  const [joiningQueue, setJoiningQueue] = useState(false)
+  const [selectedService, setSelectedService] = useState(null)
+  const [selectedStaff, setSelectedStaff] = useState('any')
+
+  // Sync selectedBizId when URL parameter changes
+  useEffect(() => {
+    if (paramBizId) {
+      setSelectedBizId(paramBizId)
+    }
+  }, [paramBizId])
 
   // Header & Navigation states
   const [selectedCity, setSelectedCity] = useState(POPULAR_LOCATIONS[0])
@@ -162,14 +175,15 @@ export default function QueuePage() {
 
   // Active queues where current logged-in user is currently in line
   const myActiveQueues = useMemo(() => {
-    if (!user?._id) return []
-    const myIdStr = user._id.toString()
+    if (!user) return []
+    const myIdStr = (user._id || user.id)?.toString()
+    if (!myIdStr) return []
     const active = []
 
     businesses.forEach((biz) => {
       const qUsers = biz.activeQueue || []
       const foundIdx = qUsers.findIndex((u) => {
-        const uId = (u.userId?._id || u.userId)?.toString()
+        const uId = (u.userId?._id || u.userId || u.userId?.id)?.toString()
         return uId === myIdStr
       })
 
@@ -189,24 +203,19 @@ export default function QueuePage() {
     })
 
     return active
-  }, [businesses, user?._id])
+  }, [businesses, user])
 
   // Choose the active business to display
-  // RULE: If there is no person in any business and no active booking, do not show any business.
   const activeBusiness = useMemo(() => {
-    // 1. If user is in an active queue, prioritize that business
-    if (myActiveQueues.length > 0) {
-      if (selectedBizId) {
-        const matchingUserQ = myActiveQueues.find((mq) => mq.business._id === selectedBizId)
-        if (matchingUserQ) return matchingUserQ.business
-      }
-      return myActiveQueues[0].business
+    // 1. If user explicitly selected a business from URL/state, use that business
+    if (selectedBizId) {
+      const found = businesses.find((b) => b._id?.toString() === selectedBizId.toString())
+      if (found) return found
     }
 
-    // 2. If user explicitly selected a business and that business HAS an active queue
-    if (selectedBizId) {
-      const found = businessesWithActiveQueue.find((b) => b._id === selectedBizId)
-      if (found) return found
+    // 2. If user is in an active queue, prioritize that business
+    if (myActiveQueues.length > 0) {
+      return myActiveQueues[0].business
     }
 
     // 3. Otherwise, fallback to the first business with an ACTIVE queue
@@ -214,9 +223,19 @@ export default function QueuePage() {
       return businessesWithActiveQueue[0]
     }
 
-    // 4. No active queue anywhere -> null (do NOT show empty business)
-    return null
-  }, [myActiveQueues, selectedBizId, businessesWithActiveQueue])
+    // 4. Default to first business available
+    return businesses[0] || null
+  }, [businesses, selectedBizId, myActiveQueues, businessesWithActiveQueue])
+
+  // Reset selected service and staff when active business changes
+  useEffect(() => {
+    if (activeBusiness?.services?.length > 0) {
+      setSelectedService(activeBusiness.services[0])
+    } else {
+      setSelectedService(null)
+    }
+    setSelectedStaff('any')
+  }, [activeBusiness?._id])
 
   // Active users in line for the chosen active business
   const activeUsers = useMemo(() => {
@@ -226,27 +245,39 @@ export default function QueuePage() {
 
   // Check if current user is in this active business queue
   const myQueueItem = useMemo(() => {
-    if (!user?._id || !activeBusiness) return null
-    const myIdStr = user._id.toString()
+    if (!user || !activeBusiness) return null
+    const myIdStr = (user._id || user.id)?.toString()
+    if (!myIdStr) return null
     return activeUsers.find((u) => {
-      const uId = (u.userId?._id || u.userId)?.toString()
+      const uId = (u.userId?._id || u.userId || u.userId?.id)?.toString()
+      return uId === myIdStr
+    }) || null
+  }, [user, activeBusiness, activeUsers])
+
+  const hasJoinedQueue = Boolean(myQueueItem)
+
+  const myPosition = useMemo(() => {
+    if (!hasJoinedQueue || !activeBusiness) return 0
+    const myIdStr = (user._id || user.id)?.toString()
+    const idx = activeUsers.findIndex((u) => {
+      const uId = (u.userId?._id || u.userId || u.userId?.id)?.toString()
       return uId === myIdStr
     })
-  }, [user?._id, activeBusiness, activeUsers])
+    return idx !== -1 ? idx + 1 : 1
+  }, [hasJoinedQueue, activeBusiness, activeUsers, user])
 
-  const myPosition = myQueueItem ? activeUsers.indexOf(myQueueItem) + 1 : 1
-  const isUserServing = myQueueItem?.status === 'serving'
-  const isUserWaiting = myQueueItem?.status === 'waiting'
+  const isUserServing = hasJoinedQueue && (myQueueItem?.status === 'serving' || myPosition === 1)
+  const isUserWaiting = hasJoinedQueue && !isUserServing
   const peopleAhead = Math.max(0, myPosition - 1)
 
   // Serving user at this business
   const servingUser = useMemo(() => {
-    return activeUsers.find((u) => u.status === 'serving') || activeUsers[0] || null
+    return activeUsers.find((u) => u.status === 'serving') || (activeUsers.length > 0 ? activeUsers[0] : null)
   }, [activeUsers])
 
   const waitingUsers = useMemo(() => {
-    return activeUsers.filter((u) => u.status === 'waiting')
-  }, [activeUsers])
+    return activeUsers.filter((u) => u.status === 'waiting' && u !== servingUser)
+  }, [activeUsers, servingUser])
 
   // Specialist Details
   const assignedSpecialist = useMemo(() => {
@@ -279,12 +310,12 @@ export default function QueuePage() {
     const now = Date.now()
     const targetItem = myQueueItem || servingUser
 
-    let joinedTimeStr = '05:12 PM'
-    let servingTimeStr = '05:30 PM'
-    let finishEtaStr = '06:00 PM'
+    let joinedTimeStr = '09:17 am'
+    let servingTimeStr = '09:17 am'
+    let finishEtaStr = '09:47 am'
 
     if (targetItem) {
-      const joinedDate = targetItem.joinedAt ? new Date(targetItem.joinedAt) : new Date(now - 18 * 60000)
+      const joinedDate = targetItem.joinedAt ? new Date(targetItem.joinedAt) : new Date(now - 15 * 60000)
       joinedTimeStr = joinedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
 
       const servingDate = targetItem.estimatedStartTime
@@ -311,6 +342,65 @@ export default function QueuePage() {
 
   const serviceDuration = myQueueItem?.serviceTime || activeBusiness?.averageServiceTime || 30
 
+  // Join Queue Handler
+  const handleJoinQueue = async (biz = activeBusiness) => {
+    if (!biz) return
+    if (biz.queueSettings?.enableLiveQueue === false) {
+      toast.error('Live queue is currently disabled for this business.')
+      return
+    }
+    if (!biz.isOpen) {
+      toast.error('This business is currently closed for check-ins.')
+      return
+    }
+
+    const services = biz.services || []
+    const curService =
+      selectedService ||
+      (services.length > 0
+        ? services[0]
+        : {
+            name: biz.category === 'clinic' ? 'General Consultation' : 'General Service',
+            duration: biz.averageServiceTime || 15,
+            price: biz.basePrice || 0,
+          })
+
+    const preferredStaffName = selectedStaff === 'any' ? null : selectedStaff
+    const paymentMethod =
+      biz.paymentConfiguration?.paymentMode === 'ONLINE' ? 'WALLET' : 'PAY_AT_BUSINESS'
+
+    setJoiningQueue(true)
+    try {
+      const res = await joinQueue(biz._id, {
+        services: [curService],
+        serviceType: curService.name,
+        preferredStaff: preferredStaffName,
+        paymentMethod,
+      })
+      const updatedQ = res.data?.data?.queue
+      if (updatedQ) {
+        setBusinesses((prev) =>
+          prev.map((b) =>
+            b._id === biz._id
+              ? { ...b, activeQueue: updatedQ.users || [], queueLength: (updatedQ.users || []).length }
+              : b
+          )
+        )
+      }
+      toast.success(`You joined the live queue at ${biz.name}!`)
+      await fetchData()
+    } catch (err) {
+      if (err.response?.status === 400 || err.response?.data?.message?.includes('already')) {
+        toast('You are already registered in this queue.')
+        await fetchData()
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to join queue')
+      }
+    } finally {
+      setJoiningQueue(false)
+    }
+  }
+
   // Leave Queue Handler
   const handleLeaveQueue = async () => {
     if (!activeBusiness) return
@@ -318,7 +408,27 @@ export default function QueuePage() {
 
     try {
       setLeavingQueue(true)
-      await leaveQueue(activeBusiness._id)
+      const res = await leaveQueue(activeBusiness._id)
+      const updatedQueue = res.data?.data?.queue
+
+      // Immediately filter user out in local state so UI updates instantly
+      const myIdStr = (user?._id || user?.id)?.toString()
+      setBusinesses((prev) =>
+        prev.map((b) => {
+          if (b._id === activeBusiness._id) {
+            const filtered = updatedQueue?.users || (b.activeQueue || []).filter(
+              (u) => (u.userId?._id || u.userId || u.userId?.id)?.toString() !== myIdStr
+            )
+            return {
+              ...b,
+              activeQueue: filtered,
+              queueLength: filtered.length,
+            }
+          }
+          return b
+        })
+      )
+
       toast.success(`You stepped out of the queue at ${activeBusiness.name}`)
       await fetchData()
     } catch (err) {
@@ -573,86 +683,114 @@ export default function QueuePage() {
             <div className="absolute right-40 -top-10 w-36 h-36 bg-teal-100/40 rounded-full blur-xl pointer-events-none" />
           </div>
 
-          {/* Business Switcher if multiple venues have active queues */}
-          {businessesWithActiveQueue.length > 1 && (
+          {/* If user is in a queue at another business, show quick switcher banner */}
+          {myActiveQueues.length > 0 && myActiveQueues.some((q) => q.business._id !== activeBusiness?._id) && (
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  <Ticket className="w-4 h-4" />
+                </div>
+                <div className="text-xs">
+                  <p className="font-bold text-emerald-950">
+                    You have an active ticket at {myActiveQueues[0].business.name} (Token #{myActiveQueues[0].position})
+                  </p>
+                  <p className="text-emerald-700">
+                    {myActiveQueues[0].isServing ? 'Your turn is ready!' : `${myActiveQueues[0].peopleAhead} people ahead of you.`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedBizId(myActiveQueues[0].business._id)
+                  navigate(`/queue/${myActiveQueues[0].business._id}`)
+                }}
+                className="px-4 py-2 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs transition-colors shrink-0 cursor-pointer self-start sm:self-auto"
+              >
+                View My Pass
+              </button>
+            </div>
+          )}
+
+          {/* Business Switcher */}
+          {businesses.length > 1 && (
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               <span className="text-xs font-bold text-zinc-400 shrink-0 uppercase tracking-wider">
-                Active Queues:
+                Venues:
               </span>
-              {businessesWithActiveQueue.map((b) => {
+              {businesses.map((b) => {
                 const isSelected = activeBusiness?._id === b._id
+                const isMyQueue = myActiveQueues.some((mq) => mq.business._id === b._id)
+                const count = b.activeQueue?.length || 0
                 return (
                   <button
                     key={b._id}
-                    onClick={() => setSelectedBizId(b._id)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    onClick={() => {
+                      setSelectedBizId(b._id)
+                      navigate(`/queue/${b._id}`)
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-[#114227] text-white shadow-xs'
                         : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50'
                     }`}
                   >
-                    {b.name} ({b.activeQueue?.length || 0} in line)
+                    <span>{b.name}</span>
+                    {isMyQueue && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                        isSelected ? 'bg-emerald-400 text-emerald-950' : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        My Ticket
+                      </span>
+                    )}
+                    <span className={`text-[10px] ${isSelected ? 'text-emerald-200' : 'text-zinc-400'}`}>
+                      ({count})
+                    </span>
                   </button>
                 )
               })}
             </div>
           )}
 
-          {/* ── CORE ACTIVE QUEUE VIEW (OR STRICT EMPTY STATE) ── */}
+          {/* ── CORE VIEW (LOADING / EMPTY / JOINED PASS / ACTUAL QUEUE) ── */}
           {loading ? (
             <div className="p-16 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-3">
               <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="font-semibold text-zinc-600">Connecting to live queue stream...</p>
             </div>
-          ) : !activeBusiness || activeUsers.length === 0 ? (
-            /* ── EMPTY STATE: IF NO PERSON IN ANY BUSINESS / NO ACTIVE QUEUE, DO NOT SHOW EMPTY BUSINESS ── */
+          ) : !activeBusiness ? (
+            /* No business available */
             <div className="bg-white rounded-3xl border border-dashed border-zinc-300/80 p-10 sm:p-14 text-center space-y-4 shadow-2xs">
               <div className="w-16 h-16 rounded-3xl bg-[#EAF7EE] text-[#16A34A] border border-[#BDE8CB] flex items-center justify-center mx-auto shadow-2xs">
                 <Ticket className="w-8 h-8" />
               </div>
               <div className="space-y-1.5 max-w-md mx-auto">
-                <h3 className="text-lg sm:text-xl font-black text-zinc-950">No Active Queues Right Now</h3>
+                <h3 className="text-lg sm:text-xl font-black text-zinc-950">No Businesses Found</h3>
                 <p className="text-xs sm:text-sm text-zinc-500">
-                  You are not currently in any live queue, and there are currently no waiting queues active across any partner clinics or salons.
+                  There are currently no partner clinics or salons available.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-                <button
-                  onClick={() => navigate('/customers?category=clinic')}
-                  className="px-5 py-2.5 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
-                >
-                  Browse Clinics
-                </button>
-                <button
-                  onClick={() => navigate('/customers?category=salon')}
-                  className="px-5 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-800 hover:bg-zinc-50 font-bold text-xs shadow-2xs transition-colors cursor-pointer"
-                >
-                  Browse Salons
-                </button>
-                <button
-                  onClick={() => navigate('/booking')}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 font-bold text-xs transition-colors cursor-pointer"
-                >
-                  Book Appointment
-                </button>
-              </div>
             </div>
-          ) : (
-            /* ── ACTIVE QUEUE UI (EXACT SCREENSHOT LAYOUT) ── */
+          ) : hasJoinedQueue ? (
+            /* ── VIEW A: USER HAS JOINED QUEUE -> SHOW THE PERSONAL PASS & STATUS ── */
             <div className="space-y-6">
               {/* 2-Column Main Queue Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
-                {/* ── LEFT CARD: YOUR TURN / QUEUE STATUS (4 cols on lg) ── */}
+                {/* ── LEFT CARD: YOUR TURN / TOKEN STATUS ── */}
                 <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs flex flex-col justify-between relative overflow-hidden">
                   <div>
                     {/* Top Status Badge & Graphic Header */}
                     <div className="flex items-center justify-between">
-                      <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1.5 bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
-                        <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
-                        <span>{isUserServing || activeUsers[0]?.status === 'serving' ? 'READY FOR YOU' : `IN LINE (TOKEN #${myPosition})`}</span>
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1.5 ${
+                        isUserServing
+                          ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${isUserServing ? 'bg-[#16A34A] animate-pulse' : 'bg-amber-500 animate-pulse'}`} />
+                        <span>{isUserServing ? 'READY FOR YOU' : `IN LINE (TOKEN #${myPosition})`}</span>
                       </span>
 
-                      {/* Cute Phone / Sparkles badge */}
+                      {/* Ticket badge */}
                       <div className="w-11 h-11 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] flex items-center justify-center relative text-[#16A34A] shadow-2xs">
                         <Ticket className="w-5 h-5" />
                         <Sparkles className="w-3.5 h-3.5 text-amber-500 absolute -top-1 -right-1" />
@@ -662,12 +800,12 @@ export default function QueuePage() {
                     {/* Headline */}
                     <div className="mt-5 space-y-1">
                       <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight font-sans">
-                        {isUserServing || activeUsers[0]?.status === 'serving' ? 'Your Turn!' : `Token #${myPosition}`}
+                        {isUserServing ? 'Your Turn!' : `Token #${myPosition}`}
                       </h2>
                       <p className="text-xs sm:text-sm text-zinc-500 font-medium">
-                        {isUserServing || activeUsers[0]?.status === 'serving'
+                        {isUserServing
                           ? 'Please proceed to the service desk.'
-                          : `${peopleAhead} people ahead of you • Please stay nearby`}
+                          : `${peopleAhead} ${peopleAhead === 1 ? 'person' : 'people'} ahead of you • Please stay nearby`}
                       </p>
                     </div>
 
@@ -704,7 +842,7 @@ export default function QueuePage() {
                   </div>
                 </div>
 
-                {/* ── RIGHT CARD: LIVE QUEUE STREAM & TRACKING (7 cols on lg) ── */}
+                {/* ── RIGHT CARD: LIVE QUEUE STREAM & TRACKING ── */}
                 <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs space-y-5 flex flex-col justify-between">
                   <div>
                     {/* Top Row: Business Thumbnail, Name, Waiting Count & Open Pill */}
@@ -754,16 +892,20 @@ export default function QueuePage() {
                       {/* Left Tag + Info */}
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="bg-[#00A854] text-white font-black text-xs px-2.5 py-1 rounded-lg shrink-0">
-                          NOW
+                          {isUserServing ? 'NOW' : 'UPCOMING'}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-zinc-900 text-xs sm:text-sm">
                               Your Current Slot
                             </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4] inline-flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
-                              <span>SERVING</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${
+                              isUserServing
+                                ? 'bg-[#EAF7EE] text-[#16A34A] border-[#CDEBD4]'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isUserServing ? 'bg-[#16A34A]' : 'bg-amber-500'}`} />
+                              <span>{isUserServing ? 'SERVING' : 'WAITING IN LINE'}</span>
                             </span>
                           </div>
                           <p className="text-xs text-zinc-500 truncate mt-0.5">
@@ -773,13 +915,13 @@ export default function QueuePage() {
                         </div>
                       </div>
 
-                      {/* Right: Finish ETA */}
+                      {/* Right: Finish ETA or Est Start */}
                       <div className="text-right shrink-0 pl-2">
                         <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">
-                          FINISH ETA
+                          {isUserServing ? 'FINISH ETA' : 'EST. START'}
                         </p>
                         <p className="font-black text-sm sm:text-base text-[#114227]">
-                          {timeMetrics.finishEtaStr}
+                          {isUserServing ? timeMetrics.finishEtaStr : timeMetrics.servingTimeStr}
                         </p>
                       </div>
                     </div>
@@ -789,7 +931,7 @@ export default function QueuePage() {
                       <div className="relative flex items-center justify-between">
                         {/* Connecting Line background */}
                         <div className="absolute top-3 left-4 right-4 h-0.5 bg-zinc-200 -z-0" />
-                        <div className="absolute top-3 left-4 w-1/3 h-0.5 bg-[#16A34A] -z-0" />
+                        <div className={`absolute top-3 left-4 h-0.5 bg-[#16A34A] -z-0 transition-all ${isUserServing ? 'w-1/3' : 'w-0'}`} />
 
                         {/* Step 1: Joined Queue */}
                         <div className="flex flex-col items-center text-center relative z-10 space-y-1">
@@ -804,10 +946,18 @@ export default function QueuePage() {
 
                         {/* Step 2: Now Serving */}
                         <div className="flex flex-col items-center text-center relative z-10 space-y-1">
-                          <div className="w-6 h-6 rounded-full border-2 border-[#16A34A] bg-white flex items-center justify-center p-0.5 shadow-xs">
-                            <div className="w-2.5 h-2.5 rounded-full bg-[#16A34A]" />
-                          </div>
-                          <p className="text-[11px] font-bold text-[#16A34A]">Now Serving</p>
+                          {isUserServing ? (
+                            <div className="w-6 h-6 rounded-full border-2 border-[#16A34A] bg-white flex items-center justify-center p-0.5 shadow-xs">
+                              <div className="w-2.5 h-2.5 rounded-full bg-[#16A34A]" />
+                            </div>
+                          ) : (
+                            <div className="w-6 h-6 rounded-full border-2 border-amber-400 bg-white flex items-center justify-center p-0.5 shadow-xs">
+                              <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                            </div>
+                          )}
+                          <p className={`text-[11px] font-bold ${isUserServing ? 'text-[#16A34A]' : 'text-amber-700'}`}>
+                            {isUserServing ? 'Now Serving' : 'In Line'}
+                          </p>
                           <p className="text-[10px] text-zinc-400 font-medium">
                             {timeMetrics.servingTimeStr}
                           </p>
@@ -854,7 +1004,7 @@ export default function QueuePage() {
                 </div>
               </div>
 
-              {/* ── BOTTOM CALLOUT CARD: BOOK APPOINTMENT INSTEAD (MATCHING SCREENSHOT) ── */}
+              {/* ── BOTTOM CALLOUT CARD: BOOK APPOINTMENT INSTEAD ── */}
               <div className="rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] text-[#16A34A] flex items-center justify-center shrink-0">
@@ -866,6 +1016,369 @@ export default function QueuePage() {
                     </h3>
                     <p className="text-xs text-zinc-500 mt-0.5">
                       You can also book an appointment instead of joining the live queue.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate(`/booking/${activeBusiness._id}`)}
+                  className="px-5 py-2.5 rounded-full border border-[#16A34A] text-[#114227] hover:bg-emerald-50 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                >
+                  <span>Book Appointment</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── VIEW B: NOT IN QUEUE -> SHOW THE ACTUAL QUEUE & JOIN CARD ── */
+            <div className="space-y-6">
+              {/* Business Overview & Live Key Stats Strip */}
+              <div className="rounded-3xl bg-white border border-zinc-200/80 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <img
+                    src={
+                      activeBusiness.images?.[0] ||
+                      (isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE)
+                    }
+                    alt={activeBusiness.name}
+                    className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.src = isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE
+                    }}
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-black text-xl text-zinc-950 tracking-tight">
+                        {activeBusiness.name}
+                      </h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
+                        {activeBusiness.isOpen ? 'OPEN NOW' : 'CLOSED'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 font-medium mt-0.5">
+                      {categoryLabel} • {activeBusiness.address || selectedCity}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 4 Stat Pills */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full md:w-auto">
+                  <div className="bg-[#F8FAF9] border border-zinc-200/70 rounded-2xl p-3 text-center min-w-[90px]">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Serving</p>
+                    <p className="font-black text-sm text-zinc-900 mt-0.5 truncate">
+                      {servingUser ? `Token #${activeUsers.indexOf(servingUser) + 1}` : 'Available'}
+                    </p>
+                  </div>
+                  <div className="bg-[#F8FAF9] border border-zinc-200/70 rounded-2xl p-3 text-center min-w-[90px]">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Waiting</p>
+                    <p className="font-black text-sm text-zinc-900 mt-0.5">
+                      {waitingUsers.length} in line
+                    </p>
+                  </div>
+                  <div className="bg-[#F8FAF9] border border-zinc-200/70 rounded-2xl p-3 text-center min-w-[90px]">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Est. Wait</p>
+                    <p className="font-black text-sm text-[#16A34A] mt-0.5">
+                      {activeUsers.length === 0 ? '0 mins' : `~${activeUsers.length * (activeBusiness.averageServiceTime || 15)}m`}
+                    </p>
+                  </div>
+                  <div className="bg-[#F8FAF9] border border-zinc-200/70 rounded-2xl p-3 text-center min-w-[90px]">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Staff</p>
+                    <p className="font-black text-sm text-zinc-900 mt-0.5">
+                      {(activeBusiness.staff || []).length || 1} on duty
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2-Column Board: Join Queue (Left) & The Actual Queue (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
+                {/* ── LEFT: JOIN THE LIVE QUEUE CARD ── */}
+                <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs flex flex-col justify-between space-y-6">
+                  <div className="space-y-5">
+                    {/* Header */}
+                    <div>
+                      <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1.5 bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
+                        <Ticket className="w-3.5 h-3.5" />
+                        <span>JOIN LIVE QUEUE</span>
+                      </span>
+                      <h3 className="text-2xl font-black text-zinc-950 mt-3 tracking-tight">
+                        Take a Digital Token
+                      </h3>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        Get in line digitally at {activeBusiness.name}. You don't need to stand and wait physically.
+                      </p>
+                    </div>
+
+                    {/* Service Selection */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-700 block">
+                        Select Service
+                      </label>
+                      <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                        {(activeBusiness.services?.length > 0
+                          ? activeBusiness.services
+                          : [
+                              {
+                                name: activeBusiness.category === 'clinic' ? 'General Consultation' : 'Haircut & Styling',
+                                duration: activeBusiness.averageServiceTime || 15,
+                                price: activeBusiness.basePrice || 0,
+                              },
+                            ]
+                        ).map((s, idx) => {
+                          const isSel = (selectedService?.name || '') === s.name
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setSelectedService(s)}
+                              className={`w-full text-left p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                                isSel
+                                  ? 'bg-[#EAF7EE] border-[#16A34A] text-[#114227]'
+                                  : 'bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100'
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <p className="font-bold truncate">{s.name}</p>
+                                <p className="text-[10px] text-zinc-400">{s.duration || 15} mins</p>
+                              </div>
+                              <span className="font-bold text-xs shrink-0">
+                                {s.price ? `₹${s.price}` : 'Free / At Desk'}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Specialist Selection */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-700 block">
+                        Preferred Specialist
+                      </label>
+                      <select
+                        value={selectedStaff}
+                        onChange={(e) => setSelectedStaff(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 cursor-pointer"
+                      >
+                        <option value="any">Any Available Specialist (Fastest)</option>
+                        {(activeBusiness.staff || []).map((st, sIdx) => (
+                          <option key={sIdx} value={st.name}>
+                            {st.name} {st.role ? `(${st.role})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Queue Preview Info Box */}
+                    <div className="rounded-2xl bg-[#F4FAF6] border border-[#D5EFE0] p-3.5 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                          Next Token
+                        </p>
+                        <p className="text-lg font-black text-[#114227]">
+                          #{activeUsers.length + 1}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                          Est. Wait Time
+                        </p>
+                        <p className="text-sm font-bold text-zinc-800">
+                          {activeUsers.length === 0 ? 'Immediate' : `~${activeUsers.length * (activeBusiness.averageServiceTime || 15)} mins`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Primary Join Button */}
+                  <div className="space-y-2 pt-2">
+                    <button
+                      type="button"
+                      disabled={joiningQueue || !activeBusiness.isOpen}
+                      onClick={() => handleJoinQueue(activeBusiness)}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-[#114227] hover:bg-[#0D361F] disabled:bg-zinc-200 disabled:text-zinc-400 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-transform active:scale-98 cursor-pointer"
+                    >
+                      <Ticket className="w-4 h-4" />
+                      <span>
+                        {joiningQueue
+                          ? 'Taking Token...'
+                          : activeBusiness.isOpen
+                          ? `Join Live Queue • Get Token #${activeUsers.length + 1}`
+                          : 'Currently Closed'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/booking/${activeBusiness._id}`)}
+                      className="w-full py-2.5 text-center text-xs font-semibold text-zinc-500 hover:text-emerald-700 transition-colors cursor-pointer"
+                    >
+                      Schedule for later instead →
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── RIGHT: THE ACTUAL LIVE QUEUE BOARD ── */}
+                <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs space-y-6 flex flex-col justify-between">
+                  <div className="space-y-6">
+                    {/* Header with Live Indicator */}
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600" />
+                        </span>
+                        <h3 className="font-black text-sm uppercase tracking-wider text-zinc-950">
+                          Live Queue Board
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-zinc-500">
+                          {activeUsers.length} total in stream
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => fetchData()}
+                          className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-500 cursor-pointer transition-colors"
+                          title="Refresh live board"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Section 1: Currently Being Served */}
+                    <div className="space-y-3">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Now Serving at Counter</span>
+                      </p>
+
+                      {servingUser ? (
+                        <div className="p-4 rounded-2xl bg-gradient-to-r from-[#F4FAF6] to-[#EAF7EE] border border-[#BDE8CB] flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl bg-[#114227] text-white flex flex-col items-center justify-center shrink-0 shadow-2xs">
+                              <span className="text-[9px] font-bold uppercase opacity-80">TOKEN</span>
+                              <span className="font-black text-base leading-tight">
+                                #{activeUsers.indexOf(servingUser) + 1}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-black text-sm text-zinc-950 truncate">
+                                  {servingUser.serviceType || 'General Service'}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                                  SERVING NOW
+                                </span>
+                              </div>
+                              <p className="text-xs text-zinc-600 truncate mt-0.5 flex items-center gap-1">
+                                <User className="w-3 h-3 text-zinc-400" />
+                                <span>Specialist: <strong>{servingUser.assignedStaff?.name || assignedSpecialist.name}</strong></span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Finish ETA</p>
+                            <p className="font-black text-xs text-[#114227]">{timeMetrics.finishEtaStr}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 text-center text-xs text-zinc-500 font-medium">
+                          Counters are currently clear. Join now to be served right away!
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Section 2: Waiting in Line (The Live Waitlist) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-zinc-500" />
+                          <span>Waiting in Line ({waitingUsers.length})</span>
+                        </p>
+                        <span className="text-[10px] text-zinc-400 font-semibold">
+                          Chronological Order
+                        </span>
+                      </div>
+
+                      {waitingUsers.length > 0 ? (
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {waitingUsers.map((u, idx) => {
+                            const pos = activeUsers.indexOf(u) + 1
+                            return (
+                              <div
+                                key={idx}
+                                className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between gap-3 text-xs"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-8 h-8 rounded-xl bg-white border border-zinc-200 text-zinc-800 font-black flex items-center justify-center shrink-0">
+                                    #{pos}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-zinc-900 truncate">
+                                      {u.serviceType || 'General Service'}
+                                    </p>
+                                    <p className="text-[10px] text-zinc-500 truncate">
+                                      With {u.assignedStaff?.name || 'On-Duty Specialist'}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                    WAITING
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-5 rounded-2xl bg-[#F8FAF9] border border-dashed border-zinc-200 text-center space-y-1">
+                          <p className="font-bold text-xs text-zinc-800">No Waiting Line</p>
+                          <p className="text-[11px] text-zinc-500">
+                            {servingUser
+                              ? 'There is 1 person being served and 0 people waiting behind them.'
+                              : 'The queue is completely empty! You will be first in line.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom Quick Action */}
+                  <div className="pt-4 border-t border-zinc-100 flex items-center justify-between text-xs">
+                    <span className="text-zinc-500">
+                      Need to see all counter streams?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowLiveStreamModal(true)}
+                      className="font-bold text-[#114227] hover:text-[#0D361F] flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Open Counter Stream</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Callout: Booking Alternative */}
+              <div className="rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] text-[#16A34A] flex items-center justify-center shrink-0">
+                    <Calendar className="w-6 h-6 text-[#16A34A]" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-zinc-950 text-sm sm:text-base">
+                      Plan ahead instead of waiting?
+                    </h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Book an appointment with your preferred specialist at a guaranteed time slot.
                     </p>
                   </div>
                 </div>
