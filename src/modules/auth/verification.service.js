@@ -26,31 +26,10 @@ const sanitizeUser = (user) => ({
  * Uses Nodemailer and Resend API to deliver OTPs directly to inbox.
  */
 const sendEmailMessage = async ({ to, subject, html, text }) => {
-  const defaultFrom = "serveQ Security <onboarding@resend.dev>";
-  const from =
-    process.env.EMAIL_FROM && !process.env.EMAIL_FROM.includes("serveq.tech")
-      ? process.env.EMAIL_FROM
-      : defaultFrom;
+  const from = process.env.EMAIL_SECURITY_FROM || '"ServeQ Security" <security@serveq.tech>';
+  const replyTo = process.env.EMAIL_SUPPORT || "support@serveq.tech";
 
-  // 1. Try Nodemailer transporter
-  const transporter = getMailTransporter();
-  if (transporter) {
-    try {
-      await transporter.sendMail({
-        from,
-        to,
-        subject,
-        text,
-        html,
-      });
-      console.log(`✅ [Nodemailer] Delivered email to ${to}`);
-      return true;
-    } catch (nmErr) {
-      console.warn(`⚠️ [Nodemailer] Transporter send failed:`, nmErr.message);
-    }
-  }
-
-  // 2. Try direct Resend REST API
+  // 1. Try direct Resend REST API
   const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
   if (resendApiKey) {
     try {
@@ -61,8 +40,9 @@ const sendEmailMessage = async ({ to, subject, html, text }) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: defaultFrom,
+          from,
           to: [to],
+          reply_to: replyTo,
           subject,
           text,
           html,
@@ -73,32 +53,28 @@ const sendEmailMessage = async ({ to, subject, html, text }) => {
         console.log(`✅ [Resend API] Delivered to ${to} (ID: ${data.id})`);
         return true;
       }
-
-      // If Resend failed because recipient is not the account owner (Resend free sandbox restriction)
-      if (typeof data?.message === "string" && data.message.includes("testing emails to your own email address") && to !== "ayushman.rick007@gmail.com") {
-        console.warn(`⚠️ [Resend Sandbox Mode] Forwarding OTP to account email ayushman.rick007@gmail.com`);
-        const retryRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: defaultFrom,
-            to: ["ayushman.rick007@gmail.com"],
-            subject: `[OTP for ${to}] ${subject}`,
-            text: `Intended Recipient: ${to}\n\n${text}`,
-            html: `<div style="padding:10px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;margin-bottom:12px;font-size:12px;color:#92400e;"><strong>Resend Test Mode:</strong> Originally intended for <code>${to}</code></div>${html}`,
-          }),
-        });
-        const retryData = await retryRes.json();
-        if (retryRes.ok) {
-          console.log(`✅ [Resend Sandbox] Delivered to ayushman.rick007@gmail.com (ID: ${retryData.id})`);
-          return true;
-        }
-      }
+      console.warn(`⚠️ [Resend API] Delivery failed for ${to}:`, data);
     } catch (fetchErr) {
       console.warn(`⚠️ [Resend API] Fetch error:`, fetchErr.message);
+    }
+  }
+
+  // 2. Try Nodemailer transporter
+  const transporter = getMailTransporter();
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from,
+        to,
+        replyTo,
+        subject,
+        text,
+        html,
+      });
+      console.log(`✅ [Nodemailer] Delivered email to ${to}`);
+      return true;
+    } catch (nmErr) {
+      console.warn(`⚠️ [Nodemailer] Transporter send failed:`, nmErr.message);
     }
   }
 

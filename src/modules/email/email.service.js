@@ -57,11 +57,8 @@ export const getMailTransporter = () => {
  * Sends a branded 6-digit OTP email for password reset via Nodemailer.
  */
 export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
-  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
-  const defaultFrom = process.env.RESEND_API_KEY
-    ? "serveQ Security <onboarding@resend.dev>"
-    : `"serveQ Security" <${user || "no-reply@serveq.tech"}>`;
-  const from = process.env.EMAIL_FROM || defaultFrom;
+  const from = process.env.EMAIL_SECURITY_FROM || '"ServeQ Security" <security@serveq.tech>';
+  const replyTo = process.env.EMAIL_SUPPORT || "support@serveq.tech";
   const transporter = getMailTransporter();
 
   const recipientName = name ? name.split(" ")[0] : "there";
@@ -72,7 +69,7 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset your serveQ password</title>
+  <title>Reset your ServeQ password</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 15px;">
@@ -80,7 +77,7 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
       <td align="center">
         <table role="presentation" width="100%" style="max-width: 520px; background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); overflow: hidden;" cellspacing="0" cellpadding="0">
           
-          <!-- Header Bar with brand coral accent -->
+          <!-- Header Bar with brand accent -->
           <tr>
             <td style="background: linear-gradient(135deg, #FF5537 0%, #FA5032 100%); height: 6px;"></td>
           </tr>
@@ -92,7 +89,7 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
                 <tr>
                   <td style="vertical-align: middle;">
                     <div style="font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: #0f172a;">
-                      serve<span style="border-bottom: 3.5px solid #89AB33; padding-bottom: 2px;">q</span>
+                      Serve<span style="border-bottom: 3.5px solid #89AB33; padding-bottom: 2px;">Q</span>
                     </div>
                   </td>
                   <td style="vertical-align: middle; padding-left: 10px;">
@@ -110,7 +107,7 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
                 Password Reset Verification Code
               </h1>
               <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569;">
-                Hi ${recipientName}, we received a request to reset the password for your <strong>serveQ</strong> account. Use the one-time verification code below to complete your reset:
+                Hi ${recipientName}, we received a request to reset the password for your <strong>ServeQ</strong> account. Use the one-time verification code below to complete your reset:
               </p>
 
               <!-- OTP Box -->
@@ -146,10 +143,10 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
           <tr>
             <td style="padding: 24px 36px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #64748b;">
-                serveQ — Smart Queue & Virtual Waiting
+                ServeQ — Smart Queue & Virtual Waiting
               </p>
               <p style="margin: 0; font-size: 10px; color: #94a3b8;">
-                © ${new Date().getFullYear()} serveQ Technologies. All rights reserved.
+                © ${new Date().getFullYear()} ServeQ Technologies. All rights reserved. • <a href="mailto:support@serveq.tech" style="color: #64748b;">support@serveq.tech</a>
               </p>
             </td>
           </tr>
@@ -161,9 +158,9 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
 </html>
 `;
 
-  const text = `Hi ${recipientName},\n\nYour serveQ password reset verification code is: ${otp}\n\nThis code is valid for 10 minutes.\n\nIf you did not request this password reset, please ignore this email.\n\n— serveQ Security Team`;
+  const text = `Hi ${recipientName},\n\nYour ServeQ password reset verification code is: ${otp}\n\nThis code is valid for 10 minutes.\n\nIf you did not request this password reset, please ignore this email.\n\n— ServeQ Security Team\nSupport: support@serveq.tech`;
 
-  // 1. Direct Resend HTTPS REST API (Bypasses Render SMTP port blocking)
+  // 1. Direct Resend HTTPS REST API
   const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
   if (resendApiKey) {
     try {
@@ -176,7 +173,8 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
         body: JSON.stringify({
           from,
           to: [to],
-          subject: `${otp} is your serveQ password reset verification code`,
+          reply_to: replyTo,
+          subject: `${otp} is your ServeQ password reset verification code`,
           text,
           html,
         }),
@@ -184,30 +182,6 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
 
       const data = await response.json();
       if (!response.ok) {
-        // Fallback to onboarding@resend.dev if custom domain is not verified
-        if (typeof data?.message === "string" && data.message.toLowerCase().includes("domain") && from !== "serveQ Security <onboarding@resend.dev>") {
-          console.warn("⚠️ Custom domain not verified on Resend, falling back to onboarding@resend.dev");
-          const retryRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "serveQ Security <onboarding@resend.dev>",
-              to: [to],
-              subject: `${otp} is your serveQ password reset verification code`,
-              text,
-              html,
-            }),
-          });
-          const retryData = await retryRes.json();
-          if (retryRes.ok) {
-            console.log(`✅ [Resend API] Delivered via onboarding@resend.dev (ID: ${retryData.id})`);
-            return { sent: true, simulated: false, messageId: retryData.id };
-          }
-        }
-
         console.error(`❌ [Resend API] Delivery failed for ${to}:`, data);
         return {
           sent: false,
@@ -234,13 +208,12 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
 
   // 2. Fallback to Nodemailer SMTP
   if (!transporter) {
-    console.warn(`\n⚠️ [Nodemailer] Cannot send email to ${to}: SMTP_USER or SMTP_PASS is not configured in .env!`);
-    console.log(`🔑 [ServeQ Password Reset OTP for ${to}]: ${otp}`);
-    console.log(`ℹ️ Add SMTP_USER and SMTP_PASS or RESEND_API_KEY into .env to send real emails.\n`);
+    console.warn(`\n⚠️ [Nodemailer] Cannot send email to ${to}: SMTP credentials not configured.`);
+    console.log(`🔑 [ServeQ Password Reset OTP for ${to}]: ${otp}\n`);
     return {
       sent: false,
       simulated: true,
-      error: "Email service is not configured. Please add RESEND_API_KEY or SMTP_USER/SMTP_PASS in environment variables.",
+      error: "Email service is not configured. Please add RESEND_API_KEY in environment variables.",
     };
   }
 
@@ -248,7 +221,8 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
     const info = await transporter.sendMail({
       from,
       to,
-      subject: `${otp} is your serveQ password reset verification code`,
+      replyTo,
+      subject: `${otp} is your ServeQ password reset verification code`,
       text,
       html,
     });
@@ -263,24 +237,22 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
     return {
       sent: false,
       simulated: false,
-      error: `Email delivery failed: ${error.message}. Please configure RESEND_API_KEY for cloud hosting.`,
+      error: `Email delivery failed: ${error.message}.`,
     };
   }
 };
 
 /**
  * Sends a launch confirmation email to early prelaunch customers.
+ * Redesigned to match the ServeQ obsidian header and mint-accented waiting list layout.
  */
 export const sendLaunchConfirmationEmail = async ({ to }) => {
-  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
-  const defaultFrom = process.env.RESEND_API_KEY
-    ? "serveQ <onboarding@resend.dev>"
-    : `"serveQ" <${user || "no-reply@serveq.tech"}>`;
-  const from = process.env.EMAIL_FROM || defaultFrom;
+  const from = process.env.EMAIL_SUPPORT_FROM || '"ServeQ" <support@serveq.tech>';
+  const replyTo = process.env.EMAIL_SUPPORT || "support@serveq.tech";
   const transporter = getMailTransporter();
 
-  const recipientUsername = to.split("@")[0] || "there";
-  const subject = "You're on the list! Welcome to serveQ Launch 🚀";
+  const subject = "Thank you for joining the ServeQ pre-launch";
+  const previewText = "You're on the list. Discover a smarter way to manage queues and appointments.";
 
   const html = `
 <!DOCTYPE html>
@@ -288,70 +260,101 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to serveQ Launch</title>
+  <title>${subject}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #FFF8F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #17131D;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #FFF8F5; padding: 40px 15px;">
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased;">
+  <!-- Hidden Preview Text -->
+  <div style="display: none; max-height: 0px; overflow: hidden; opacity: 0; font-size: 1px; line-height: 1px; color: transparent; mso-hide: all;">
+    ${previewText}
+    ${"&zwnj;&nbsp;".repeat(30)}
+  </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; padding: 36px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" style="max-width: 540px; background-color: #ffffff; border-radius: 24px; border: 1px solid rgba(142, 107, 219, 0.2); box-shadow: 0 20px 45px -15px rgba(86, 58, 128, 0.15); overflow: hidden;" cellspacing="0" cellpadding="0">
+        <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 12px 36px -8px rgba(15, 23, 42, 0.12), 0 2px 6px -1px rgba(15, 23, 42, 0.05);" cellspacing="0" cellpadding="0">
           
-          <!-- Gradient Top Highlight -->
+          <!-- Obsidian Hero Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #F2C6E8 0%, #BFA0EB 50%, #8E6BDB 100%); height: 8px;"></td>
-          </tr>
-
-          <!-- Header -->
-          <tr>
-            <td style="padding: 36px 36px 20px 36px; text-align: left;">
-              <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <td style="background-color: #0a1118; padding: 36px 36px 36px 36px; text-align: left;">
+              <!-- Brand Logo -->
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
                 <tr>
                   <td style="vertical-align: middle;">
-                    <div style="font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: #17131D;">
-                      serve<span style="border-bottom: 3.5px solid #89AB33; padding-bottom: 2px;">q</span>
+                    <div style="background-color: #ffffff; color: #0a1118; width: 34px; height: 34px; border-radius: 8px; font-weight: 800; font-size: 22px; text-align: center; line-height: 34px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                      S
                     </div>
                   </td>
-                  <td style="vertical-align: middle; text-align: right;">
-                    <span style="display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8E6BDB; background-color: #FAF5FF; border: 1px solid rgba(142, 107, 219, 0.25); padding: 5px 12px; border-radius: 999px;">
-                      ● Prelaunch VIP
+                  <td style="vertical-align: middle; padding-left: 12px;">
+                    <span style="color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                      ServeQ
                     </span>
                   </td>
                 </tr>
               </table>
+
+              <!-- Eyebrow Category -->
+              <div style="color: #5eead4; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                YOU'RE ON THE LIST
+              </div>
+
+              <!-- Main Headline -->
+              <h1 style="color: #ffffff; font-size: 32px; font-weight: 700; line-height: 1.25; margin: 0 0 12px 0; letter-spacing: -0.6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                The future of waiting starts here.
+              </h1>
+
+              <!-- Subhead -->
+              <p style="color: #94a3b8; font-size: 15px; line-height: 1.5; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                Thank you for being part of the ServeQ pre-launch.
+              </p>
             </td>
           </tr>
 
-          <!-- Main Content -->
+          <!-- Clean Body Content -->
           <tr>
-            <td style="padding: 10px 36px 36px 36px;">
-              <h1 style="margin: 0 0 14px 0; font-size: 24px; font-weight: 700; color: #17131D; line-height: 1.25; letter-spacing: -0.02em;">
-                Something better is coming.
-              </h1>
-              <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #4B4256;">
-                Hi <strong>${recipientUsername}</strong>, thank you for joining the <strong>serveQ</strong> early access list! You are officially registered in our database as a <strong>founding prelaunch customer</strong>.
+            <td style="padding: 36px 36px 36px 36px; background-color: #ffffff; text-align: left;">
+              <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.65; color: #334155; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                Hi there,
               </p>
 
-              <!-- VIP Benefit Box -->
+              <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.65; color: #334155; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                Thank you for registering your interest in ServeQ. We're excited to have you with us as we prepare to make waiting simpler, smarter, and more convenient.
+              </p>
+
+              <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.65; color: #334155; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                ServeQ helps salons, clinics, and service businesses manage appointments and live queues, keep customers informed, and deliver a smoother service experience.
+              </p>
+
+              <!-- What happens next? Callout Card -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px 0;">
                 <tr>
-                  <td style="background: linear-gradient(180deg, #FAF7FF 0%, #F5EFFF 100%); border: 1px solid rgba(191, 160, 235, 0.5); border-radius: 16px; padding: 20px 24px;">
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6D4BB8; margin-bottom: 12px;">
-                      Your Founding Customer Perks
+                  <td style="background-color: #f2f8f5; border: 1px solid #e3ede7; border-radius: 16px; padding: 22px 24px;">
+                    <div style="font-size: 18px; font-weight: 700; color: #0d3b2e; margin-bottom: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                      What happens next?
                     </div>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
-                        <td style="padding: 4px 0; font-size: 13.5px; color: #2B1B4A; line-height: 1.5;">
-                          ✨ <strong>First-in-line platform access</strong> before public rollout
+                        <td style="vertical-align: top; width: 22px; font-size: 14.5px; font-weight: 600; color: #334155; line-height: 1.65; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                          1.
+                        </td>
+                        <td style="vertical-align: top; font-size: 14.5px; color: #334155; line-height: 1.65; padding-bottom: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                          We'll keep you updated on our launch.
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 4px 0; font-size: 13.5px; color: #2B1B4A; line-height: 1.5;">
-                          ⏱️ <strong>Real-time virtual queueing</strong> for salons, clinics & service venues
+                        <td style="vertical-align: top; width: 22px; font-size: 14.5px; font-weight: 600; color: #334155; line-height: 1.65; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                          2.
+                        </td>
+                        <td style="vertical-align: top; font-size: 14.5px; color: #334155; line-height: 1.65; padding-bottom: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                          You'll hear about important product updates and early access opportunities.
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 4px 0; font-size: 13.5px; color: #2B1B4A; line-height: 1.5;">
-                          🎁 <strong>Zero booking fees</strong> on your first 3 virtual queue passes
+                        <td style="vertical-align: top; width: 22px; font-size: 14.5px; font-weight: 600; color: #334155; line-height: 1.65; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                          3.
+                        </td>
+                        <td style="vertical-align: top; font-size: 14.5px; color: #334155; line-height: 1.65; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                          You'll be among the first to discover a smarter way to manage queues and appointments.
                         </td>
                       </tr>
                     </table>
@@ -359,27 +362,39 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
                 </tr>
               </table>
 
-              <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.6; color: #4B4256;">
-                We are putting the final touches on serveQ to eliminate crowded waiting rooms forever. We'll send you your private invitation link the moment our doors unlock.
+              <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.65; color: #334155; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                We're building ServeQ to solve real problems for businesses and their customers, and your early interest means a lot to us.
               </p>
 
-              <div style="margin-top: 24px; padding: 14px 18px; background-color: #FFF8F5; border-radius: 12px; border: 1px solid #F2C6E8;">
-                <p style="margin: 0; font-size: 12px; color: #6F6679; line-height: 1.5;">
-                  <strong>Customer Account:</strong> ${to} • <strong>Status:</strong> Prelaunch Customer Confirmed
+              <p style="margin: 0 0 28px 0; font-size: 15px; line-height: 1.65; color: #334155; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                Thank you for being part of the journey. We look forward to sharing what's coming next.
+              </p>
+
+              <!-- Sign-off -->
+              <div style="margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                <p style="margin: 0 0 4px 0; font-size: 14.5px; color: #475569;">
+                  Best regards,
+                </p>
+                <p style="margin: 0 0 2px 0; font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.2px;">
+                  Team ServeQ
+                </p>
+                <p style="margin: 0; font-size: 13.5px; color: #64748b;">
+                  Smarter queues. Better experiences.
                 </p>
               </div>
-            </td>
-          </tr>
 
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 24px 36px; background-color: #08070A; color: #ffffff; text-align: center;">
-              <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.9);">
-                serveQ — A Better Way to Get Things Done.
-              </p>
-              <p style="margin: 0; font-size: 11px; color: rgba(255, 255, 255, 0.6);">
-                © ${new Date().getFullYear()} serveQ. All rights reserved.
-              </p>
+              <!-- Subtle Divider Line -->
+              <div style="height: 1px; background-color: #edf2f7; margin: 28px 0 24px 0; line-height: 1px; font-size: 1px;">&nbsp;</div>
+
+              <!-- Footer -->
+              <div style="text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">
+                  ServeQ &nbsp;|&nbsp; <a href="mailto:support@serveq.tech" style="color: #64748b; text-decoration: none;">support@serveq.tech</a>
+                </p>
+                <p style="margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+                  You're receiving this email because you registered your interest in ServeQ.
+                </p>
+              </div>
             </td>
           </tr>
         </table>
@@ -390,7 +405,7 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
 </html>
 `;
 
-  const text = `Hi ${recipientUsername},\n\nThank you for joining the serveQ early access list!\n\nYou are officially confirmed in our database as a founding prelaunch customer.\n\nYour perks:\n• First-in-line platform access before public rollout\n• Real-time virtual queueing for salons, clinics & venues\n• Zero booking fees on your first 3 virtual queue passes\n\nWe will email you with your private access link the moment serveQ launches.\n\n— The serveQ Team\nhttps://serveq.tech`;
+  const text = `Hi there,\n\nThank you for registering your interest in ServeQ. We're excited to have you with us as we prepare to make waiting simpler, smarter, and more convenient.\n\nServeQ helps salons, clinics, and service businesses manage appointments and live queues, keep customers informed, and deliver a smoother service experience.\n\nWhat happens next?\n1. We'll keep you updated on our launch.\n2. You'll hear about important product updates and early access opportunities.\n3. You'll be among the first to discover a smarter way to manage queues and appointments.\n\nWe're building ServeQ to solve real problems for businesses and their customers, and your early interest means a lot to us.\n\nThank you for being part of the journey. We look forward to sharing what's coming next.\n\nBest regards,\nTeam ServeQ\nSmarter queues. Better experiences.\n\nServeQ | support@serveq.tech\nYou're receiving this email because you registered your interest in ServeQ.`;
 
   // 1. Direct Resend HTTPS REST API
   const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
@@ -405,6 +420,7 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
         body: JSON.stringify({
           from,
           to: [to],
+          reply_to: replyTo,
           subject,
           text,
           html,
@@ -413,30 +429,6 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
 
       const data = await response.json();
       if (!response.ok) {
-        // Fallback to onboarding@resend.dev if custom domain is not yet verified
-        if (typeof data?.message === "string" && data.message.toLowerCase().includes("domain") && from !== "serveQ <onboarding@resend.dev>") {
-          console.warn("⚠️ Custom domain not verified on Resend, falling back to onboarding@resend.dev for launch email");
-          const retryRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "serveQ <onboarding@resend.dev>",
-              to: [to],
-              subject,
-              text,
-              html,
-            }),
-          });
-          const retryData = await retryRes.json();
-          if (retryRes.ok) {
-            console.log(`✅ [Resend API] Launch confirmation sent to ${to} via onboarding@resend.dev (ID: ${retryData.id})`);
-            return { sent: true, simulated: false, messageId: retryData.id };
-          }
-        }
-
         console.error(`❌ [Resend API] Delivery failed for ${to}:`, data);
         return {
           sent: false,
@@ -475,6 +467,7 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
     const info = await transporter.sendMail({
       from,
       to,
+      replyTo,
       subject,
       text,
       html,
@@ -494,4 +487,5 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
     };
   }
 };
+
 
