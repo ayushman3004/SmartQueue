@@ -96,52 +96,31 @@ export default function SubscriptionPage() {
         return
       }
 
-      const keyId = getEffectiveKey()
-
-      // If server returned a fallback test order (or keys require verification), activate immediately so owner is never blocked
-      if (order?.isMock || !keyId || keyId === 'rzp_test_placeholder') {
-        const verifyRes = await verifySubscriptionPayment({
-          plan: planId,
-          razorpayOrderId: order?.id || `order_mock_${Date.now()}`,
-          razorpayPaymentId: `pay_mock_${Date.now()}`,
-          razorpaySignature: 'sig_verified',
-        })
-
-        const updatedData = verifyRes.data.data
-        if (setUser && updatedData.user) {
-          setUser((prev) => ({
-            ...prev,
-            subscription: updatedData.subscription,
-          }))
-        }
-        setSubscriptionData(updatedData.subscription)
-        toast.success(`🎉 ${planId === 'PRO' ? 'Pro' : 'Basic'} Plan activated successfully!`, { duration: 6000 })
-
-        try {
-          const bizRes = await getMyBusinesses()
-          const list = bizRes.data?.data?.businesses || []
-          const completed = list.find((b) => b.onboarding?.status === 'COMPLETED')
-          if (completed) {
-            navigate(`/business/${completed._id}`)
-          } else {
-            navigate('/business/onboarding')
-          }
-        } catch {
-          navigate('/business')
-        }
-        return
-      }
+      const keyId =
+        data.keyId ||
+        order.keyId ||
+        getEffectiveKey() ||
+        import.meta.env.VITE_RAZORPAY_KEY_ID ||
+        'rzp_test_TrJxH9KnV9zPUX'
 
       const options = {
         key: keyId,
         amount: order.amount,
         currency: order.currency || 'INR',
-        name: 'ServeQ Technologies',
-        description: `${planId === 'PRO' ? 'Pro Plan' : 'Basic Plan'} Subscription`,
-        image: '/logo.png',
+        name: 'ServeQ Platform Technologies',
+        description: `${planId === 'PRO' ? 'Pro Plan' : 'Basic Plan'} Subscription (₹${planId === 'PRO' ? '1,999' : '999'}/mo)`,
+        image: '/serveq-logo.png',
         ...(order?.id && !order.isMock && !order.id.startsWith('order_mock_')
           ? { order_id: order.id }
           : {}),
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: user?.phone || '',
+        },
+        theme: {
+          color: '#16A34A',
+        },
         handler: async (response) => {
           try {
             const verifyRes = await verifySubscriptionPayment({
@@ -161,7 +140,6 @@ export default function SubscriptionPage() {
             setSubscriptionData(updatedData.subscription)
             toast.success(`🎉 Successfully subscribed to ${planId === 'PRO' ? 'Pro' : 'Basic'} Plan!`, { duration: 6000 })
 
-            // Direct to Dashboard or Onboarding Wizard
             try {
               const bizRes = await getMyBusinesses()
               const list = bizRes.data?.data?.businesses || []
@@ -177,18 +155,6 @@ export default function SubscriptionPage() {
           } catch (vErr) {
             toast.error(vErr.response?.data?.message || 'Payment verification failed.')
           }
-        },
-        prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
-          contact: user?.phone || '',
-        },
-        notes: {
-          planId: planId,
-          userId: user?._id || '',
-        },
-        theme: {
-          color: '#114227',
         },
         modal: {
           ondismiss: () => {
