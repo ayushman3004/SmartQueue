@@ -199,11 +199,10 @@ export default function HubCommandCenter() {
                   setActiveFilter(item.id)
                   if (isMobile) setMobileSidebarOpen(false)
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                  isActive
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${isActive
                     ? 'bg-[#EAF5EC] text-[#114227] shadow-xs'
                     : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
@@ -211,15 +210,14 @@ export default function HubCommandCenter() {
                 </div>
                 {item.count !== undefined && item.count > 0 && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
-                      isActive
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${isActive
                         ? 'bg-[#114227] text-white'
                         : item.badgeHighlight
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : item.badgeWarning
-                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                        : 'bg-zinc-200 text-zinc-700'
-                    }`}
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : item.badgeWarning
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : 'bg-zinc-200 text-zinc-700'
+                      }`}
                   >
                     {item.count}
                   </span>
@@ -264,13 +262,12 @@ export default function HubCommandCenter() {
                       <span className="truncate text-xs font-bold">{b.name}</span>
                     </div>
                     <span
-                      className={`w-2 h-2 rounded-full shrink-0 ${
-                        isInProgress
+                      className={`w-2 h-2 rounded-full shrink-0 ${isInProgress
                           ? 'bg-amber-400'
                           : b.isOpen
-                          ? 'bg-emerald-500 ring-2 ring-emerald-200'
-                          : 'bg-zinc-300'
-                      }`}
+                            ? 'bg-emerald-500 ring-2 ring-emerald-200'
+                            : 'bg-zinc-300'
+                        }`}
                     />
                   </button>
                 )
@@ -567,9 +564,6 @@ export default function HubCommandCenter() {
             <div className="space-y-1">
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#114227]">
-                  Business Operations Console
-                </span>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB]">
                   serveq.tech/business
                 </span>
@@ -726,11 +720,10 @@ export default function HubCommandCenter() {
                   key={pill.id}
                   type="button"
                   onClick={() => setActiveFilter(pill.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                    activeFilter === pill.id
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${activeFilter === pill.id
                       ? 'bg-[#114227] text-white shadow-xs'
                       : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'
-                  }`}
+                    }`}
                 >
                   {pill.label} ({pill.count})
                 </button>
@@ -796,11 +789,10 @@ export default function HubCommandCenter() {
                             </span>
                           ) : (
                             <span
-                              className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                                b.isOpen
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${b.isOpen
                                   ? 'bg-[#EAF7EE] text-[#16A34A] border-[#CDEBD4]'
                                   : 'bg-rose-50 text-rose-700 border-rose-200'
-                              }`}
+                                }`}
                             >
                               {b.isOpen ? 'LIVE QUEUE' : 'CLOSED'}
                             </span>
