@@ -125,7 +125,7 @@ export default function HubCommandCenter() {
 
   // Common Sidebar Content
   const renderSidebarContent = (isMobile = false) => (
-    <div className="flex flex-col justify-between h-full space-y-6">
+    <div className="flex flex-col justify-between min-h-full h-full space-y-6">
       <div className="space-y-6">
         {/* Network Identity Card */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border border-[#BDE8CB] shadow-2xs">
@@ -499,7 +499,7 @@ export default function HubCommandCenter() {
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
         {/* Desktop Left Sidebar */}
-        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100vh-61px)] bg-white/60 backdrop-blur-xs sticky top-[61px] self-start max-h-[calc(100vh-61px)] overflow-y-auto">
+        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 h-[calc(100vh-61px)] h-[calc(100dvh-61px)] min-h-[calc(100vh-61px)] bg-white/70 backdrop-blur-md sticky top-[61px] self-start overflow-y-auto">
           {renderSidebarContent(false)}
         </aside>
 

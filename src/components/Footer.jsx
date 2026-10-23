@@ -1,186 +1,67 @@
 import { Link } from 'react-router-dom'
-import {
-  Mail,
-  ShieldCheck,
-  Clock,
-  Sparkles,
-  ExternalLink,
-  ArrowUpRight,
-  Headphones,
-  CheckCircle2,
-} from 'lucide-react'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-white border-t border-zinc-200/90 text-zinc-600 font-sans mt-auto selection:bg-emerald-500/20 selection:text-emerald-900 z-10">
-      {/* Top Banner / Highlight */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
-          
-          {/* Brand & Mission (lg:col-span-4) */}
-          <div className="lg:col-span-4 space-y-4 flex flex-col items-center md:items-start text-center md:text-left">
+    <footer className="bg-white border-t border-zinc-200/80 text-zinc-600 font-sans mt-auto selection:bg-emerald-500/20 selection:text-emerald-900 z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
+          {/* Brand & Tagline */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 text-center sm:text-left">
             <Link to="/" className="inline-flex items-center group text-decoration-none">
               <img
                 src="/serveq-logo.png"
                 alt="serveQ"
-                className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105"
+                className="h-6 w-auto object-contain transition-transform group-hover:scale-105"
               />
             </Link>
-
-            <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed max-w-sm font-medium mx-auto md:mx-0">
-              Smarter queues. Better experiences. We help clinics, salons, and service businesses eliminate crowded waiting rooms with live virtual queueing and easy appointments.
+            <span className="hidden sm:inline text-zinc-300">•</span>
+            <p className="text-xs text-zinc-500 font-medium">
+              Virtual queueing &amp; counter appointments
             </p>
-
-            {/* Operational Status Pill */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] text-xs font-bold shadow-2xs mx-auto md:mx-0">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
-              </span>
-              <span>All Systems Operational</span>
-            </div>
-
-            <div className="pt-2 text-xs text-zinc-500 space-y-1 text-center md:text-left">
-              <p>
-                Inquiries &amp; Support:{' '}
-                <a
-                  href="mailto:support@serveq.tech"
-                  className="font-semibold text-zinc-900 hover:text-emerald-700 transition-colors"
-                >
-                  support@serveq.tech
-                </a>
-              </p>
-              <p>
-                Security &amp; Auth:{' '}
-                <a
-                  href="mailto:security@serveq.tech"
-                  className="font-semibold text-zinc-900 hover:text-emerald-700 transition-colors"
-                >
-                  security@serveq.tech
-                </a>
-              </p>
+            <span className="hidden sm:inline text-zinc-300">•</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF7EE] text-[#114227] text-[11px] font-bold border border-[#BDE8CB]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Operational</span>
             </div>
           </div>
 
-          {/* Navigation Column 1: For Customers (lg:col-span-3) */}
-          <div className="lg:col-span-3 space-y-3 flex flex-col items-center md:items-start text-center md:text-left">
-            <h4 className="text-xs font-black text-zinc-950 uppercase tracking-wider">
-              For Customers
-            </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-medium flex flex-col items-center md:items-start">
-              <li>
-                <Link to="/customers" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Customer Portal
-                </Link>
-              </li>
-              <li>
-                <Link to="/queue" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Live Virtual Queues
-                </Link>
-              </li>
-              <li>
-                <Link to="/booking" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Book an Appointment
-                </Link>
-              </li>
-              <li>
-                <Link to="/profile" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Profile &amp; Account
-                </Link>
-              </li>
-              <li>
-                <Link to="/history" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Queue &amp; Visit History
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Navigation Column 2: For Businesses (lg:col-span-3) */}
-          <div className="lg:col-span-3 space-y-3 flex flex-col items-center md:items-start text-center md:text-left">
-            <h4 className="text-xs font-black text-zinc-950 uppercase tracking-wider">
-              For Businesses
-            </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-medium flex flex-col items-center md:items-start">
-              <li>
-                <Link to="/business" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Business Hub Console
-                </Link>
-              </li>
-              <li>
-                <Link to="/business/onboarding" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Register Your Venue
-                </Link>
-              </li>
-              <li>
-                <Link to="/support" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Partner Help &amp; Support
-                </Link>
-              </li>
-              <li>
-                <a
-                  href="mailto:support@serveq.tech?subject=Business%20Partnership%20Inquiry"
-                  className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1"
-                >
-                  Partner With Us <ArrowUpRight className="w-3.5 h-3.5 text-zinc-400" />
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Navigation Column 3: Trust & Company (lg:col-span-2) */}
-          <div className="lg:col-span-2 space-y-3 flex flex-col items-center md:items-start text-center md:text-left">
-            <h4 className="text-xs font-black text-zinc-950 uppercase tracking-wider">
-              Support &amp; Trust
-            </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-medium flex flex-col items-center md:items-start">
-              <li>
-                <Link to="/support" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link to="/privacy" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/terms" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link to="/profile" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Account Settings
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Bottom Sub-bar */}
-      <div className="border-t border-zinc-100 bg-[#FAFBFB] py-5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500">
-          <p className="text-center sm:text-left">© {currentYear} ServeQ Technologies. All rights reserved.</p>
-
-          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs font-medium">
-            <Link to="/privacy" className="text-zinc-500 hover:text-zinc-900 transition-colors">
-              Privacy
+          {/* Quick Links */}
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs font-semibold text-zinc-600">
+            <Link to="/customers" className="hover:text-zinc-950 transition-colors">
+              Customer Portal
             </Link>
-            <span className="text-zinc-300">•</span>
-            <Link to="/terms" className="text-zinc-500 hover:text-zinc-900 transition-colors">
-              Terms
+            <Link to="/business" className="hover:text-zinc-950 transition-colors">
+              Business Console
             </Link>
-            <span className="text-zinc-300">•</span>
-            <Link to="/support" className="text-zinc-500 hover:text-zinc-900 transition-colors">
+            <Link to="/subscription" className="hover:text-zinc-950 transition-colors">
+              Subscription
+            </Link>
+            <Link to="/support" className="hover:text-zinc-950 transition-colors">
               Support
             </Link>
-            <span className="text-zinc-300">•</span>
-            <span className="text-zinc-400">Made for waitless living</span>
+            <Link to="/privacy" className="hover:text-zinc-950 transition-colors">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-zinc-950 transition-colors">
+              Terms
+            </Link>
+          </div>
+        </div>
+
+        {/* Bottom Compact Sub-bar */}
+        <div className="mt-4 pt-3.5 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-zinc-400">
+          <p>© {currentYear} ServeQ Technologies. All rights reserved.</p>
+          <div className="flex items-center gap-3">
+            <a
+              href="mailto:support@serveq.tech"
+              className="text-zinc-500 hover:text-zinc-900 transition-colors font-medium"
+            >
+              support@serveq.tech
+            </a>
+            <span>•</span>
+            <span>Made for waitless living</span>
           </div>
         </div>
       </div>

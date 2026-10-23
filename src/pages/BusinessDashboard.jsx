@@ -530,7 +530,7 @@ export default function BusinessDashboard() {
   const serving = users.find((u) => u.status === 'serving')
 
   const renderSidebarContent = (isMobile = false) => (
-    <div className="flex flex-col justify-between h-full space-y-6">
+    <div className="flex flex-col justify-between min-h-full h-full space-y-6">
       <div className="space-y-6">
         {/* Hub Identity Card in Sidebar */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border border-[#BDE8CB] shadow-2xs">
@@ -938,7 +938,7 @@ export default function BusinessDashboard() {
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
         {/* Desktop Left Sidebar */}
-        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-[#BDE8CB]/70 min-h-[calc(100vh-61px)] bg-[#f7fcf9]/80 backdrop-blur-md sticky top-[61px] self-start max-h-[calc(100vh-61px)] overflow-y-auto">
+        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-[#BDE8CB]/70 h-[calc(100vh-61px)] h-[calc(100dvh-61px)] min-h-[calc(100vh-61px)] bg-[#f7fcf9]/80 backdrop-blur-md sticky top-[61px] self-start overflow-y-auto">
           {renderSidebarContent(false)}
         </aside>
 

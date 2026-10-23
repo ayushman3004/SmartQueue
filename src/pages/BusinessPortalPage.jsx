@@ -18,9 +18,13 @@ const SLIDE_TRANSITION = {
 }
 
 export default function BusinessPortalPage() {
-  const { user, logIn, logOut, setUser } = useAuth()
+  const { user, loading: authLoading, logIn, logOut, setUser } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  if (authLoading) {
+    return null
+  }
 
   useSeo({
     title: 'Business Hub Portal — Virtual Queues & Counter Control',

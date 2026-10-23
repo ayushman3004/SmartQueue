@@ -104,7 +104,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 }
 
 export default function App() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { socket, joinUser } = useSocket()
   const location = useLocation()
   const isOnboarding = location.pathname.startsWith('/business/onboarding')
@@ -160,6 +160,10 @@ export default function App() {
     location.pathname === '/coming-soon' ||
     (!user && location.pathname === '/')
 
+  if (authLoading) {
+    return <LoadingScreen />
+  }
+
   const bgVariant = isComingSoonPage
     ? null
     : isLoginPage
@@ -199,7 +203,7 @@ export default function App() {
         </>
       )}
       {user && !isOnboarding && !isComingSoonPage && <AIDesistant />}
-      <main className={user && !isOnboarding && !isCustomerDashboard ? "main-content flex-1" : "flex-1"}>
+      <main className={user && !isOnboarding && !isCustomerDashboard ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />

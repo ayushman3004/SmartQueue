@@ -68,7 +68,7 @@ export default function CustomerSidebar({
   }
 
   const renderNavList = (isMobile = false) => (
-    <div className="flex flex-col justify-between h-full">
+    <div className="flex flex-col justify-between min-h-full h-full">
       <nav className="space-y-1">
         {navItems.map((item) => {
           const isActive = activeNavTab === item.id
@@ -136,7 +136,7 @@ export default function CustomerSidebar({
   return (
     <>
       {/* Desktop Left Sidebar */}
-      <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100vh-61px)] bg-white/40 sticky top-[61px] self-start max-h-[calc(100vh-61px)] overflow-y-auto">
+      <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 h-[calc(100vh-61px)] h-[calc(100dvh-61px)] min-h-[calc(100vh-61px)] bg-white/40 sticky top-[61px] self-start overflow-y-auto">
         {renderNavList(false)}
       </aside>
 
