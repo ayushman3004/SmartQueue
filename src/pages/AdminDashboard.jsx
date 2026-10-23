@@ -40,6 +40,8 @@ import {
   Check,
   TrendingUp,
   Calendar,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 
 // ─── Embedded Admin Login View ──────────────────────────────────
@@ -47,12 +49,13 @@ function AdminLoginForm({ onLoginSuccess }) {
   const { user, logOut } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleFillDemo = () => {
-    setEmail('admin@serveq.tech')
-    setPassword('admin123')
-  }
+  // const handleFillDemo = () => {
+  //   setEmail('admin@serveq.tech')
+  //   setPassword('admin123')
+  // }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -120,7 +123,7 @@ function AdminLoginForm({ onLoginSuccess }) {
         )}
 
         {/* Quick Fill Demo Helper */}
-        <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs">
+        {/* <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs">
           <div>
             <p className="font-bold text-zinc-900">Default Superadmin</p>
             <p className="text-[11px] text-zinc-500 font-mono">admin@serveq.tech • admin123</p>
@@ -132,7 +135,7 @@ function AdminLoginForm({ onLoginSuccess }) {
           >
             Auto-Fill
           </button>
-        </div>
+        </div> */}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -142,20 +145,34 @@ function AdminLoginForm({ onLoginSuccess }) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@serveq.tech"
+              placeholder="enter admin email"
               className="w-full px-4 py-2.5 rounded-2xl border border-zinc-200 focus:outline-none focus:border-[#114227] text-xs font-medium bg-white"
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Master Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-2xl border border-zinc-200 focus:outline-none focus:border-[#114227] text-xs font-medium bg-white"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-2.5 pr-10 rounded-2xl border border-zinc-200 focus:outline-none focus:border-[#114227] text-xs font-medium bg-white"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 transition-colors p-1 cursor-pointer flex items-center justify-center"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           <button
@@ -508,11 +525,10 @@ export default function AdminDashboard() {
                   setActiveTab(item.id)
                   if (isMobile) setMobileSidebarOpen(false)
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-[#EAF5EC] text-[#114227] shadow-xs'
-                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
-                }`}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${isActive
+                  ? 'bg-[#EAF5EC] text-[#114227] shadow-xs'
+                  : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
+                  }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
@@ -520,13 +536,12 @@ export default function AdminDashboard() {
                 </div>
                 {item.count !== undefined && item.count > 0 && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
-                      isActive
-                        ? 'bg-[#114227] text-white'
-                        : item.badgeHighlight
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${isActive
+                      ? 'bg-[#114227] text-white'
+                      : item.badgeHighlight
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         : 'bg-zinc-200 text-zinc-700'
-                    }`}
+                      }`}
                   >
                     {item.count}
                   </span>
@@ -682,11 +697,10 @@ export default function AdminDashboard() {
           <button
             type="button"
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
-              autoRefresh
-                ? 'bg-[#EAF7EE] border-[#BDE8CB] text-[#114227]'
-                : 'bg-zinc-50 border-zinc-200 text-zinc-500'
-            }`}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${autoRefresh
+              ? 'bg-[#EAF7EE] border-[#BDE8CB] text-[#114227]'
+              : 'bg-zinc-50 border-zinc-200 text-zinc-500'
+              }`}
           >
             <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-[#16A34A] animate-ping' : 'bg-zinc-400'}`} />
             <span className="hidden sm:inline">Auto-Sync: {autoRefresh ? 'ON' : 'OFF'}</span>
@@ -848,11 +862,10 @@ export default function AdminDashboard() {
             {/* 1. Prelaunch Signups */}
             <div
               onClick={() => setActiveTab('prelaunch')}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group col-span-2 sm:col-span-1 shadow-xs ${
-                activeTab === 'prelaunch'
-                  ? 'bg-purple-50/70 border-purple-300 ring-2 ring-purple-400/40'
-                  : 'bg-white border-zinc-200/80 hover:border-purple-300'
-              }`}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group col-span-2 sm:col-span-1 shadow-xs ${activeTab === 'prelaunch'
+                ? 'bg-purple-50/70 border-purple-300 ring-2 ring-purple-400/40'
+                : 'bg-white border-zinc-200/80 hover:border-purple-300'
+                }`}
             >
               <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
@@ -870,11 +883,10 @@ export default function AdminDashboard() {
             {/* 2. Online Customers */}
             <div
               onClick={() => setActiveTab('customers')}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-xs ${
-                activeTab === 'customers'
-                  ? 'bg-emerald-50/70 border-[#BDE8CB] ring-2 ring-[#16A34A]/30'
-                  : 'bg-white border-zinc-200/80 hover:border-emerald-300'
-              }`}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-xs ${activeTab === 'customers'
+                ? 'bg-emerald-50/70 border-[#BDE8CB] ring-2 ring-[#16A34A]/30'
+                : 'bg-white border-zinc-200/80 hover:border-emerald-300'
+                }`}
             >
               <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
@@ -888,11 +900,10 @@ export default function AdminDashboard() {
             {/* 3. Online Hubs */}
             <div
               onClick={() => setActiveTab('hubs')}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-xs ${
-                activeTab === 'hubs'
-                  ? 'bg-[#EAF7EE] border-[#BDE8CB] ring-2 ring-[#114227]/30'
-                  : 'bg-white border-zinc-200/80 hover:border-emerald-300'
-              }`}
+              className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-xs ${activeTab === 'hubs'
+                ? 'bg-[#EAF7EE] border-[#BDE8CB] ring-2 ring-[#114227]/30'
+                : 'bg-white border-zinc-200/80 hover:border-emerald-300'
+                }`}
             >
               <div className="absolute top-2.5 right-2.5 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
@@ -954,19 +965,17 @@ export default function AdminDashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-full flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-[#114227] text-white shadow-xs'
-                    : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'
-                }`}
+                className={`px-4 py-2 rounded-full flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${activeTab === tab.id
+                  ? 'bg-[#114227] text-white shadow-xs'
+                  : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'
+                  }`}
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`px-2 py-0.5 text-[10px] rounded-full font-black ${
-                    activeTab === tab.id
-                      ? 'bg-white/20 text-white'
-                      : 'bg-zinc-100 text-zinc-700'
-                  }`}
+                  className={`px-2 py-0.5 text-[10px] rounded-full font-black ${activeTab === tab.id
+                    ? 'bg-white/20 text-white'
+                    : 'bg-zinc-100 text-zinc-700'
+                    }`}
                 >
                   {tab.pill}
                 </span>
@@ -1003,9 +1012,8 @@ export default function AdminDashboard() {
                       <button
                         key={f}
                         onClick={() => setHubFilter(f)}
-                        className={`px-3 py-1 rounded-full capitalize cursor-pointer transition ${
-                          hubFilter === f ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
-                        }`}
+                        className={`px-3 py-1 rounded-full capitalize cursor-pointer transition ${hubFilter === f ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+                          }`}
                       >
                         {f}
                       </button>
@@ -1038,22 +1046,20 @@ export default function AdminDashboard() {
                         <td className="py-3.5 capitalize font-semibold text-zinc-600">{b.category || 'general'}</td>
                         <td className="py-3.5">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                              b.isOpen
-                                ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
-                            }`}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${b.isOpen
+                              ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}
                           >
                             {b.isOpen ? 'OPEN' : 'CLOSED'}
                           </span>
                         </td>
                         <td className="py-3.5">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              b.isOnline
-                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                : 'bg-zinc-100 text-zinc-500'
-                            }`}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${b.isOnline
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : 'bg-zinc-100 text-zinc-500'
+                              }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${b.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
                             {b.isOnline ? 'Live Socket' : 'Offline'}
@@ -1064,11 +1070,10 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-3.5">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                              b.approvalStatus === 'approved' && b.isActive
-                                ? 'bg-teal-50 text-teal-800 border border-teal-200'
-                                : 'bg-amber-50 text-amber-800 border border-amber-200'
-                            }`}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${b.approvalStatus === 'approved' && b.isActive
+                              ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                              : 'bg-amber-50 text-amber-800 border border-amber-200'
+                              }`}
                           >
                             {b.approvalStatus || (b.isActive ? 'Active' : 'Suspended')}
                           </span>
@@ -1084,11 +1089,10 @@ export default function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() => handleModerate(b._id, b.isActive ? 'suspend' : 'approve')}
-                            className={`px-3 py-1 rounded-xl font-bold text-xs transition cursor-pointer ${
-                              b.isActive
-                                ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
-                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                            }`}
+                            className={`px-3 py-1 rounded-xl font-bold text-xs transition cursor-pointer ${b.isActive
+                              ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                              }`}
                           >
                             {b.isActive ? 'Suspend' : 'Approve'}
                           </button>
@@ -1136,9 +1140,8 @@ export default function AdminDashboard() {
                       <button
                         key={f}
                         onClick={() => setUserFilter(f)}
-                        className={`px-3 py-1 rounded-full capitalize cursor-pointer transition ${
-                          userFilter === f ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
-                        }`}
+                        className={`px-3 py-1 rounded-full capitalize cursor-pointer transition ${userFilter === f ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+                          }`}
                       >
                         {f.replace('_', ' ')}
                       </button>
@@ -1176,24 +1179,22 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-3.5">
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                              u.role === 'admin'
-                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                                : u.role === 'owner'
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${u.role === 'admin'
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                              : u.role === 'owner'
                                 ? 'bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB]'
                                 : 'bg-zinc-100 text-zinc-700 border border-zinc-200'
-                            }`}
+                              }`}
                           >
                             {u.role}
                           </span>
                         </td>
                         <td className="py-3.5">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              u.isOnline
-                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                : 'bg-zinc-100 text-zinc-500'
-                            }`}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${u.isOnline
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : 'bg-zinc-100 text-zinc-500'
+                              }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${u.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
                             {u.isOnline ? 'Connected' : 'Offline'}
@@ -1213,11 +1214,10 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-3.5">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                              u.isEmailVerified
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-amber-50 text-amber-700 border border-amber-200'
-                            }`}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${u.isEmailVerified
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}
                           >
                             {u.isEmailVerified ? 'Email Verified' : 'Unverified'}
                           </span>
@@ -1270,9 +1270,8 @@ export default function AdminDashboard() {
                       <button
                         key={f.id}
                         onClick={() => setPrelaunchFilter(f.id)}
-                        className={`px-3 py-1 rounded-full cursor-pointer transition ${
-                          prelaunchFilter === f.id ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
-                        }`}
+                        className={`px-3 py-1 rounded-full cursor-pointer transition ${prelaunchFilter === f.id ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
+                          }`}
                       >
                         {f.label} ({f.count})
                       </button>
@@ -1574,11 +1573,10 @@ export default function AdminDashboard() {
                     <button
                       type="button"
                       onClick={() => handleModerate(selectedBusinessDetail.business?._id, selectedBusinessDetail.business?.isActive ? 'suspend' : 'approve')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                        selectedBusinessDetail.business?.isActive
-                          ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-                          : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                      }`}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${selectedBusinessDetail.business?.isActive
+                        ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                        }`}
                     >
                       {selectedBusinessDetail.business?.isActive ? 'Suspend Business' : 'Approve Business'}
                     </button>

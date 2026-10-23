@@ -13,6 +13,7 @@ import chatbotRoutes from "../modules/chatbot/chatbot.routes.js";
 import otpRoutes from "../modules/auth/otp.routes.js";
 import waitlistRoutes from "../modules/waitlist/waitlist.routes.js";
 import supportRoutes from "../modules/support/support.routes.js";
+import healthRoutes from "../modules/health/health.routes.js";
 
 import { globalLimiter, authLimiter } from "./rateLimiter.js";
 import { requestIdMiddleware } from "./gateway.middleware.js";
@@ -66,19 +67,8 @@ export const createGatewayRouter = () => {
   router.use(requestIdMiddleware);
   router.use(globalLimiter);
 
-  // Health check endpoint
-  router.get("/health", (_req, res) => {
-    res.json({
-      status: "ok",
-      timestamp: new Date().toISOString(),
-      architecture: "modular-monolith",
-      gateway: "active",
-      services: Object.keys(serviceRegistry).reduce((acc, key) => {
-        acc[key] = serviceRegistry[key].healthy ? "up" : "down";
-        return acc;
-      }, {}),
-    });
-  });
+  // Health check endpoints & probes
+  router.use("/health", healthRoutes);
 
   // Domain Routes Registration
   router.use("/auth", authLimiter, authRoutes);

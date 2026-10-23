@@ -1,5 +1,10 @@
 {
   "rewrites": [
+    { "source": "/health", "destination": "https://api.serveq.tech/health" },
+    { "source": "/health/(.*)", "destination": "https://api.serveq.tech/health/$1" },
+    { "source": "/healthz", "destination": "https://api.serveq.tech/healthz" },
+    { "source": "/live", "destination": "https://api.serveq.tech/live" },
+    { "source": "/ready", "destination": "https://api.serveq.tech/ready" },
     { "source": "/api/(.*)", "destination": "https://api.serveq.tech/api/$1" },
     { "source": "/(.*)", "destination": "/" }
   ]

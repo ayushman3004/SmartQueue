@@ -153,6 +153,10 @@ export default function App() {
     location.pathname === '/login' ||
     location.pathname === '/auth/callback'
 
+  const isComingSoonPage =
+    location.pathname === '/coming-soon' ||
+    (!user && location.pathname === '/')
+
   return (
     <div className="page-wrapper">
       <Toaster 
@@ -174,7 +178,7 @@ export default function App() {
           <BackButton />
         </>
       )}
-      {user && !isOnboarding && <AIDesistant />}
+      {user && !isOnboarding && !isComingSoonPage && <AIDesistant />}
       <main className={user && !isOnboarding && !isCustomerDashboard ? "main-content flex-1" : "flex-1"}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -298,7 +302,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isLoginPage && <Footer />}
+      {!isLoginPage && !isComingSoonPage && <Footer />}
     </div>
   )
 }

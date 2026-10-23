@@ -8,6 +8,12 @@ import mongoose from "mongoose";
 import createGatewayRouter from "./src/gateway/gateway.router.js";
 import { gatewayErrorHandler } from "./src/gateway/gateway.middleware.js";
 
+// Health check routes & probes
+import healthRoutes, {
+  getLiveness,
+  getReadiness,
+} from "./src/modules/health/health.routes.js";
+
 // Passport config
 import "./src/modules/Oauth/passport.config.js";
 
@@ -51,25 +57,12 @@ app.use(
   })
 );
 
-// ─── Health Check Endpoint (For Uptime Monitors & Load Balancers) ──
+// ─── Health Check Endpoints (For Uptime Monitors, Probes & Load Balancers) ──
 // Placed before express.json() & rate-limiters so monitoring probes are fast and never rate-limited
-app.get(["/health", "/api/health"], (_req, res) => {
-  const dbState = mongoose.connection.readyState;
-  const dbStatusMap = {
-    0: "disconnected",
-    1: "connected",
-    2: "connecting",
-    3: "disconnecting",
-  };
+app.use(["/health", "/api/health", "/healthz"], healthRoutes);
+app.get("/live", getLiveness);
+app.get("/ready", getReadiness);
 
-  res.status(200).json({
-    status: "ok",
-    uptime: Math.floor(process.uptime()),
-    timestamp: new Date().toISOString(),
-    database: dbStatusMap[dbState] || "unknown",
-    environment: process.env.NODE_ENV || "development",
-  });
-});
 
 app.use(express.json());
 app.use(cookieParser());

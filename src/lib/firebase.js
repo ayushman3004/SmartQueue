@@ -16,30 +16,22 @@ const firebaseConfig = {
 
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey &&
+  firebaseConfig.apiKey !== "placeholder-api-key" &&
   firebaseConfig.authDomain &&
   firebaseConfig.projectId
 );
 
-export const app = !getApps().length
-  ? initializeApp(
-      isFirebaseConfigured
-        ? firebaseConfig
-        : {
-            apiKey: "placeholder-api-key",
-            authDomain: "serveq-auth.firebaseapp.com",
-            projectId: "serveq-auth",
-            appId: "1:000000000000:web:0000000000000000",
-          }
-    )
-  : getApp();
+export const app = isFirebaseConfigured
+  ? (!getApps().length ? initializeApp(firebaseConfig) : getApp())
+  : null;
 
-export const auth = getAuth(app);
+export const auth = app ? getAuth(app) : null;
 
 /**
  * Initializes Invisible reCAPTCHA verifier for Firebase Phone Auth
  */
 export const setupRecaptcha = (containerId = "recaptcha-container") => {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !auth) return null;
 
   if (window.recaptchaVerifier) {
     try {
@@ -66,7 +58,7 @@ export const setupRecaptcha = (containerId = "recaptcha-container") => {
  * Sends Phone Number OTP via Firebase Phone Auth directly to mobile device
  */
 export const sendFirebasePhoneOtp = async (phoneNumber, containerId = "recaptcha-container") => {
-  if (!isFirebaseConfigured) {
+  if (!isFirebaseConfigured || !auth) {
     throw new Error(
       "Firebase credentials are not set in .env. Please configure VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, and VITE_FIREBASE_PROJECT_ID."
     );

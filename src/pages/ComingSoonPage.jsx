@@ -146,9 +146,6 @@ export default function ComingSoonPage() {
             <i />
             <span>Launching Soon</span>
           </div>
-          <Link to="/login" className="header-link">
-            Sign In
-          </Link>
         </div>
       </header>
 
