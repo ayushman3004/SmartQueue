@@ -91,7 +91,7 @@ export default function BusinessPortalPage() {
     user?.subscription?.plan !== 'NONE'
   )
 
-  // Guided Flow: Owner Login -> Verify Email -> Subscription Page -> Dashboard
+  // Guided Gate: Enforce Email Verification & Active Subscription
   useEffect(() => {
     if (!isOwnerOrAdmin) return
 
@@ -106,19 +106,6 @@ export default function BusinessPortalPage() {
       navigate('/subscription')
       return
     }
-
-    // 3. If verified & subscribed, check if venue is already launched; if completed, go to dashboard
-    getMyBusinesses()
-      .then((res) => {
-        const list = res.data?.data?.businesses || []
-        const completed = list.find((b) => b.onboarding?.status === 'COMPLETED')
-        if (completed) {
-          navigate(`/business/${completed._id}`)
-        } else {
-          navigate('/business/onboarding')
-        }
-      })
-      .catch(() => {})
   }, [isOwnerOrAdmin, isEmailVerified, isSubscribed, navigate])
 
   const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
