@@ -107,7 +107,14 @@ export const createSubscriptionOrder = async (userId, planId) => {
     };
   } catch (err) {
     console.error("Razorpay subscription order creation failed:", err);
-    throw new ApiError(502, `Failed to create Razorpay subscription order: ${err.message}`);
+    const detail =
+      err.error?.description ||
+      err.description ||
+      err.message ||
+      (err.statusCode === 401
+        ? "Authentication failed. The RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is invalid or expired."
+        : "Payment gateway error. Please verify your Razorpay API keys.");
+    throw new ApiError(502, `Failed to create Razorpay subscription order: ${detail}`);
   }
 };
 
