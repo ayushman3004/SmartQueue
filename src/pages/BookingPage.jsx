@@ -793,7 +793,7 @@ export default function BookingPage() {
                               </p>
                               <p className="text-[10px] text-zinc-500 truncate">
                                 {member.role || staffRoleLabel}
-                                {member.specialties ? ` • ${member.specialties}` : ''}
+                                {member.specialties ? ` • ${Array.isArray(member.specialties) ? member.specialties.join(', ') : member.specialties}` : ''}
                               </p>
                             </div>
                             <div className="text-right shrink-0">

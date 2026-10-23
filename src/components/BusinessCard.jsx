@@ -268,7 +268,7 @@ export default function BusinessCard({ business: initialBusiness, index }) {
                   const isAvailable = (st.isAvailable !== false) && !isOccupied;
                   return (
                     <option key={stIdx} value={st.name} disabled={!isAvailable}>
-                      {isOccupied ? '[In Service]' : isAvailable ? '[Available]' : '[Off-Duty]'} {st.name} — {st.role || (business.category === 'clinic' ? 'Doctor' : 'Stylist')} {st.specialties ? `(${st.specialties})` : ''} {isOccupied ? '• IN SERVICE (NOT AVAILABLE)' : (st.isAvailable === false ? '• Off-Duty' : '• Available')}
+                      {isOccupied ? '[In Service]' : isAvailable ? '[Available]' : '[Off-Duty]'} {st.name} — {st.role || (business.category === 'clinic' ? 'Doctor' : 'Stylist')} {st.specialties ? `(${Array.isArray(st.specialties) ? st.specialties.join(', ') : st.specialties})` : ''} {isOccupied ? '• IN SERVICE (NOT AVAILABLE)' : (st.isAvailable === false ? '• Off-Duty' : '• Available')}
                     </option>
                   );
                 })}

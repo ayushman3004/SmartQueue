@@ -665,19 +665,11 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
 
     // ── STEP 6: PAYMENT CONFIGURATION ──
     case 6: {
-      const allowedModes = ["PAY_AT_BUSINESS", "ONLINE", "BOTH"];
-      const mode = allowedModes.includes(stepData.paymentMode) ? stepData.paymentMode : "PAY_AT_BUSINESS";
-
-      const allowedStatuses = ["NOT_STARTED", "PENDING_VERIFICATION", "ACTIVE", "REJECTED", "SUSPENDED"];
-      const status = allowedStatuses.includes(stepData.onlinePaymentStatus)
-        ? stepData.onlinePaymentStatus
-        : (mode === "PAY_AT_BUSINESS" ? "NOT_STARTED" : "PENDING_VERIFICATION");
-
       b.paymentConfiguration = {
-        paymentMode: mode,
-        onlinePaymentStatus: status,
-        paymentProvider: String(stepData.paymentProvider || "mock").trim(),
-        providerAccountReference: String(stepData.providerAccountReference || "").trim(),
+        paymentMode: "PAY_AT_BUSINESS",
+        onlinePaymentStatus: "NOT_STARTED",
+        paymentProvider: "direct_counter",
+        providerAccountReference: "",
         upiId: String(stepData.upiId || "").trim(),
         lastVerificationUpdate: new Date(),
       };

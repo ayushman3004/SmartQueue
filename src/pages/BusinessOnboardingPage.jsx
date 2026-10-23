@@ -1761,7 +1761,9 @@ export default function BusinessOnboardingPage() {
                             <p className="text-sm font-black text-zinc-950 truncate">{st.name}</p>
                             <p className="text-xs text-teal-700 font-semibold truncate">{st.role || 'Practitioner'}</p>
                             {st.specialties && (
-                              <p className="text-[10px] text-zinc-500 truncate mt-0.5">{st.specialties}</p>
+                              <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                                {Array.isArray(st.specialties) ? st.specialties.join(', ') : st.specialties}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -2042,6 +2044,7 @@ export default function BusinessOnboardingPage() {
           )}
 
           {/* STEP 6: PAYMENT CONFIGURATION */}
+          {/* STEP 6: PAYMENTS */}
           {currentStep === 6 && (
             <div className="space-y-6 text-left">
               <div>
@@ -2050,221 +2053,61 @@ export default function BusinessOnboardingPage() {
                   Payment Configuration
                 </h2>
                 <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
-                  Choose how your business receives customer payments. No provider lock-in or mandatory gateway account required.
+                  ServeQ operates with direct in-person counter settlement. Zero gateway commissions and zero third-party lock-in.
                 </p>
               </div>
 
-              {/* Mode Selection Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setPaymentConfig({ ...paymentConfig, paymentMode: 'PAY_AT_BUSINESS' })}
-                  className={`p-5 rounded-3xl border text-left transition-all relative ${
-                    paymentConfig.paymentMode === 'PAY_AT_BUSINESS'
-                      ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/20'
-                      : 'bg-zinc-50 border-zinc-200 text-zinc-800 hover:bg-zinc-100'
-                  }`}
-                >
-                  <h4 className="text-sm font-black mb-1">Option A: Pay at Business</h4>
-                  <p className={`text-xs ${paymentConfig.paymentMode === 'PAY_AT_BUSINESS' ? 'text-teal-100' : 'text-zinc-500'}`}>
-                    Patrons book appointments & join queues for free, then pay at your counter using cash or your UPI QR.
-                  </p>
-                  <div className="mt-3">
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                      paymentConfig.paymentMode === 'PAY_AT_BUSINESS' ? 'bg-white text-teal-800' : 'bg-teal-100 text-teal-800'
-                    }`}>
-                      No Gateway Setup Needed
-                    </span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentConfig({ ...paymentConfig, paymentMode: 'ONLINE' })}
-                  className={`p-5 rounded-3xl border text-left transition-all relative ${
-                    paymentConfig.paymentMode === 'ONLINE'
-                      ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/20'
-                      : 'bg-zinc-50 border-zinc-200 text-zinc-800 hover:bg-zinc-100'
-                  }`}
-                >
-                  <h4 className="text-sm font-black mb-1">Option B: Accept Online</h4>
-                  <p className={`text-xs ${paymentConfig.paymentMode === 'ONLINE' ? 'text-teal-100' : 'text-zinc-500'}`}>
-                    Patrons pay upfront online before appointment confirmation through compliant provider onboarding.
-                  </p>
-                  <div className="mt-3">
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                      paymentConfig.paymentMode === 'ONLINE' ? 'bg-white text-teal-800' : 'bg-indigo-100 text-indigo-800'
-                    }`}>
-                      Direct Settlement
-                    </span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentConfig({ ...paymentConfig, paymentMode: 'BOTH' })}
-                  className={`p-5 rounded-3xl border text-left transition-all relative ${
-                    paymentConfig.paymentMode === 'BOTH'
-                      ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/20'
-                      : 'bg-zinc-50 border-zinc-200 text-zinc-800 hover:bg-zinc-100'
-                  }`}
-                >
-                  <h4 className="text-sm font-black mb-1">Option C: Hybrid (Both)</h4>
-                  <p className={`text-xs ${paymentConfig.paymentMode === 'BOTH' ? 'text-teal-100' : 'text-zinc-500'}`}>
-                    Give customers maximum flexibility: choose between online checkout or pay-at-business on booking.
-                  </p>
-                  <div className="mt-3">
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                      paymentConfig.paymentMode === 'BOTH' ? 'bg-white text-teal-800' : 'bg-purple-100 text-purple-800'
-                    }`}>
-                      Maximum Flexibility
-                    </span>
-                  </div>
-                </button>
-              </div>
-
-              {/* Provider & Sub-Merchant Configuration */}
-              <div className="p-5 rounded-3xl border border-zinc-200 bg-white space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <h4 className="text-sm font-black text-zinc-950 flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-teal-600" />
-                      Razorpay Route Marketplace Settlement
-                    </h4>
-                    <p className="text-xs text-zinc-500">
-                      Connect your Razorpay account to receive online customer bookings directly.
+              {/* Dedicated Pay at Business Card */}
+              <div className="p-6 sm:p-7 rounded-3xl border-2 border-teal-600 bg-teal-50/40 shadow-sm relative space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-teal-200/60 pb-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-teal-700" />
+                      <h4 className="text-lg font-black text-zinc-950">Pay at Business (Counter Settlement)</h4>
+                    </div>
+                    <p className="text-xs text-zinc-600">
+                      Customers join queues and book appointments for free, then settle their bill directly at your venue counter upon service.
                     </p>
                   </div>
-                  <span className={`self-start sm:self-auto px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
-                    paymentConfig.onlinePaymentStatus === 'ACTIVE'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : paymentConfig.onlinePaymentStatus === 'PENDING_VERIFICATION'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-zinc-100 text-zinc-700'
-                  }`}>
-                    ● {paymentConfig.onlinePaymentStatus.replace('_', ' ')}
+                  <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-teal-700 text-white shadow-xs">
+                    ✓ Active Mode
                   </span>
                 </div>
 
-                {(paymentConfig.paymentMode === 'ONLINE' || paymentConfig.paymentMode === 'BOTH') && (
-                  <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-4">
-                    <div className="text-xs font-bold text-zinc-800 flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-zinc-600" />
-                      Razorpay Route Linked Account Details
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div className="space-y-1">
-                        <label className="font-bold text-zinc-700">Legal Business Name</label>
-                        <input
-                          type="text"
-                          placeholder={step1.name || "Business Legal Name"}
-                          value={routeForm.legalBusinessName}
-                          onChange={(e) => setRouteForm({ ...routeForm, legalBusinessName: e.target.value })}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white font-semibold focus:outline-none focus:border-teal-600"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="font-bold text-zinc-700">Business Structure</label>
-                        <select
-                          value={routeForm.businessType}
-                          onChange={(e) => setRouteForm({ ...routeForm, businessType: e.target.value })}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white font-semibold focus:outline-none focus:border-teal-600 cursor-pointer"
-                        >
-                          <option value="individual">Individual / Proprietorship</option>
-                          <option value="partnership">Partnership</option>
-                          <option value="private_limited">Private Limited</option>
-                          <option value="public_limited">Public Limited</option>
-                          <option value="llp">Limited Liability Partnership (LLP)</option>
-                          <option value="trust_society">Trust / Society / NGO</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1 sm:col-span-2">
-                        <label className="font-bold text-zinc-700">
-                          Razorpay Route Account ID <span className="font-normal text-zinc-400">(e.g. acc_...)</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="acc_... (leave blank to generate test account)"
-                          value={routeForm.providerAccountReference}
-                          onChange={(e) => {
-                            setRouteForm({ ...routeForm, providerAccountReference: e.target.value })
-                            setPaymentConfig({ ...paymentConfig, providerAccountReference: e.target.value })
-                          }}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white font-semibold focus:outline-none focus:border-teal-600"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-2 flex items-center justify-between">
-                      <div className="text-[11px] text-zinc-500">
-                        {paymentConfig.providerAccountReference ? (
-                          <span className="text-emerald-700 font-semibold">
-                            Connected Account: {paymentConfig.providerAccountReference}
-                          </span>
-                        ) : (
-                          'Click connect to link your Razorpay Route sub-merchant account.'
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        disabled={connectingRoute}
-                        onClick={async () => {
-                          if (!business?._id) return
-                          setConnectingRoute(true)
-                          try {
-                            const res = await connectRouteAccount(business._id, {
-                              legalBusinessName: routeForm.legalBusinessName || step1.name,
-                              businessType: routeForm.businessType,
-                              providerAccountReference: routeForm.providerAccountReference,
-                            })
-                            const updated = res.data.data.business
-                            setBusiness(updated)
-                            setPaymentConfig((prev) => ({
-                              ...prev,
-                              onlinePaymentStatus: updated.paymentConfiguration?.onlinePaymentStatus || 'ACTIVE',
-                              providerAccountReference: updated.paymentConfiguration?.providerAccountReference || routeForm.providerAccountReference,
-                              paymentProvider: 'razorpay',
-                            }))
-                            toast.success('Razorpay Route account connected & active!')
-                          } catch (err) {
-                            toast.error(err.response?.data?.message || 'Failed to connect Razorpay account')
-                          } finally {
-                            setConnectingRoute(false)
-                          }
-                        }}
-                        className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        {connectingRoute ? 'Connecting...' : paymentConfig.providerAccountReference ? 'Re-Verify Account' : 'Connect Razorpay Route'}
-                      </button>
-                    </div>
+                {/* Benefits Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-700">
+                  <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-white border border-teal-200/80 shadow-2xs">
+                    <Check className="w-4 h-4 text-teal-600 shrink-0 stroke-[3]" />
+                    <span><strong>Direct Settlement:</strong> Cash, Card POS, or Venue UPI QR</span>
                   </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="font-bold text-zinc-700">Venue UPI VPA (Optional for Pay-at-Counter QR Display)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. bladeandshears@okhdfcbank"
-                      value={paymentConfig.upiId}
-                      onChange={(e) => setPaymentConfig({ ...paymentConfig, upiId: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 font-semibold focus:outline-none focus:border-teal-600"
-                    />
+                  <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-white border border-teal-200/80 shadow-2xs">
+                    <Check className="w-4 h-4 text-teal-600 shrink-0 stroke-[3]" />
+                    <span><strong>Zero Gateway Setup:</strong> No KYC or linked account delays</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-white border border-teal-200/80 shadow-2xs">
+                    <Check className="w-4 h-4 text-teal-600 shrink-0 stroke-[3]" />
+                    <span><strong>100% Revenue Retained:</strong> No platform payment commissions</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-white border border-teal-200/80 shadow-2xs">
+                    <Check className="w-4 h-4 text-teal-600 shrink-0 stroke-[3]" />
+                    <span><strong>One-Click Tracking:</strong> Update & confirm paid in Dashboard</span>
                   </div>
                 </div>
 
-                {/* Safety & Compliance Notice */}
-                <div className="p-4 rounded-2xl bg-teal-50/80 border border-teal-200 text-xs text-teal-950 space-y-1.5">
-                  <div className="flex items-center gap-2 font-black">
-                    <span>Compliant Multi-Business Architecture</span>
-                  </div>
-                  <p className="text-teal-800 leading-relaxed font-normal">
-                    ServeQ routes online customer payments directly to your linked Razorpay account.
-                    ServeQ never stores bank account credentials, cards, CVVs, or UPI PINs.
-                    You can launch immediately with <strong>Pay at Business</strong> even if online verification is pending.
+                {/* Optional Counter UPI Display */}
+                <div className="pt-2">
+                  <label className="text-xs font-bold text-zinc-800 block mb-1.5">
+                    Venue UPI ID / VPA <span className="font-normal text-zinc-500">(Optional for Pay-at-Counter QR Display)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. bladeandshears@okhdfcbank"
+                    value={paymentConfig.upiId}
+                    onChange={(e) => setPaymentConfig({ ...paymentConfig, paymentMode: 'PAY_AT_BUSINESS', upiId: e.target.value })}
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-300 bg-white font-medium text-xs text-zinc-900 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20"
+                  />
+                  <p className="text-[11px] text-zinc-500 mt-1">
+                    If provided, patrons can scan your UPI QR code directly at your counter to pay you immediately.
                   </p>
                 </div>
               </div>
@@ -2274,7 +2117,7 @@ export default function BusinessOnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStep(5)}
-                  className="px-5 py-3 rounded-2xl border border-zinc-200 text-xs font-bold text-zinc-600 hover:bg-zinc-50"
+                  className="px-5 py-3 rounded-2xl border border-zinc-200 text-xs font-bold text-zinc-600 hover:bg-zinc-50 cursor-pointer"
                 >
                   ← Back to Preferences
                 </button>
@@ -2282,7 +2125,7 @@ export default function BusinessOnboardingPage() {
                   type="button"
                   disabled={saving}
                   onClick={() => handleSaveStep(6, true)}
-                  className="px-6 py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all flex items-center gap-2 active:scale-98"
+                  className="px-6 py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all flex items-center gap-2 active:scale-98 cursor-pointer"
                 >
                   {saving ? 'Saving...' : 'Save & Proceed to Review →'}
                 </button>
@@ -2454,21 +2297,19 @@ export default function BusinessOnboardingPage() {
                       </button>
                     </div>
                     <h4 className="text-lg font-black text-zinc-950">
-                      {paymentConfig.paymentMode === 'PAY_AT_BUSINESS'
-                        ? 'Pay at Business (Cash / UPI)'
-                        : paymentConfig.paymentMode === 'ONLINE'
-                        ? 'Online Settlement'
-                        : 'Hybrid (Online + Pay at Business)'}
+                      Pay at Business (Counter Settlement)
                     </h4>
                     <p className="text-xs text-zinc-600">
-                      Provider Status: <span className="font-semibold">{paymentConfig.onlinePaymentStatus}</span>
+                      Patrons pay directly at your counter via Cash, Card POS, or Venue UPI QR upon arrival.
                     </p>
-                    {paymentConfig.upiId && (
-                      <p className="text-xs text-zinc-500">UPI: {paymentConfig.upiId}</p>
+                    {paymentConfig.upiId ? (
+                      <p className="text-xs text-zinc-600 font-medium">Counter UPI: <span className="text-teal-800">{paymentConfig.upiId}</span></p>
+                    ) : (
+                      <p className="text-xs text-zinc-400 italic">Direct cash/POS counter payment</p>
                     )}
                   </div>
                   <div className="pt-3 border-t border-zinc-200/60 mt-3 flex items-center gap-1.5 text-xs text-emerald-700 font-bold">
-                    <span>✓ Payment Configured</span>
+                    <span>✓ Pay at Counter Active</span>
                   </div>
                 </div>
               </div>

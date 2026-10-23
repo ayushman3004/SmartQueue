@@ -36,7 +36,6 @@ import {
   Crown,
   Lock,
 } from 'lucide-react'
-import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getQueue, callNext, extendUserTime, assignQueueStaff, collectQueuePayment } from '../api/queue.api'
@@ -119,7 +118,8 @@ export default function BusinessDashboard() {
   const [savingStaff, setSavingStaff] = useState(false)
   const [loadingAIReview, setLoadingAIReview] = useState(false)
   const [updatingPaymentMode, setUpdatingPaymentMode] = useState(false)
-  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
+  const [upiVpa, setUpiVpa] = useState('')
+  const [savingUpi, setSavingUpi] = useState(false)
 
   const handleCollectCounterPayment = async (bookingId) => {
     try {
@@ -143,6 +143,23 @@ export default function BusinessDashboard() {
       setBookings(bkRes.data.data.bookings || [])
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to record queue payment')
+    }
+  }
+
+  const handleSaveUpi = async (e) => {
+    if (e) e.preventDefault()
+    setSavingUpi(true)
+    try {
+      const res = await updatePaymentModes(businessId, {
+        paymentMode: 'PAY_AT_BUSINESS',
+        upiId: upiVpa.trim(),
+      })
+      setBusiness(res.data.data.business)
+      toast.success('Counter UPI VPA updated successfully!')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update counter UPI')
+    } finally {
+      setSavingUpi(false)
     }
   }
 
@@ -196,6 +213,7 @@ export default function BusinessDashboard() {
       }
 
       setBusiness(biz)
+      setUpiVpa(biz.paymentConfiguration?.upiId || '')
       setQueue(qRes.data.data.queue)
       setBookings(bkRes.data.data.bookings || [])
       setProfileForm({
@@ -451,9 +469,7 @@ export default function BusinessDashboard() {
     const member = {
       name: newStaff.name.trim(),
       role: newStaff.role.trim() || defaultRole,
-      specialties: newStaff.specialties
-        ? newStaff.specialties.split(',').map((s) => s.trim()).filter(Boolean)
-        : [],
+      specialties: newStaff.specialties.trim(),
       phone: newStaff.phone.trim(),
       isAvailable: true,
       customersServed: 0,
@@ -482,7 +498,7 @@ export default function BusinessDashboard() {
 
   const handleLoadStaffPresets = async () => {
     const categoryKey = isClinic ? 'clinic' : 'salon'
-    const presets = STAFF_PRESETS[categoryKey] || STAFF_PRESETS.salon
+    const presets = STAFF_PRESETS[categoryKey]?.defaults || STAFF_PRESETS.salon?.defaults || []
     await handleSaveStaff([...presets])
   }
 
@@ -597,8 +613,8 @@ export default function BusinessDashboard() {
                 onClick={() => handleTabChange(item.id)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-[#EAF5EC] text-[#114227] shadow-xs'
-                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
+                    ? 'bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB] shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-[#EAF7EE]/60'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -696,25 +712,25 @@ export default function BusinessDashboard() {
               <span className="truncate">Payment Settings</span>
             </div>
             <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
-              {business?.paymentConfiguration?.paymentMode || 'Counter'}
+              Pay at Counter
             </span>
           </button>
 
-          {/* Subscription & Plans */}
+          {/* My Subscription (Redirect to /subscription) */}
           <button
             type="button"
             onClick={() => {
-              setSubscriptionModalOpen(true)
+              navigate('/subscription')
               if (isMobile) setMobileSidebarOpen(false)
             }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-[#114227] hover:bg-[#EAF7EE]/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
               <Crown className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="truncate">Plan & Subscription</span>
+              <span className="truncate">My Subscription</span>
             </div>
             <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
-              {user?.subscription?.status === 'ACTIVE' ? user.subscription.plan : 'Choose'}
+              {user?.subscription?.status === 'ACTIVE' ? user.subscription.plan : 'Manage'}
             </span>
           </button>
         </div>
@@ -767,7 +783,7 @@ export default function BusinessDashboard() {
   return (
     <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-hidden">
       {/* ── TOP STICKY HEADER BAR ── */}
-      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-[#f7fcf9]/90 backdrop-blur-md border-b border-[#BDE8CB]/70 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
         <div className="flex items-center gap-3">
           <button
@@ -923,7 +939,7 @@ export default function BusinessDashboard() {
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
         {/* Desktop Left Sidebar */}
-        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100vh-61px)] bg-white/60 backdrop-blur-xs sticky top-[61px] self-start max-h-[calc(100vh-61px)] overflow-y-auto">
+        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-[#BDE8CB]/70 min-h-[calc(100vh-61px)] bg-[#f7fcf9]/80 backdrop-blur-md sticky top-[61px] self-start max-h-[calc(100vh-61px)] overflow-y-auto">
           {renderSidebarContent(false)}
         </aside>
 
@@ -968,37 +984,6 @@ export default function BusinessDashboard() {
 
         {/* MAIN CANVAS */}
         <main className="flex-1 px-4 py-5 sm:px-8 sm:py-7 space-y-6 min-w-0 max-w-7xl">
-          {/* Inactive Subscription Warning Banner */}
-          {user?.subscription?.status !== 'ACTIVE' && (
-            <div className="rounded-3xl bg-gradient-to-r from-amber-600 via-rose-600 to-rose-700 text-white p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg border border-amber-400/40">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
-                  <Crown className="w-6 h-6 text-amber-300" />
-                </div>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 text-white px-2 py-0.5 rounded-full">
-                      Subscription Inactive
-                    </span>
-                    <span className="text-xs text-amber-100 font-bold">Venue Queues & Slots Locked</span>
-                  </div>
-                  <h3 className="text-base sm:text-lg font-black text-white">
-                    Activate your ServeQ Plan to accept live patrons
-                  </h3>
-                  <p className="text-xs text-white/90 font-medium">
-                    Choose Basic Plan (₹999/mo) or Pro Plan with Gemini AI (₹1,999/mo). Direct payment via Razorpay.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSubscriptionModalOpen(true)}
-                className="px-6 py-3 rounded-2xl bg-white text-zinc-950 font-black text-xs uppercase tracking-wider shadow-md hover:bg-zinc-100 active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                Choose Plan & Pay via Razorpay →
-              </button>
-            </div>
-          )}
 
           {/* Top Venue Overview Card / Hero Banner */}
           <div className="rounded-3xl bg-gradient-to-r from-[#F4F9F5] via-[#EBF5ED] to-[#E2F0E5] border border-[#DCEDE0] p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-2xs">
@@ -1790,18 +1775,27 @@ export default function BusinessDashboard() {
                         </button>
                       </div>
 
-                      {member.specialties?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {member.specialties.map((spec, sIdx) => (
-                            <span
-                              key={sIdx}
-                              className="px-2.5 py-1 rounded-lg bg-white border border-zinc-200 text-[11px] font-medium text-zinc-700"
-                            >
-                              {spec}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {(() => {
+                        const raw = member.specialties
+                        const list = Array.isArray(raw)
+                          ? raw.filter(Boolean)
+                          : typeof raw === 'string' && raw.trim()
+                          ? raw.split(',').map((s) => s.trim()).filter(Boolean)
+                          : []
+                        if (list.length === 0) return null
+                        return (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {list.map((spec, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="px-2.5 py-1 rounded-lg bg-white border border-zinc-200 text-[11px] font-medium text-zinc-700"
+                              >
+                                {spec}
+                              </span>
+                            ))}
+                          </div>
+                        )
+                      })()}
 
                       <div className="flex items-center justify-between pt-3 border-t border-zinc-200/80 text-xs">
                         <div className="flex items-center gap-3 text-zinc-600 font-semibold">
@@ -2041,99 +2035,58 @@ export default function BusinessDashboard() {
             </button>
           </div>
 
-          {/* Payment & Settlement Configuration Card */}
+          {/* Customer Payment & Counter Settlement Configuration */}
           <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6 text-left">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
               <div>
                 <h3 className="text-lg font-black text-zinc-950 flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-teal-600" />
-                  <span>Payment & Settlement Configuration</span>
+                  <span>Customer Payment & Counter Settlement</span>
                 </h3>
                 <p className="text-xs text-zinc-500 font-medium">
-                  Manage how your venue accepts customer payments (Pay at Counter, Online via Razorpay Route, or Both).
+                  Direct in-person counter settlement. Zero gateway commissions and zero third-party lock-in.
                 </p>
               </div>
-              <span className={`self-start sm:self-auto px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
-                business?.paymentConfiguration?.onlinePaymentStatus === 'ACTIVE'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : business?.paymentConfiguration?.onlinePaymentStatus === 'PENDING_VERIFICATION'
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-zinc-100 text-zinc-700'
-              }`}>
-                ● {business?.paymentConfiguration?.onlinePaymentStatus?.replace('_', ' ') || 'NOT STARTED'}
+              <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-teal-100 text-teal-900 border border-teal-200">
+                ✓ Pay at Counter Active
               </span>
             </div>
 
-            {/* Mode selection buttons */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase text-slate-500">Active Customer Payment Mode</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  disabled={updatingPaymentMode}
-                  onClick={() => handleUpdatePaymentMode('PAY_AT_BUSINESS')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                    business?.paymentConfiguration?.paymentMode === 'PAY_AT_BUSINESS'
-                      ? 'border-teal-600 bg-teal-50 text-teal-950 font-bold shadow-xs ring-2 ring-teal-500/20'
-                      : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/80 text-zinc-700'
-                  }`}
-                >
-                  <p className="text-xs font-bold">Pay at Counter Only</p>
-                  <p className="text-[11px] text-zinc-500 mt-1">Cash or venue UPI QR upon arrival.</p>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={updatingPaymentMode}
-                  onClick={() => handleUpdatePaymentMode('ONLINE')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                    business?.paymentConfiguration?.paymentMode === 'ONLINE'
-                      ? 'border-teal-600 bg-teal-50 text-teal-950 font-bold shadow-xs ring-2 ring-teal-500/20'
-                      : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/80 text-zinc-700'
-                  }`}
-                >
-                  <p className="text-xs font-bold">Online Upfront Only</p>
-                  <p className="text-[11px] text-zinc-500 mt-1">Razorpay Route direct split payment.</p>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={updatingPaymentMode}
-                  onClick={() => handleUpdatePaymentMode('BOTH')}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
-                    business?.paymentConfiguration?.paymentMode === 'BOTH'
-                      ? 'border-teal-600 bg-teal-50 text-teal-950 font-bold shadow-xs ring-2 ring-teal-500/20'
-                      : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/80 text-zinc-700'
-                  }`}
-                >
-                  <p className="text-xs font-bold">Hybrid (Customer Choice)</p>
-                  <p className="text-[11px] text-zinc-500 mt-1">Allow customers to choose online or counter.</p>
-                </button>
-              </div>
-            </div>
-
-            {/* Venue Plan Subscription Tier Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 to-teal-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Pay at Business Policy Details */}
+            <div className="p-5 rounded-2xl bg-teal-50/50 border border-teal-200/80 space-y-4">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-amber-400" />
-                  <span className="text-xs font-bold text-emerald-100">
-                    ServeQ Business Plan: {user?.subscription?.status === 'ACTIVE' ? `${user.subscription.plan} Plan (₹${user.subscription.amount}/mo)` : 'No Active Plan'}
-                  </span>
-                </div>
-                <p className="text-[11px] text-emerald-200">
-                  {user?.subscription?.status === 'ACTIVE'
-                    ? 'Active plan in good standing. All venue features unlocked.'
-                    : 'Choose Basic Plan (₹999) or Pro Plan (₹1,999) to unlock online payments and advanced tools.'}
+                <h4 className="text-sm font-bold text-teal-950">Direct In-Person Settlement</h4>
+                <p className="text-xs text-zinc-600">
+                  Customers book appointments and join live queues for free. When service is provided, staff collect payment directly at the counter via Cash, POS card machine, or your counter UPI QR code.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSubscriptionModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-white text-emerald-900 font-bold text-xs hover:bg-emerald-50 transition-colors self-start sm:self-auto cursor-pointer shrink-0"
-              >
-                {user?.subscription?.status === 'ACTIVE' ? 'Switch / View Plans' : 'Choose Plan & Pay'}
-              </button>
+
+              {/* Counter UPI QR Configuration */}
+              <div className="pt-3 border-t border-teal-200/60">
+                <label className="block text-xs font-bold text-zinc-800 mb-1.5">
+                  Venue Counter UPI VPA <span className="text-zinc-500 font-normal">(Optional for customer QR display)</span>
+                </label>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <input
+                    type="text"
+                    value={upiVpa}
+                    onChange={(e) => setUpiVpa(e.target.value)}
+                    placeholder="e.g. bladeandshears@okhdfcbank"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-300 bg-white font-medium text-xs text-zinc-900 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingUpi}
+                    onClick={handleSaveUpi}
+                    className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs uppercase tracking-wider shadow-xs cursor-pointer transition-all active:scale-98 disabled:opacity-50 shrink-0"
+                  >
+                    {savingUpi ? 'Saving...' : 'Save UPI ID'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  When configured, customers who choose to pay via UPI will see this VPA at your checkout counter.
+                </p>
+              </div>
             </div>
           </div>
         </form>
@@ -2289,11 +2242,11 @@ export default function BusinessDashboard() {
               {analytics?.aiInsights?.isLocked ? (
                 <button
                   type="button"
-                  onClick={() => setSubscriptionModalOpen(true)}
+                  onClick={() => navigate('/subscription')}
                   className="px-6 py-3.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer flex-shrink-0"
                 >
                   <Lock size={14} className="text-amber-400" />
-                  <span>Upgrade to Pro for AI</span>
+                  <span>Upgrade to Pro in My Subscription</span>
                 </button>
               ) : (
                 <button
@@ -2331,10 +2284,10 @@ export default function BusinessDashboard() {
                 <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => setSubscriptionModalOpen(true)}
+                    onClick={() => navigate('/subscription')}
                     className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-400 to-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-teal-500/20 cursor-pointer"
                   >
-                    Upgrade to Pro Plan — ₹1,999 / mo
+                    Upgrade in My Subscription →
                   </button>
                 </div>
               </div>
@@ -2471,23 +2424,6 @@ export default function BusinessDashboard() {
       )}
         </main>
       </div>
-
-      {/* Subscription Plans Modal */}
-      <SubscriptionPlansModal
-        isOpen={subscriptionModalOpen}
-        onClose={() => setSubscriptionModalOpen(false)}
-        onSuccess={(updated) => {
-          if (updated?.subscription) {
-            setBusiness((prev) => ({
-              ...prev,
-              subscription: updated.subscription,
-            }))
-            getBusinessAnalytics(businessId)
-              .then((res) => setAnalytics(res.data.data))
-              .catch(() => {})
-          }
-        }}
-      />
     </div>
   )
 }

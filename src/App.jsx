@@ -24,6 +24,7 @@ import BusinessOnboardingPage from './pages/BusinessOnboardingPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsPage from './pages/TermsPage'
 import HelpSupportPage from './pages/HelpSupportPage'
+import SubscriptionPage from './pages/SubscriptionPage'
 import Footer from './components/Footer'
 import AmbientBackground from './components/AmbientBackground'
 import NotFoundPage from './pages/NotFoundPage'
@@ -148,6 +149,7 @@ export default function App() {
     location.pathname === '/support' ||
     location.pathname === '/help' ||
     location.pathname === '/profile' ||
+    location.pathname === '/subscription' ||
     (location.pathname.startsWith('/business/') && location.pathname.includes('/manage'))
 
   const isLoginPage =
@@ -290,6 +292,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['owner', 'admin']}>
                 <BusinessDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subscription"
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                <SubscriptionPage />
               </ProtectedRoute>
             }
           />
