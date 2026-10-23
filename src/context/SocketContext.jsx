@@ -80,9 +80,22 @@ export const SocketProvider = ({ children, setUser, user }) => {
       toast.success("Business service deleted", { id: "s-deleted" });
     };
 
+    const onForceLogout = (data) => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("serveq_last_active");
+      if (typeof setUser === "function") setUser(null);
+      toast(data?.message || "Session expired or logged out by administrator.", { icon: "🔒", duration: 5000 });
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 500);
+      }
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
+    socket.on("auth:force_logout", onForceLogout);
     socket.on("queue:joined", onQueueJoined);
     socket.on("queue:left", onQueueLeft);
     socket.on("queue:updated", onQueueUpdated);
@@ -99,6 +112,7 @@ export const SocketProvider = ({ children, setUser, user }) => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
+      socket.off("auth:force_logout", onForceLogout);
       socket.off("queue:joined", onQueueJoined);
       socket.off("queue:left", onQueueLeft);
       socket.off("queue:updated", onQueueUpdated);

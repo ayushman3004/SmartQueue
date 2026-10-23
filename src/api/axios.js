@@ -39,6 +39,15 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem("token");
+      localStorage.removeItem("serveq_last_active");
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/" &&
+        !window.location.pathname.startsWith("/auth")
+      ) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(err);
   }
