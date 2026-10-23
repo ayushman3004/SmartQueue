@@ -124,8 +124,20 @@ export default function BusinessOnboardingPage() {
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
   const [subscribingPlan, setSubscribingPlan] = useState(null)
 
-  // Email verification check
+  // Email verification check & subscription check
   const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
+  const isSubscribed = Boolean(
+    user?.subscription?.status === 'ACTIVE' &&
+    user?.subscription?.plan &&
+    user?.subscription?.plan !== 'NONE'
+  )
+
+  // Once email is verified, if not subscribed, direct to /subscription page
+  useEffect(() => {
+    if (isEmailVerified && !isSubscribed) {
+      navigate('/subscription')
+    }
+  }, [isEmailVerified, isSubscribed, navigate])
 
   // Inline OTP Verification state for unverified email gate
   const [emailOtpSent, setEmailOtpSent] = useState(false)
@@ -172,6 +184,7 @@ export default function BusinessOnboardingPage() {
         const updated = res.data?.data?.user || { ...user, isEmailVerified: true }
         setUser(updated)
         toast.success('Email verified successfully! Please choose your subscription plan to begin onboarding.', { icon: '🎉' })
+        navigate('/subscription')
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired OTP code')
@@ -438,10 +451,10 @@ export default function BusinessOnboardingPage() {
     }
   }, [])
 
-  // Initial Load / Recovery
+  // Initial Load / Recovery - only run when user is verified AND subscribed
   useEffect(() => {
     let isMounted = true
-    if (!isEmailVerified) {
+    if (!isEmailVerified || !isSubscribed) {
       setLoading(false)
       return
     }
@@ -497,7 +510,7 @@ export default function BusinessOnboardingPage() {
 
     init()
     return () => { isMounted = false }
-  }, [targetBizId, populateFromBusiness, user?.name, isEmailVerified])
+  }, [targetBizId, populateFromBusiness, user?.name, isEmailVerified, isSubscribed])
 
   // Helper for image upload preview (data URL or external URL)
   const handleImageFile = (e, field) => {
@@ -940,156 +953,50 @@ export default function BusinessOnboardingPage() {
     )
   }
 
-  const isSubscribed = Boolean(
-    user?.subscription?.status === 'ACTIVE' &&
-    user?.subscription?.plan &&
-    user?.subscription?.plan !== 'NONE'
-  )
-
-  // Block onboarding until subscription is chosen and paid via Razorpay
+  // Block onboarding until subscription is active on /subscription
   if (!isSubscribed) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-3 sm:p-6 overflow-y-auto selection:bg-emerald-500/20 selection:text-emerald-900">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-4 selection:bg-emerald-500/20 selection:text-emerald-900">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden my-auto text-zinc-900"
+          className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-[#BDE8CB] text-center space-y-6 text-zinc-900"
         >
-          {/* Header */}
-          <div className="p-6 sm:p-8 bg-gradient-to-br from-[#064E3B] via-[#047857] to-[#064E3B] text-white relative overflow-hidden text-left">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Stepper Progress & Sign Out */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-
-              {/* Sign Out Button in Header */}
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="self-end sm:self-auto px-3.5 py-1.5 rounded-xl bg-white/15 hover:bg-rose-500/25 text-white hover:text-rose-100 border border-white/25 hover:border-rose-300/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                title="Sign out of your account"
-              >
-                <LogOut className="w-3.5 h-3.5 text-rose-300" />
-                <span>Sign Out</span>
-              </button>
-            </div>
-
-            <div className="space-y-2 relative z-10">
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                Choose Your Plan to Start Onboarding
-              </h2>
-              <p className="text-xs sm:text-sm text-emerald-100 font-medium max-w-2xl leading-relaxed">
-                Every business on ServeQ requires an active plan to configure live queues, staff rosters, and take customer bookings. Choose your subscription to unlock the Onboarding Studio and launch your venue.
-              </p>
-            </div>
+          {/* Header Icon */}
+          <div className="w-16 h-16 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] flex items-center justify-center mx-auto shadow-xs">
+            <Crown className="w-8 h-8 text-[#16A34A]" />
           </div>
 
-          {/* Cards Body */}
-          <div className="p-6 sm:p-8 bg-zinc-50/70 text-left">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {ONBOARDING_PLANS.map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`relative rounded-3xl p-6 sm:p-7 flex flex-col justify-between transition-all ${plan.popular
-                      ? 'bg-white border-2 border-emerald-600 shadow-xl ring-4 ring-emerald-500/10'
-                      : 'bg-white border border-zinc-200 shadow-sm hover:border-zinc-300'
-                    }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-3 right-6 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-300" />
-                      {plan.badge}
-                    </div>
-                  )}
+          <div className="space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB] inline-block">
+              Subscription Required
+            </span>
+            <h2 className="text-2xl font-black text-zinc-950 tracking-tight">
+              Choose Your Plan
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-600 font-medium leading-relaxed max-w-sm mx-auto">
+              Every business on ServeQ requires an active plan to configure live queues and appointments. Proceed to the subscription page to activate your venue.
+            </p>
+          </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xl font-black text-zinc-950">{plan.name}</h3>
-                      {!plan.popular && (
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
-                          {plan.badge}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-xs text-zinc-500 min-h-[34px] leading-relaxed">
-                      {plan.tagline}
-                    </p>
-
-                    <div className="my-5 pb-5 border-b border-zinc-100 flex items-baseline gap-1.5">
-                      <span className="text-4xl sm:text-5xl font-black text-zinc-950 tracking-tight">
-                        {plan.displayPrice}
-                      </span>
-                      <span className="text-xs font-bold text-zinc-400">
-                        {plan.period}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3 mb-6">
-                      <p className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
-                        Included Features
-                      </p>
-                      <ul className="space-y-2.5">
-                        {plan.features.map((feat, idx) => (
-                          <li key={idx} className="flex items-start gap-2.5 text-xs text-zinc-700">
-                            <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${plan.popular ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-700'
-                              }`}>
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            </span>
-                            <span className="leading-tight">{feat}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={!!subscribingPlan}
-                    onClick={() => handleSubscribeInOnboarding(plan)}
-                    className={`w-full py-3.5 px-4 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm ${plan.popular
-                        ? 'bg-[#064E3B] hover:bg-[#047857] text-white active:scale-98'
-                        : 'bg-zinc-900 hover:bg-zinc-800 text-white active:scale-98'
-                      }`}
-                  >
-                    {subscribingPlan === plan.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Opening Razorpay Checkout...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Pay {plan.displayPrice} via Razorpay</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Bottom Security Assurance & Account Sign Out */}
-            <div className="mt-6 pt-5 border-t border-zinc-200 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-3">
-              <div className="flex items-center gap-2 font-medium">
-                <Shield className="w-4 h-4 text-emerald-700" />
-                <span>
-                  Direct ServeQ Razorpay Settlement &bull; 256-Bit SSL Encryption
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-zinc-400">Signed in as <strong>{user?.email}</strong></span>
-                <span className="text-zinc-300">•</span>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            </div>
+          <div className="pt-2 space-y-3">
+            <button
+              type="button"
+              onClick={() => navigate('/subscription')}
+              className="w-full py-3.5 px-5 rounded-2xl bg-[#114227] hover:bg-[#0D361F] text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Go to Subscription Page</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="text-xs font-bold text-zinc-400 hover:text-rose-600 transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
           </div>
         </motion.div>
       </div>

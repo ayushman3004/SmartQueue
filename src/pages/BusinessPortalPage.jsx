@@ -91,7 +91,7 @@ export default function BusinessPortalPage() {
     user?.subscription?.plan !== 'NONE'
   )
 
-  // Guided Flow: Owner Login -> Verify Email -> Choose Subscription & Pay -> Onboard -> Dashboard
+  // Guided Flow: Owner Login -> Verify Email -> Subscription Page -> Dashboard
   useEffect(() => {
     if (!isOwnerOrAdmin) return
 
@@ -101,18 +101,20 @@ export default function BusinessPortalPage() {
       return
     }
 
-    // 2. If subscription not paid, direct to subscription selection gate
+    // 2. If subscription not paid, direct to /subscription page
     if (!isSubscribed) {
-      navigate('/business/onboarding')
+      navigate('/subscription')
       return
     }
 
-    // 3. If verified & subscribed, check if venue is already launched; if not, direct to finish setup
+    // 3. If verified & subscribed, check if venue is already launched; if completed, go to dashboard
     getMyBusinesses()
       .then((res) => {
         const list = res.data?.data?.businesses || []
-        const hasCompletedBiz = list.some((b) => b.onboarding?.status === 'COMPLETED')
-        if (!hasCompletedBiz) {
+        const completed = list.find((b) => b.onboarding?.status === 'COMPLETED')
+        if (completed) {
+          navigate(`/business/${completed._id}`)
+        } else {
           navigate('/business/onboarding')
         }
       })
@@ -150,7 +152,7 @@ export default function BusinessPortalPage() {
         const res = await signup(payload)
         const { user: newUser, token } = res.data.data
         logIn(newUser, token)
-        toast.success('Hub Owner account registered successfully! Let’s set up your venue...', {
+        toast.success('Hub Owner account registered successfully! Please verify your email...', {
           style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
         })
         navigate('/business/onboarding')
@@ -172,6 +174,33 @@ export default function BusinessPortalPage() {
         toast.success(`Welcome back, ${authUser.name}!`, {
           style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
         })
+
+        const verified = Boolean(authUser.isEmailVerified || authUser.authProvider === 'google')
+        const subscribed = Boolean(
+          authUser.subscription?.status === 'ACTIVE' &&
+          authUser.subscription?.plan &&
+          authUser.subscription?.plan !== 'NONE'
+        )
+
+        if (!verified) {
+          navigate('/business/onboarding')
+        } else if (!subscribed) {
+          navigate('/subscription')
+        } else {
+          try {
+            const bizRes = await getMyBusinesses()
+            const list = bizRes.data?.data?.businesses || []
+            const completed = list.find((b) => b.onboarding?.status === 'COMPLETED')
+            if (completed) {
+              navigate(`/business/${completed._id}`)
+            } else {
+              navigate('/business/onboarding')
+            }
+          } catch {
+            navigate('/business')
+          }
+        }
+        return
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Authentication failed'

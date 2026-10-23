@@ -15,6 +15,7 @@ import {
   HelpCircle,
   ExternalLink,
   CreditCard,
+  LogOut,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -22,6 +23,7 @@ import {
   createSubscriptionOrder,
   verifySubscriptionPayment,
 } from '../api/subscription.api'
+import { getMyBusinesses } from '../api/business.api'
 import { useSeo } from '../utils/useSeo'
 
 // Load official Razorpay Standard Checkout SDK
@@ -48,7 +50,7 @@ export default function SubscriptionPage() {
     description: 'Manage your ServeQ business subscription, features, and plan details.',
   })
 
-  const { user, setUser } = useAuth()
+  const { user, setUser, logOut } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [upgrading, setUpgrading] = useState(false)
@@ -77,7 +79,7 @@ export default function SubscriptionPage() {
     return 'rzp_test_placeholder'
   }
 
-  const handleUpgradeToPro = async () => {
+  const handleSubscribePlan = async (planId) => {
     setUpgrading(true)
     try {
       const isLoaded = await loadRazorpayScript()
@@ -86,11 +88,11 @@ export default function SubscriptionPage() {
         return
       }
 
-      const res = await createSubscriptionOrder('PRO')
+      const res = await createSubscriptionOrder(planId)
       const order = res.data?.data?.order
 
       if (!order) {
-        toast.error('Failed to initiate Pro Plan checkout order.')
+        toast.error(`Failed to initiate ${planId} Plan checkout order.`)
         return
       }
 
@@ -101,7 +103,7 @@ export default function SubscriptionPage() {
         amount: order.amount,
         currency: order.currency || 'INR',
         name: 'ServeQ Technologies',
-        description: 'Upgrade to Pro Plan (₹1,999/month)',
+        description: `${planId === 'PRO' ? 'Pro Plan' : 'Basic Plan'} Subscription`,
         image: '/logo.png',
         ...(order?.id && !order.isMock && !order.id.startsWith('order_mock_')
           ? { order_id: order.id }
@@ -109,7 +111,7 @@ export default function SubscriptionPage() {
         handler: async (response) => {
           try {
             const verifyRes = await verifySubscriptionPayment({
-              plan: 'PRO',
+              plan: planId,
               razorpayOrderId: response.razorpay_order_id || order.id,
               razorpayPaymentId: response.razorpay_payment_id || 'pay_verified',
               razorpaySignature: response.razorpay_signature || 'sig_verified',
@@ -123,7 +125,21 @@ export default function SubscriptionPage() {
               }))
             }
             setSubscriptionData(updatedData.subscription)
-            toast.success('🎉 Successfully upgraded to Pro Plan via Razorpay!', { duration: 6000 })
+            toast.success(`🎉 Successfully subscribed to ${planId === 'PRO' ? 'Pro' : 'Basic'} Plan!`, { duration: 6000 })
+
+            // Direct to Dashboard or Onboarding Wizard
+            try {
+              const bizRes = await getMyBusinesses()
+              const list = bizRes.data?.data?.businesses || []
+              const completed = list.find((b) => b.onboarding?.status === 'COMPLETED')
+              if (completed) {
+                navigate(`/business/${completed._id}`)
+              } else {
+                navigate('/business/onboarding')
+              }
+            } catch {
+              navigate('/business')
+            }
           } catch (vErr) {
             toast.error(vErr.response?.data?.message || 'Payment verification failed.')
           }
@@ -134,7 +150,7 @@ export default function SubscriptionPage() {
           contact: user?.phone || '',
         },
         notes: {
-          planId: 'PRO',
+          planId: planId,
           userId: user?._id || '',
         },
         theme: {
@@ -153,9 +169,26 @@ export default function SubscriptionPage() {
       })
       rzp.open()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to start upgrade order')
+      toast.error(err.response?.data?.message || 'Failed to start subscription order')
     } finally {
       setUpgrading(false)
+    }
+  }
+
+  const handleUpgradeToPro = () => handleSubscribePlan('PRO')
+
+  const handleBackToDashboard = async () => {
+    try {
+      const bizRes = await getMyBusinesses()
+      const list = bizRes.data?.data?.businesses || []
+      const completed = list.find((b) => b.onboarding?.status === 'COMPLETED')
+      if (completed) {
+        navigate(`/business/${completed._id}`)
+      } else {
+        navigate('/business')
+      }
+    } catch {
+      navigate('/business')
     }
   }
 
@@ -166,7 +199,7 @@ export default function SubscriptionPage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/business')}
+            onClick={handleBackToDashboard}
             className="p-2 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-[#EAF7EE] transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold"
           >
             <ArrowLeft className="w-4 h-4 text-[#114227]" />
@@ -189,6 +222,19 @@ export default function SubscriptionPage() {
           >
             <HelpCircle className="w-3.5 h-3.5 text-[#114227]" />
             <span>Support</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              logOut()
+              navigate('/login')
+            }}
+            className="px-3 py-1.5 rounded-xl border border-zinc-200 hover:bg-rose-50 hover:border-rose-200 text-zinc-600 hover:text-rose-700 font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+            title="Sign out of your account"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-500" />
+            <span className="hidden sm:inline">Sign Out</span>
           </button>
         </div>
       </header>
@@ -484,30 +530,11 @@ export default function SubscriptionPage() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  createSubscriptionOrder('BASIC').then((res) => {
-                    const order = res.data?.data?.order
-                    const rzp = new window.Razorpay({
-                      key: getEffectiveKey(),
-                      amount: order.amount,
-                      currency: 'INR',
-                      name: 'ServeQ Basic',
-                      handler: async (resp) => {
-                        await verifySubscriptionPayment({
-                          plan: 'BASIC',
-                          razorpayOrderId: resp.razorpay_order_id || order.id,
-                          razorpayPaymentId: resp.razorpay_payment_id,
-                          razorpaySignature: resp.razorpay_signature,
-                        })
-                        window.location.reload()
-                      },
-                    })
-                    rzp.open()
-                  })
-                }}
-                className="w-full py-3 rounded-2xl border-2 border-zinc-900 text-zinc-900 font-bold text-xs uppercase tracking-wider hover:bg-zinc-900 hover:text-white transition-all cursor-pointer"
+                disabled={upgrading}
+                onClick={() => handleSubscribePlan('BASIC')}
+                className="w-full py-3 rounded-2xl border-2 border-zinc-900 text-zinc-900 font-bold text-xs uppercase tracking-wider hover:bg-zinc-900 hover:text-white transition-all cursor-pointer disabled:opacity-50"
               >
-                Choose Basic (₹999)
+                {upgrading ? 'Processing...' : 'Choose Basic (₹999)'}
               </button>
             </div>
 

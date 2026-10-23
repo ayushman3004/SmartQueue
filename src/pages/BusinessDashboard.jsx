@@ -207,8 +207,12 @@ export default function BusinessDashboard() {
         user?.subscription?.plan &&
         user?.subscription?.plan !== 'NONE'
       )
-      if (user?.role !== 'admin' && (!isEmailVerified || !isSubscribed)) {
-        navigate(`/business/onboarding/${biz._id}`)
+      if (user?.role !== 'admin' && !isEmailVerified) {
+        navigate(`/business/onboarding`)
+        return
+      }
+      if (user?.role !== 'admin' && !isSubscribed) {
+        navigate(`/subscription`)
         return
       }
 

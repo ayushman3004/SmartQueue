@@ -229,26 +229,22 @@ export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
           className="relative w-full max-w-4xl bg-white border border-zinc-200 rounded-3xl shadow-2xl overflow-hidden my-8"
         >
           {/* Header Bar */}
-          <div className="p-6 sm:p-8 bg-gradient-to-br from-[#064E3B] via-[#047857] to-[#064E3B] text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="p-6 sm:p-8 bg-gradient-to-br from-[#EAF7EE] via-[#f0fdf4] to-[#dcfce7] border-b border-[#BDE8CB] text-zinc-950 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none" />
             
             <button
               type="button"
               onClick={onClose}
-              className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-zinc-600 hover:text-zinc-950 border border-[#BDE8CB] flex items-center justify-center transition-colors cursor-pointer shadow-xs"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="max-w-xl space-y-2 relative z-10 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-[11px] font-bold text-emerald-100 uppercase tracking-wider">
-                <Crown className="w-3.5 h-3.5 text-amber-300" />
-                <span>ServeQ Business Plans</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950">
                 Choose the Right Plan for Your Venue
               </h2>
-              <p className="text-xs sm:text-sm text-emerald-100 font-medium">
+              <p className="text-xs sm:text-sm text-zinc-600 font-medium">
                 Streamline footfall, empower your staff, and delight customers. Pay directly via the official Razorpay Checkout gateway.
               </p>
             </div>
@@ -334,7 +330,7 @@ export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
                           isCurrent
                             ? 'bg-zinc-100 text-zinc-500 cursor-not-allowed border border-zinc-200'
                             : plan.popular
-                            ? 'bg-[#064E3B] hover:bg-[#047857] text-white active:scale-98'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-98'
                             : 'bg-zinc-900 hover:bg-zinc-800 text-white active:scale-98'
                         }`}
                       >
@@ -443,7 +439,7 @@ export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
               <button
                 type="button"
                 onClick={handleSaveKeyAndLaunch}
-                className="flex-1 py-2.5 rounded-xl bg-[#064E3B] hover:bg-[#047857] text-white text-xs font-bold shadow-md cursor-pointer active:scale-98"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md cursor-pointer active:scale-98"
               >
                 Launch Razorpay Checkout
               </button>
