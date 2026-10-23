@@ -15,6 +15,10 @@ import waitlistRoutes from "../modules/waitlist/waitlist.routes.js";
 import supportRoutes from "../modules/support/support.routes.js";
 import healthRoutes from "../modules/health/health.routes.js";
 import subscriptionRoutes from "../modules/subscription/subscription.routes.js";
+import {
+  createStandardOrder,
+  verifyStandardPayment,
+} from "../modules/payment/standardCheckout.controller.js";
 
 import { globalLimiter, authLimiter } from "./rateLimiter.js";
 import { requestIdMiddleware } from "./gateway.middleware.js";
@@ -87,6 +91,10 @@ export const createGatewayRouter = () => {
   router.use("/waitlist", waitlistRoutes);
   router.use("/support", supportRoutes);
   router.use("/subscriptions", subscriptionRoutes);
+
+  // Razorpay Standard Checkout endpoints
+  router.post("/create-order", createStandardOrder);
+  router.post("/verify-payment", verifyStandardPayment);
 
   return router;
 };

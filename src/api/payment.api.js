@@ -11,6 +11,13 @@ export const createBookingOrder = (bookingId) =>
 export const verifyPayment = (paymentData) =>
   axios.post("/payments/verify", paymentData);
 
+// Standard Razorpay Checkout endpoints (/api/create-order & /api/verify-payment)
+export const createStandardOrder = ({ amount, currency = "INR", receipt }) =>
+  axios.post("/create-order", { amount, currency, receipt });
+
+export const verifyStandardPayment = (verificationData) =>
+  axios.post("/verify-payment", verificationData);
+
 // Business payment account status & Route connection
 export const getBusinessPaymentStatus = (businessId) =>
   axios.get(`/payments/business/${businessId}/status`);

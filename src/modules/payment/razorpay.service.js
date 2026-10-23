@@ -4,10 +4,17 @@ import Booking from "../../booking/booking.model.js";
 import Business from "../business/business.model.js";
 import ApiError from "../../../utils/ApiError.js";
 
+import dotenv from "dotenv";
+
 // Razorpay client singleton
+let currentKeyId = null;
 let razorpayClient = null;
 
 export const getRazorpayClient = () => {
+  if (process.env.NODE_ENV !== "production") {
+    dotenv.config({ override: true });
+  }
+
   const key_id = process.env.RAZORPAY_KEY_ID;
   const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
@@ -15,7 +22,8 @@ export const getRazorpayClient = () => {
     return null;
   }
 
-  if (!razorpayClient) {
+  if (!razorpayClient || currentKeyId !== key_id) {
+    currentKeyId = key_id;
     razorpayClient = new Razorpay({
       key_id,
       key_secret,
