@@ -25,8 +25,10 @@ import {
   ChevronLeft,
   CreditCard,
   Building2,
+  Crown,
 } from 'lucide-react'
 import { connectRouteAccount } from '../api/payment.api'
+import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
 
 const TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST +5:30)' },
@@ -68,6 +70,7 @@ export default function BusinessOnboardingPage() {
   const [saving, setSaving] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [business, setBusiness] = useState(null)
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
 
   // Email verification check
   const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
@@ -635,6 +638,14 @@ export default function BusinessOnboardingPage() {
   // Step 7: Launch Business
   const handleLaunch = async () => {
     if (!business?._id) return
+
+    if (user?.subscription?.status !== 'ACTIVE' && business?.subscription?.status !== 'ACTIVE') {
+      toast.error('An active ServeQ subscription (Basic ₹999 or Pro ₹1,999) is required to launch your business.', {
+        duration: 5000,
+      })
+      setSubscriptionModalOpen(true)
+      return
+    }
 
     setSaving(true)
     try {
@@ -2180,6 +2191,120 @@ export default function BusinessOnboardingPage() {
                 </div>
               </div>
 
+              {/* 7. ServeQ Business Subscription Plan Selection */}
+              <div className="p-5 sm:p-6 rounded-3xl border border-zinc-200 bg-white shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-4 h-4 text-amber-500" />
+                      <h4 className="text-base font-black text-zinc-950">ServeQ Business Subscription Plan</h4>
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      An active subscription is required to accept live queues and appointments. Paid securely via Razorpay.
+                    </p>
+                  </div>
+                  {user?.subscription?.status === 'ACTIVE' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black uppercase tracking-wider shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      {user.subscription.plan} Plan Active (₹{user.subscription.amount}/mo)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-black uppercase tracking-wider shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      Subscription Required
+                    </span>
+                  )}
+                </div>
+
+                {/* Two Plans: Basic (₹999) & Pro (₹1,999) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                  {/* Basic Plan */}
+                  <div className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                    user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'BASIC'
+                      ? 'border-emerald-500 bg-emerald-50/30'
+                      : 'border-zinc-200 bg-zinc-50/50 hover:border-zinc-300'
+                  }`}>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-zinc-200 text-zinc-700 px-2.5 py-0.5 rounded-full">
+                          Starter Plan
+                        </span>
+                        <span className="text-xl font-black text-zinc-950">₹999 <span className="text-xs font-normal text-zinc-500">/ mo</span></span>
+                      </div>
+                      <div>
+                        <h5 className="font-black text-base text-zinc-900">Basic Plan</h5>
+                        <p className="text-xs text-zinc-500 mt-0.5">Essential live queue & appointment tools for standard venues.</p>
+                      </div>
+                      <ul className="space-y-1.5 text-xs text-zinc-600">
+                        <li className="flex items-center gap-2">✓ Live virtual queue & slot bookings</li>
+                        <li className="flex items-center gap-2">✓ Up to 3 active staff members</li>
+                        <li className="flex items-center gap-2">✓ Pay at Counter with cash/UPI tracking</li>
+                        <li className="flex items-center gap-2">✓ Standard volume analytics</li>
+                      </ul>
+                    </div>
+                    <div className="pt-4 mt-4 border-t border-zinc-200/60">
+                      {user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'BASIC' ? (
+                        <span className="w-full py-2.5 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5">
+                          ✓ Active Plan
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setSubscriptionModalOpen(true)}
+                          className="w-full py-2.5 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          Pay ₹999 via Razorpay
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pro Plan */}
+                  <div className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between relative overflow-hidden ${
+                    user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'PRO'
+                      ? 'border-emerald-500 bg-emerald-50/30'
+                      : 'border-teal-500 bg-teal-50/20 hover:border-teal-600'
+                  }`}>
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-amber-600 text-white text-[9px] font-black uppercase px-3 py-0.5 rounded-bl-xl tracking-wider">
+                      Most Popular
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-full">
+                          Growth & AI Tier
+                        </span>
+                        <span className="text-xl font-black text-zinc-950">₹1,999 <span className="text-xs font-normal text-zinc-500">/ mo</span></span>
+                      </div>
+                      <div>
+                        <h5 className="font-black text-base text-zinc-900">Pro Plan</h5>
+                        <p className="text-xs text-zinc-500 mt-0.5">Advanced automation & Google Gemini AI intelligence for busy venues.</p>
+                      </div>
+                      <ul className="space-y-1.5 text-xs text-zinc-600">
+                        <li className="flex items-center gap-2 font-semibold text-teal-950">✓ Everything in Basic, plus:</li>
+                        <li className="flex items-center gap-2">✓ Unlimited staff & specialists</li>
+                        <li className="flex items-center gap-2 text-teal-700 font-bold">✓ Google Gemini AI Intelligence</li>
+                        <li className="flex items-center gap-2">✓ Priority VIP queue passes</li>
+                      </ul>
+                    </div>
+                    <div className="pt-4 mt-4 border-t border-zinc-200/60">
+                      {user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'PRO' ? (
+                        <span className="w-full py-2.5 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5">
+                          ✓ Active Plan
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setSubscriptionModalOpen(true)}
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                        >
+                          Pay ₹1,999 via Razorpay
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Ready to Launch Banner */}
               <div className="p-6 rounded-3xl bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-teal-500/5 border border-teal-200 text-center space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-lg mx-auto shadow-sm">
@@ -2307,6 +2432,26 @@ export default function BusinessOnboardingPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Subscription Plans Modal for Razorpay Checkout */}
+      <SubscriptionPlansModal
+        isOpen={subscriptionModalOpen}
+        onClose={() => setSubscriptionModalOpen(false)}
+        onSuccess={(updated) => {
+          if (updated?.subscription) {
+            setUser((prev) => ({
+              ...prev,
+              subscription: updated.subscription,
+            }))
+            if (business) {
+              setBusiness((b) => ({
+                ...b,
+                subscription: updated.subscription,
+              }))
+            }
+          }
+        }}
+      />
     </div>
   )
 }

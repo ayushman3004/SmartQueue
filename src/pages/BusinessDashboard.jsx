@@ -956,6 +956,38 @@ export default function BusinessDashboard() {
 
         {/* MAIN CANVAS */}
         <main className="flex-1 px-4 py-5 sm:px-8 sm:py-7 space-y-6 min-w-0 max-w-7xl">
+          {/* Inactive Subscription Warning Banner */}
+          {user?.subscription?.status !== 'ACTIVE' && (
+            <div className="rounded-3xl bg-gradient-to-r from-amber-600 via-rose-600 to-rose-700 text-white p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg border border-amber-400/40">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
+                  <Crown className="w-6 h-6 text-amber-300" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 text-white px-2 py-0.5 rounded-full">
+                      Subscription Inactive
+                    </span>
+                    <span className="text-xs text-amber-100 font-bold">Venue Queues & Slots Locked</span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-white">
+                    Activate your ServeQ Plan to accept live patrons
+                  </h3>
+                  <p className="text-xs text-white/90 font-medium">
+                    Choose Basic Plan (₹999/mo) or Pro Plan with Gemini AI (₹1,999/mo). Direct payment via Razorpay.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubscriptionModalOpen(true)}
+                className="px-6 py-3 rounded-2xl bg-white text-zinc-950 font-black text-xs uppercase tracking-wider shadow-md hover:bg-zinc-100 active:scale-95 transition-all cursor-pointer shrink-0"
+              >
+                Choose Plan & Pay via Razorpay →
+              </button>
+            </div>
+          )}
+
           {/* Top Venue Overview Card / Hero Banner */}
           <div className="rounded-3xl bg-gradient-to-r from-[#F4F9F5] via-[#EBF5ED] to-[#E2F0E5] border border-[#DCEDE0] p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-2xs">
             <div className="space-y-1.5 z-10">
@@ -2432,6 +2464,17 @@ export default function BusinessDashboard() {
       <SubscriptionPlansModal
         isOpen={subscriptionModalOpen}
         onClose={() => setSubscriptionModalOpen(false)}
+        onSuccess={(updated) => {
+          if (updated?.subscription) {
+            setBusiness((prev) => ({
+              ...prev,
+              subscription: updated.subscription,
+            }))
+            getBusinessAnalytics(businessId)
+              .then((res) => setAnalytics(res.data.data))
+              .catch(() => {})
+          }
+        }}
       />
     </div>
   )
