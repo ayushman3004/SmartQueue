@@ -1,0 +1,26 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /business
+Allow: /support
+Allow: /privacy
+Allow: /terms
+
+# Disallow private user consoles, bookings & administration
+Disallow: /admin
+Disallow: /admin/
+Disallow: /customers
+Disallow: /customers/
+Disallow: /history
+Disallow: /queue/
+Disallow: /booking/
+Disallow: /profile
+Disallow: /subscription
+Disallow: /business/onboarding
+Disallow: /business/*/manage
+Disallow: /login
+Disallow: /auth/
+Disallow: /api/
+
+# Canonical Sitemap URL for Google Search Console
+Sitemap: https://serveq.tech/sitemap.xml
