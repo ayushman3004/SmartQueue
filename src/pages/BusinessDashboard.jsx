@@ -183,6 +183,18 @@ export default function BusinessDashboard() {
         return
       }
 
+      // Safe route protection: verify email and subscription before granting dashboard access
+      const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
+      const isSubscribed = Boolean(
+        user?.subscription?.status === 'ACTIVE' &&
+        user?.subscription?.plan &&
+        user?.subscription?.plan !== 'NONE'
+      )
+      if (user?.role !== 'admin' && (!isEmailVerified || !isSubscribed)) {
+        navigate(`/business/onboarding/${biz._id}`)
+        return
+      }
+
       setBusiness(biz)
       setQueue(qRes.data.data.queue)
       setBookings(bkRes.data.data.bookings || [])

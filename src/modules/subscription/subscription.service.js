@@ -77,6 +77,7 @@ export const createSubscriptionOrder = async (userId, planId) => {
         isMock: true,
         keyId: keyId || "rzp_test_placeholder",
       },
+      keyId: keyId || "rzp_test_placeholder",
       plan,
     };
   }
@@ -101,6 +102,7 @@ export const createSubscriptionOrder = async (userId, planId) => {
         keyId,
         isMock: false,
       },
+      keyId,
       plan,
     };
   } catch (err) {

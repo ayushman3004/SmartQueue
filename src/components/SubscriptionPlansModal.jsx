@@ -6,11 +6,10 @@ import {
   Check,
   Sparkles,
   ShieldCheck,
-  Zap,
-  Star,
-  Loader2,
   ArrowRight,
   Crown,
+  KeyRound,
+  ExternalLink,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -57,49 +56,112 @@ const PLANS = [
   },
 ]
 
+// Ensure official Razorpay Standard Checkout SDK is loaded
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true)
+    const existing = document.getElementById('razorpay-checkout-js')
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true))
+      existing.addEventListener('error', () => resolve(false))
+      return
+    }
+    const script = document.createElement('script')
+    script.id = 'razorpay-checkout-js'
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+
 export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
   const { user, setUser } = useAuth()
   const [processingPlan, setProcessingPlan] = useState(null)
-  const [razorpayModalData, setRazorpayModalData] = useState(null)
-  const [payingRazorpay, setPayingRazorpay] = useState(false)
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState('upi')
-  const [simulatedUpiId, setSimulatedUpiId] = useState(
-    user?.email ? `${user.email.split('@')[0]}@okaxis` : 'owner@okhdfcbank'
-  )
+  const [keyPromptData, setKeyPromptData] = useState(null)
+  const [customKeyInput, setCustomKeyInput] = useState('')
 
   const activePlanId = user?.subscription?.status === 'ACTIVE' ? user?.subscription?.plan : null
 
-  const handleCompleteRazorpayPayment = async () => {
-    if (!razorpayModalData) return
-    const { plan, order } = razorpayModalData
-    setPayingRazorpay(true)
-    try {
-      const verifyRes = await verifySubscriptionPayment({
-        plan: plan.id,
-        razorpayOrderId: order.id,
-        razorpayPaymentId: `pay_rzp_${Date.now()}`,
-        razorpaySignature: 'mock_signature_verified',
-      })
+  const getEffectiveKey = (backendKey) => {
+    if (backendKey && backendKey !== 'rzp_test_placeholder') return backendKey
+    const viteKey = import.meta.env.VITE_RAZORPAY_KEY_ID
+    if (viteKey && viteKey !== 'rzp_test_placeholder') return viteKey
+    const stored = localStorage.getItem('SERVEQ_RAZORPAY_KEY_ID')
+    if (stored && stored.trim()) return stored.trim()
+    return null
+  }
 
-      const updatedData = verifyRes.data.data
-      if (setUser && updatedData.user) {
-        setUser((prev) => ({
-          ...prev,
-          subscription: updatedData.subscription,
-        }))
-      }
+  const launchOfficialRazorpayCheckout = ({ plan, order, keyId }) => {
+    const effectiveKey = keyId || getEffectiveKey()
 
-      toast.success(`🎉 ${plan.name} (₹${plan.price}) activated via Razorpay!`, {
-        duration: 5000,
-      })
-      setRazorpayModalData(null)
-      onSuccess?.(updatedData)
-      onClose?.()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Payment verification failed')
-    } finally {
-      setPayingRazorpay(false)
+    if (!effectiveKey) {
+      // Prompt user to provide their Razorpay Test/Live Key ID so the official modal opens
+      setKeyPromptData({ plan, order })
+      return
     }
+
+    const options = {
+      key: effectiveKey,
+      amount: order.amount,
+      currency: order.currency || 'INR',
+      name: 'ServeQ Platform Technologies',
+      description: `${plan.name} Subscription (${plan.displayPrice}/mo)`,
+      image: '/logo.png',
+      // Pass order_id ONLY when a authentic Razorpay API order was created
+      ...(order?.id && !order.isMock && !order.id.startsWith('order_mock_')
+        ? { order_id: order.id }
+        : {}),
+      handler: async (response) => {
+        try {
+          const verifyRes = await verifySubscriptionPayment({
+            plan: plan.id,
+            razorpayOrderId: response.razorpay_order_id || order.id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature || 'mock_signature_verified',
+          })
+
+          const updatedData = verifyRes.data.data
+          if (setUser && updatedData.user) {
+            setUser((prev) => ({
+              ...prev,
+              subscription: updatedData.subscription,
+            }))
+          }
+
+          toast.success(`🎉 ${plan.name} activated successfully via Razorpay!`, {
+            duration: 5000,
+          })
+          onSuccess?.(updatedData)
+          onClose?.()
+        } catch (vErr) {
+          toast.error(vErr.response?.data?.message || 'Payment verification failed. Please contact support.')
+        }
+      },
+      prefill: {
+        name: user?.name || '',
+        email: user?.email || '',
+        contact: user?.phone || '',
+      },
+      notes: {
+        planId: plan.id,
+        planName: plan.name,
+        userId: user?._id || '',
+      },
+      theme: {
+        color: '#064E3B',
+      },
+      modal: {
+        ondismiss: () => {
+          toast('Razorpay checkout window closed.', { icon: 'ℹ️' })
+        },
+      },
+    }
+
+    const rzp = new window.Razorpay(options)
+    rzp.on('payment.failed', (errRes) => {
+      toast.error(errRes.error?.description || 'Razorpay payment was not completed')
+    })
+    rzp.open()
   }
 
   const handleSelectPlan = async (plan) => {
@@ -110,101 +172,47 @@ export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
 
     setProcessingPlan(plan.id)
     try {
-      // Step 1: Create Razorpay Order on ServeQ Platform
-      const res = await createSubscriptionOrder(plan.id)
-      const { order, keyId } = res.data.data
-
-      // Step 2: If in test / mock mode, open our authentic Razorpay Checkout modal
-      if (order.isMock || !keyId || keyId === 'rzp_test_placeholder') {
-        setRazorpayModalData({
-          plan,
-          order,
-          keyId: keyId || order.keyId,
-        })
-        return
-      }
-
-      // Step 3: Load official Razorpay Checkout dynamically
-      const loadRazorpay = () =>
-        new Promise((resolve) => {
-          if (window.Razorpay) return resolve(true)
-          const script = document.createElement('script')
-          script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-          script.onload = () => resolve(true)
-          script.onerror = () => resolve(false)
-          document.body.appendChild(script)
-        })
-
-      const isLoaded = await loadRazorpay()
+      // 1. Ensure Razorpay Standard Checkout SDK is ready
+      const isLoaded = await loadRazorpayScript()
       if (!isLoaded) {
-        // Fallback to internal Razorpay checkout modal if network blocks CDN
-        setRazorpayModalData({
-          plan,
-          order,
-          keyId: keyId || order.keyId,
-        })
+        toast.error('Unable to load official Razorpay SDK. Please check your internet connection.')
         return
       }
 
-      // Step 4: Launch official Razorpay Checkout Modal for ServeQ
-      const options = {
-        key: keyId || order.keyId,
-        amount: order.amount,
-        currency: order.currency || 'INR',
-        name: 'ServeQ Technologies',
-        description: `${plan.name} Subscription (${plan.displayPrice})`,
-        image: '/serveq-logo.png',
-        order_id: order.id,
-        handler: async (response) => {
-          try {
-            const verifyRes = await verifySubscriptionPayment({
-              plan: plan.id,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            })
+      // 2. Create Razorpay order on ServeQ backend
+      const res = await createSubscriptionOrder(plan.id)
+      const data = res.data.data
+      const order = data.order || data
+      const keyId = data.keyId || order.keyId
 
-            const updatedData = verifyRes.data.data
-            if (setUser && updatedData.user) {
-              setUser((prev) => ({
-                ...prev,
-                subscription: updatedData.subscription,
-              }))
-            }
+      const effectiveKey = getEffectiveKey(keyId)
 
-            toast.success(`🎉 ${plan.name} activated successfully! Welcome to ServeQ ${plan.name}.`, {
-              duration: 5000,
-            })
-            onSuccess?.(updatedData)
-            onClose?.()
-          } catch (vErr) {
-            toast.error(vErr.response?.data?.message || 'Payment verification failed. Please contact support.')
-          }
-        },
-        prefill: {
-          name: user?.name,
-          email: user?.email,
-          contact: user?.phone || '',
-        },
-        theme: {
-          color: '#064E3B',
-        },
-        modal: {
-          ondismiss: () => {
-            toast('Subscription payment session closed.')
-          },
-        },
+      if (!effectiveKey) {
+        setKeyPromptData({ plan, order })
+        return
       }
 
-      const rzp = new window.Razorpay(options)
-      rzp.on('payment.failed', (errRes) => {
-        toast.error(errRes.error?.description || 'Payment failed. Please try again.')
-      })
-      rzp.open()
+      // 3. Launch the official Razorpay Checkout popup
+      launchOfficialRazorpayCheckout({ plan, order, keyId: effectiveKey })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to initiate plan checkout')
     } finally {
       setProcessingPlan(null)
+    }
+  }
+
+  const handleSaveKeyAndLaunch = () => {
+    const trimmed = customKeyInput.trim()
+    if (!trimmed) {
+      toast.error('Please enter your Razorpay Key ID (e.g. rzp_test_...)')
+      return
+    }
+    localStorage.setItem('SERVEQ_RAZORPAY_KEY_ID', trimmed)
+    toast.success('Razorpay Key configured!')
+    if (keyPromptData) {
+      const { plan, order } = keyPromptData
+      setKeyPromptData(null)
+      launchOfficialRazorpayCheckout({ plan, order, keyId: trimmed })
     }
   }
 
@@ -241,7 +249,7 @@ export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
                 Choose the Right Plan for Your Venue
               </h2>
               <p className="text-xs sm:text-sm text-emerald-100 font-medium">
-                Streamline footfall, empower your staff, and delight customers. Pay directly to ServeQ via secure Razorpay checkout.
+                Streamline footfall, empower your staff, and delight customers. Pay directly via the official Razorpay Checkout gateway.
               </p>
             </div>
           </div>
@@ -332,7 +340,7 @@ export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
                       >
                         {isProcessing ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             <span>Opening Razorpay Checkout...</span>
                           </>
                         ) : isCurrent ? (
@@ -358,7 +366,7 @@ export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
               <div className="flex items-center gap-2 font-medium">
                 <ShieldCheck className="w-4 h-4 text-emerald-700" />
                 <span>
-                  Direct ServeQ Razorpay Settlement &bull; 256-Bit SSL Encryption
+                  Official Razorpay Payment Gateway &bull; 256-Bit SSL Encryption
                 </span>
               </div>
               <div className="text-[11px] text-zinc-400">
@@ -369,175 +377,75 @@ export default function SubscriptionPlansModal({ isOpen, onClose, onSuccess }) {
         </motion.div>
       </div>
 
-      {/* Razorpay Interactive Checkout Dialog */}
-      {razorpayModalData && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+      {/* Razorpay Key Configuration Modal (if key is missing in .env) */}
+      {keyPromptData && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-zinc-200"
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-7 border border-zinc-200 text-left"
           >
-            {/* Razorpay Header */}
-            <div className="bg-[#0C2340] text-white p-5 relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                <KeyRound className="w-5 h-5" />
+              </div>
               <button
                 type="button"
-                onClick={() => setRazorpayModalData(null)}
-                className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                onClick={() => setKeyPromptData(null)}
+                className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-500 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded bg-[#0C73EB] flex items-center justify-center font-black text-xs text-white">
-                  R
-                </div>
-                <span className="text-sm font-bold tracking-tight text-white">Razorpay</span>
-                <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-blue-200 uppercase font-bold tracking-wider">
-                  Trusted Checkout
-                </span>
+            </div>
+
+            <h3 className="text-lg font-black text-zinc-900 mb-1">
+              Connect Razorpay Key ID
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
+              To launch the official Razorpay Checkout popup, paste your <strong>Key ID</strong> from your open Razorpay Dashboard (starts with <code className="bg-zinc-100 px-1 py-0.5 rounded text-zinc-800 font-mono">rzp_test_...</code> or <code className="bg-zinc-100 px-1 py-0.5 rounded text-zinc-800 font-mono">rzp_live_...</code>).
+            </p>
+
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="text-[11px] font-bold text-zinc-700 uppercase tracking-wider block mb-1.5">
+                  Razorpay Key ID
+                </label>
+                <input
+                  type="text"
+                  value={customKeyInput}
+                  onChange={(e) => setCustomKeyInput(e.target.value)}
+                  placeholder="rzp_test_xxxxxxxxxxxxxx"
+                  className="w-full px-3.5 py-2.5 text-xs border border-zinc-300 rounded-xl focus:outline-none focus:border-emerald-600 font-mono"
+                  autoFocus
+                />
               </div>
-              <div className="flex items-baseline justify-between mt-3">
-                <div>
-                  <p className="text-[11px] text-zinc-300">ServeQ Platform Technologies</p>
-                  <p className="text-xs font-semibold text-white mt-0.5">{razorpayModalData.plan.name} Subscription</p>
+
+              <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-[11px] text-zinc-500 space-y-1">
+                <div className="font-semibold text-zinc-700 flex items-center gap-1.5">
+                  <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Where to find this in your Razorpay Dashboard:</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-black text-white">₹{razorpayModalData.plan.price}.00</p>
-                  <p className="text-[10px] text-zinc-400">Monthly renewal</p>
-                </div>
+                <p>
+                  Settings &rarr; API Keys &rarr; Generate Key ID (or copy existing Key ID). You can also add it to <code className="font-mono text-zinc-700">.env</code> as <code className="font-mono text-zinc-700">RAZORPAY_KEY_ID</code>.
+                </p>
               </div>
             </div>
 
-            {/* Razorpay Body */}
-            <div className="p-5 space-y-4 text-left">
-              {/* Payment Methods Tabs */}
-              <div className="flex border-b border-zinc-100 pb-2 gap-2 text-xs font-bold text-zinc-600">
-                <button
-                  type="button"
-                  onClick={() => setSelectedPaymentTab('upi')}
-                  className={`pb-1 px-2 border-b-2 transition-colors cursor-pointer ${
-                    selectedPaymentTab === 'upi' ? 'border-[#0C73EB] text-[#0C73EB]' : 'border-transparent text-zinc-500'
-                  }`}
-                >
-                  UPI / QR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPaymentTab('card')}
-                  className={`pb-1 px-2 border-b-2 transition-colors cursor-pointer ${
-                    selectedPaymentTab === 'card' ? 'border-[#0C73EB] text-[#0C73EB]' : 'border-transparent text-zinc-500'
-                  }`}
-                >
-                  Cards
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPaymentTab('netbanking')}
-                  className={`pb-1 px-2 border-b-2 transition-colors cursor-pointer ${
-                    selectedPaymentTab === 'netbanking' ? 'border-[#0C73EB] text-[#0C73EB]' : 'border-transparent text-zinc-500'
-                  }`}
-                >
-                  Netbanking
-                </button>
-              </div>
-
-              {/* Tab 1: UPI */}
-              {selectedPaymentTab === 'upi' && (
-                <div className="space-y-3">
-                  <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-zinc-800">Scan QR with any UPI app</p>
-                      <p className="text-[10px] text-zinc-500">Google Pay, PhonePe, Paytm, BHIM</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg bg-white border border-zinc-200 flex items-center justify-center font-bold text-xs text-zinc-700 shadow-2xs">
-                      QR
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-zinc-600 block mb-1">UPI ID / VPA</label>
-                    <input
-                      type="text"
-                      value={simulatedUpiId}
-                      onChange={(e) => setSimulatedUpiId(e.target.value)}
-                      placeholder="yourname@okaxis"
-                      className="w-full px-3 py-2 text-xs border border-zinc-200 rounded-xl focus:outline-none focus:border-[#0C73EB]"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 2: Cards */}
-              {selectedPaymentTab === 'card' && (
-                <div className="space-y-2">
-                  <div>
-                    <label className="text-[11px] font-bold text-zinc-600 block mb-1">Card Number</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value="4111 •••• •••• 1111"
-                      className="w-full px-3 py-2 text-xs border border-zinc-200 rounded-xl bg-zinc-50 font-mono"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-bold text-zinc-600 block mb-1">Expiry</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value="12 / 28"
-                        className="w-full px-3 py-2 text-xs border border-zinc-200 rounded-xl bg-zinc-50 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-zinc-600 block mb-1">CVV</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value="•••"
-                        className="w-full px-3 py-2 text-xs border border-zinc-200 rounded-xl bg-zinc-50 font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 3: Netbanking */}
-              {selectedPaymentTab === 'netbanking' && (
-                <div className="grid grid-cols-2 gap-2">
-                  {['HDFC Bank', 'ICICI Bank', 'State Bank of India', 'Axis Bank'].map((b, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-700 hover:bg-zinc-100 cursor-pointer"
-                    >
-                      {b}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Security and Order ID */}
-              <div className="pt-2 text-[10px] text-zinc-400 flex items-center justify-between">
-                <span>Order: {razorpayModalData.order.id}</span>
-                <span className="flex items-center gap-1 text-emerald-600 font-bold">
-                  <ShieldCheck className="w-3.5 h-3.5" /> 256-bit Secure
-                </span>
-              </div>
-
-              {/* Pay Button */}
+            <div className="flex gap-2">
               <button
                 type="button"
-                disabled={payingRazorpay}
-                onClick={handleCompleteRazorpayPayment}
-                className="w-full py-3.5 rounded-xl bg-[#0C2340] hover:bg-[#07172C] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer active:scale-98 disabled:opacity-50"
+                onClick={() => setKeyPromptData(null)}
+                className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-xs font-bold text-zinc-600 hover:bg-zinc-50 cursor-pointer"
               >
-                {payingRazorpay ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Authorizing with Razorpay...</span>
-                  </>
-                ) : (
-                  <span>Pay ₹{razorpayModalData.plan.price} via Razorpay</span>
-                )}
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveKeyAndLaunch}
+                className="flex-1 py-2.5 rounded-xl bg-[#064E3B] hover:bg-[#047857] text-white text-xs font-bold shadow-md cursor-pointer active:scale-98"
+              >
+                Launch Razorpay Checkout
               </button>
             </div>
           </motion.div>

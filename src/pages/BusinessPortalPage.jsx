@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signup, signin, upgradeToOwner } from '../api/auth.api'
+import { getMyBusinesses } from '../api/business.api'
 import { toast } from 'react-hot-toast'
 import HubCommandCenter from '../components/HubCommandCenter'
 import { useSeo } from '../utils/useSeo'
@@ -82,6 +83,41 @@ export default function BusinessPortalPage() {
 
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin')
   const isCustomer = user && user.role === 'customer'
+
+  const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
+  const isSubscribed = Boolean(
+    user?.subscription?.status === 'ACTIVE' &&
+    user?.subscription?.plan &&
+    user?.subscription?.plan !== 'NONE'
+  )
+
+  // Guided Flow: Owner Login -> Verify Email -> Choose Subscription & Pay -> Onboard -> Dashboard
+  useEffect(() => {
+    if (!isOwnerOrAdmin) return
+
+    // 1. If email not verified, direct to onboarding verification gate
+    if (!isEmailVerified) {
+      navigate('/business/onboarding')
+      return
+    }
+
+    // 2. If subscription not paid, direct to subscription selection gate
+    if (!isSubscribed) {
+      navigate('/business/onboarding')
+      return
+    }
+
+    // 3. If verified & subscribed, check if venue is already launched; if not, direct to finish setup
+    getMyBusinesses()
+      .then((res) => {
+        const list = res.data?.data?.businesses || []
+        const hasCompletedBiz = list.some((b) => b.onboarding?.status === 'COMPLETED')
+        if (!hasCompletedBiz) {
+          navigate('/business/onboarding')
+        }
+      })
+      .catch(() => {})
+  }, [isOwnerOrAdmin, isEmailVerified, isSubscribed, navigate])
 
   const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
 

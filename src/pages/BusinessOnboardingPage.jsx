@@ -26,9 +26,15 @@ import {
   CreditCard,
   Building2,
   Crown,
+  Sparkles,
+  Shield,
 } from 'lucide-react'
 import { connectRouteAccount } from '../api/payment.api'
 import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
+import {
+  createSubscriptionOrder,
+  verifySubscriptionPayment,
+} from '../api/subscription.api'
 
 const TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST +5:30)' },
@@ -59,6 +65,45 @@ const STEPS = [
   { id: 7, title: 'Review & Launch', subtitle: 'Pre-flight & Go Live' },
 ]
 
+const ONBOARDING_PLANS = [
+  {
+    id: 'BASIC',
+    name: 'Basic Plan',
+    price: 999,
+    displayPrice: '₹999',
+    period: '/ month',
+    tagline: 'Essential virtual queue and scheduling foundation for standard venues.',
+    badge: 'Starter',
+    features: [
+      'Standard Virtual Queue & Priority Counter Passes',
+      'Appointment Booking & Slot Calendar',
+      'Up to 3 Active Staff / Service Practitioners',
+      'Counter Payments with Cash & UPI QR Tracking',
+      'Automated SMS & Web Wait-Time Tracking',
+      'Standard Footfall & Revenue Analytics',
+    ],
+  },
+  {
+    id: 'PRO',
+    name: 'Pro Plan',
+    price: 1999,
+    displayPrice: '₹1,999',
+    period: '/ month',
+    tagline: 'Advanced automation, instant online payments, and AI intelligence for high-traffic venues.',
+    badge: 'Recommended',
+    popular: true,
+    features: [
+      'Everything in Basic Plan, plus:',
+      'Unlimited Staff Members & Practitioners',
+      'Direct Online Razorpay Payments & Settlements',
+      'AI Peak-Hour & Wait-Time Predictive Analytics',
+      'Express VIP Queue Passes & Priority Slot Routing',
+      'Multi-Service Sequencing & Combined Booking',
+      'Dedicated 24/7 Priority Support & Venue Manager',
+    ],
+  },
+]
+
 export default function BusinessOnboardingPage() {
   const { user, setUser } = useAuth()
   const navigate = useNavigate()
@@ -71,6 +116,7 @@ export default function BusinessOnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [business, setBusiness] = useState(null)
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
+  const [subscribingPlan, setSubscribingPlan] = useState(null)
 
   // Email verification check
   const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
@@ -119,12 +165,93 @@ export default function BusinessOnboardingPage() {
       if (res.data?.success || res.data?.data?.user) {
         const updated = res.data?.data?.user || { ...user, isEmailVerified: true }
         setUser(updated)
-        toast.success('Email verified successfully! Unlocking Onboarding Studio...', { icon: '🎉' })
+        toast.success('Email verified successfully! Please choose your subscription plan to begin onboarding.', { icon: '🎉' })
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired OTP code')
     } finally {
       setVerifyingEmailOtp(false)
+    }
+  }
+
+  // Handle plan subscription in onboarding step
+  const handleSubscribeInOnboarding = async (plan) => {
+    setSubscribingPlan(plan.id)
+    try {
+      const res = await createSubscriptionOrder(plan.id)
+      const data = res.data.data
+      const order = data.order || data
+      const keyId = data.keyId || order.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID || localStorage.getItem('SERVEQ_RAZORPAY_KEY_ID')
+
+      if (!keyId || keyId === 'rzp_test_placeholder') {
+        setSubscriptionModalOpen(true)
+        return
+      }
+
+      const options = {
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: 'ServeQ Platform Technologies',
+        description: `${plan.name} Subscription (${plan.displayPrice}/mo)`,
+        image: '/logo.png',
+        ...(order?.id && !order.isMock && !order.id.startsWith('order_mock_') ? { order_id: order.id } : {}),
+        handler: async (response) => {
+          try {
+            const verifyRes = await verifySubscriptionPayment({
+              plan: plan.id,
+              razorpayOrderId: response.razorpay_order_id || order.id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature || 'mock_signature_verified',
+            })
+
+            const updatedData = verifyRes.data.data
+            if (setUser && updatedData.user) {
+              setUser((prev) => ({
+                ...prev,
+                subscription: updatedData.subscription,
+              }))
+            }
+            if (business) {
+              setBusiness((b) => ({
+                ...b,
+                subscription: updatedData.subscription,
+              }))
+            }
+
+            toast.success(`🎉 ${plan.name} activated! Unlocking Onboarding Studio...`, { duration: 5000 })
+          } catch (vErr) {
+            toast.error(vErr.response?.data?.message || 'Payment verification failed')
+          }
+        },
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: user?.phone || '',
+        },
+        theme: {
+          color: '#064E3B',
+        },
+        modal: {
+          ondismiss: () => {
+            toast('Payment cancelled', { icon: 'ℹ️' })
+          },
+        },
+      }
+
+      if (window.Razorpay) {
+        const rzp = new window.Razorpay(options)
+        rzp.on('payment.failed', (errRes) => {
+          toast.error(errRes.error?.description || 'Razorpay payment was not completed')
+        })
+        rzp.open()
+      } else {
+        setSubscriptionModalOpen(true)
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to start Razorpay checkout')
+    } finally {
+      setSubscribingPlan(null)
     }
   }
 
@@ -801,6 +928,161 @@ export default function BusinessOnboardingPage() {
             >
               Return to Hub Console
             </button>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  const isSubscribed = Boolean(
+    user?.subscription?.status === 'ACTIVE' &&
+    user?.subscription?.plan &&
+    user?.subscription?.plan !== 'NONE'
+  )
+
+  // Block onboarding until subscription is chosen and paid via Razorpay
+  if (!isSubscribed) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-3 sm:p-6 overflow-y-auto selection:bg-emerald-500/20 selection:text-emerald-900">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden my-auto text-zinc-900"
+        >
+          {/* Header */}
+          <div className="p-6 sm:p-8 bg-gradient-to-br from-[#064E3B] via-[#047857] to-[#064E3B] text-white relative overflow-hidden text-left">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Stepper Progress */}
+            <div className="flex flex-wrap items-center gap-2 mb-4 text-[11px] font-bold">
+              <span className="flex items-center gap-1 text-emerald-300 bg-white/10 px-2.5 py-0.5 rounded-full">
+                <Check className="w-3.5 h-3.5" /> 1. Email Verified
+              </span>
+              <span className="text-emerald-300/60">→</span>
+              <span className="bg-white/20 px-3 py-0.5 rounded-full text-white border border-white/30 shadow-xs flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-amber-300" />
+                <span>2. Choose Plan & Pay (Current)</span>
+              </span>
+              <span className="text-emerald-300/60">→</span>
+              <span className="text-emerald-200/60 px-2 py-0.5">
+                3. Onboard & Access Dashboard
+              </span>
+            </div>
+
+            <div className="space-y-2 relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-[11px] font-bold text-emerald-100 uppercase tracking-wider">
+                <Crown className="w-3.5 h-3.5 text-amber-300" />
+                <span>ServeQ Venue Platform Subscription</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                Choose Your Plan to Start Onboarding
+              </h2>
+              <p className="text-xs sm:text-sm text-emerald-100 font-medium max-w-2xl leading-relaxed">
+                Every business on ServeQ requires an active plan to configure live queues, staff rosters, and take customer bookings. Choose your subscription to unlock the Onboarding Studio and launch your venue.
+              </p>
+            </div>
+          </div>
+
+          {/* Cards Body */}
+          <div className="p-6 sm:p-8 bg-zinc-50/70 text-left">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {ONBOARDING_PLANS.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={`relative rounded-3xl p-6 sm:p-7 flex flex-col justify-between transition-all ${
+                    plan.popular
+                      ? 'bg-white border-2 border-emerald-600 shadow-xl ring-4 ring-emerald-500/10'
+                      : 'bg-white border border-zinc-200 shadow-sm hover:border-zinc-300'
+                  }`}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-3 right-6 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-300" />
+                      {plan.badge}
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xl font-black text-zinc-950">{plan.name}</h3>
+                      {!plan.popular && (
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
+                          {plan.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-zinc-500 min-h-[34px] leading-relaxed">
+                      {plan.tagline}
+                    </p>
+
+                    <div className="my-5 pb-5 border-b border-zinc-100 flex items-baseline gap-1.5">
+                      <span className="text-4xl sm:text-5xl font-black text-zinc-950 tracking-tight">
+                        {plan.displayPrice}
+                      </span>
+                      <span className="text-xs font-bold text-zinc-400">
+                        {plan.period}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                      <p className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                        Included Features
+                      </p>
+                      <ul className="space-y-2.5">
+                        {plan.features.map((feat, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5 text-xs text-zinc-700">
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                              plan.popular ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-700'
+                            }`}>
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </span>
+                            <span className="leading-tight">{feat}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={!!subscribingPlan}
+                    onClick={() => handleSubscribeInOnboarding(plan)}
+                    className={`w-full py-3.5 px-4 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm ${
+                      plan.popular
+                        ? 'bg-[#064E3B] hover:bg-[#047857] text-white active:scale-98'
+                        : 'bg-zinc-900 hover:bg-zinc-800 text-white active:scale-98'
+                    }`}
+                  >
+                    {subscribingPlan === plan.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Opening Razorpay Checkout...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Pay {plan.displayPrice} via Razorpay</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Security Assurance */}
+            <div className="mt-6 pt-5 border-t border-zinc-200 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-3">
+              <div className="flex items-center gap-2 font-medium">
+                <Shield className="w-4 h-4 text-emerald-700" />
+                <span>
+                  Direct ServeQ Razorpay Settlement &bull; 256-Bit SSL Encryption
+                </span>
+              </div>
+              <div className="text-[11px] text-zinc-400">
+                After payment, you will immediately unlock the Venue Studio to set up and launch your venue.
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>

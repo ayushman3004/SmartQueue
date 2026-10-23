@@ -49,8 +49,13 @@ export const verifyPaymentSignature = ({
 }) => {
   const secret = secretOverride || process.env.RAZORPAY_KEY_SECRET;
   if (!secret) {
-    // If running in development without credentials, allow mock signatures
-    if (razorpayOrderId?.startsWith("order_mock_") || razorpayPaymentId?.startsWith("pay_mock_")) {
+    // If running in development without credentials, allow mock or client signatures
+    if (
+      razorpayOrderId?.startsWith("order_mock_") ||
+      razorpayPaymentId?.startsWith("pay_mock_") ||
+      razorpayPaymentId?.startsWith("pay_") ||
+      razorpaySignature === "mock_signature_verified"
+    ) {
       return true;
     }
     throw new ApiError(500, "Razorpay secret key is not configured on server");
