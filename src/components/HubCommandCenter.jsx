@@ -33,7 +33,6 @@ import {
   AlertTriangle,
   Crown,
 } from 'lucide-react'
-import SubscriptionPlansModal from './SubscriptionPlansModal'
 
 export default function HubCommandCenter() {
   const { user, logOut } = useAuth()
@@ -44,7 +43,6 @@ export default function HubCommandCenter() {
   const [fetchingHubs, setFetchingHubs] = useState(true)
   const [registerHubOpen, setRegisterHubOpen] = useState(false)
   const [manageServicesBiz, setManageServicesBiz] = useState(null)
-  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
 
   // Layout & Navigation State
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
@@ -298,22 +296,20 @@ export default function HubCommandCenter() {
             <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
           </button>
 
-          {/* Business Subscription Plans */}
+          {/* Business Subscription */}
           <button
             type="button"
             onClick={() => {
-              setSubscriptionModalOpen(true)
+              navigate('/subscription')
               if (isMobile) setMobileSidebarOpen(false)
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
               <Crown className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="truncate">Subscription Plans</span>
+              <span className="truncate">My Subscription</span>
             </div>
-            <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
-              {user?.subscription?.status === 'ACTIVE' ? `${user.subscription.plan} Plan` : 'Choose'}
-            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
           </button>
 
           {/* Onboarding Wizard Action */}
@@ -405,7 +401,7 @@ export default function HubCommandCenter() {
           </Link>
         </div>
 
-        {/* Center: Network Details Pill */}
+        {/* Center: Network Details */}
         <div className="hidden md:flex items-center gap-3 bg-zinc-50/80 border border-zinc-200/70 px-4 py-1.5 rounded-full">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-bold text-xs text-zinc-900">
@@ -415,32 +411,10 @@ export default function HubCommandCenter() {
           <span className="text-xs font-semibold text-zinc-600">
             {myBusinesses.length} {myBusinesses.length === 1 ? 'Location' : 'Locations'}
           </span>
-          <span className="text-zinc-300">•</span>
-          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
-            {openCount} Live Now
-          </span>
         </div>
 
-        {/* Right: Actions (+ Register New Hub, Wallet, Profile) */}
+        {/* Right: Actions (+ Register New Hub, Profile) */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Quick Register New Hub */}
-          {/* Subscription Plans Quick Action */}
-          <button
-            type="button"
-            onClick={() => setSubscriptionModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-xs bg-[#EAF7EE] text-[#114227] border-[#BDE8CB] hover:bg-[#DDF3E3]"
-          >
-            <Crown className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden sm:inline">
-              {user?.subscription?.status === 'ACTIVE'
-                ? `${user.subscription.plan} Plan (₹${user.subscription.amount}/mo)`
-                : 'Choose Plan (₹999 / ₹1999)'}
-            </span>
-            <span className="sm:hidden">
-              {user?.subscription?.status === 'ACTIVE' ? user.subscription.plan : 'Plans'}
-            </span>
-          </button>
-
           {/* New Hub Action */}
           <button
             type="button"
@@ -481,6 +455,17 @@ export default function HubCommandCenter() {
                 >
                   <User className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Account Profile</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/subscription')
+                    setShowUserMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                >
+                  <Crown className="w-3.5 h-3.5 text-amber-500" />
+                  <span>My Subscription</span>
                 </button>
                 <button
                   type="button"
@@ -562,12 +547,6 @@ export default function HubCommandCenter() {
           {/* Top Title Banner */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/80 pb-6 text-left">
             <div className="space-y-1">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB]">
-                  serveq.tech/business
-                </span>
-              </div>
               <h1 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
                 Hub Command Center
               </h1>
@@ -885,14 +864,6 @@ export default function HubCommandCenter() {
         }}
       />
 
-      {/* Subscription Plans Modal */}
-      <SubscriptionPlansModal
-        isOpen={subscriptionModalOpen}
-        onClose={() => setSubscriptionModalOpen(false)}
-        onSuccess={() => {
-          loadHubs()
-        }}
-      />
     </div>
   )
 }
