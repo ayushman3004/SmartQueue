@@ -113,12 +113,8 @@ export default function DashboardPage() {
     if (!window.confirm("Are you sure you want to cancel this booking? Paid amounts will be refunded to your wallet.")) return
     try {
       const res = await cancelBooking(bookingId)
-      toast.success(res.data.message || "Booking cancelled and refunded")
+      toast.success(res.data.message || "Booking cancelled")
       getMyBookings().then(r => setMyBookings(r.data.data.bookings || []))
-      // Update wallet if refunded
-      if (res.data.data?.refunded) {
-        setUser(prev => prev ? { ...prev, walletBalance: (prev.walletBalance || 0) + res.data.data.refunded } : prev)
-      }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to cancel")
     }
@@ -183,16 +179,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 z-10">
-            <button
-              onClick={() => navigate('/wallet')}
-              className="group flex items-center gap-3 bg-white/10 hover:bg-white/15 border border-white/20 px-4.5 py-2.5 rounded-full backdrop-blur-md transition-all active:scale-[0.97] shadow-sm"
-            >
-              <span className="w-8 h-8 rounded-full bg-teal-500/30 flex items-center justify-center text-xs font-black text-white">₹</span>
-              <div className="text-left">
-                <p className="text-[9px] uppercase font-black text-teal-300 tracking-wider leading-none">Wallet</p>
-                <p className="text-sm font-black text-white mt-0.5">₹{(user?.walletBalance ?? 0).toLocaleString()}</p>
-              </div>
-            </button>
+
 
             <button
               onClick={() => setShowCoupons(!showCoupons)}

@@ -87,8 +87,8 @@ function AdminLoginForm({ onLoginSuccess }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#F8FAF9] font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
-      <div className="w-full max-w-md bg-white border border-zinc-200/90 rounded-3xl p-8 sm:p-10 shadow-xl space-y-6 text-left">
+    <div className="min-h-screen flex items-center justify-center p-4 auth-background font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative overflow-hidden">
+      <div className="w-full max-w-md bg-white border border-zinc-200/90 rounded-3xl p-8 sm:p-10 shadow-xl space-y-6 text-left relative z-10">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] text-[11px] font-black uppercase tracking-wider">
@@ -649,9 +649,9 @@ export default function AdminDashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
+    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative overflow-x-hidden">
       {/* ── TOP STICKY HEADER BAR ── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
         <div className="flex items-center gap-3">
           <button

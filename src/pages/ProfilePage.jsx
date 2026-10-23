@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
@@ -12,7 +12,6 @@ import {
   Building2,
   UserCheck,
   ShieldAlert,
-  Wallet,
   Calendar,
   Ticket,
   ArrowRight,
@@ -30,6 +29,7 @@ import {
   Clock,
   KeyRound,
   Store,
+  Menu,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -38,6 +38,7 @@ import { isValidEmail } from '../utils/validators'
 import { sendEmailOtp, verifyEmailOtp, upgradeToOwner } from '../api/auth.api'
 import VerifyContactModal from '../components/VerifyContactModal'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
+import CustomerSidebar from '../components/CustomerSidebar'
 
 export default function ProfilePage() {
   const { user, setUser, logOut } = useAuth()
@@ -54,6 +55,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [upgradingRole, setUpgradingRole] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+
+  // Mobile drawer state
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // Phone modal
   const [phoneModalOpen, setPhoneModalOpen] = useState(false)
@@ -218,47 +222,64 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 pb-24 font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
-      {/* ── TOP NAV BREADCRUMB BAR ── */}
-      <div className="bg-white border-b border-zinc-200/80 sticky top-0 z-30 px-4 sm:px-6 py-3">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-          <Link
-            to={backPath}
-            className="flex items-center gap-2 text-xs font-bold text-zinc-600 hover:text-zinc-950 transition-colors"
+    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative">
+      {/* ── TOP HEADER BAR ── */}
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="lg:hidden p-2 -ml-1 rounded-xl text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+            aria-label="Toggle navigation menu"
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Return to {isOwner ? 'Hub Console' : isAdmin ? 'Admin Console' : 'Customer Portal'}</span>
+            <Menu className="w-5 h-5" />
+          </button>
+          <Link to={backPath} className="flex items-center group text-decoration-none">
+            <img src="/serveq-logo.png" alt="serveQ" className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105" />
           </Link>
-
-          <div className="flex items-center gap-3">
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                isAdmin
-                  ? 'bg-purple-50 text-purple-700 border-purple-200'
-                  : isOwner
-                  ? 'bg-[#EAF7EE] text-[#114227] border-[#BDE8CB]'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-              }`}
-            >
-              {role.toUpperCase()} ACCOUNT
-            </span>
-
-            <button
-              type="button"
-              onClick={() => {
-                logOut()
-                navigate('/login')
-              }}
-              className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
+          <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-zinc-200">
+            <span className="text-xs font-semibold text-zinc-600">Profile & Security</span>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-6">
+        <div className="flex items-center gap-2.5">
+
+          <span
+            className={`hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+              isAdmin
+                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                : isOwner
+                ? 'bg-[#EAF7EE] text-[#114227] border-[#BDE8CB]'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            }`}
+          >
+            {role.toUpperCase()}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              logOut()
+              navigate('/login')
+            }}
+            className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
+      <div className="flex-1 flex w-full">
+        {/* SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
+        <CustomerSidebar
+          activeNavTab="profile"
+          mobileOpen={mobileSidebarOpen}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
+        />
+
+        {/* MAIN CANVAS */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6 pb-20">
         {/* ── HERO IDENTITY CARD ── */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -840,42 +861,7 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* 2. WALLET & PAYOUTS CARD */}
-            <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB] flex items-center justify-center">
-                    <Wallet className="w-4 h-4" />
-                  </div>
-                  <h4 className="font-black text-xs text-zinc-950 uppercase tracking-wider">
-                    ServeQ Wallet
-                  </h4>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Live Balance
-                </span>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#EAF7EE]/60 border border-[#BDE8CB] flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-zinc-500 tracking-wider">
-                    Current Balance
-                  </p>
-                  <p className="text-2xl font-black text-[#114227] mt-0.5">
-                    ₹{(user?.walletBalance ?? 0).toLocaleString()}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/wallet')}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                >
-                  View Wallet →
-                </button>
-              </div>
-            </div>
-
-            {/* 3. SECURITY & PASSWORD CARD */}
+            {/* SECURITY & PASSWORD CARD */}
             <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-zinc-100 text-zinc-700 flex items-center justify-center">
@@ -919,6 +905,7 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+        </main>
       </div>
 
       {/* Phone OTP Verification Modal */}

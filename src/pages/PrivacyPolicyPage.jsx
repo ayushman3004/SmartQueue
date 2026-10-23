@@ -10,9 +10,9 @@ export default function PrivacyPolicyPage() {
   })
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] text-zinc-900 flex flex-col justify-between selection:bg-teal-500/20 selection:text-teal-900">
+    <div className="min-h-screen app-background text-zinc-900 flex flex-col justify-between selection:bg-emerald-500/20 selection:text-emerald-900 relative">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-[#fafaf9]/85 backdrop-blur-md border-b border-zinc-200/80">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-zinc-200/80">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 no-underline group" aria-label="serveQ Homepage">
             <img src="/serveq-logo.png" alt="serveQ Logo" className="h-7.5 w-auto object-contain transition-transform group-hover:scale-105" />

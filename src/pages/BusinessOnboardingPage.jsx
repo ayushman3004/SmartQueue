@@ -23,7 +23,10 @@ import {
   AlertTriangle,
   ArrowRight,
   ChevronLeft,
+  CreditCard,
+  Building2,
 } from 'lucide-react'
+import { connectRouteAccount } from '../api/payment.api'
 
 const TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST +5:30)' },
@@ -205,10 +208,16 @@ export default function BusinessOnboardingPage() {
   const [paymentConfig, setPaymentConfig] = useState({
     paymentMode: 'PAY_AT_BUSINESS',
     onlinePaymentStatus: 'NOT_STARTED',
-    paymentProvider: 'mock',
+    paymentProvider: 'razorpay',
     providerAccountReference: '',
     upiId: '',
   })
+  const [routeForm, setRouteForm] = useState({
+    legalBusinessName: '',
+    businessType: 'individual',
+    providerAccountReference: '',
+  })
+  const [connectingRoute, setConnectingRoute] = useState(false)
 
   // Sync state from loaded business
   const populateFromBusiness = useCallback((biz) => {
@@ -277,9 +286,14 @@ export default function BusinessOnboardingPage() {
     setPaymentConfig({
       paymentMode: biz.paymentConfiguration?.paymentMode || 'PAY_AT_BUSINESS',
       onlinePaymentStatus: biz.paymentConfiguration?.onlinePaymentStatus || 'NOT_STARTED',
-      paymentProvider: biz.paymentConfiguration?.paymentProvider || 'mock',
+      paymentProvider: biz.paymentConfiguration?.paymentProvider || 'razorpay',
       providerAccountReference: biz.paymentConfiguration?.providerAccountReference || '',
       upiId: biz.paymentConfiguration?.upiId || '',
+    })
+    setRouteForm({
+      legalBusinessName: biz.paymentConfiguration?.legalBusinessName || biz.name || '',
+      businessType: biz.paymentConfiguration?.businessType || 'individual',
+      providerAccountReference: biz.paymentConfiguration?.providerAccountReference || '',
     })
 
     // Current step
@@ -784,9 +798,9 @@ export default function BusinessOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fafaf9] flex items-center justify-center p-4">
+      <div className="min-h-screen app-background flex items-center justify-center p-4">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-zinc-600 font-bold text-xs uppercase tracking-widest">
             Preparing Onboarding Studio...
           </p>
@@ -1817,13 +1831,18 @@ export default function BusinessOnboardingPage() {
               </div>
 
               {/* Provider & Sub-Merchant Configuration */}
-              <div className="p-5 rounded-3xl border border-zinc-200 bg-white space-y-4">
-                <div className="flex items-center justify-between">
+              <div className="p-5 rounded-3xl border border-zinc-200 bg-white space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h4 className="text-sm font-black text-zinc-950">Provider & Verification Status</h4>
-                    <p className="text-xs text-zinc-500">Marketplace provider arrangement status</p>
+                    <h4 className="text-sm font-black text-zinc-950 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-teal-600" />
+                      Razorpay Route Marketplace Settlement
+                    </h4>
+                    <p className="text-xs text-zinc-500">
+                      Connect your Razorpay account to receive online customer bookings directly.
+                    </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                  <span className={`self-start sm:self-auto px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
                     paymentConfig.onlinePaymentStatus === 'ACTIVE'
                       ? 'bg-emerald-100 text-emerald-800'
                       : paymentConfig.onlinePaymentStatus === 'PENDING_VERIFICATION'
@@ -1834,25 +1853,111 @@ export default function BusinessOnboardingPage() {
                   </span>
                 </div>
 
+                {(paymentConfig.paymentMode === 'ONLINE' || paymentConfig.paymentMode === 'BOTH') && (
+                  <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-4">
+                    <div className="text-xs font-bold text-zinc-800 flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-zinc-600" />
+                      Razorpay Route Linked Account Details
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div className="space-y-1">
+                        <label className="font-bold text-zinc-700">Legal Business Name</label>
+                        <input
+                          type="text"
+                          placeholder={step1.name || "Business Legal Name"}
+                          value={routeForm.legalBusinessName}
+                          onChange={(e) => setRouteForm({ ...routeForm, legalBusinessName: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white font-semibold focus:outline-none focus:border-teal-600"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-zinc-700">Business Structure</label>
+                        <select
+                          value={routeForm.businessType}
+                          onChange={(e) => setRouteForm({ ...routeForm, businessType: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white font-semibold focus:outline-none focus:border-teal-600 cursor-pointer"
+                        >
+                          <option value="individual">Individual / Proprietorship</option>
+                          <option value="partnership">Partnership</option>
+                          <option value="private_limited">Private Limited</option>
+                          <option value="public_limited">Public Limited</option>
+                          <option value="llp">Limited Liability Partnership (LLP)</option>
+                          <option value="trust_society">Trust / Society / NGO</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1 sm:col-span-2">
+                        <label className="font-bold text-zinc-700">
+                          Razorpay Route Account ID <span className="font-normal text-zinc-400">(e.g. acc_...)</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="acc_... (leave blank to generate test account)"
+                          value={routeForm.providerAccountReference}
+                          onChange={(e) => {
+                            setRouteForm({ ...routeForm, providerAccountReference: e.target.value })
+                            setPaymentConfig({ ...paymentConfig, providerAccountReference: e.target.value })
+                          }}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white font-semibold focus:outline-none focus:border-teal-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between">
+                      <div className="text-[11px] text-zinc-500">
+                        {paymentConfig.providerAccountReference ? (
+                          <span className="text-emerald-700 font-semibold">
+                            Connected Account: {paymentConfig.providerAccountReference}
+                          </span>
+                        ) : (
+                          'Click connect to link your Razorpay Route sub-merchant account.'
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={connectingRoute}
+                        onClick={async () => {
+                          if (!business?._id) return
+                          setConnectingRoute(true)
+                          try {
+                            const res = await connectRouteAccount(business._id, {
+                              legalBusinessName: routeForm.legalBusinessName || step1.name,
+                              businessType: routeForm.businessType,
+                              providerAccountReference: routeForm.providerAccountReference,
+                            })
+                            const updated = res.data.data.business
+                            setBusiness(updated)
+                            setPaymentConfig((prev) => ({
+                              ...prev,
+                              onlinePaymentStatus: updated.paymentConfiguration?.onlinePaymentStatus || 'ACTIVE',
+                              providerAccountReference: updated.paymentConfiguration?.providerAccountReference || routeForm.providerAccountReference,
+                              paymentProvider: 'razorpay',
+                            }))
+                            toast.success('Razorpay Route account connected & active!')
+                          } catch (err) {
+                            toast.error(err.response?.data?.message || 'Failed to connect Razorpay account')
+                          } finally {
+                            setConnectingRoute(false)
+                          }
+                        }}
+                        className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {connectingRoute ? 'Connecting...' : paymentConfig.providerAccountReference ? 'Re-Verify Account' : 'Connect Razorpay Route'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-700">Venue UPI VPA (Optional for Pay-At-Business QR)</label>
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="font-bold text-zinc-700">Venue UPI VPA (Optional for Pay-at-Counter QR Display)</label>
                     <input
                       type="text"
                       placeholder="e.g. bladeandshears@okhdfcbank"
                       value={paymentConfig.upiId}
                       onChange={(e) => setPaymentConfig({ ...paymentConfig, upiId: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 font-semibold focus:outline-none focus:border-teal-600"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-zinc-700">Provider Account Reference</label>
-                    <input
-                      type="text"
-                      placeholder="acc_merchant_reference (optional)"
-                      value={paymentConfig.providerAccountReference}
-                      onChange={(e) => setPaymentConfig({ ...paymentConfig, providerAccountReference: e.target.value })}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 font-semibold focus:outline-none focus:border-teal-600"
                     />
                   </div>
@@ -1864,8 +1969,9 @@ export default function BusinessOnboardingPage() {
                     <span>Compliant Multi-Business Architecture</span>
                   </div>
                   <p className="text-teal-800 leading-relaxed font-normal">
-                    ServeQ never asks for or stores net banking passwords, UPI PINs, CVVs, or card credentials.
-                    Business onboarding can be completed immediately with <strong>Pay at Business</strong>. Online verification does not block your launch.
+                    ServeQ routes online customer payments directly to your linked Razorpay account.
+                    ServeQ never stores bank account credentials, cards, CVVs, or UPI PINs.
+                    You can launch immediately with <strong>Pay at Business</strong> even if online verification is pending.
                   </p>
                 </div>
               </div>

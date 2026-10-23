@@ -35,7 +35,6 @@ export default function Navbar() {
 
   const navLinks = user ? [
     { name: 'Dashboard', path: user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/business' : '/customers' },
-    { name: 'Wallet', path: '/wallet' },
     { name: 'Profile', path: '/profile' },
     ...(user?.role === 'admin' ? [{ name: 'Admin Portal', path: '/admin' }] : []),
   ] : []
@@ -81,17 +80,6 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             {user ? (
               <>
-                <Link 
-                  to="/wallet"
-                  className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/80 hover:border-teal-300 transition-all no-underline group active:scale-[0.98]"
-                >
-                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Wallet</span>
-                  <span className="text-xs font-black text-teal-700 group-hover:text-teal-800">
-                    ₹{(user.walletBalance ?? 0).toLocaleString()}
-                  </span>
-                </Link>
-
                 <div className="flex items-center gap-1.5">
                   <Link 
                     to="/profile" 
@@ -185,11 +173,7 @@ export default function Navbar() {
                 </Link>
               ))}
               {user && (
-                <div className="pt-3 border-t border-zinc-100 flex items-center justify-between px-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-zinc-500">Wallet:</span>
-                    <span className="text-sm font-black text-teal-700">₹{user.walletBalance}</span>
-                  </div>
+                <div className="pt-3 border-t border-zinc-100 flex items-center justify-end px-2">
                   <button 
                     onClick={() => { handleLogout(); setMobileMenuOpen(false); }} 
                     className="text-rose-600 font-extrabold uppercase text-[10px] tracking-widest px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100"

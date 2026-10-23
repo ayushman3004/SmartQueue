@@ -34,11 +34,6 @@ export const SocketProvider = ({ children, setUser, user }) => {
       console.error("Socket connection error:", err.message);
     };
 
-    const onWalletUpdate = ({ balance }) => {
-      console.log("Wallet update received:", balance);
-      setUser(prev => prev ? { ...prev, walletBalance: balance } : prev);
-    };
-
     const onQueueJoined = (data) => {
       if (data.userId === userRef.current?._id) toast.success("You joined the queue successfully", { id: "q-join" });
       else toast("Someone joined the queue", { id: "q-join-other" });
@@ -88,7 +83,6 @@ export const SocketProvider = ({ children, setUser, user }) => {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
-    socket.on("wallet:update", onWalletUpdate);
     socket.on("queue:joined", onQueueJoined);
     socket.on("queue:left", onQueueLeft);
     socket.on("queue:updated", onQueueUpdated);
@@ -105,7 +99,6 @@ export const SocketProvider = ({ children, setUser, user }) => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
-      socket.off("wallet:update", onWalletUpdate);
       socket.off("queue:joined", onQueueJoined);
       socket.off("queue:left", onQueueLeft);
       socket.off("queue:updated", onQueueUpdated);

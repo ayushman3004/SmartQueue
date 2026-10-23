@@ -21,7 +21,6 @@ import {
   ChevronDown,
   ExternalLink,
   Store,
-  Wallet,
   HelpCircle,
   LogOut,
   User,
@@ -32,7 +31,9 @@ import {
   Lock,
   Compass,
   AlertTriangle,
+  Crown,
 } from 'lucide-react'
+import SubscriptionPlansModal from './SubscriptionPlansModal'
 
 export default function HubCommandCenter() {
   const { user, logOut } = useAuth()
@@ -43,6 +44,7 @@ export default function HubCommandCenter() {
   const [fetchingHubs, setFetchingHubs] = useState(true)
   const [registerHubOpen, setRegisterHubOpen] = useState(false)
   const [manageServicesBiz, setManageServicesBiz] = useState(null)
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
 
   // Layout & Navigation State
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
@@ -299,21 +301,21 @@ export default function HubCommandCenter() {
             <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
           </button>
 
-          {/* Venue Wallet */}
+          {/* Business Subscription Plans */}
           <button
             type="button"
             onClick={() => {
-              navigate('/wallet')
+              setSubscriptionModalOpen(true)
               if (isMobile) setMobileSidebarOpen(false)
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <Wallet className="w-4 h-4 text-teal-600 shrink-0" />
-              <span className="truncate">Venue Wallet</span>
+              <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+              <span className="truncate">Subscription Plans</span>
             </div>
             <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
-              ₹{(user?.walletBalance ?? 0).toLocaleString()}
+              {user?.subscription?.status === 'ACTIVE' ? `${user.subscription.plan} Plan` : 'Choose'}
             </span>
           </button>
 
@@ -380,9 +382,9 @@ export default function HubCommandCenter() {
   )
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans">
+    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-hidden">
       {/* ── TOP STICKY HEADER BAR ── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
         <div className="flex items-center gap-3">
           <button
@@ -425,6 +427,24 @@ export default function HubCommandCenter() {
         {/* Right: Actions (+ Register New Hub, Wallet, Profile) */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Quick Register New Hub */}
+          {/* Subscription Plans Quick Action */}
+          <button
+            type="button"
+            onClick={() => setSubscriptionModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-xs bg-[#EAF7EE] text-[#114227] border-[#BDE8CB] hover:bg-[#DDF3E3]"
+          >
+            <Crown className="w-3.5 h-3.5 text-amber-500" />
+            <span className="hidden sm:inline">
+              {user?.subscription?.status === 'ACTIVE'
+                ? `${user.subscription.plan} Plan (₹${user.subscription.amount}/mo)`
+                : 'Choose Plan (₹999 / ₹1999)'}
+            </span>
+            <span className="sm:hidden">
+              {user?.subscription?.status === 'ACTIVE' ? user.subscription.plan : 'Plans'}
+            </span>
+          </button>
+
+          {/* New Hub Action */}
           <button
             type="button"
             onClick={handleRegisterHubClick}
@@ -433,16 +453,6 @@ export default function HubCommandCenter() {
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Register New Hub</span>
             <span className="sm:hidden">New Hub</span>
-          </button>
-
-          {/* Wallet */}
-          <button
-            type="button"
-            onClick={() => navigate('/wallet')}
-            className="hidden sm:flex px-3.5 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] hover:bg-[#DDF3E3] text-xs font-bold text-[#114227] items-center gap-2 transition-all shadow-xs cursor-pointer"
-          >
-            <Wallet className="w-3.5 h-3.5 text-[#114227]" />
-            <span>₹{(user?.walletBalance ?? 0).toLocaleString()}</span>
           </button>
 
           {/* Profile Menu */}
@@ -485,17 +495,6 @@ export default function HubCommandCenter() {
                 >
                   <Store className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Customer Portal</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigate('/wallet')
-                    setShowUserMenu(false)
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
-                >
-                  <Wallet className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Wallet & Payouts</span>
                 </button>
                 <div className="border-t border-zinc-100 my-1" />
                 <button
@@ -624,6 +623,42 @@ export default function HubCommandCenter() {
               </button>
             </div>
           )}
+
+          {/* Business Subscription Tier Card */}
+          <div className="bg-gradient-to-r from-emerald-950 via-[#064E3B] to-[#0D361F] text-white rounded-3xl p-5 sm:p-7 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5 text-left border border-emerald-700/50">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 space-y-1.5 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-wider text-emerald-200 border border-white/15">
+                <Crown className="w-3 h-3 text-amber-300" />
+                <span>
+                  {user?.subscription?.status === 'ACTIVE'
+                    ? `Active ${user.subscription.plan} Plan`
+                    : 'ServeQ Business Tier Selection'}
+                </span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                {user?.subscription?.status === 'ACTIVE'
+                  ? `Your venue is on the ${user.subscription.plan} Plan (₹${user.subscription.amount}/month)`
+                  : 'Choose Your Venue Plan: Basic Plan (₹999) or Pro Plan (₹1,999)'}
+              </h3>
+              <p className="text-xs sm:text-sm text-emerald-100 font-medium">
+                {user?.subscription?.status === 'ACTIVE'
+                  ? 'Active subscription running. All queue workflows, direct settlements, and venue analytics are enabled.'
+                  : 'Direct Razorpay checkout to ServeQ. Unlock online payments, multi-service sequencing, AI analytics, and unlimited practitioners.'}
+              </p>
+            </div>
+
+            <div className="relative z-10 flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSubscriptionModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-white text-[#064E3B] hover:bg-emerald-50 font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>{user?.subscription?.status === 'ACTIVE' ? 'Switch / View Plans' : 'Select Plan & Pay'}</span>
+              </button>
+            </div>
+          </div>
 
           {/* In-Progress Onboarding Notification Banner */}
           {myBusinesses.some((b) => b.onboarding?.status === 'IN_PROGRESS') && (
@@ -890,6 +925,15 @@ export default function HubCommandCenter() {
           )
           setManageServicesBiz(null)
           toast.success('Services updated successfully!')
+        }}
+      />
+
+      {/* Subscription Plans Modal */}
+      <SubscriptionPlansModal
+        isOpen={subscriptionModalOpen}
+        onClose={() => setSubscriptionModalOpen(false)}
+        onSuccess={() => {
+          loadHubs()
         }}
       />
     </div>

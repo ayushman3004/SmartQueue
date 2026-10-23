@@ -97,9 +97,66 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // ── Payment & Settlement Details ──────────────────
+    paymentMethod: {
+      type: String,
+      enum: ["online", "counter", "WALLET", "PAY_AT_BUSINESS"],
+      default: "counter",
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed", "refunded", "partially_refunded"],
+      default: "pending",
+    },
+    amount: {
+      type: Number,
+      default: 0,
+    },
+    currency: {
+      type: String,
+      default: "INR",
+    },
+    razorpayOrderId: {
+      type: String,
+      default: "",
+    },
+    razorpayPaymentId: {
+      type: String,
+      default: "",
+    },
+    razorpaySignature: {
+      type: String,
+      default: "",
+    },
+    paymentFailureReason: {
+      type: String,
+      default: "",
+    },
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+    collectedByStaff: {
+      type: Boolean,
+      default: false,
+    },
+    collectedAt: {
+      type: Date,
+      default: null,
+    },
+    refundReference: {
+      type: String,
+      default: "",
+    },
+    refundedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
+bookingSchema.index({ razorpayOrderId: 1 }, { sparse: true });
 
 // Compound indexes for efficient queries
 bookingSchema.index({ businessId: 1, startTime: 1 });

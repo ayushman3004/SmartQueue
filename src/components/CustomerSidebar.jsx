@@ -9,10 +9,12 @@ import {
   Clock,
   HelpCircle,
   Gift,
-  Wallet,
   X,
+  User,
+  Building2,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
 
 export default function CustomerSidebar({
   activeNavTab,
@@ -25,15 +27,36 @@ export default function CustomerSidebar({
   onCloseMobile = () => {},
 }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/customers', count: null },
-    { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: '/customers?category=clinic', count: clinicsCount },
-    { id: 'salons', label: 'Salons', icon: Scissors, route: '/customers?category=salon', count: salonsCount },
-    { id: 'my-queues', label: 'My Queues', icon: Ticket, route: '/queue', count: myActiveQueuesCount },
-    { id: 'appointments', label: 'Appointments', icon: Calendar, route: '/booking', count: myBookingsCount },
-    { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
-  ]
+  const isOwner = user?.role === 'owner'
+  const isAdmin = user?.role === 'admin'
+
+  const navItems = isOwner
+    ? [
+        { id: 'dashboard', label: 'Hub Console', icon: Building2, route: '/business', count: null },
+        { id: 'my-queues', label: 'Live Queues', icon: Ticket, route: '/queue', count: myActiveQueuesCount },
+        { id: 'appointments', label: 'Appointments', icon: Calendar, route: '/booking', count: myBookingsCount },
+        { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
+        { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
+      ]
+    : isAdmin
+    ? [
+        { id: 'dashboard', label: 'Admin Console', icon: LayoutDashboard, route: '/admin', count: null },
+        { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: '/customers?category=clinic', count: clinicsCount },
+        { id: 'salons', label: 'Salons', icon: Scissors, route: '/customers?category=salon', count: salonsCount },
+        { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
+        { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
+      ]
+    : [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/customers', count: null },
+        { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: '/customers?category=clinic', count: clinicsCount },
+        { id: 'salons', label: 'Salons', icon: Scissors, route: '/customers?category=salon', count: salonsCount },
+        { id: 'my-queues', label: 'My Queues', icon: Ticket, route: '/queue', count: myActiveQueuesCount },
+        { id: 'appointments', label: 'Appointments', icon: Calendar, route: '/booking', count: myBookingsCount },
+        { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
+        { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
+      ]
 
   const handleItemClick = (item) => {
     if (onSelectTab) {
@@ -81,17 +104,6 @@ export default function CustomerSidebar({
 
       {/* Bottom Sidebar Actions */}
       <div className="pt-4 border-t border-zinc-100 space-y-1">
-        <button
-          type="button"
-          onClick={() => {
-            navigate('/wallet')
-            if (isMobile) onCloseMobile()
-          }}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
-        >
-          <Wallet className="w-4 h-4 text-emerald-600" />
-          <span>Wallet & Balances</span>
-        </button>
         <button
           type="button"
           onClick={() => {

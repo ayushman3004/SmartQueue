@@ -9,6 +9,7 @@ import {
   myBookings,
   businessBookings,
   cancel,
+  collectPayment,
 } from "./booking.controller.js";
 import { protect, allowRoles } from "../../middleware/auth.middleware.js";
 
@@ -28,5 +29,6 @@ router.get("/:businessId/all", protect, allowRoles("owner", "admin"), businessBo
 router.post("/extend/:id", protect, allowRoles("owner", "admin"), extend);
 router.patch("/:id/start", protect, allowRoles("owner", "admin"), startService);
 router.patch("/:id/complete", protect, allowRoles("owner", "admin"), completeService);
+router.patch("/:id/collect-payment", protect, allowRoles("owner", "admin"), collectPayment);
 
 export default router;

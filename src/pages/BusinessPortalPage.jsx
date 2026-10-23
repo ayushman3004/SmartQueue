@@ -181,8 +181,8 @@ export default function BusinessPortalPage() {
   // ─────────────────────────────────────────────────────────────
   if (isCustomer) {
     return (
-      <div className="min-h-screen bg-[#f4f7f6] text-zinc-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[500px] bg-teal-400/10 blur-[140px] pointer-events-none" />
+      <div className="min-h-screen auth-background text-zinc-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[500px] bg-emerald-400/12 blur-[140px] pointer-events-none" />
 
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -249,10 +249,10 @@ export default function BusinessPortalPage() {
   // RENDER: Unauthenticated Hub Owner Portal (serveq.tech/business)
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f4f7f6] text-zinc-900 relative overflow-x-hidden flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen app-background-glow text-zinc-900 relative overflow-x-hidden flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
       {/* Background Soft Glows */}
-      <div className="fixed top-0 left-1/4 w-96 h-96 bg-teal-400/10 rounded-full blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-emerald-400/10 rounded-full blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed top-0 left-1/4 w-[450px] h-[450px] bg-emerald-400/12 rounded-full blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed bottom-0 right-1/4 w-[450px] h-[450px] bg-teal-400/12 rounded-full blur-[140px] pointer-events-none -z-10" />
 
       {/* Top Header */}
       <header className="max-w-5xl mx-auto w-full mb-6">

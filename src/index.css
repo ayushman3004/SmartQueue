@@ -3,21 +3,29 @@
 
 /* ─── Modern Architectural Design Tokens ────────────────────────── */
 :root {
-  --bg-deep: #fafaf9; /* Warm alabaster zinc-50 */
+  --bg-deep: #f7fcf9; /* Pale green-white */
   --bg-base: #ffffff; /* Pure white */
   --bg-subtle: #f4f4f5; /* Zinc-100 */
   --bg-card: #f8fafc; /* Slate-50 */
   --bg-accent: #e4e4e7; /* Zinc-200 */
+
+  /* ServeQ Brand Palette Tokens */
+  --brand-forest: #064e3b;
+  --brand-primary: #047857;
+  --brand-mint: #d1fae5;
+  --brand-soft-mint: #ecfdf5;
+  --brand-pale: #f7fcf9;
+  --brand-white: #ffffff;
   
   --border: rgba(24, 24, 27, 0.07);
   --border-subtle: rgba(24, 24, 27, 0.04);
   --border-bright: rgba(24, 24, 27, 0.14);
-  --border-glow: rgba(13, 148, 136, 0.25);
+  --border-glow: rgba(4, 120, 87, 0.25);
   
-  --primary: #0d9488; /* Teal-600 */
-  --primary-hover: #0f766e; /* Teal-700 */
-  --primary-light: #f0fdfa; /* Teal-50 */
-  --primary-faint: rgba(13, 148, 136, 0.08);
+  --primary: #047857; /* Primary Emerald Green */
+  --primary-hover: #064e3b; /* Deep Forest Green */
+  --primary-light: #ecfdf5; /* Soft Mint */
+  --primary-faint: rgba(4, 120, 87, 0.08);
   
   --text-primary: #09090b; /* Deepest zinc-950 */
   --text-secondary: #52525b; /* Zinc-600 */
@@ -231,8 +239,94 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
 
 .container { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
 
+/* ─── Consistent Premium Background Design System ──────────────── */
+
+/* 1. Base App Background (Clean, subtle mint gradients) */
+.app-background {
+  background-color: var(--brand-pale);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 8% -5%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 45% at 95% 15%, rgba(52, 211, 153, 0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(209, 250, 229, 0.35) 0%, transparent 60%),
+    linear-gradient(135deg, #ffffff 0%, #f7fcf9 55%, #ecfdf5 100%);
+  background-attachment: fixed;
+}
+
+/* 2. Dashboard App Background Glow (Richer ambient depth for data-heavy pages) */
+.app-background-glow {
+  background-color: var(--brand-pale);
+  background-image:
+    radial-gradient(ellipse 85% 55% at 5% 0%, rgba(16, 185, 129, 0.10) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 50% at 95% 12%, rgba(52, 211, 153, 0.11) 0%, transparent 60%),
+    radial-gradient(ellipse 65% 45% at 50% 50%, rgba(209, 250, 229, 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 75% 45% at 85% 95%, rgba(16, 185, 129, 0.07) 0%, transparent 60%),
+    linear-gradient(135deg, #ffffff 0%, #f7fcf9 45%, #ecfdf5 100%);
+  background-attachment: fixed;
+}
+
+/* 3. Auth Background (Rich ambient glows behind split panels & modals) */
+.auth-background {
+  background-color: #f4f7f6;
+  background-image:
+    radial-gradient(ellipse 85% 65% at 15% 10%, rgba(16, 185, 129, 0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 80% 65% at 85% 90%, rgba(52, 211, 153, 0.14) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 55% at 50% 35%, rgba(209, 250, 229, 0.35) 0%, transparent 70%),
+    linear-gradient(145deg, #ffffff 0%, #f7fcf9 45%, #ecfdf5 100%);
+  background-attachment: fixed;
+}
+
+/* 4. Surface Card (Modern floating card surface with crisp border & subtle shadow) */
+.surface-card {
+  background-color: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(228, 231, 236, 0.9);
+  box-shadow: 0 1px 3px rgba(6, 78, 59, 0.03), 0 8px 24px -6px rgba(6, 78, 59, 0.04);
+}
+
+/* 5. Ambient Blurred Orbs */
+.ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  filter: blur(130px);
+  -webkit-filter: blur(130px);
+  z-index: 0;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+}
+
+.ambient-orb-primary {
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(4, 120, 87, 0.06) 70%, transparent 100%);
+}
+
+.ambient-orb-mint {
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.24) 0%, rgba(209, 250, 229, 0.1) 70%, transparent 100%);
+}
+
+.ambient-orb-soft {
+  background: radial-gradient(circle, rgba(167, 243, 208, 0.3) 0%, rgba(236, 253, 245, 0.15) 70%, transparent 100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes orb-float-slow {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(15px, -20px, 0) scale(1.05); }
+  }
+  @keyframes orb-float-reverse {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(-20px, 15px, 0) scale(0.95); }
+  }
+  .animate-orb-slow {
+    animation: orb-float-slow 22s ease-in-out infinite;
+  }
+  .animate-orb-reverse {
+    animation: orb-float-reverse 26s ease-in-out infinite;
+  }
+}
+
 .page-wrapper {
-  background-color: var(--bg-deep);
+  background-color: var(--brand-pale);
   min-height: 100vh;
   min-height: 100dvh;
   position: relative;
@@ -245,4 +339,5 @@ button:disabled, input:disabled, select:disabled, textarea:disabled {
   padding-top: 5.5rem;
   padding-bottom: 4rem;
 }
+
 

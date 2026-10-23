@@ -1,7 +1,6 @@
-import axios from "./axios";
-
-export const getBalance = () => axios.get("/wallet/balance");
-export const addMoney = (amount) => axios.post("/wallet/add", { amount });
-export const deductMoney = (amount) => axios.post("/wallet/deduct", { amount });
-export const createDepositOrder = (amount) => axios.post("/wallet/order", { amount });
-export const verifyDeposit = (data) => axios.post("/wallet/verify", data);
+// Deprecated: The customer wallet system has been retired in favor of direct online and counter payments.
+export const getBalance = () => Promise.resolve({ data: { data: { balance: 0 } } });
+export const addMoney = () => Promise.reject(new Error("Wallet system has been retired"));
+export const deductMoney = () => Promise.reject(new Error("Wallet system has been retired"));
+export const createDepositOrder = () => Promise.reject(new Error("Wallet system has been retired"));
+export const verifyDeposit = () => Promise.reject(new Error("Wallet system has been retired"));

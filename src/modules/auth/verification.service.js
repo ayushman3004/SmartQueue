@@ -19,6 +19,7 @@ const sanitizeUser = (user) => ({
   isEmailVerified: Boolean(user.isEmailVerified || user.authProvider === "google"),
   bio: user.bio || "",
   location: user.location || "",
+  subscription: user.subscription || { plan: "NONE", status: "INACTIVE", amount: 0 },
 });
 
 /**

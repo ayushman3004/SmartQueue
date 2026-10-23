@@ -103,10 +103,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-10 bg-[#f4f7f6] relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-10 auth-background relative overflow-hidden">
       {/* Background Soft Ambient Lights */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-teal-400/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-400/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute -top-10 left-1/4 w-[480px] h-[480px] bg-emerald-400/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute -bottom-10 right-1/4 w-[480px] h-[480px] bg-teal-400/15 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Main Split Card Container */}
       <div className="w-full max-w-4xl bg-white rounded-[32px] sm:rounded-[36px] shadow-2xl shadow-zinc-900/5 border border-zinc-200/80 overflow-hidden relative z-10">

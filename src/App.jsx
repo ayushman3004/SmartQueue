@@ -17,7 +17,6 @@ import QueuePage from './pages/QueuePage'
 import BookingPage from './pages/BookingPage'
 import BusinessDashboard from './pages/BusinessDashboard'
 import AuthCallback from './pages/AuthCallback'
-import WalletPage from './pages/WalletPage'
 import AdminDashboard from './pages/AdminDashboard'
 import ProfilePage from './pages/ProfilePage'
 import BusinessPortalPage from './pages/BusinessPortalPage'
@@ -26,6 +25,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsPage from './pages/TermsPage'
 import HelpSupportPage from './pages/HelpSupportPage'
 import Footer from './components/Footer'
+import AmbientBackground from './components/AmbientBackground'
 import NotFoundPage from './pages/NotFoundPage'
 
 const LoadingScreen = () => (
@@ -147,6 +147,7 @@ export default function App() {
     location.pathname === '/admin' ||
     location.pathname === '/support' ||
     location.pathname === '/help' ||
+    location.pathname === '/profile' ||
     (location.pathname.startsWith('/business/') && location.pathname.includes('/manage'))
 
   const isLoginPage =
@@ -157,8 +158,25 @@ export default function App() {
     location.pathname === '/coming-soon' ||
     (!user && location.pathname === '/')
 
+  const bgVariant = isComingSoonPage
+    ? null
+    : isLoginPage
+    ? 'auth'
+    : isCustomerDashboard
+    ? 'glow'
+    : 'default'
+
+  const bgClass = isComingSoonPage
+    ? ''
+    : isLoginPage
+    ? 'auth-background'
+    : isCustomerDashboard
+    ? 'app-background-glow'
+    : 'app-background'
+
   return (
-    <div className="page-wrapper">
+    <div className={`page-wrapper ${bgClass}`}>
+      {!isComingSoonPage && <AmbientBackground variant={bgVariant} />}
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -277,11 +295,7 @@ export default function App() {
           />
           <Route
             path="/wallet"
-            element={
-              <ProtectedRoute>
-                <WalletPage />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/profile" replace />}
           />
           <Route
             path="/profile"

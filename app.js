@@ -64,7 +64,13 @@ app.get("/live", getLiveness);
 app.get("/ready", getReadiness);
 
 
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(cookieParser());
 app.use(passport.initialize());
 

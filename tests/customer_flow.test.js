@@ -573,10 +573,12 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
 
     const origBizFindById = Business.findById;
     const origQueueFindOne = Queue.findOne;
+    const origBookingFindOne = Booking.findOne;
 
     try {
       Business.findById = async () => mockBusiness;
       Queue.findOne = async () => mockQueue;
+      Booking.findOne = () => ({ sort: async () => null });
 
       await callNext(fakeBizId, ownerId, "owner");
 
@@ -588,6 +590,7 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
       assert.equal(mockBusiness.staff[0].customersServed, 6, "Should increment staff customersServed");
     } finally {
       Booking.create = origBookingCreate;
+      Booking.findOne = origBookingFindOne;
       Business.findById = origBizFindById;
       Queue.findOne = origQueueFindOne;
     }

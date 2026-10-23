@@ -4,7 +4,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   MapPin,
   Search,
-  Wallet,
   Bell,
   ChevronDown,
   ChevronRight,
@@ -43,6 +42,7 @@ import {
   getMyBookings,
   cancelBooking,
 } from '../api/booking.api'
+import { createBookingOrder, verifyPayment } from '../api/payment.api'
 import { validateCoupon } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import { STAFF_PRESETS } from '../utils/servicePresets'
@@ -143,9 +143,12 @@ export default function BookingPage() {
       const biz = bRes.data.data.business
       setBusiness(biz)
 
-      const pMode = biz.paymentConfiguration?.paymentMode || 'PAY_AT_BUSINESS'
-      if (pMode === 'ONLINE') {
-        setPaymentChoice('WALLET')
+      const isOnlineActive =
+        biz.paymentConfiguration?.onlinePaymentStatus === 'ACTIVE' &&
+        ['ONLINE', 'BOTH'].includes(biz.paymentConfiguration?.paymentMode)
+
+      if (biz.paymentConfiguration?.paymentMode === 'ONLINE' && isOnlineActive) {
+        setPaymentChoice('ONLINE')
       } else {
         setPaymentChoice('PAY_AT_BUSINESS')
       }
@@ -247,6 +250,16 @@ export default function BookingPage() {
       return
     }
     setSelectedSlot(slot)
+    const canOnline =
+      (business?.paymentConfiguration?.paymentMode === 'ONLINE' ||
+        business?.paymentConfiguration?.paymentMode === 'BOTH') &&
+      business?.paymentConfiguration?.onlinePaymentStatus === 'ACTIVE'
+
+    if (business?.paymentConfiguration?.paymentMode === 'ONLINE' && canOnline) {
+      setPaymentChoice('ONLINE')
+    } else {
+      setPaymentChoice('PAY_AT_BUSINESS')
+    }
     setPaymentModalOpen(true)
   }
 
@@ -262,7 +275,9 @@ export default function BookingPage() {
     try {
       const combinedServiceNames = selectedServices.map((s) => s.name).join(' + ')
       const preferredStaffName = selectedStaff === 'any' ? null : selectedStaff?.name || selectedStaff
+      const isOnline = paymentChoice === 'ONLINE'
 
+      // Step 1: Create the Booking record (marked as pending_payment if online, or confirmed if counter)
       const res = await createBooking({
         businessId: selectedBizId,
         startTime: selectedSlot.startTime,
@@ -271,15 +286,97 @@ export default function BookingPage() {
         pricingLabel: combinedServiceNames,
         preferredStaff: preferredStaffName,
         couponCode: appliedCoupon?.coupon?.code,
-        paymentMethod: paymentChoice,
+        paymentMethod: isOnline ? 'online' : 'counter',
       })
 
-      const newBal = res.data.data.newBalance
-      if (newBal !== undefined) {
-        setUser((prev) => (prev ? { ...prev, walletBalance: newBal } : prev))
+      const booking = res.data.data?.booking || res.data.data
+
+      // Step 2: If Online Payment, trigger Razorpay Checkout
+      if (isOnline && booking?._id) {
+        const orderRes = await createBookingOrder(booking._id)
+        const orderData = orderRes.data.data.order
+
+        // If mock provider in development
+        if (orderData.isMock) {
+          await verifyPayment({
+            bookingId: booking._id,
+            razorpayOrderId: orderData.id,
+            razorpayPaymentId: `pay_mock_${Date.now()}`,
+            razorpaySignature: 'mock_signature_verified',
+          })
+          toast.success('Online payment verified & booking confirmed!', { icon: '🎉' })
+          setPaymentModalOpen(false)
+          setSelectedSlot(null)
+          fetchData()
+          return
+        }
+
+        // Helper to load Razorpay SDK dynamically
+        const loadRazorpay = () =>
+          new Promise((resolve) => {
+            if (window.Razorpay) return resolve(true)
+            const script = document.createElement('script')
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+            script.onload = () => resolve(true)
+            script.onerror = () => resolve(false)
+            document.body.appendChild(script)
+          })
+
+        const isLoaded = await loadRazorpay()
+        if (!isLoaded) {
+          toast.error('Unable to load Razorpay checkout. Please check your network or try Pay at Counter.')
+          return
+        }
+
+        const options = {
+          key: orderData.keyId,
+          amount: orderData.amount,
+          currency: orderData.currency || 'INR',
+          name: 'serveQ',
+          description: `Appointment at ${business?.name || 'Venue'}`,
+          image: '/serveq-logo.png',
+          order_id: orderData.id,
+          handler: async (response) => {
+            try {
+              await verifyPayment({
+                bookingId: booking._id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              })
+              toast.success('Payment verified & booking confirmed!', { icon: '🎉' })
+              setPaymentModalOpen(false)
+              setSelectedSlot(null)
+              fetchData()
+            } catch (vErr) {
+              toast.error(vErr.response?.data?.message || 'Payment verification failed')
+            }
+          },
+          prefill: {
+            name: user?.name,
+            email: user?.email,
+            contact: user?.phone || '',
+          },
+          theme: {
+            color: '#064E3B',
+          },
+          modal: {
+            ondismiss: () => {
+              toast('Payment session cancelled. You can retry payment anytime from your appointments.')
+              fetchData()
+            },
+          },
+        }
+
+        const rzp = new window.Razorpay(options)
+        rzp.open()
+        setPaymentModalOpen(false)
+        setSelectedSlot(null)
+        return
       }
 
-      const assigned = res.data.data?.assignedStaff || res.data.data?.booking?.assignedStaff
+      // Step 3: Counter payment confirmed immediately
+      const assigned = res.data.data?.assignedStaff || booking?.assignedStaff
       if (assigned?.name) {
         toast.success(
           `Booking confirmed! Assigned to ${assigned.name}${assigned.autoAssigned ? ' (On-Duty)' : ''}`
@@ -300,15 +397,10 @@ export default function BookingPage() {
 
   // Cancel booking
   const handleCancel = async (id) => {
-    if (!window.confirm('Cancel this booking? Amount will be refunded to your wallet.')) return
+    if (!window.confirm('Cancel this booking?')) return
     try {
       const res = await cancelBooking(id)
-      toast.success(res.data.message || 'Booking cancelled and refunded')
-      if (res.data.data?.refunded) {
-        setUser((prev) =>
-          prev ? { ...prev, walletBalance: (prev.walletBalance || 0) + res.data.data.refunded } : prev
-        )
-      }
+      toast.success(res.data.message || 'Booking cancelled')
       fetchData()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Cancel failed')
@@ -373,9 +465,9 @@ export default function BookingPage() {
   const finalPrice = Math.max(0, totalServicePrice - discountAmount)
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans">
+    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-hidden">
       {/* ── TOP HEADER BAR (UNIFIED WITH OTHER PAGES) ── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Hamburger + Brand Logo */}
         <div className="flex items-center gap-2 sm:gap-3">
           <button
@@ -445,16 +537,8 @@ export default function BookingPage() {
           </div>
         </div>
 
-        {/* Right: Wallet Balance, Notifications, Profile Avatar */}
+        {/* Right: Notifications, Profile Avatar */}
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => navigate('/wallet')}
-            className="px-3.5 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] hover:bg-[#DDF3E3] text-xs font-bold text-[#114227] flex items-center gap-2 transition-all shadow-xs cursor-pointer"
-          >
-            <Wallet className="w-3.5 h-3.5 text-[#114227]" />
-            <span>₹{(user?.walletBalance ?? 0).toLocaleString()}</span>
-          </button>
-
           <button
             onClick={() => toast('No new notifications', { icon: 'info' })}
             className="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors relative cursor-pointer"
@@ -492,16 +576,6 @@ export default function BookingPage() {
                 >
                   <User className="w-3.5 h-3.5 text-zinc-400" />
                   <span>View Profile</span>
-                </button>
-                <button
-                  onClick={() => {
-                    navigate('/wallet')
-                    setShowUserMenu(false)
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
-                >
-                  <Wallet className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Wallet & Top-up</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1123,47 +1197,76 @@ export default function BookingPage() {
               </div>
 
               {/* Payment Mode Selector */}
-              {business?.paymentConfiguration?.paymentMode === 'BOTH' && (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-700 block">Select Payment Method</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentChoice('PAY_AT_BUSINESS')}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                        paymentChoice === 'PAY_AT_BUSINESS'
-                          ? 'border-[#16A34A] bg-[#EAF7EE] text-[#114227] font-bold'
-                          : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-                      }`}
-                    >
-                      <div className="text-xs font-bold">Pay at Venue</div>
-                      <div className="text-[10px] text-zinc-400">Cash / UPI QR at counter</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentChoice('WALLET')}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                        paymentChoice === 'WALLET'
-                          ? 'border-[#16A34A] bg-[#EAF7EE] text-[#114227] font-bold'
-                          : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-                      }`}
-                    >
-                      <div className="text-xs font-bold">Online Wallet</div>
-                      <div className="text-[10px] text-zinc-400">Bal: ₹{user?.walletBalance ?? 0}</div>
-                    </button>
-                  </div>
-                </div>
-              )}
+              {(() => {
+                const isOnlineActive = business?.paymentConfiguration?.onlinePaymentStatus === 'ACTIVE'
+                const mode = business?.paymentConfiguration?.paymentMode || 'PAY_AT_BUSINESS'
+                const showBoth = mode === 'BOTH'
+
+                if (showBoth) {
+                  return (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-700 block">Select Payment Method</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentChoice('PAY_AT_BUSINESS')}
+                          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                            paymentChoice === 'PAY_AT_BUSINESS'
+                              ? 'border-[#16A34A] bg-[#EAF7EE] text-[#114227] font-bold shadow-xs'
+                              : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                          }`}
+                        >
+                          <div className="text-xs font-bold">Pay at Counter</div>
+                          <div className="text-[10px] text-zinc-400">Cash / UPI at venue</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={!isOnlineActive}
+                          onClick={() => isOnlineActive && setPaymentChoice('ONLINE')}
+                          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                            !isOnlineActive
+                              ? 'opacity-60 bg-zinc-50 border-zinc-200 cursor-not-allowed'
+                              : paymentChoice === 'ONLINE'
+                              ? 'border-[#16A34A] bg-[#EAF7EE] text-[#114227] font-bold shadow-xs'
+                              : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold">Pay Online</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">
+                              Razorpay
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400">
+                            {isOnlineActive ? 'UPI, Cards, Netbanking' : 'Unavailable (Pending)'}
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                }
+
+                if (mode === 'ONLINE' && !isOnlineActive) {
+                  return (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-800">
+                      <strong>Note:</strong> This venue is finalizing its online payment account. You can confirm your slot and pay at the counter upon arrival.
+                    </div>
+                  )
+                }
+
+                return null
+              })()}
 
               {/* Notice */}
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-[11px] text-[#114227]">
-                {paymentChoice === 'PAY_AT_BUSINESS' ? (
+                {paymentChoice === 'ONLINE' ? (
                   <p>
-                    <strong>Pay upon arrival:</strong> Your slot is reserved immediately. You can pay ₹{finalPrice} at the counter.
+                    <strong>Razorpay Secure Checkout:</strong> You will be prompted to complete payment of ₹{finalPrice} using UPI, Cards, or Netbanking. Your slot is confirmed instantly.
                   </p>
                 ) : (
                   <p>
-                    <strong>Wallet deduction:</strong> ₹{finalPrice} will be debited from your serveQ wallet balance (Current: ₹{user?.walletBalance ?? 0}).
+                    <strong>Pay upon arrival:</strong> Your slot is reserved immediately without upfront charge. Settle ₹{finalPrice} at the counter when you arrive.
                   </p>
                 )}
               </div>
@@ -1180,17 +1283,14 @@ export default function BookingPage() {
                 <button
                   type="button"
                   onClick={handleConfirmBooking}
-                  disabled={
-                    bookingInProgress ||
-                    (paymentChoice === 'WALLET' && (user?.walletBalance || 0) < finalPrice)
-                  }
+                  disabled={bookingInProgress}
                   className="flex-1 py-3 rounded-2xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {bookingInProgress
                     ? 'Reserving Slot...'
-                    : paymentChoice === 'PAY_AT_BUSINESS'
-                    ? `Confirm Booking (₹${finalPrice})`
-                    : `Confirm & Pay ₹${finalPrice}`}
+                    : paymentChoice === 'ONLINE'
+                    ? `Pay with Razorpay (₹${finalPrice})`
+                    : `Confirm Booking (₹${finalPrice})`}
                 </button>
               </div>
             </motion.div>

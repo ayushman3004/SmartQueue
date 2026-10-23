@@ -5,7 +5,6 @@ import { predictServiceTime } from "../../ai/gemini.service.js";
 import Business from "../modules/business/business.model.js";
 import Booking from "../booking/booking.model.js";
 import ApiError from "../../utils/ApiError.js";
-import { deductWalletBalance, refundToWallet } from "../modules/payment/payment.service.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
 
 //  JOIN QUEUE
@@ -180,22 +179,8 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   const finalDeposit = Math.max(0, price - discount);
 
-  // Pay at business vs online wallet deduction
-  const isPayAtBusiness =
-    userData.paymentMethod === "PAY_AT_BUSINESS" ||
-    business.paymentConfiguration?.paymentMode === "PAY_AT_BUSINESS";
-
-  const depositCharged = isPayAtBusiness ? 0 : finalDeposit;
-
-  // Safe atomic wallet deduction only if online payment
-  if (!isPayAtBusiness && finalDeposit > 0) {
-    await deductWalletBalance(
-      userData.userId,
-      finalDeposit,
-      `Queue entry deposit at ${business.name}`,
-      io
-    );
-  }
+  // Live queue walk-in entries default to counter settlement upon arrival
+  const depositCharged = 0;
 
   // AI prediction for service duration
   const serviceTime = await predictServiceTime({
@@ -316,12 +301,7 @@ export const leaveQueue = async (businessId, userId, io = null) => {
       }
 
       if (booking && !["completed", "cancelled", "refunded"].includes(booking.status)) {
-        if (booking.paidAmount > 0 && leavingUser.paidAmount > 0) {
-          await refundToWallet(userId, leavingUser.paidAmount, "Direct queue exit refund", io);
-          booking.status = "refunded";
-        } else {
-          booking.status = "cancelled";
-        }
+        booking.status = (booking.paidAmount > 0 || booking.paymentStatus === "paid") ? "refunded" : "cancelled";
         await booking.save();
         if (io) {
           io.to(`business:${businessId}`).emit("bookings:updated");
@@ -634,13 +614,9 @@ export const extendTime = async (businessId, userId, minutes = 5, requesterId, r
     for (const u of queue.users) {
       const uId = (u.userId?._id || u.userId)?.toString();
       if (reachedTarget) {
-        const rewardAmount = 10;
-        await refundToWallet(uId, rewardAmount, "Queue delay compensation", io);
-
         io.to(`user:${uId}`).emit("booking:delayed", {
-          message: `The queue has been extended by ${minutes} minutes. We've added ₹${rewardAmount} to your wallet.`,
+          message: `The queue has been extended by ${minutes} minutes. Thank you for your patience.`,
           delay: minutes,
-          reward: rewardAmount,
         });
       }
       if (uId === userId.toString()) reachedTarget = true;
@@ -650,7 +626,7 @@ export const extendTime = async (businessId, userId, minutes = 5, requesterId, r
   return queue;
 };
 
-// ️ CANCEL DELAY WITH REFUND
+// ── CANCEL QUEUE ENTRY ──
 export const handleCancelDelay = async (businessId, userId, io = null) => {
   const queueDoc = await Queue.findOne({ businessId });
   if (!queueDoc) throw new ApiError(404, "Queue not found");
@@ -659,24 +635,16 @@ export const handleCancelDelay = async (businessId, userId, io = null) => {
   const userData = queueDoc.users.find((u) => (u.userId?._id || u.userId)?.toString() === userId.toString());
   if (!userData) throw new ApiError(404, "You are not in this queue");
 
-  const refundAmount = userData.paidAmount || 0;
-  const compensationReward = 20;
-  const totalCredited = refundAmount + compensationReward;
-
   queueDS.remove(userId);
   queueDoc.users = queueDS.toArray();
   await queueDoc.save();
-
-  if (totalCredited > 0) {
-    await refundToWallet(userId, totalCredited, "Queue cancellation refund & delay compensation", io);
-  }
 
   if (io) {
     io.to(`business:${businessId}`).emit("queue:left", { businessId, userId, queue: queueDoc });
     io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue: queueDoc });
   }
 
-  return { queue: queueDoc, totalCredited };
+  return { queue: queueDoc, totalCredited: 0 };
 };
 
 // ASSIGN STAFF (DOCTOR / BARBER / SPECIALIST)

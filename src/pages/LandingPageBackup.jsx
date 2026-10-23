@@ -111,7 +111,7 @@ export default function LandingPage() {
   }, [mobileMenuOpen])
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] text-zinc-900 selection:bg-teal-500/20 selection:text-teal-900">
+    <div className="min-h-screen app-background text-zinc-900 selection:bg-emerald-500/20 selection:text-emerald-900 relative">
       {/* ── Top Navigation Bar ── */}
       <header className="sticky top-0 z-50 bg-[#fafaf9]/85 backdrop-blur-md border-b border-zinc-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">

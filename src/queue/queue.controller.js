@@ -155,7 +155,7 @@ export const cancelDelay = asyncHandler(async (req, res) => {
   emitQueueUpdate(req, businessId, queue);
 
   res.status(200).json(
-    new ApiResponse(200, { queue }, `Cancelled with ₹${totalCredited} refunded to your wallet`)
+    new ApiResponse(200, { queue }, "Successfully removed from queue")
   );
 });
 

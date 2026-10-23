@@ -11,7 +11,7 @@ import {
   Settings,
   Building2,
   Ticket,
-  Wallet,
+  CreditCard,
   User,
   UserCheck,
   LogOut,
@@ -33,7 +33,9 @@ import {
   Check,
   Shield,
   ArrowRight,
+  Crown,
 } from 'lucide-react'
+import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getQueue, callNext, extendUserTime, assignQueueStaff } from '../api/queue.api'
@@ -44,6 +46,7 @@ import {
   startBookingService,
   completeBookingService,
 } from '../api/booking.api'
+import { collectCounterPayment, updatePaymentModes } from '../api/payment.api'
 import { getBusinessAnalytics, generateAIAnalyticsReview } from '../api/analytics.api'
 import { CATEGORY_METADATA, SERVICE_PRESETS, STAFF_PRESETS, ALLOWED_CATEGORIES } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
@@ -114,6 +117,32 @@ export default function BusinessDashboard() {
   const [newStaff, setNewStaff] = useState({ name: '', role: '', specialties: '', phone: '' })
   const [savingStaff, setSavingStaff] = useState(false)
   const [loadingAIReview, setLoadingAIReview] = useState(false)
+  const [updatingPaymentMode, setUpdatingPaymentMode] = useState(false)
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
+
+  const handleCollectCounterPayment = async (bookingId) => {
+    try {
+      await collectCounterPayment(bookingId)
+      toast.success('Counter payment recorded as collected!')
+      const bkRes = await getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } }))
+      setBookings(bkRes.data.data.bookings || [])
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to record counter payment')
+    }
+  }
+
+  const handleUpdatePaymentMode = async (mode) => {
+    setUpdatingPaymentMode(true)
+    try {
+      const res = await updatePaymentModes(businessId, { paymentMode: mode })
+      setBusiness(res.data.data.business)
+      toast.success(`Payment mode updated to ${mode.replace('_', ' ')}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update payment mode')
+    } finally {
+      setUpdatingPaymentMode(false)
+    }
+  }
 
   const isClinic = business?.category === 'clinic' || business?.category === 'healthcare'
 
@@ -626,21 +655,39 @@ export default function BusinessDashboard() {
             <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
           </button>
 
-          {/* Wallet */}
+          {/* Payment Settings */}
           <button
             type="button"
             onClick={() => {
-              navigate('/wallet')
+              setActiveTab('profile')
               if (isMobile) setMobileSidebarOpen(false)
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <Wallet className="w-4 h-4 text-teal-600 shrink-0" />
-              <span className="truncate">Venue Wallet</span>
+              <CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
+              <span className="truncate">Payment Settings</span>
             </div>
             <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
-              ₹{(user?.walletBalance ?? 0).toLocaleString()}
+              {business?.paymentConfiguration?.paymentMode || 'Counter'}
+            </span>
+          </button>
+
+          {/* Subscription & Plans */}
+          <button
+            type="button"
+            onClick={() => {
+              setSubscriptionModalOpen(true)
+              if (isMobile) setMobileSidebarOpen(false)
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+              <span className="truncate">Plan & Subscription</span>
+            </div>
+            <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
+              {user?.subscription?.status === 'ACTIVE' ? user.subscription.plan : 'Choose'}
             </span>
           </button>
         </div>
@@ -691,9 +738,9 @@ export default function BusinessDashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans">
+    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-hidden">
       {/* ── TOP STICKY HEADER BAR ── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
         <div className="flex items-center gap-3">
           <button
@@ -774,15 +821,7 @@ export default function BusinessDashboard() {
             )}
           </button>
 
-          {/* Wallet */}
-          <button
-            type="button"
-            onClick={() => navigate('/wallet')}
-            className="hidden sm:flex px-3.5 py-1.5 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] hover:bg-[#DDF3E3] text-xs font-bold text-[#114227] items-center gap-2 transition-all shadow-xs cursor-pointer"
-          >
-            <Wallet className="w-3.5 h-3.5 text-[#114227]" />
-            <span>₹{(user?.walletBalance ?? 0).toLocaleString()}</span>
-          </button>
+
 
           {/* Profile Menu */}
           <div className="relative">
@@ -828,13 +867,13 @@ export default function BusinessDashboard() {
                 <button
                   type="button"
                   onClick={() => {
-                    navigate('/wallet')
+                    setActiveTab('profile')
                     setShowUserMenu(false)
                   }}
                   className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
                 >
-                  <Wallet className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Wallet & Payouts</span>
+                  <CreditCard className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Payment Settings</span>
                 </button>
                 <div className="border-t border-zinc-100 my-1" />
                 <button
@@ -1243,6 +1282,7 @@ export default function BusinessDashboard() {
                     <th className="py-3.5 px-4">Customer</th>
                     <th className="py-3.5 px-4">Service</th>
                     <th className="py-3.5 px-4">Price</th>
+                    <th className="py-3.5 px-4">Payment</th>
                     <th className="py-3.5 px-4">Status</th>
                     <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
@@ -1272,7 +1312,23 @@ export default function BusinessDashboard() {
                           </div>
                         )}
                       </td>
-                      <td className="py-4 px-4 font-bold text-teal-800">₹{b.paidAmount}</td>
+                      <td className="py-4 px-4 font-bold text-teal-800">₹{b.paidAmount || b.amount}</td>
+                      <td className="py-4 px-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            b.paymentMethod === 'online' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-zinc-100 text-zinc-700'
+                          }`}>
+                            {b.paymentMethod === 'online' ? 'Online (Razorpay)' : 'Counter'}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                            b.paymentStatus === 'paid'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            ● {b.paymentStatus || 'pending'}
+                          </span>
+                        </div>
+                      </td>
                       <td className="py-4 px-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
                           b.status === 'serving' ? 'bg-emerald-100 text-emerald-800 animate-pulse' :
@@ -1285,6 +1341,15 @@ export default function BusinessDashboard() {
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right space-x-2">
+                        {b.paymentMethod === 'counter' && b.paymentStatus !== 'paid' && b.status !== 'cancelled' && b.status !== 'refunded' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCollectCounterPayment(b._id)}
+                            className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer mr-1"
+                          >
+                            Collect ₹{b.paidAmount || b.amount}
+                          </button>
+                        )}
                         {b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'waiting' ? (
                           <>
                             <button
@@ -1883,6 +1948,102 @@ export default function BusinessDashboard() {
               {savingProfile ? 'Saving Changes...' : 'Save Profile & Services'}
             </button>
           </div>
+
+          {/* Payment & Settlement Configuration Card */}
+          <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6 text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
+              <div>
+                <h3 className="text-lg font-black text-zinc-950 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-teal-600" />
+                  <span>Payment & Settlement Configuration</span>
+                </h3>
+                <p className="text-xs text-zinc-500 font-medium">
+                  Manage how your venue accepts customer payments (Pay at Counter, Online via Razorpay Route, or Both).
+                </p>
+              </div>
+              <span className={`self-start sm:self-auto px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                business?.paymentConfiguration?.onlinePaymentStatus === 'ACTIVE'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : business?.paymentConfiguration?.onlinePaymentStatus === 'PENDING_VERIFICATION'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-zinc-100 text-zinc-700'
+              }`}>
+                ● {business?.paymentConfiguration?.onlinePaymentStatus?.replace('_', ' ') || 'NOT STARTED'}
+              </span>
+            </div>
+
+            {/* Mode selection buttons */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase text-slate-500">Active Customer Payment Mode</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  disabled={updatingPaymentMode}
+                  onClick={() => handleUpdatePaymentMode('PAY_AT_BUSINESS')}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    business?.paymentConfiguration?.paymentMode === 'PAY_AT_BUSINESS'
+                      ? 'border-teal-600 bg-teal-50 text-teal-950 font-bold shadow-xs ring-2 ring-teal-500/20'
+                      : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/80 text-zinc-700'
+                  }`}
+                >
+                  <p className="text-xs font-bold">Pay at Counter Only</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">Cash or venue UPI QR upon arrival.</p>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={updatingPaymentMode}
+                  onClick={() => handleUpdatePaymentMode('ONLINE')}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    business?.paymentConfiguration?.paymentMode === 'ONLINE'
+                      ? 'border-teal-600 bg-teal-50 text-teal-950 font-bold shadow-xs ring-2 ring-teal-500/20'
+                      : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/80 text-zinc-700'
+                  }`}
+                >
+                  <p className="text-xs font-bold">Online Upfront Only</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">Razorpay Route direct split payment.</p>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={updatingPaymentMode}
+                  onClick={() => handleUpdatePaymentMode('BOTH')}
+                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                    business?.paymentConfiguration?.paymentMode === 'BOTH'
+                      ? 'border-teal-600 bg-teal-50 text-teal-950 font-bold shadow-xs ring-2 ring-teal-500/20'
+                      : 'border-zinc-200 bg-zinc-50/50 hover:bg-zinc-100/80 text-zinc-700'
+                  }`}
+                >
+                  <p className="text-xs font-bold">Hybrid (Customer Choice)</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">Allow customers to choose online or counter.</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Venue Plan Subscription Tier Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 to-teal-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-emerald-100">
+                    ServeQ Business Plan: {user?.subscription?.status === 'ACTIVE' ? `${user.subscription.plan} Plan (₹${user.subscription.amount}/mo)` : 'No Active Plan'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-200">
+                  {user?.subscription?.status === 'ACTIVE'
+                    ? 'Active plan in good standing. All venue features unlocked.'
+                    : 'Choose Basic Plan (₹999) or Pro Plan (₹1,999) to unlock online payments and advanced tools.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubscriptionModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-white text-emerald-900 font-bold text-xs hover:bg-emerald-50 transition-colors self-start sm:self-auto cursor-pointer shrink-0"
+              >
+                {user?.subscription?.status === 'ACTIVE' ? 'Switch / View Plans' : 'Choose Plan & Pay'}
+              </button>
+            </div>
+          </div>
         </form>
       )}
 
@@ -2179,6 +2340,12 @@ export default function BusinessDashboard() {
       )}
         </main>
       </div>
+
+      {/* Subscription Plans Modal */}
+      <SubscriptionPlansModal
+        isOpen={subscriptionModalOpen}
+        onClose={() => setSubscriptionModalOpen(false)}
+      />
     </div>
   )
 }

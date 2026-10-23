@@ -129,9 +129,9 @@ export default function HelpSupportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 pb-20 font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative overflow-hidden">
+    <div className="min-h-screen app-background-glow text-zinc-900 pb-20 font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative overflow-hidden">
       {/* ── TOP NAV BREADCRUMB BAR ── */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-zinc-200/80 sticky top-0 z-30 px-4 sm:px-6 py-3">
+      <div className="bg-white/85 backdrop-blur-md border-b border-zinc-200/80 sticky top-0 z-30 px-4 sm:px-6 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <Link
             to={backPath}

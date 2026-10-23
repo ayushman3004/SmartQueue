@@ -5,7 +5,7 @@ import User from "../modules/auth/auth.model.js";
 import Queue from "../queue/queue.model.js";
 import Review from "../modules/review/review.model.js";
 import ApiError from "../../utils/ApiError.js";
-import { deductWalletBalance, refundToWallet } from "../modules/payment/payment.service.js";
+import { getRazorpayClient } from "../modules/payment/razorpay.service.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
 
 const RATE_PER_MINUTE = 20; // ₹20 per extra minute
@@ -310,33 +310,32 @@ export const createBooking = async ({
 
   const finalAmount = Math.max(0, totalCost - discount);
 
-  // 6. Payment Processing: Pay at Business vs Online Wallet
-  const isPayAtBusiness =
-    paymentMethod === "PAY_AT_BUSINESS" ||
-    business.paymentConfiguration?.paymentMode === "PAY_AT_BUSINESS";
+  // 6. Payment Processing: Online (Razorpay) vs Pay at Counter
+  const isOnlineRequested = paymentMethod === "online" || paymentMethod === "ONLINE";
+  const businessAllowsOnline =
+    business.paymentConfiguration?.onlinePaymentStatus === "ACTIVE" &&
+    ["ONLINE", "BOTH"].includes(business.paymentConfiguration?.paymentMode);
 
-  let newBalance = 0;
-  let paidAmount = 0;
+  let selectedPaymentMethod = "counter";
+  let paymentStatus = "pending";
+  let bookingStatus = "confirmed";
+  let paidAmount = finalAmount;
 
-  if (isPayAtBusiness) {
-    // Pay at business: no wallet deduction required
-    paidAmount = 0;
-    const user = await User.findById(userId);
-    newBalance = user?.walletBalance || 0;
-  } else {
-    // Online / Wallet deduction
-    if (finalAmount > 0) {
-      newBalance = await deductWalletBalance(
-        userId,
-        finalAmount,
-        `Booking at ${business.name}`,
-        io
+  if (isOnlineRequested) {
+    if (!businessAllowsOnline) {
+      throw new ApiError(
+        400,
+        "Online payment is not enabled for this business. Please choose Pay at Counter."
       );
-      paidAmount = finalAmount;
-    } else {
-      const user = await User.findById(userId);
-      newBalance = user?.walletBalance || 0;
     }
+    selectedPaymentMethod = "online";
+    paymentStatus = "pending";
+    bookingStatus = "pending_payment";
+  } else {
+    // Pay at counter
+    selectedPaymentMethod = "counter";
+    paymentStatus = "pending";
+    bookingStatus = "confirmed";
   }
 
   const combinedServiceNames = selectedServicesList.map((s) => s.name).join(" + ");
@@ -354,11 +353,14 @@ export const createBooking = async ({
     guestCount: guestCount || 1,
     notes,
     pricingLabel: pricingLabel || combinedServiceNames,
+    amount: finalAmount,
     paidAmount,
-    status: "confirmed",
+    paymentMethod: selectedPaymentMethod,
+    paymentStatus,
+    status: bookingStatus,
   });
 
-  if (io) {
+  if (io && bookingStatus === "confirmed") {
     io.to(`business:${businessId}`).emit("bookings:updated");
     io.to(`user:${userId}`).emit("booking:confirmed", { booking });
   }
@@ -367,7 +369,9 @@ export const createBooking = async ({
     booking: await booking.populate("userId", "name email avatar"),
     assignedStaff,
     adjusted: false,
-    newBalance,
+    finalAmount,
+    paymentMethod: selectedPaymentMethod,
+    paymentStatus,
   };
 };
 
@@ -718,13 +722,39 @@ export const cancelBooking = async (bookingId, userId, io = null) => {
     throw new ApiError(400, "Cannot cancel a completed booking");
   }
 
-  // Safe refund of paid amount to wallet
   const refundAmount = booking.paidAmount || 0;
-  if (refundAmount > 0) {
-    await refundToWallet(userId, refundAmount, "Booking cancellation refund", io);
-    booking.status = "refunded";
+  let refundId = null;
+
+  if (refundAmount > 0 && booking.paymentMethod === "online" && booking.razorpayPaymentId) {
+    try {
+      const rzp = getRazorpayClient();
+      if (rzp) {
+        const refundResponse = await rzp.payments.refund(booking.razorpayPaymentId, {
+          amount: Math.round(refundAmount * 100),
+          notes: {
+            reason: "Customer cancellation",
+            bookingId: booking._id.toString(),
+          },
+        });
+        refundId = refundResponse?.id;
+      } else {
+        refundId = `ref_mock_${Date.now()}`;
+      }
+      booking.status = "refunded";
+      booking.paymentStatus = "refunded";
+      booking.refundReference = refundId;
+      booking.refundedAt = new Date();
+    } catch (err) {
+      console.error("Razorpay refund error on cancellation:", err);
+      booking.status = "cancelled";
+      booking.paymentFailureReason = `Refund pending: ${err.message}`;
+    }
   } else {
     booking.status = "cancelled";
+    if (booking.paymentStatus === "pending") {
+      booking.paymentStatus = "failed";
+      booking.paymentFailureReason = "Booking cancelled prior to payment";
+    }
   }
 
   await booking.save();
@@ -733,5 +763,45 @@ export const cancelBooking = async (bookingId, userId, io = null) => {
     io.to(`business:${booking.businessId}`).emit("bookings:updated");
   }
 
-  return { booking, refunded: refundAmount };
+  return { booking, refunded: refundAmount, refundId };
 };
+
+/**
+ * Record payment collection at counter by authorized business staff
+ */
+export const collectCounterPayment = async (bookingId, staffUser, io = null) => {
+  const booking = await Booking.findById(bookingId).populate("businessId");
+  if (!booking) throw new ApiError(404, "Booking not found");
+
+  const business = booking.businessId;
+  if (
+    staffUser.role !== "admin" &&
+    business?.owner?.toString() !== staffUser._id?.toString()
+  ) {
+    throw new ApiError(403, "Not authorized to collect payment for this business");
+  }
+
+  if (booking.paymentStatus === "paid") {
+    throw new ApiError(400, "Payment for this booking is already recorded as paid");
+  }
+
+  booking.paymentStatus = "paid";
+  booking.collectedByStaff = true;
+  booking.collectedAt = new Date();
+  booking.paidAmount = booking.amount || booking.paidAmount || 0;
+  if (booking.status === "pending_payment") {
+    booking.status = "confirmed";
+  }
+  await booking.save();
+
+  if (io) {
+    io.to(`business:${business._id || business}`).emit("bookings:updated");
+    io.to(`user:${booking.userId}`).emit("booking:payment_collected", {
+      bookingId: booking._id,
+      amount: booking.paidAmount,
+    });
+  }
+
+  return booking;
+};
+

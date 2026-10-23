@@ -23,6 +23,7 @@ export const book = asyncHandler(async (req, res) => {
     couponCode,
     isGroupBooking,
     guestCount,
+    paymentMethod,
   } = req.body;
   if (!businessId || !startTime) throw new ApiError(400, "businessId and startTime are required");
   if (isNaN(new Date(startTime).getTime())) throw new ApiError(400, "Invalid startTime format");
@@ -40,9 +41,17 @@ export const book = asyncHandler(async (req, res) => {
     couponCode,
     isGroupBooking,
     guestCount,
+    paymentMethod,
   }, io);
 
-  res.status(201).json(new ApiResponse(201, result, "Booking confirmed!"));
+  res.status(201).json(new ApiResponse(201, result, "Booking reserved successfully!"));
+});
+
+// PATCH /api/bookings/:id/collect-payment (Owner / Staff counter payment collection)
+export const collectPayment = asyncHandler(async (req, res) => {
+  const io = req.app.get("io");
+  const booking = await bookingService.collectCounterPayment(req.params.id, req.user, io);
+  res.json(new ApiResponse(200, { booking }, "Counter payment marked as collected"));
 });
 
 // POST /api/bookings/extend/:id

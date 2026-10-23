@@ -158,8 +158,12 @@ const businessSchema = new mongoose.Schema(
         enum: ["NOT_STARTED", "PENDING_VERIFICATION", "ACTIVE", "REJECTED", "SUSPENDED"],
         default: "NOT_STARTED",
       },
-      paymentProvider: { type: String, default: "mock" },
-      providerAccountReference: { type: String, default: "" },
+      paymentProvider: { type: String, default: "razorpay" },
+      providerAccountReference: { type: String, default: "" }, // Razorpay Route Linked Account ID (acc_...)
+      legalBusinessName: { type: String, default: "" },
+      businessType: { type: String, default: "individual" },
+      accountOnboardingUrl: { type: String, default: "" },
+      accountRequirements: { type: [String], default: [] },
       upiId: { type: String, default: "" },
       lastVerificationUpdate: { type: Date, default: null },
     },
@@ -184,6 +188,26 @@ const businessSchema = new mongoose.Schema(
         price: { type: Number, required: true },
       },
     ],
+    subscription: {
+      plan: {
+        type: String,
+        enum: ["NONE", "BASIC", "PRO"],
+        default: "NONE",
+      },
+      status: {
+        type: String,
+        enum: ["INACTIVE", "ACTIVE", "EXPIRED"],
+        default: "INACTIVE",
+      },
+      amount: {
+        type: Number,
+        default: 0,
+      },
+      expiresAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   { timestamps: true }
 );

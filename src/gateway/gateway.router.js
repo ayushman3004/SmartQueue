@@ -3,7 +3,7 @@ import authRoutes from "../modules/auth/auth.routes.js";
 import businessRoutes from "../modules/business/business.routes.js";
 import bookingRoutes from "../booking/booking.routes.js";
 import queueRoutes from "../queue/queue.routes.js";
-import walletRoutes from "../modules/wallet/wallet.routes.js";
+import paymentRoutes from "../modules/payment/payment.routes.js";
 import reviewRoutes from "../modules/review/review.routes.js";
 import couponRoutes from "../modules/coupon/coupon.routes.js";
 import analyticsRoutes from "../modules/analytics/analytics.routes.js";
@@ -14,6 +14,7 @@ import otpRoutes from "../modules/auth/otp.routes.js";
 import waitlistRoutes from "../modules/waitlist/waitlist.routes.js";
 import supportRoutes from "../modules/support/support.routes.js";
 import healthRoutes from "../modules/health/health.routes.js";
+import subscriptionRoutes from "../modules/subscription/subscription.routes.js";
 
 import { globalLimiter, authLimiter } from "./rateLimiter.js";
 import { requestIdMiddleware } from "./gateway.middleware.js";
@@ -75,8 +76,7 @@ export const createGatewayRouter = () => {
   router.use("/businesses", businessRoutes);
   router.use("/bookings", bookingRoutes);
   router.use("/queue", queueRoutes);
-  router.use("/wallet", walletRoutes);
-  router.use("/payments", walletRoutes); // Alias for payment/wallet domain
+  router.use("/payments", paymentRoutes);
   router.use("/reviews", reviewRoutes);
   router.use("/coupons", couponRoutes);
   router.use("/analytics", analyticsRoutes);
@@ -86,6 +86,7 @@ export const createGatewayRouter = () => {
   router.use("/otp", otpRoutes);
   router.use("/waitlist", waitlistRoutes);
   router.use("/support", supportRoutes);
+  router.use("/subscriptions", subscriptionRoutes);
 
   return router;
 };

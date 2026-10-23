@@ -86,8 +86,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/wallet" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
-                  Passes &amp; Wallet
+                <Link to="/profile" className="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1.5">
+                  Profile &amp; Account
                 </Link>
               </li>
               <li>
