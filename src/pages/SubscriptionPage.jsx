@@ -52,24 +52,36 @@ export default function SubscriptionPage() {
 
   const { user, setUser, logOut } = useAuth()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [upgrading, setUpgrading] = useState(false)
-  const [subscriptionData, setSubscriptionData] = useState(user?.subscription || null)
+  const [subscriptionData, setSubscriptionData] = useState(() => user?.subscription || null)
 
-  const activePlan = subscriptionData?.status === 'ACTIVE' ? subscriptionData?.plan : null
+  const effectiveSub =
+    subscriptionData?.subscription ||
+    subscriptionData ||
+    user?.subscription ||
+    null
+
+  const activePlan = effectiveSub?.status === 'ACTIVE' ? effectiveSub?.plan : null
   const isBasic = activePlan === 'BASIC'
   const isPro = activePlan === 'PRO'
 
   // Refresh latest subscription status from backend
   useEffect(() => {
+    setLoading(true)
     getCurrentSubscription()
       .then((res) => {
-        if (res.data?.data) {
-          setSubscriptionData(res.data.data)
+        const sub = res.data?.data?.subscription || res.data?.data
+        if (sub) {
+          setSubscriptionData(sub)
+          if (setUser && sub.status) {
+            setUser((prev) => (prev ? { ...prev, subscription: sub } : prev))
+          }
         }
       })
       .catch(() => {})
-  }, [])
+      .finally(() => setLoading(false))
+  }, [setUser])
 
   const getEffectiveKey = () => {
     const viteKey = import.meta.env.VITE_RAZORPAY_KEY_ID
@@ -419,8 +431,16 @@ export default function SubscriptionPage() {
                   <span className="font-black text-zinc-900">30 Days (Monthly)</span>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-zinc-400 block">Payment Method</span>
-                  <span className="font-black text-zinc-900">Official Razorpay SDK</span>
+                  <span className="text-[10px] font-bold uppercase text-zinc-400 block">Valid Until</span>
+                  <span className="font-black text-zinc-900">
+                    {effectiveSub?.expiresAt
+                      ? new Date(effectiveSub.expiresAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : 'Active'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-zinc-400 block">Feature Level</span>
@@ -476,15 +496,32 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              {/* Premium Standing Badge */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-[#EAF7EE] to-emerald-50 border border-[#BDE8CB] flex items-center justify-between text-xs text-[#114227]">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-[#16A34A]" />
-                  <span className="font-bold">Your venue is running with all Pro features unlocked and verified.</span>
+              {/* Premium Standing Badge & Actions */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-[#EAF7EE] via-white to-emerald-50 border border-[#BDE8CB] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-[#114227]">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-6 h-6 text-[#16A34A] shrink-0" />
+                  <div>
+                    <span className="font-bold text-sm block text-zinc-950">Your venue is running with all Pro features unlocked and verified.</span>
+                    {effectiveSub?.expiresAt && (
+                      <span className="text-[11px] text-zinc-500 font-medium">
+                        Active period valid until {new Date(effectiveSub.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-white px-2.5 py-1 rounded-lg border border-[#BDE8CB]">
-                  Tier 1 Certified
-                </span>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-white px-2.5 py-1.5 rounded-lg border border-[#BDE8CB] hidden sm:inline-block">
+                    Tier 1 Certified
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleBackToDashboard}
+                    className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                  >
+                    <span>Go to Business Dashboard</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -492,6 +529,12 @@ export default function SubscriptionPage() {
 
         {/* ── CASE 3: INACTIVE OR EXPIRED SUBSCRIPTION ── */}
         {!isBasic && !isPro && (
+          loading ? (
+            <div className="p-12 text-center rounded-3xl bg-white border border-[#BDE8CB] shadow-xs space-y-3">
+              <div className="w-8 h-8 border-3 border-[#16A34A] border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Verifying your active subscription status...</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Card */}
             <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#BDE8CB] shadow-xs flex flex-col justify-between space-y-6">
@@ -586,7 +629,8 @@ export default function SubscriptionPage() {
               </button>
             </div>
           </div>
-        )}
+        )
+      )}
       </main>
     </div>
   )
