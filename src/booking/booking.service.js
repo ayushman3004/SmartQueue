@@ -790,6 +790,36 @@ export const collectCounterPayment = async (bookingId, staffUser, io = null) => 
   }
   await booking.save();
 
+  // Also sync live queue patron if currently in queue
+  try {
+    const queueDoc = await Queue.findOne({ businessId: business._id || business });
+    if (queueDoc && Array.isArray(queueDoc.users)) {
+      let queueUpdated = false;
+      queueDoc.users.forEach((u) => {
+        if (
+          (u.bookingId && u.bookingId.toString() === booking._id.toString()) ||
+          (u.userId && u.userId.toString() === booking.userId.toString())
+        ) {
+          u.paymentStatus = "paid";
+          u.paymentMethod = "counter";
+          queueUpdated = true;
+        }
+      });
+      if (queueUpdated) {
+        await queueDoc.save();
+        if (io) {
+          io.to(`business:${business._id || business}`).emit("queue:updated", {
+            businessId: business._id || business,
+            queue: queueDoc,
+          });
+          io.to(`business:${business._id || business}`).emit("queue:update", queueDoc);
+        }
+      }
+    }
+  } catch (qErr) {
+    console.warn("Could not sync queue payment status:", qErr.message);
+  }
+
   if (io) {
     io.to(`business:${business._id || business}`).emit("bookings:updated");
     io.to(`user:${booking.userId}`).emit("booking:payment_collected", {

@@ -34,11 +34,12 @@ import {
   Shield,
   ArrowRight,
   Crown,
+  Lock,
 } from 'lucide-react'
 import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getQueue, callNext, extendUserTime, assignQueueStaff } from '../api/queue.api'
+import { getQueue, callNext, extendUserTime, assignQueueStaff, collectQueuePayment } from '../api/queue.api'
 import { getBusiness, updateBusiness, toggleBusiness } from '../api/business.api'
 import {
   getBusinessBookings,
@@ -128,6 +129,20 @@ export default function BusinessDashboard() {
       setBookings(bkRes.data.data.bookings || [])
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to record counter payment')
+    }
+  }
+
+  const handleCollectQueuePayment = async (userId) => {
+    try {
+      const res = await collectQueuePayment(businessId, userId)
+      toast.success('Queue counter payment accepted and marked as paid!')
+      if (res.data?.data?.queue) {
+        setQueue(res.data.data.queue)
+      }
+      const bkRes = await getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } }))
+      setBookings(bkRes.data.data.bookings || [])
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to record queue payment')
     }
   }
 
@@ -1116,6 +1131,15 @@ export default function BusinessDashboard() {
 
               {serving && (
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                  {serving.paymentStatus !== 'paid' && (
+                    <button
+                      type="button"
+                      onClick={() => handleCollectQueuePayment(serving.userId?._id || serving.userId)}
+                      className="flex-1 md:flex-none px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                    >
+                      Collect ₹{serving.paidAmount || 0}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleExtendQueue(serving.userId?._id || serving.userId, 5)}
                     className="flex-1 md:flex-none px-4 py-2.5 bg-white border border-zinc-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 shadow-xs"
@@ -1166,6 +1190,7 @@ export default function BusinessDashboard() {
                       <th className="py-3.5 px-6">{isClinic ? 'Assigned Doctor' : 'Assigned Staff'}</th>
                       <th className="py-3.5 px-6">Duration</th>
                       <th className="py-3.5 px-6">Est. Start Time</th>
+                      <th className="py-3.5 px-6">Payment</th>
                       <th className="py-3.5 px-6 text-right">Status</th>
                     </tr>
                   </thead>
@@ -1238,6 +1263,29 @@ export default function BusinessDashboard() {
                         <td className="py-4 px-6 font-bold text-zinc-900">{u.serviceTime} mins</td>
                         <td className="py-4 px-6 text-slate-600">
                           {u.estimatedStartTime ? new Date(u.estimatedStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span className="font-bold text-zinc-900">₹{u.paidAmount ?? 0}</span>
+                            {u.paymentStatus === 'paid' ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                <CheckCircle2 size={10} /> Paid
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                  ● Pending
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCollectQueuePayment(u.userId?._id || u.userId)}
+                                  className="text-[10px] font-bold bg-teal-600 hover:bg-teal-700 text-white px-2.5 py-1 rounded-md shadow-xs transition cursor-pointer"
+                                >
+                                  Collect
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="py-4 px-6 text-right">
                           <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase ${
@@ -2194,147 +2242,186 @@ export default function BusinessDashboard() {
               </div>
 
               {/* THE AI REVIEW BUTTON */}
-              <button
-                type="button"
-                onClick={handleTriggerAIReview}
-                disabled={loadingAIReview}
-                className="px-6 py-3.5 rounded-2xl bg-teal-400 hover:bg-teal-300 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 transition-all flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 flex-shrink-0"
-              >
-                {loadingAIReview ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
-                    <span>Analyzing Peak & Staff...</span>
-                  </>
-                ) : (
-                  <span>Generate AI Review</span>
-                )}
-              </button>
+              {analytics?.aiInsights?.isLocked ? (
+                <button
+                  type="button"
+                  onClick={() => setSubscriptionModalOpen(true)}
+                  className="px-6 py-3.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer flex-shrink-0"
+                >
+                  <Lock size={14} className="text-amber-400" />
+                  <span>Upgrade to Pro for AI</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleTriggerAIReview}
+                  disabled={loadingAIReview}
+                  className="px-6 py-3.5 rounded-2xl bg-teal-400 hover:bg-teal-300 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 transition-all flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 flex-shrink-0"
+                >
+                  {loadingAIReview ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
+                      <span>Analyzing Peak & Staff...</span>
+                    </>
+                  ) : (
+                    <span>Generate AI Review</span>
+                  )}
+                </button>
+              )}
             </div>
 
-            {/* THREE EXECUTIVE REPORT CARDS: PEAK HOURS, BEST CUSTOMER, BEST EMPLOYEE */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* 1. PEAK HOURS & CONGESTION */}
-              <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 px-2.5 py-1 rounded-md">
-                      Rush Forecast
-                    </span>
+            {analytics?.aiInsights?.isLocked ? (
+              <div className="p-8 sm:p-12 text-center rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
+                  <Lock size={32} />
+                </div>
+                <div className="max-w-md mx-auto space-y-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full">
+                    Pro Plan Feature
+                  </span>
+                  <h4 className="text-xl font-black text-white">Unlock AI Performance Intelligence</h4>
+                  <p className="text-xs text-zinc-300 leading-relaxed">
+                    {analytics?.aiInsights?.message || 'AI Performance Intelligence & Executive Review are exclusive to ServeQ Pro Plan subscribers.'}
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubscriptionModalOpen(true)}
+                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-400 to-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-teal-500/20 cursor-pointer"
+                  >
+                    Upgrade to Pro Plan — ₹1,999 / mo
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* THREE EXECUTIVE REPORT CARDS: PEAK HOURS, BEST CUSTOMER, BEST EMPLOYEE */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* 1. PEAK HOURS & CONGESTION */}
+                  <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 px-2.5 py-1 rounded-md">
+                          Rush Forecast
+                        </span>
+                      </div>
+                      <h4 className="text-base font-black text-white">Peak Hours Window</h4>
+                      
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {(analytics?.aiInsights?.peakHours || ['11:00 AM - 1:00 PM', '4:30 PM - 7:00 PM']).map((window, i) => (
+                          <span
+                            key={i}
+                            className="px-3 py-1.5 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-200 text-xs font-bold"
+                          >
+                            {window}
+                          </span>
+                        ))}
+                      </div>
+
+                      <p className="text-xs text-zinc-300 leading-relaxed pt-2">
+                        {analytics?.aiInsights?.peakHoursAnalysis ||
+                          'Midday and evening slots experience the highest footfall concentration. Keep chairs and consultation rooms fully staffed.'}
+                      </p>
+                    </div>
+
+                    <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
+                      <span>Cancellation Rate:</span>
+                      <strong className="text-teal-300">{analytics?.aiInsights?.cancellationRate || '0%'}</strong>
+                    </div>
                   </div>
-                  <h4 className="text-base font-black text-white">Peak Hours Window</h4>
-                  
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {(analytics?.aiInsights?.peakHours || ['11:00 AM - 1:00 PM', '4:30 PM - 7:00 PM']).map((window, i) => (
-                      <span
+
+                  {/* 2. BEST CUSTOMER SPOTLIGHT */}
+                  <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-md">
+                          {analytics?.aiInsights?.bestCustomer?.badge || 'VIP Regular'}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-black text-white">Best Customer</h4>
+
+                      <div className="p-3.5 rounded-xl bg-zinc-800/80 border border-zinc-700/60 space-y-1">
+                        <p className="text-sm font-black text-amber-200">
+                          {analytics?.aiInsights?.bestCustomer?.name || analytics?.topCustomer?.name || 'Top Regular Patron'}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-zinc-300 font-semibold pt-1">
+                          <span>{analytics?.aiInsights?.bestCustomer?.visits ?? analytics?.topCustomer?.visits ?? 1} visits</span>
+                          <span>•</span>
+                          <span className="text-emerald-400">₹{analytics?.aiInsights?.bestCustomer?.totalSpent ?? analytics?.topCustomer?.totalSpent ?? 0} spent</span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-zinc-300 leading-relaxed pt-1">
+                        {analytics?.aiInsights?.bestCustomer?.review ||
+                          'High-frequency patron who values prompt turnaround. Suggest tailored loyalty perks and advance booking reminders.'}
+                      </p>
+                    </div>
+
+                    <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400">
+                      Retention advice: Priority queueing recommendation
+                    </div>
+                  </div>
+
+                  {/* 3. BEST EMPLOYEE (BARBER OR DOCTOR) */}
+                  <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-md">
+                          {analytics?.aiInsights?.bestEmployee?.badge || (isClinic ? 'Doctor of the Month' : 'Barber of the Month')}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-black text-white">Best Employee</h4>
+
+                      <div className="p-3.5 rounded-xl bg-zinc-800/80 border border-zinc-700/60 space-y-1">
+                        <p className="text-sm font-black text-indigo-200">
+                          {analytics?.aiInsights?.bestEmployee?.name || analytics?.topEmployee?.name || (isClinic ? 'Senior Doctor' : 'Master Barber')}
+                        </p>
+                        <p className="text-xs text-zinc-400 font-medium">
+                          {analytics?.aiInsights?.bestEmployee?.role || analytics?.topEmployee?.role || (isClinic ? 'Consultant' : 'Stylist')}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-zinc-300 font-semibold pt-1">
+                          <span>{analytics?.aiInsights?.bestEmployee?.customersServed ?? analytics?.topEmployee?.customersServed ?? 0} served</span>
+                          <span>•</span>
+                          <span className="text-amber-400">Rating: {analytics?.aiInsights?.bestEmployee?.rating ?? analytics?.topEmployee?.rating ?? 5.0}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-zinc-300 leading-relaxed pt-1">
+                        {analytics?.aiInsights?.bestEmployee?.review ||
+                          'Consistently receives high ratings with quick turnarounds and stellar customer satisfaction.'}
+                      </p>
+                    </div>
+
+                    <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400">
+                      Performance appraisal: Recommended for spotlight
+                    </div>
+                  </div>
+                </div>
+
+                {/* RECOMMENDATIONS LIST */}
+                <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-3">
+                  <h4 className="text-xs font-black uppercase text-teal-300 tracking-wider">
+                    Strategic Recommendations
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {(analytics?.aiInsights?.recommendations || [
+                      'Add 15m staff buffer during predicted peak hours.',
+                      'Provide loyalty perks for top repeat customer to boost retention.',
+                      'Staff utilization pacing is healthy; keep current shift coverage.',
+                    ]).map((rec, i) => (
+                      <div
                         key={i}
-                        className="px-3 py-1.5 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-200 text-xs font-bold"
+                        className="p-3.5 rounded-xl bg-zinc-800/70 border border-zinc-700/50 text-xs text-zinc-200 flex items-start gap-2.5"
                       >
-                        {window}
-                      </span>
+                        <span className="text-teal-400 font-bold">✓</span>
+                        <span className="leading-relaxed">{rec}</span>
+                      </div>
                     ))}
                   </div>
-
-                  <p className="text-xs text-zinc-300 leading-relaxed pt-2">
-                    {analytics?.aiInsights?.peakHoursAnalysis ||
-                      'Midday and evening slots experience the highest footfall concentration. Keep chairs and consultation rooms fully staffed.'}
-                  </p>
                 </div>
-
-                <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
-                  <span>Cancellation Rate:</span>
-                  <strong className="text-teal-300">{analytics?.aiInsights?.cancellationRate || '0%'}</strong>
-                </div>
-              </div>
-
-              {/* 2. BEST CUSTOMER SPOTLIGHT */}
-              <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-md">
-                      {analytics?.aiInsights?.bestCustomer?.badge || 'VIP Regular'}
-                    </span>
-                  </div>
-                  <h4 className="text-base font-black text-white">Best Customer</h4>
-
-                  <div className="p-3.5 rounded-xl bg-zinc-800/80 border border-zinc-700/60 space-y-1">
-                    <p className="text-sm font-black text-amber-200">
-                      {analytics?.aiInsights?.bestCustomer?.name || analytics?.topCustomer?.name || 'Top Regular Patron'}
-                    </p>
-                    <div className="flex items-center gap-3 text-xs text-zinc-300 font-semibold pt-1">
-                      <span>{analytics?.aiInsights?.bestCustomer?.visits ?? analytics?.topCustomer?.visits ?? 1} visits</span>
-                      <span>•</span>
-                      <span className="text-emerald-400">₹{analytics?.aiInsights?.bestCustomer?.totalSpent ?? analytics?.topCustomer?.totalSpent ?? 0} spent</span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-zinc-300 leading-relaxed pt-1">
-                    {analytics?.aiInsights?.bestCustomer?.review ||
-                      'High-frequency patron who values prompt turnaround. Suggest tailored loyalty perks and advance booking reminders.'}
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400">
-                  Retention advice: Priority queueing recommendation
-                </div>
-              </div>
-
-              {/* 3. BEST EMPLOYEE (BARBER OR DOCTOR) */}
-              <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-md">
-                      {analytics?.aiInsights?.bestEmployee?.badge || (isClinic ? 'Doctor of the Month' : 'Barber of the Month')}
-                    </span>
-                  </div>
-                  <h4 className="text-base font-black text-white">Best Employee</h4>
-
-                  <div className="p-3.5 rounded-xl bg-zinc-800/80 border border-zinc-700/60 space-y-1">
-                    <p className="text-sm font-black text-indigo-200">
-                      {analytics?.aiInsights?.bestEmployee?.name || analytics?.topEmployee?.name || (isClinic ? 'Senior Doctor' : 'Master Barber')}
-                    </p>
-                    <p className="text-xs text-zinc-400 font-medium">
-                      {analytics?.aiInsights?.bestEmployee?.role || analytics?.topEmployee?.role || (isClinic ? 'Consultant' : 'Stylist')}
-                    </p>
-                    <div className="flex items-center gap-3 text-xs text-zinc-300 font-semibold pt-1">
-                      <span>{analytics?.aiInsights?.bestEmployee?.customersServed ?? analytics?.topEmployee?.customersServed ?? 0} served</span>
-                      <span>•</span>
-                      <span className="text-amber-400">Rating: {analytics?.aiInsights?.bestEmployee?.rating ?? analytics?.topEmployee?.rating ?? 5.0}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-zinc-300 leading-relaxed pt-1">
-                    {analytics?.aiInsights?.bestEmployee?.review ||
-                      'Consistently receives high ratings with quick turnarounds and stellar customer satisfaction.'}
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400">
-                  Performance appraisal: Recommended for spotlight
-                </div>
-              </div>
-            </div>
-
-            {/* RECOMMENDATIONS LIST */}
-            <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-3">
-              <h4 className="text-xs font-black uppercase text-teal-300 tracking-wider">
-                Strategic Recommendations
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {(analytics?.aiInsights?.recommendations || [
-                  'Add 15m staff buffer during predicted peak hours.',
-                  'Provide loyalty perks for top repeat customer to boost retention.',
-                  'Staff utilization pacing is healthy; keep current shift coverage.',
-                ]).map((rec, i) => (
-                  <div
-                    key={i}
-                    className="p-3.5 rounded-xl bg-zinc-800/70 border border-zinc-700/50 text-xs text-zinc-200 flex items-start gap-2.5"
-                  >
-                    <span className="text-teal-400 font-bold">✓</span>
-                    <span className="leading-relaxed">{rec}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       )}

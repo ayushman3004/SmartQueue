@@ -10,7 +10,8 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
-  if (userRole !== "admin" && business.owner.toString() !== requestingUserId.toString()) {
+  const bizOwnerId = (business.owner?._id || business.owner || business.ownerId)?.toString();
+  if (userRole !== "admin" && bizOwnerId !== requestingUserId?.toString()) {
     throw new ApiError(403, "Access denied: you can only view analytics for your own business");
   }
 
@@ -219,18 +220,78 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     }, null);
   }
 
-  // ─── 4. Generate AI Executive Analytics ────────────────────────────────────
-  const aiInsights = await generateBusinessAIAnalytics({
-    businessName: business.name,
-    category: business.category,
-    bookingsCount: totalBookings,
-    cancellationCount: cancelledBookingsCount,
-    averageRating: avgRating,
-    recentReviews: reviews,
-    topCustomer,
-    topEmployee,
-    staffList,
-  });
+  // ─── 4. Check Plan for AI Insights (Exclusive to PRO plan subscribers) ─────
+  let isProPlan = false;
+  let ownerPlan = "BASIC";
+
+  if (userRole === "admin") {
+    isProPlan = true;
+    ownerPlan = "PRO";
+  } else if (
+    business.subscription?.status === "ACTIVE" &&
+    business.subscription?.plan === "PRO" &&
+    (!business.subscription.expiresAt || new Date(business.subscription.expiresAt) > new Date())
+  ) {
+    isProPlan = true;
+    ownerPlan = "PRO";
+  } else {
+    try {
+      const ownerUser = await mongoose.model("User").findById(business.owner).select("subscription role");
+      if (ownerUser && ownerUser.role === "admin") {
+        isProPlan = true;
+        ownerPlan = "PRO";
+      } else if (
+        ownerUser &&
+        ownerUser.subscription?.status === "ACTIVE" &&
+        ownerUser.subscription?.plan === "PRO" &&
+        (!ownerUser.subscription.expiresAt || new Date(ownerUser.subscription.expiresAt) > new Date())
+      ) {
+        isProPlan = true;
+        ownerPlan = "PRO";
+      } else {
+        ownerPlan = ownerUser?.subscription?.plan || business.subscription?.plan || "BASIC";
+      }
+    } catch {
+      ownerPlan = business.subscription?.plan || "BASIC";
+    }
+  }
+
+  if (options.refresh && !isProPlan) {
+    throw new ApiError(
+      403,
+      "AI Executive Review is exclusively available on the ServeQ Pro plan. Please upgrade to Pro to unlock."
+    );
+  }
+
+  let aiInsights = null;
+  if (isProPlan) {
+    const rawAi = await generateBusinessAIAnalytics({
+      businessName: business.name,
+      category: business.category,
+      bookingsCount: totalBookings,
+      cancellationCount: cancelledBookingsCount,
+      averageRating: avgRating,
+      recentReviews: reviews,
+      topCustomer,
+      topEmployee,
+      staffList,
+    });
+    aiInsights = {
+      ...rawAi,
+      isLocked: false,
+      restricted: false,
+      plan: "PRO",
+    };
+  } else {
+    aiInsights = {
+      isLocked: true,
+      restricted: true,
+      requiredPlan: "PRO",
+      currentPlan: ownerPlan,
+      message:
+        "AI Operational Insights and Predictive Rush Forecasting are exclusive to ServeQ Pro Plan subscribers. Upgrade from Basic to Pro (₹1,999/mo) to unlock real-time Gemini AI analytics, VIP regular analysis, and automated staff optimization.",
+    };
+  }
 
   const uniqueCustomerIds = new Set([
     ...earnedBookings

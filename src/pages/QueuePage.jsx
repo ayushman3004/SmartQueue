@@ -916,6 +916,36 @@ export default function QueuePage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Pay at Counter Status Card */}
+                    <div className="mt-5 p-3.5 sm:p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
+                          myQueueItem?.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          ₹
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Payment (Pay at Counter)</p>
+                          <p className="text-sm font-black text-zinc-900">
+                            Amount: ₹{myQueueItem?.paidAmount ?? (selectedService?.price || activeBusiness.basePrice || 0)}
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        {myQueueItem?.paymentStatus === 'paid' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            Paid at Counter
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                            Pending at Counter
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Bottom Action Buttons: View Live Queue & Reschedule / Booking */}
@@ -1122,6 +1152,29 @@ export default function QueuePage() {
                         </p>
                         <p className="text-sm font-bold text-zinc-800">
                           {activeUsers.length === 0 ? 'Immediate' : `~${activeUsers.length * (activeBusiness.averageServiceTime || 15)} mins`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Pay at Counter Notice Box */}
+                    <div className="rounded-2xl bg-amber-50/70 border border-amber-200/80 p-3.5 flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                          <p className="text-[10px] text-amber-800 font-bold uppercase tracking-wider">
+                            Payment • Pay at Counter
+                          </p>
+                        </div>
+                        <p className="text-xs text-amber-950 font-medium">
+                          Pay directly to business staff upon arrival.
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 pl-3">
+                        <p className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">
+                          To Pay
+                        </p>
+                        <p className="text-base font-black text-amber-950">
+                          ₹{selectedService?.price ?? (activeBusiness.services?.[0]?.price || activeBusiness.basePrice || 0)}
                         </p>
                       </div>
                     </div>

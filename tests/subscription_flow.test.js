@@ -286,3 +286,276 @@ test("Subscription Flow - Venue Subscription Enforcement & Pay-at-Counter Safegu
     Queue.findOne = origQueueFindOne;
   }
 });
+
+test("Subscription Flow - Live Queue Counter Payment & AI Insights Plan Gating", async (t) => {
+  const { collectQueuePayment } = await import("../src/queue/queue.service.js");
+  const { getBusinessAnalytics } = await import("../src/modules/analytics/analytics.service.js");
+  const Booking = (await import("../src/booking/booking.model.js")).default;
+
+  const testBizId = new mongoose.Types.ObjectId().toString();
+  const testOwnerId = new mongoose.Types.ObjectId().toString();
+  const testUserId = new mongoose.Types.ObjectId().toString();
+  const testStaffId = new mongoose.Types.ObjectId().toString();
+  const testBookingId = new mongoose.Types.ObjectId().toString();
+
+  await t.test("collectQueuePayment updates both queue entry and linked booking to paid", async () => {
+    let savedQueue = false;
+    let savedBooking = false;
+
+    const mockQueueDoc = {
+      businessId: testBizId,
+      users: [
+        {
+          userId: testUserId,
+          bookingId: testBookingId,
+          serviceType: "Haircut",
+          paidAmount: 350,
+          paymentMethod: "counter",
+          paymentStatus: "pending",
+          status: "waiting",
+        },
+      ],
+      save: async () => {
+        savedQueue = true;
+      },
+    };
+
+    const mockBookingDoc = {
+      _id: testBookingId,
+      paymentMethod: "counter",
+      paymentStatus: "pending",
+      paidAmount: 350,
+      save: async () => {
+        savedBooking = true;
+      },
+    };
+
+    const origBizFind = Business.findById;
+    const origQueueFind = Queue.findOne;
+    const origBookingFind = Booking.findById;
+
+    try {
+      Business.findById = async () => ({
+        _id: testBizId,
+        owner: testOwnerId,
+        ownerId: testOwnerId,
+      });
+
+      Queue.findOne = () => ({
+        ...mockQueueDoc,
+        users: mockQueueDoc.users,
+        save: mockQueueDoc.save,
+        populate: function () {
+          return this;
+        },
+        then: function (resolve) {
+          resolve(mockQueueDoc);
+        },
+      });
+
+      Booking.findById = async () => mockBookingDoc;
+
+      const result = await collectQueuePayment(
+        testBizId,
+        testUserId,
+        { _id: testOwnerId, role: "owner" },
+        null
+      );
+
+      assert.equal(result.users[0].paymentStatus, "paid");
+      assert.equal(mockQueueDoc.users[0].paymentStatus, "paid");
+      assert.equal(mockBookingDoc.paymentStatus, "paid");
+      assert.equal(savedQueue, true);
+      assert.equal(savedBooking, true);
+    } finally {
+      Business.findById = origBizFind;
+      Queue.findOne = origQueueFind;
+      Booking.findById = origBookingFind;
+    }
+  });
+
+  await t.test("getBusinessAnalytics restricts AI insights for Basic plan (isLocked: true)", async () => {
+    const origBizFind = Business.findById;
+    const origUserFind = User.findById;
+    const origBookingFind = Booking.find;
+    const origBookingCount = Booking.countDocuments;
+    const Review = (await import("../src/modules/review/review.model.js")).default;
+    const origReviewFind = Review.find;
+    const origQueueFind = Queue.findOne;
+
+    try {
+      Business.findById = async () => ({
+        _id: testBizId,
+        owner: testOwnerId,
+        name: "Basic Salon",
+        category: "salon",
+        subscription: {
+          plan: "BASIC",
+          status: "ACTIVE",
+          expiresAt: new Date(Date.now() + 864000000),
+        },
+      });
+
+      User.findById = async () => ({
+        _id: testOwnerId,
+        role: "owner",
+        subscription: {
+          plan: "BASIC",
+          status: "ACTIVE",
+          expiresAt: new Date(Date.now() + 864000000),
+        },
+      });
+
+      Booking.countDocuments = async () => 0;
+      Booking.find = () => ({
+        populate: () => ({
+          sort: async () => [],
+        }),
+      });
+
+      Review.find = () => ({
+        sort: () => ({
+          limit: async () => [],
+        }),
+      });
+
+      Queue.findOne = () => ({
+        populate: async () => null,
+      });
+
+      const analytics = await getBusinessAnalytics(testBizId, testOwnerId, "owner", { refresh: false });
+
+      assert.ok(analytics.aiInsights);
+      assert.equal(analytics.aiInsights.isLocked, true);
+      assert.equal(analytics.aiInsights.restricted, true);
+      assert.equal(analytics.aiInsights.requiredPlan, "PRO");
+      assert.equal(analytics.aiInsights.currentPlan, "BASIC");
+    } finally {
+      Business.findById = origBizFind;
+      User.findById = origUserFind;
+      Booking.find = origBookingFind;
+      Booking.countDocuments = origBookingCount;
+      Review.find = origReviewFind;
+      Queue.findOne = origQueueFind;
+    }
+  });
+
+  await t.test("getBusinessAnalytics rejects AI refresh with 403 when not on Pro plan", async () => {
+    const origBizFind = Business.findById;
+    const origUserFind = User.findById;
+    const origBookingFind = Booking.find;
+    const origBookingCount = Booking.countDocuments;
+    const Review = (await import("../src/modules/review/review.model.js")).default;
+    const origReviewFind = Review.find;
+
+    try {
+      Business.findById = async () => ({
+        _id: testBizId,
+        owner: testOwnerId,
+        subscription: { plan: "BASIC", status: "ACTIVE" },
+      });
+
+      User.findById = async () => ({
+        _id: testOwnerId,
+        role: "owner",
+        subscription: { plan: "BASIC", status: "ACTIVE" },
+      });
+
+      Booking.countDocuments = async () => 0;
+      Booking.find = () => ({
+        populate: () => ({
+          sort: async () => [],
+        }),
+      });
+
+      Review.find = () => ({
+        sort: () => ({
+          limit: async () => [],
+        }),
+      });
+
+      await assert.rejects(
+        () =>
+          getBusinessAnalytics(testBizId, testOwnerId, "owner", { refresh: true }),
+        (err) => {
+          assert.equal(err.statusCode, 403);
+          assert.match(err.message, /Pro Plan/i);
+          return true;
+        }
+      );
+    } finally {
+      Business.findById = origBizFind;
+      User.findById = origUserFind;
+      Booking.find = origBookingFind;
+      Booking.countDocuments = origBookingCount;
+      Review.find = origReviewFind;
+    }
+  });
+
+  await t.test("getBusinessAnalytics unlocks AI insights for Pro plan subscribers", async () => {
+    const origBizFind = Business.findById;
+    const origUserFind = User.findById;
+    const origBookingFind = Booking.find;
+    const origBookingCount = Booking.countDocuments;
+    const Review = (await import("../src/modules/review/review.model.js")).default;
+    const origReviewFind = Review.find;
+    const origQueueFind = Queue.findOne;
+
+    try {
+      Business.findById = async () => ({
+        _id: testBizId,
+        owner: testOwnerId,
+        name: "Pro Salon",
+        category: "salon",
+        subscription: {
+          plan: "PRO",
+          status: "ACTIVE",
+          expiresAt: new Date(Date.now() + 864000000),
+        },
+      });
+
+      User.findById = async () => ({
+        _id: testOwnerId,
+        role: "owner",
+        subscription: {
+          plan: "PRO",
+          status: "ACTIVE",
+          expiresAt: new Date(Date.now() + 864000000),
+        },
+      });
+
+      Booking.countDocuments = async () => 0;
+      Booking.find = () => ({
+        populate: () => ({
+          sort: async () => [],
+        }),
+      });
+
+      Review.find = () => ({
+        sort: () => ({
+          limit: async () => [],
+        }),
+      });
+
+      Queue.findOne = () => ({
+        populate: async () => null,
+      });
+
+      const analytics = await getBusinessAnalytics(testBizId, testOwnerId, "owner", { refresh: false });
+
+      assert.ok(analytics.aiInsights);
+      assert.equal(analytics.aiInsights.isLocked, false);
+      assert.equal(analytics.aiInsights.restricted, false);
+      assert.ok(analytics.aiInsights.peakHours);
+      assert.ok(analytics.aiInsights.bestCustomer);
+      assert.ok(analytics.aiInsights.bestEmployee);
+    } finally {
+      Business.findById = origBizFind;
+      User.findById = origUserFind;
+      Booking.find = origBookingFind;
+      Booking.countDocuments = origBookingCount;
+      Review.find = origReviewFind;
+      Queue.findOne = origQueueFind;
+    }
+  });
+});

@@ -8,4 +8,5 @@ export const getWaitEstimate = (businessId) => api.get(`/queue/estimate/${busine
 export const extendUserTime = (businessId, userId, minutes) => api.post(`/queue/${businessId}/extend`, { userId, minutes });
 export const cancelDelay = (businessId) => api.post(`/queue/${businessId}/cancel-delay`);
 export const assignQueueStaff = (businessId, userId, staffName) => api.post(`/queue/${businessId}/assign-staff`, { userId, staffName });
+export const collectQueuePayment = (businessId, userId) => api.post(`/queue/${businessId}/users/${userId}/collect-payment`);
 

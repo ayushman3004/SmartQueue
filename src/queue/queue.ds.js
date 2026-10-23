@@ -1,5 +1,5 @@
 class QueueNode {
-  constructor({ userId, bookingId, serviceTime, serviceType, joinedAt, pricingLabel, paidAmount, services, assignedStaff }) {
+  constructor({ userId, bookingId, serviceTime, serviceType, joinedAt, pricingLabel, paidAmount, paymentMethod, paymentStatus, services, assignedStaff }) {
     this.userId = userId;
     this.bookingId = bookingId || null;
     this.serviceTime = serviceTime; // in minutes
@@ -8,6 +8,8 @@ class QueueNode {
     this.assignedStaff = assignedStaff || null;
     this.pricingLabel = pricingLabel || "";
     this.paidAmount = paidAmount || 0;
+    this.paymentMethod = paymentMethod || "counter";
+    this.paymentStatus = paymentStatus || "pending";
     this.joinedAt = joinedAt || new Date();
 
     this.status = "waiting"; // waiting | serving | done
@@ -175,6 +177,8 @@ class QueueDS {
         assignedStaff: current.assignedStaff || null,
         pricingLabel: current.pricingLabel,
         paidAmount: current.paidAmount,
+        paymentMethod: current.paymentMethod || "counter",
+        paymentStatus: current.paymentStatus || "pending",
         estimatedStartTime: current.estimatedStartTime,
         joinedAt: current.joinedAt,
       });
@@ -196,6 +200,8 @@ class QueueDS {
       node.assignedStaff = u.assignedStaff || null;
       node.pricingLabel = u.pricingLabel || "";
       node.paidAmount = u.paidAmount || 0;
+      node.paymentMethod = u.paymentMethod || "counter";
+      node.paymentStatus = u.paymentStatus || "pending";
       node.estimatedStartTime = u.estimatedStartTime ? new Date(u.estimatedStartTime) : null;
 
       if (!queue.head) {

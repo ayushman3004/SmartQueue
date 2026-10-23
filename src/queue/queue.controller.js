@@ -178,3 +178,19 @@ export const assignStaff = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { queue }, "Assigned staff member successfully"));
 });
 
+// POST /api/queue/:businessId/users/:userId/collect-payment (owner or admin only)
+export const collectPayment = asyncHandler(async (req, res) => {
+  const { businessId, userId } = req.params;
+  const io = req.app.get("io");
+
+  const queue = await queueService.collectQueuePayment(
+    businessId,
+    userId,
+    req.user,
+    io
+  );
+
+  emitQueueUpdate(req, businessId, queue);
+  res.json(new ApiResponse(200, { queue }, "Counter payment recorded and verified as paid"));
+});
+

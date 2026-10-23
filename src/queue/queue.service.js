@@ -231,6 +231,8 @@ export const joinQueue = async (businessId, userData, io = null) => {
       assignedStaff: assignedStaff || { name: "", role: "" },
       status: initialStatus,
       paidAmount: servicePrice,
+      paymentMethod: "counter",
+      paymentStatus: "pending",
       pricingLabel: userData.pricingLabel || "",
       notes: userData.notes || "Direct Live Queue Entry",
     });
@@ -254,6 +256,8 @@ export const joinQueue = async (businessId, userData, io = null) => {
           assignedStaff: assignedStaff || { name: "", role: "" },
           status: initialStatus,
           paidAmount: servicePrice,
+          paymentMethod: "counter",
+          paymentStatus: "pending",
           pricingLabel: userData.pricingLabel || "",
           notes: userData.notes || "Direct Live Queue Entry",
         });
@@ -272,6 +276,8 @@ export const joinQueue = async (businessId, userData, io = null) => {
     assignedStaff,
     pricingLabel: userData.pricingLabel || "",
     paidAmount: servicePrice,
+    paymentMethod: "counter",
+    paymentStatus: "pending",
   });
 
   queueDoc.users = queueDS.toArray();
@@ -719,6 +725,78 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
   if (io) {
     io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue: populatedQueue });
     io.to(`business:${businessId}`).emit("queue:update", populatedQueue);
+  }
+
+  return populatedQueue;
+};
+
+/**
+ * Accept & mark payment as paid at counter for an active live queue patron
+ */
+export const collectQueuePayment = async (businessId, userId, staffUser, io = null) => {
+  const business = await Business.findById(businessId);
+  if (!business) throw new ApiError(404, "Business not found");
+
+  const businessOwnerId = (business.owner?._id || business.owner || business.ownerId)?.toString();
+  if (
+    staffUser.role !== "admin" &&
+    businessOwnerId !== (staffUser._id || staffUser.id)?.toString()
+  ) {
+    throw new ApiError(403, "Not authorized to collect payment for this business");
+  }
+
+  const queue = await Queue.findOne({ businessId });
+  if (!queue) throw new ApiError(404, "Queue not found");
+
+  const queueUser = queue.users.find(
+    (u) => (u.userId?._id || u.userId)?.toString() === userId.toString()
+  );
+
+  if (!queueUser) {
+    throw new ApiError(404, "User not found in queue");
+  }
+
+  queueUser.paymentStatus = "paid";
+  queueUser.paymentMethod = "counter";
+
+  // Update corresponding Booking if attached or found
+  let booking = null;
+  if (queueUser.bookingId) {
+    booking = await Booking.findById(queueUser.bookingId);
+  } else {
+    booking = await Booking.findOne({
+      businessId,
+      userId,
+      status: { $in: ["waiting", "serving", "scheduled", "confirmed"] },
+    }).sort({ createdAt: -1 });
+  }
+
+  if (booking) {
+    booking.paymentStatus = "paid";
+    booking.paymentMethod = "counter";
+    booking.collectedByStaff = true;
+    booking.collectedAt = new Date();
+    booking.paidAmount = booking.paidAmount || queueUser.paidAmount || 0;
+    await booking.save();
+  }
+
+  await queue.save();
+
+  const populatedQueue = await Queue.findOne({ businessId }).populate(
+    "users.userId",
+    "name email phone"
+  );
+
+  if (io) {
+    io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue: populatedQueue });
+    io.to(`business:${businessId}`).emit("queue:update", populatedQueue);
+    io.to(`business:${businessId}`).emit("bookings:updated");
+    io.to(`user:${userId}`).emit("queue:payment_collected", {
+      businessId,
+      userId,
+      paidAmount: queueUser.paidAmount,
+      paymentStatus: "paid",
+    });
   }
 
   return populatedQueue;

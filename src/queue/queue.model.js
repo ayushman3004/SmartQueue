@@ -62,6 +62,16 @@ const queueSchema = new mongoose.Schema(
           type: Number,
           default: 0,
         },
+        paymentMethod: {
+          type: String,
+          enum: ["counter", "online", "cash", "upi"],
+          default: "counter",
+        },
+        paymentStatus: {
+          type: String,
+          enum: ["pending", "paid", "failed", "refunded"],
+          default: "pending",
+        },
       },
     ],
   },

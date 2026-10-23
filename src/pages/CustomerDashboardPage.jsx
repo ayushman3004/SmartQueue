@@ -320,6 +320,8 @@ export default function CustomerDashboardPage() {
         services: qItem.services || [],
         assignedStaff: qItem.assignedStaff || { name: '', role: '' },
         paidAmount: qItem.paidAmount || 0,
+        paymentMethod: qItem.paymentMethod || 'counter',
+        paymentStatus: qItem.paymentStatus || 'pending',
         status: activeQ.isServing ? 'serving' : 'waiting',
         startTime: qItem.joinedAt || qItem.estimatedStartTime || new Date(),
         entryType: 'live_queue',
@@ -1180,11 +1182,24 @@ export default function CustomerDashboardPage() {
                   <h4 className="text-base font-black text-white">
                     {myActiveQueues[0].business.name}
                   </h4>
-                  <p className="text-xs text-teal-200 font-medium">
-                    {myActiveQueues[0].peopleAhead === 0
-                      ? 'You are next in line!'
-                      : `${myActiveQueues[0].peopleAhead} patrons ahead of you`}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    <p className="text-xs text-teal-200 font-medium">
+                      {myActiveQueues[0].peopleAhead === 0
+                        ? 'You are next in line!'
+                        : `${myActiveQueues[0].peopleAhead} patrons ahead of you`}
+                    </p>
+                    <span className="text-teal-400 text-xs">•</span>
+                    <span className="text-xs font-black text-white">
+                      ₹{myActiveQueues[0].myQueueItem?.paidAmount ?? 0}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      myActiveQueues[0].myQueueItem?.paymentStatus === 'paid'
+                        ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/40'
+                        : 'bg-amber-500/30 text-amber-200 border border-amber-400/40'
+                    }`}>
+                      {myActiveQueues[0].myQueueItem?.paymentStatus === 'paid' ? 'Paid at Counter' : 'Pending at Counter'}
+                    </span>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
