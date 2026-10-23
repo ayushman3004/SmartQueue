@@ -2,13 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=5" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=5" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=5" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=5" />
-    <link rel="shortcut icon" href="/favicon.ico?v=5" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=5" />
-    <link rel="alternate icon" type="image/png" href="/logo.png?v=5" />
+    <!-- Google Search & Browser Favicons (Multiples of 48px required by Google) -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#FFF8F5" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,18 +20,29 @@
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://serveq.tech" />
 
-    <!-- Open Graph / Social Sharing -->
+    <!-- Open Graph / Social Sharing (Absolute URLs for search bots) -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://serveq.tech" />
     <meta property="og:title" content="serveQ — Smart Queue & Virtual Waiting" />
     <meta property="og:description" content="Join lines from your phone, track wait times live, and eliminate crowded waiting rooms with serveQ virtual queuing." />
-    <meta property="og:image" content="/logo.png" />
+    <meta property="og:image" content="https://serveq.tech/logo.png" />
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="serveQ — Smart Queue & Virtual Waiting" />
     <meta name="twitter:description" content="Real-time virtual queue management for salons, clinics, and service venues." />
-    <meta name="twitter:image" content="/logo.png" />
+    <meta name="twitter:image" content="https://serveq.tech/logo.png" />
+
+    <!-- Google Search Structured Data (Organization Logo) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "ServeQ",
+      "url": "https://serveq.tech",
+      "logo": "https://serveq.tech/logo.png"
+    }
+    </script>
 
     <title>serveQ — Smart Queue & Virtual Waiting</title>
     <!-- Razorpay Standard Checkout SDK -->
