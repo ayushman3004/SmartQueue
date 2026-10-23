@@ -7,7 +7,11 @@ export default function BackButton() {
 
   // Don't show on root dashboards or landing/legal pages
   const hideOn = ['/', '/login', '/customers', '/business', '/admin', '/privacy', '/terms']
-  if (hideOn.includes(location.pathname) || location.pathname.includes('/manage')) return null
+  if (
+    hideOn.includes(location.pathname) ||
+    location.pathname.includes('/manage') ||
+    location.pathname.startsWith('/business/')
+  ) return null
 
   return (
     <motion.button

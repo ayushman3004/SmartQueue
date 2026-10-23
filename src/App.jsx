@@ -150,7 +150,7 @@ export default function App() {
     location.pathname === '/help' ||
     location.pathname === '/profile' ||
     location.pathname === '/subscription' ||
-    (location.pathname.startsWith('/business/') && location.pathname.includes('/manage'))
+    location.pathname.startsWith('/business')
 
   const isLoginPage =
     location.pathname === '/login' ||
@@ -284,6 +284,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['owner', 'admin']}>
                 <BusinessOnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/business/:businessId"
+            element={
+              <ProtectedRoute allowedRoles={['owner', 'admin']}>
+                <BusinessDashboard />
               </ProtectedRoute>
             }
           />

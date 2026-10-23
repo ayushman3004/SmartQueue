@@ -809,7 +809,7 @@ export default function BusinessOnboardingPage() {
           fontWeight: 'bold',
         },
       })
-      navigate('/business')
+      navigate(launched?._id ? `/business/${launched._id}` : '/business')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Pre-flight launch validation failed')
     } finally {
