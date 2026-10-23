@@ -624,41 +624,6 @@ export default function HubCommandCenter() {
             </div>
           )}
 
-          {/* Business Subscription Tier Card */}
-          <div className="bg-gradient-to-r from-emerald-950 via-[#064E3B] to-[#0D361F] text-white rounded-3xl p-5 sm:p-7 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5 text-left border border-emerald-700/50">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 space-y-1.5 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-wider text-emerald-200 border border-white/15">
-                <Crown className="w-3 h-3 text-amber-300" />
-                <span>
-                  {user?.subscription?.status === 'ACTIVE'
-                    ? `Active ${user.subscription.plan} Plan`
-                    : 'ServeQ Business Tier Selection'}
-                </span>
-              </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {user?.subscription?.status === 'ACTIVE'
-                  ? `Your venue is on the ${user.subscription.plan} Plan (₹${user.subscription.amount}/month)`
-                  : 'Choose Your Venue Plan: Basic Plan (₹999) or Pro Plan (₹1,999)'}
-              </h3>
-              <p className="text-xs sm:text-sm text-emerald-100 font-medium">
-                {user?.subscription?.status === 'ACTIVE'
-                  ? 'Active subscription running. All queue workflows, direct settlements, and venue analytics are enabled.'
-                  : 'Direct Razorpay checkout to ServeQ. Unlock online payments, multi-service sequencing, AI analytics, and unlimited practitioners.'}
-              </p>
-            </div>
-
-            <div className="relative z-10 flex flex-wrap items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setSubscriptionModalOpen(true)}
-                className="px-5 py-2.5 rounded-xl bg-white text-[#064E3B] hover:bg-emerald-50 font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>{user?.subscription?.status === 'ACTIVE' ? 'Switch / View Plans' : 'Select Plan & Pay'}</span>
-              </button>
-            </div>
-          </div>
 
           {/* In-Progress Onboarding Notification Banner */}
           {myBusinesses.some((b) => b.onboarding?.status === 'IN_PROGRESS') && (
