@@ -375,11 +375,11 @@ export default function BusinessOnboardingPage() {
     const schedule = (biz.operatingHours?.weeklySchedule && biz.operatingHours.weeklySchedule.length > 0)
       ? biz.operatingHours.weeklySchedule
       : DAYS_OF_WEEK.map((d) => ({
-          day: d,
-          isOpen: d !== 'sunday',
-          open: biz.timings?.open || '09:00',
-          close: biz.timings?.close || '20:00',
-        }))
+        day: d,
+        isOpen: d !== 'sunday',
+        open: biz.timings?.open || '09:00',
+        close: biz.timings?.close || '20:00',
+      }))
 
     setStep2({
       country: biz.locationDetails?.country || 'India',
@@ -962,20 +962,6 @@ export default function BusinessOnboardingPage() {
 
             {/* Stepper Progress & Sign Out */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
-                <span className="flex items-center gap-1 text-emerald-300 bg-white/10 px-2.5 py-0.5 rounded-full">
-                  <Check className="w-3.5 h-3.5" /> 1. Email Verified
-                </span>
-                <span className="text-emerald-300/60">→</span>
-                <span className="bg-white/20 px-3 py-0.5 rounded-full text-white border border-white/30 shadow-xs flex items-center gap-1.5">
-                  <Crown className="w-3.5 h-3.5 text-amber-300" />
-                  <span>2. Choose Plan & Pay (Current)</span>
-                </span>
-                <span className="text-emerald-300/60">→</span>
-                <span className="text-emerald-200/60 px-2 py-0.5">
-                  3. Onboard & Access Dashboard
-                </span>
-              </div>
 
               {/* Sign Out Button in Header */}
               <button
@@ -990,10 +976,6 @@ export default function BusinessOnboardingPage() {
             </div>
 
             <div className="space-y-2 relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-[11px] font-bold text-emerald-100 uppercase tracking-wider">
-                <Crown className="w-3.5 h-3.5 text-amber-300" />
-                <span>ServeQ Venue Platform Subscription</span>
-              </div>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
                 Choose Your Plan to Start Onboarding
               </h2>
@@ -1009,11 +991,10 @@ export default function BusinessOnboardingPage() {
               {ONBOARDING_PLANS.map((plan) => (
                 <div
                   key={plan.id}
-                  className={`relative rounded-3xl p-6 sm:p-7 flex flex-col justify-between transition-all ${
-                    plan.popular
+                  className={`relative rounded-3xl p-6 sm:p-7 flex flex-col justify-between transition-all ${plan.popular
                       ? 'bg-white border-2 border-emerald-600 shadow-xl ring-4 ring-emerald-500/10'
                       : 'bg-white border border-zinc-200 shadow-sm hover:border-zinc-300'
-                  }`}
+                    }`}
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 right-6 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
@@ -1052,9 +1033,8 @@ export default function BusinessOnboardingPage() {
                       <ul className="space-y-2.5">
                         {plan.features.map((feat, idx) => (
                           <li key={idx} className="flex items-start gap-2.5 text-xs text-zinc-700">
-                            <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                              plan.popular ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-700'
-                            }`}>
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${plan.popular ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-700'
+                              }`}>
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </span>
                             <span className="leading-tight">{feat}</span>
@@ -1068,11 +1048,10 @@ export default function BusinessOnboardingPage() {
                     type="button"
                     disabled={!!subscribingPlan}
                     onClick={() => handleSubscribeInOnboarding(plan)}
-                    className={`w-full py-3.5 px-4 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm ${
-                      plan.popular
+                    className={`w-full py-3.5 px-4 rounded-2xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm ${plan.popular
                         ? 'bg-[#064E3B] hover:bg-[#047857] text-white active:scale-98'
                         : 'bg-zinc-900 hover:bg-zinc-800 text-white active:scale-98'
-                    }`}
+                      }`}
                   >
                     {subscribingPlan === plan.id ? (
                       <>
@@ -1197,21 +1176,19 @@ export default function BusinessOnboardingPage() {
                     type="button"
                     disabled={!isAccessible}
                     onClick={() => setCurrentStep(s.id)}
-                    className={`flex flex-col items-center group relative z-10 focus:outline-none transition-all ${
-                      isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-                    }`}
+                    className={`flex flex-col items-center group relative z-10 focus:outline-none transition-all ${isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+                      }`}
                   >
                     {/* Circle Node */}
                     <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
-                        isCompleted
+                      className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-all ${isCompleted
                           ? 'bg-teal-600 text-white shadow-sm ring-4 ring-teal-50'
                           : isCurrent
-                          ? 'bg-white border-2 border-teal-600 text-teal-700 font-extrabold ring-4 ring-teal-100 shadow-xs'
-                          : isAccessible
-                          ? 'bg-white border-2 border-zinc-300 text-zinc-600 hover:border-zinc-400'
-                          : 'bg-zinc-100 border-2 border-zinc-200 text-zinc-400'
-                      }`}
+                            ? 'bg-white border-2 border-teal-600 text-teal-700 font-extrabold ring-4 ring-teal-100 shadow-xs'
+                            : isAccessible
+                              ? 'bg-white border-2 border-zinc-300 text-zinc-600 hover:border-zinc-400'
+                              : 'bg-zinc-100 border-2 border-zinc-200 text-zinc-400'
+                        }`}
                     >
                       {isCompleted ? (
                         <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1225,24 +1202,22 @@ export default function BusinessOnboardingPage() {
                     {/* Step Label below circle */}
                     <div className="text-center mt-2 px-1">
                       <p
-                        className={`text-xs font-bold whitespace-nowrap tracking-tight ${
-                          isCurrent
+                        className={`text-xs font-bold whitespace-nowrap tracking-tight ${isCurrent
                             ? 'text-teal-700'
                             : isCompleted
-                            ? 'text-zinc-900 font-semibold'
-                            : 'text-zinc-500'
-                        }`}
+                              ? 'text-zinc-900 font-semibold'
+                              : 'text-zinc-500'
+                          }`}
                       >
                         {s.title}
                       </p>
                       <p
-                        className={`text-[10px] whitespace-nowrap mt-0.5 ${
-                          isCurrent
+                        className={`text-[10px] whitespace-nowrap mt-0.5 ${isCurrent
                             ? 'text-teal-600 font-medium'
                             : isCompleted
-                            ? 'text-zinc-400'
-                            : 'text-zinc-400'
-                        }`}
+                              ? 'text-zinc-400'
+                              : 'text-zinc-400'
+                          }`}
                       >
                         {s.subtitle}
                       </p>
@@ -1253,9 +1228,8 @@ export default function BusinessOnboardingPage() {
                   {!isLast && (
                     <div className="flex-1 px-2 pt-4">
                       <div
-                        className={`h-0.5 w-full transition-colors ${
-                          completedSet.has(s.id) ? 'bg-teal-600' : 'bg-zinc-200'
-                        }`}
+                        className={`h-0.5 w-full transition-colors ${completedSet.has(s.id) ? 'bg-teal-600' : 'bg-zinc-200'
+                          }`}
                       />
                     </div>
                   )}
@@ -1267,7 +1241,7 @@ export default function BusinessOnboardingPage() {
 
         {/* Scrollable Dynamic Wizard Step Content */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-white">
-          
+
           {/* STEP 1: BUSINESS INFORMATION */}
           {currentStep === 1 && (
             <div className="space-y-6 text-left">
@@ -1295,11 +1269,10 @@ export default function BusinessOnboardingPage() {
                         key={cat}
                         type="button"
                         onClick={() => handleCategorySwitch(cat)}
-                        className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${
-                          isSelected
+                        className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
                             ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
                             : 'bg-zinc-50 border-zinc-200 text-zinc-800 hover:bg-zinc-100'
-                        }`}
+                          }`}
                       >
                         <span className="text-xs font-bold uppercase tracking-wider">{meta.label || cat}</span>
                       </button>
@@ -1520,11 +1493,10 @@ export default function BusinessOnboardingPage() {
                   {step2.weeklySchedule.map((item, idx) => (
                     <div
                       key={item.day}
-                      className={`p-4 rounded-2xl border transition-all ${
-                        item.isOpen
+                      className={`p-4 rounded-2xl border transition-all ${item.isOpen
                           ? 'bg-zinc-50/80 border-zinc-200 shadow-2xs'
                           : 'bg-zinc-100/60 border-zinc-200/60 opacity-60'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-black uppercase text-zinc-900 tracking-wider">
@@ -1533,11 +1505,10 @@ export default function BusinessOnboardingPage() {
                         <button
                           type="button"
                           onClick={() => toggleDaySchedule(idx)}
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${
-                            item.isOpen
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${item.isOpen
                               ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
                               : 'bg-rose-100 text-rose-800 border-rose-200'
-                          }`}
+                            }`}
                         >
                           {item.isOpen ? 'Open' : 'Closed'}
                         </button>
@@ -2185,7 +2156,7 @@ export default function BusinessOnboardingPage() {
 
               {/* Summary Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
+
                 {/* 1. Identity Summary */}
                 <div className="p-5 rounded-3xl border border-zinc-200 bg-zinc-50/60 flex flex-col justify-between">
                   <div className="space-y-2">
@@ -2379,11 +2350,10 @@ export default function BusinessOnboardingPage() {
                 {/* Two Plans: Basic (₹999) & Pro (₹1,999) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                   {/* Basic Plan */}
-                  <div className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between ${
-                    user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'BASIC'
+                  <div className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between ${user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'BASIC'
                       ? 'border-emerald-500 bg-emerald-50/30'
                       : 'border-zinc-200 bg-zinc-50/50 hover:border-zinc-300'
-                  }`}>
+                    }`}>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black uppercase tracking-wider bg-zinc-200 text-zinc-700 px-2.5 py-0.5 rounded-full">
@@ -2420,11 +2390,10 @@ export default function BusinessOnboardingPage() {
                   </div>
 
                   {/* Pro Plan */}
-                  <div className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between relative overflow-hidden ${
-                    user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'PRO'
+                  <div className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between relative overflow-hidden ${user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'PRO'
                       ? 'border-emerald-500 bg-emerald-50/30'
                       : 'border-teal-500 bg-teal-50/20 hover:border-teal-600'
-                  }`}>
+                    }`}>
                     <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-amber-600 text-white text-[9px] font-black uppercase px-3 py-0.5 rounded-bl-xl tracking-wider">
                       Most Popular
                     </div>
@@ -2530,13 +2499,12 @@ export default function BusinessOnboardingPage() {
               {STEPS.map((s) => (
                 <span
                   key={s.id}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    currentStep === s.id
+                  className={`w-2 h-2 rounded-full transition-all ${currentStep === s.id
                       ? 'bg-teal-600 w-4'
                       : completedSet.has(s.id)
-                      ? 'bg-emerald-500'
-                      : 'bg-zinc-200'
-                  }`}
+                        ? 'bg-emerald-500'
+                        : 'bg-zinc-200'
+                    }`}
                 />
               ))}
             </div>
