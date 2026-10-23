@@ -139,6 +139,9 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
       assert.equal(createdPayload.serviceType, "General Consultation + Diagnostic Blood Test");
       assert.equal(createdPayload.assignedStaff.name, "Dr. Rajesh Gupta");
       assert.equal(createdPayload.assignedStaff.autoAssigned, false);
+      assert.equal(createdPayload.paymentMethod, "counter", "Customer booking must strictly use Pay at Counter");
+      assert.equal(createdPayload.paymentStatus, "pending", "Payment status is pending counter settlement");
+      assert.equal(createdPayload.status, "confirmed", "Booking is confirmed immediately");
     } finally {
       Business.findById = origFindById;
       User.findById = origUserFindById;

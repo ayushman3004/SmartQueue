@@ -10,6 +10,8 @@ import {
 } from "../src/modules/subscription/subscription.service.js";
 import User from "../src/modules/auth/auth.model.js";
 import Business from "../src/modules/business/business.model.js";
+import Queue from "../src/queue/queue.model.js";
+import mongoose from "mongoose";
 
 test("Subscription Flow - Plan Specifications & Pricing", async (t) => {
   await t.test("Basic Plan is priced at ₹999 with 30-day duration", () => {
@@ -173,5 +175,114 @@ test("Subscription Flow - Get Current Subscription", async (t) => {
     });
   } finally {
     User.findById = origUserFindById;
+  }
+});
+
+test("Subscription Flow - Venue Subscription Enforcement & Pay-at-Counter Safeguards", async (t) => {
+  const origBusinessFindById = Business.findById;
+  const origUserFindById = User.findById;
+  const origQueueFindOne = Queue.findOne;
+
+  const testBizId = new mongoose.Types.ObjectId();
+  const testUserId = new mongoose.Types.ObjectId();
+
+  try {
+    Queue.findOne = async () => ({
+      businessId: testBizId,
+      users: [],
+    });
+
+    const unsubscribedBiz = {
+      _id: testBizId,
+      name: "Unsubscribed Salon",
+      isOpen: true,
+      isActive: true,
+      subscription: {
+        plan: "NONE",
+        status: "INACTIVE",
+      },
+      bookingSettings: { enableAppointments: true },
+      queueSettings: { enableLiveQueue: true },
+    };
+
+    const subscribedBiz = {
+      _id: testBizId,
+      name: "Subscribed Salon",
+      isOpen: true,
+      isActive: true,
+      subscription: {
+        plan: "BASIC",
+        status: "ACTIVE",
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+      bookingSettings: { enableAppointments: true },
+      queueSettings: { enableLiveQueue: true },
+      staff: [{ name: "Alice", isAvailable: true }],
+      services: [{ name: "Haircut", duration: 30, price: 300 }],
+    };
+
+    await t.test("isBusinessSubscriptionActive correctly evaluates active vs inactive", async () => {
+      const { isBusinessSubscriptionActive } = await import("../src/modules/subscription/subscription.service.js");
+      assert.equal(await isBusinessSubscriptionActive(unsubscribedBiz), false);
+      assert.equal(await isBusinessSubscriptionActive(subscribedBiz), true);
+    });
+
+    await t.test("getAvailableSlots rejects with 403 if venue subscription is inactive", async () => {
+      const { getAvailableSlots } = await import("../src/booking/booking.service.js");
+      Business.findById = async () => unsubscribedBiz;
+
+      await assert.rejects(
+        () => getAvailableSlots(testBizId, new Date()),
+        (err) => {
+          assert.equal(err.statusCode, 403);
+          assert.match(err.message, /subscription is inactive/i);
+          return true;
+        }
+      );
+    });
+
+    await t.test("createBooking rejects with 403 if venue subscription is inactive", async () => {
+      const { createBooking } = await import("../src/booking/booking.service.js");
+      Business.findById = async () => unsubscribedBiz;
+
+      await assert.rejects(
+        () =>
+          createBooking({
+            businessId: testBizId,
+            userId: testUserId,
+            startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            services: [{ name: "Consultation", duration: 15, price: 200 }],
+            paymentMethod: "counter",
+          }),
+        (err) => {
+          assert.equal(err.statusCode, 403);
+          assert.match(err.message, /subscription is inactive/i);
+          return true;
+        }
+      );
+    });
+
+    await t.test("joinQueue rejects with 403 if venue subscription is inactive", async () => {
+      const { joinQueue } = await import("../src/queue/queue.service.js");
+      Business.findById = async () => unsubscribedBiz;
+
+      await assert.rejects(
+        () =>
+          joinQueue(testBizId, {
+            userId: testUserId,
+            services: [{ name: "Haircut", duration: 20, price: 200 }],
+            paymentMethod: "counter",
+          }),
+        (err) => {
+          assert.equal(err.statusCode, 403);
+          assert.match(err.message, /subscription is inactive/i);
+          return true;
+        }
+      );
+    });
+  } finally {
+    Business.findById = origBusinessFindById;
+    User.findById = origUserFindById;
+    Queue.findOne = origQueueFindOne;
   }
 });

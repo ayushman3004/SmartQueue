@@ -6,6 +6,7 @@ import Business from "../modules/business/business.model.js";
 import Booking from "../booking/booking.model.js";
 import ApiError from "../../utils/ApiError.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
+import { isBusinessSubscriptionActive } from "../modules/subscription/subscription.service.js";
 
 //  JOIN QUEUE
 export const joinQueue = async (businessId, userData, io = null) => {
@@ -18,6 +19,15 @@ export const joinQueue = async (businessId, userData, io = null) => {
   if (!business) throw new ApiError(404, "Business not found");
   if (!business.isOpen || !business.isActive) {
     throw new ApiError(400, "This business is currently closed or not accepting queue entries");
+  }
+
+  // Validate that business has an active ServeQ subscription
+  const isSubscribed = await isBusinessSubscriptionActive(business);
+  if (!isSubscribed) {
+    throw new ApiError(
+      403,
+      "This venue is currently not accepting queue entries because its ServeQ subscription is inactive."
+    );
   }
 
   // Validate business queue preferences

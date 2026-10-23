@@ -7,6 +7,7 @@ import Review from "../modules/review/review.model.js";
 import ApiError from "../../utils/ApiError.js";
 import { getRazorpayClient } from "../modules/payment/razorpay.service.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
+import { isBusinessSubscriptionActive } from "../modules/subscription/subscription.service.js";
 
 const RATE_PER_MINUTE = 20; // ₹20 per extra minute
 const FLEX_WINDOW = 10; // ±10 minutes flexibility
@@ -15,6 +16,14 @@ const FLEX_WINDOW = 10; // ±10 minutes flexibility
 export const getAvailableSlots = async (businessId, date) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
+
+  const isSubscribed = await isBusinessSubscriptionActive(business);
+  if (!isSubscribed) {
+    throw new ApiError(
+      403,
+      "This venue is currently not accepting appointments because its ServeQ subscription is inactive."
+    );
+  }
 
   const avgTime = business.averageServiceTime || 10;
   const staffList = Array.isArray(business.staff) ? business.staff.filter((s) => s.isAvailable !== false) : [];
@@ -103,6 +112,15 @@ export const createBooking = async ({
 }, io = null) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
+
+  // Validate that business has an active ServeQ subscription
+  const isSubscribed = await isBusinessSubscriptionActive(business);
+  if (!isSubscribed) {
+    throw new ApiError(
+      403,
+      "This venue is currently not accepting appointments because its ServeQ subscription is inactive."
+    );
+  }
 
   // Validate business booking preferences
   if (business.bookingSettings?.enableAppointments === false) {
@@ -310,33 +328,11 @@ export const createBooking = async ({
 
   const finalAmount = Math.max(0, totalCost - discount);
 
-  // 6. Payment Processing: Online (Razorpay) vs Pay at Counter
-  const isOnlineRequested = paymentMethod === "online" || paymentMethod === "ONLINE";
-  const businessAllowsOnline =
-    business.paymentConfiguration?.onlinePaymentStatus === "ACTIVE" &&
-    ["ONLINE", "BOTH"].includes(business.paymentConfiguration?.paymentMode);
-
-  let selectedPaymentMethod = "counter";
-  let paymentStatus = "pending";
-  let bookingStatus = "confirmed";
-  let paidAmount = finalAmount;
-
-  if (isOnlineRequested) {
-    if (!businessAllowsOnline) {
-      throw new ApiError(
-        400,
-        "Online payment is not enabled for this business. Please choose Pay at Counter."
-      );
-    }
-    selectedPaymentMethod = "online";
-    paymentStatus = "pending";
-    bookingStatus = "pending_payment";
-  } else {
-    // Pay at counter
-    selectedPaymentMethod = "counter";
-    paymentStatus = "pending";
-    bookingStatus = "confirmed";
-  }
+  // 6. Payment Processing: Pay at Counter only (All customer bookings are settled at counter)
+  const selectedPaymentMethod = "counter";
+  const paymentStatus = "pending";
+  const bookingStatus = "confirmed";
+  const paidAmount = finalAmount;
 
   const combinedServiceNames = selectedServicesList.map((s) => s.name).join(" + ");
 

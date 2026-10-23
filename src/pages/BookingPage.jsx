@@ -42,7 +42,6 @@ import {
   getMyBookings,
   cancelBooking,
 } from '../api/booking.api'
-import { createBookingOrder, verifyPayment } from '../api/payment.api'
 import { validateCoupon } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import { STAFF_PRESETS } from '../utils/servicePresets'
@@ -86,7 +85,7 @@ export default function BookingPage() {
   const [validatingCoupon, setValidatingCoupon] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [bookingInProgress, setBookingInProgress] = useState(false)
-  const [paymentChoice, setPaymentChoice] = useState('PAY_AT_BUSINESS')
+  const [isSubscriptionInactive, setIsSubscriptionInactive] = useState(false)
 
   // Review Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
@@ -134,29 +133,34 @@ export default function BookingPage() {
     if (!selectedBizId) return
     try {
       setLoading(true)
-      const [bRes, sRes, mRes] = await Promise.all([
-        getBusiness(selectedBizId),
-        getAvailableSlots(selectedBizId, selectedDate),
-        getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
-      ])
+      setIsSubscriptionInactive(false)
 
+      const bRes = await getBusiness(selectedBizId)
       const biz = bRes.data.data.business
       setBusiness(biz)
-
-      const isOnlineActive =
-        biz.paymentConfiguration?.onlinePaymentStatus === 'ACTIVE' &&
-        ['ONLINE', 'BOTH'].includes(biz.paymentConfiguration?.paymentMode)
-
-      if (biz.paymentConfiguration?.paymentMode === 'ONLINE' && isOnlineActive) {
-        setPaymentChoice('ONLINE')
-      } else {
-        setPaymentChoice('PAY_AT_BUSINESS')
-      }
 
       // Default select first service if none selected or if switching venue
       if (biz.services?.length > 0 && selectedServices.length === 0) {
         setSelectedServices([biz.services[0]])
       }
+
+      // If business subscription is inactive, do not fetch slots or allow booking
+      if (biz.isSubscriptionActive === false) {
+        setIsSubscriptionInactive(true)
+        setSlots([])
+        setLoading(false)
+        return
+      }
+
+      const [sRes, mRes] = await Promise.all([
+        getAvailableSlots(selectedBizId, selectedDate).catch((sErr) => {
+          if (sErr.response?.status === 403 && sErr.response?.data?.message?.includes('subscription')) {
+            setIsSubscriptionInactive(true)
+          }
+          return { data: { data: { slots: [] } } }
+        }),
+        getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
+      ])
 
       setSlots(sRes.data.data.slots || [])
       setMeta({
@@ -174,7 +178,11 @@ export default function BookingPage() {
       )
     } catch (err) {
       console.error('Failed to load booking data', err)
-      toast.error('Unable to fetch appointment slots')
+      if (err.response?.status === 403 && err.response?.data?.message?.includes('subscription')) {
+        setIsSubscriptionInactive(true)
+      } else {
+        toast.error('Unable to fetch appointment slots')
+      }
     } finally {
       setLoading(false)
     }
@@ -263,7 +271,7 @@ export default function BookingPage() {
     setPaymentModalOpen(true)
   }
 
-  // Confirm booking
+  // Confirm booking (Pay at Counter only)
   const handleConfirmBooking = async () => {
     if (!selectedSlot || !selectedBizId) return
     if (selectedServices.length === 0) {
@@ -275,9 +283,8 @@ export default function BookingPage() {
     try {
       const combinedServiceNames = selectedServices.map((s) => s.name).join(' + ')
       const preferredStaffName = selectedStaff === 'any' ? null : selectedStaff?.name || selectedStaff
-      const isOnline = paymentChoice === 'ONLINE'
 
-      // Step 1: Create the Booking record (marked as pending_payment if online, or confirmed if counter)
+      // Create Booking record with counter payment settlement
       const res = await createBooking({
         businessId: selectedBizId,
         startTime: selectedSlot.startTime,
@@ -286,103 +293,17 @@ export default function BookingPage() {
         pricingLabel: combinedServiceNames,
         preferredStaff: preferredStaffName,
         couponCode: appliedCoupon?.coupon?.code,
-        paymentMethod: isOnline ? 'online' : 'counter',
+        paymentMethod: 'counter',
       })
 
       const booking = res.data.data?.booking || res.data.data
-
-      // Step 2: If Online Payment, trigger Razorpay Checkout
-      if (isOnline && booking?._id) {
-        const orderRes = await createBookingOrder(booking._id)
-        const orderData = orderRes.data.data.order
-
-        // If mock provider in development
-        if (orderData.isMock) {
-          await verifyPayment({
-            bookingId: booking._id,
-            razorpayOrderId: orderData.id,
-            razorpayPaymentId: `pay_mock_${Date.now()}`,
-            razorpaySignature: 'mock_signature_verified',
-          })
-          toast.success('Online payment verified & booking confirmed!', { icon: '🎉' })
-          setPaymentModalOpen(false)
-          setSelectedSlot(null)
-          fetchData()
-          return
-        }
-
-        // Helper to load Razorpay SDK dynamically
-        const loadRazorpay = () =>
-          new Promise((resolve) => {
-            if (window.Razorpay) return resolve(true)
-            const script = document.createElement('script')
-            script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-            script.onload = () => resolve(true)
-            script.onerror = () => resolve(false)
-            document.body.appendChild(script)
-          })
-
-        const isLoaded = await loadRazorpay()
-        if (!isLoaded) {
-          toast.error('Unable to load Razorpay checkout. Please check your network or try Pay at Counter.')
-          return
-        }
-
-        const options = {
-          key: orderData.keyId,
-          amount: orderData.amount,
-          currency: orderData.currency || 'INR',
-          name: 'serveQ',
-          description: `Appointment at ${business?.name || 'Venue'}`,
-          image: '/serveq-logo.png',
-          order_id: orderData.id,
-          handler: async (response) => {
-            try {
-              await verifyPayment({
-                bookingId: booking._id,
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              })
-              toast.success('Payment verified & booking confirmed!', { icon: '🎉' })
-              setPaymentModalOpen(false)
-              setSelectedSlot(null)
-              fetchData()
-            } catch (vErr) {
-              toast.error(vErr.response?.data?.message || 'Payment verification failed')
-            }
-          },
-          prefill: {
-            name: user?.name,
-            email: user?.email,
-            contact: user?.phone || '',
-          },
-          theme: {
-            color: '#064E3B',
-          },
-          modal: {
-            ondismiss: () => {
-              toast('Payment session cancelled. You can retry payment anytime from your appointments.')
-              fetchData()
-            },
-          },
-        }
-
-        const rzp = new window.Razorpay(options)
-        rzp.open()
-        setPaymentModalOpen(false)
-        setSelectedSlot(null)
-        return
-      }
-
-      // Step 3: Counter payment confirmed immediately
       const assigned = res.data.data?.assignedStaff || booking?.assignedStaff
       if (assigned?.name) {
         toast.success(
           `Booking confirmed! Assigned to ${assigned.name}${assigned.autoAssigned ? ' (On-Duty)' : ''}`
         )
       } else {
-        toast.success(res.data.message || 'Booking confirmed!')
+        toast.success(res.data.message || 'Booking confirmed! Pay at counter upon arrival.')
       }
 
       setPaymentModalOpen(false)
@@ -1036,8 +957,28 @@ export default function BookingPage() {
                     </div>
                   )}
 
-                  {/* Advance Bookings Disabled Notice */}
-                  {business?.bookingSettings?.enableAppointments === false ? (
+                  {/* Venue Subscription Inactive Notice */}
+                  {isSubscriptionInactive || business?.isSubscriptionActive === false ? (
+                    <div className="py-12 px-6 text-center border border-amber-300 bg-amber-50/90 rounded-3xl space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto shadow-xs">
+                        <Building className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-base font-black text-amber-950">Appointments & Queue Paused</h3>
+                        <p className="text-xs text-amber-800 max-w-md mx-auto leading-relaxed">
+                          This venue does not currently have an active ServeQ subscription.
+                          Online appointments and virtual live queue entries are temporarily unavailable.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/customers')}
+                        className="px-5 py-2.5 bg-[#114227] text-white text-xs font-bold rounded-xl hover:bg-[#0D361F] transition-colors cursor-pointer shadow-xs"
+                      >
+                        Explore Other Verified Venues
+                      </button>
+                    </div>
+                  ) : business?.bookingSettings?.enableAppointments === false ? (
                     <div className="py-12 px-6 text-center border border-amber-200 bg-amber-50 rounded-3xl space-y-3">
                       <h3 className="text-base font-bold text-amber-950">Advance Bookings Disabled</h3>
                       <p className="text-xs text-amber-800 max-w-md mx-auto">
@@ -1196,79 +1137,22 @@ export default function BookingPage() {
                 </div>
               </div>
 
-              {/* Payment Mode Selector */}
-              {(() => {
-                const isOnlineActive = business?.paymentConfiguration?.onlinePaymentStatus === 'ACTIVE'
-                const mode = business?.paymentConfiguration?.paymentMode || 'PAY_AT_BUSINESS'
-                const showBoth = mode === 'BOTH'
-
-                if (showBoth) {
-                  return (
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-zinc-700 block">Select Payment Method</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPaymentChoice('PAY_AT_BUSINESS')}
-                          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                            paymentChoice === 'PAY_AT_BUSINESS'
-                              ? 'border-[#16A34A] bg-[#EAF7EE] text-[#114227] font-bold shadow-xs'
-                              : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-                          }`}
-                        >
-                          <div className="text-xs font-bold">Pay at Counter</div>
-                          <div className="text-[10px] text-zinc-400">Cash / UPI at venue</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={!isOnlineActive}
-                          onClick={() => isOnlineActive && setPaymentChoice('ONLINE')}
-                          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                            !isOnlineActive
-                              ? 'opacity-60 bg-zinc-50 border-zinc-200 cursor-not-allowed'
-                              : paymentChoice === 'ONLINE'
-                              ? 'border-[#16A34A] bg-[#EAF7EE] text-[#114227] font-bold shadow-xs'
-                              : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold">Pay Online</span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">
-                              Razorpay
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-zinc-400">
-                            {isOnlineActive ? 'UPI, Cards, Netbanking' : 'Unavailable (Pending)'}
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )
-                }
-
-                if (mode === 'ONLINE' && !isOnlineActive) {
-                  return (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-800">
-                      <strong>Note:</strong> This venue is finalizing its online payment account. You can confirm your slot and pay at the counter upon arrival.
-                    </div>
-                  )
-                }
-
-                return null
-              })()}
-
-              {/* Notice */}
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-[11px] text-[#114227]">
-                {paymentChoice === 'ONLINE' ? (
-                  <p>
-                    <strong>Razorpay Secure Checkout:</strong> You will be prompted to complete payment of ₹{finalPrice} using UPI, Cards, or Netbanking. Your slot is confirmed instantly.
+              {/* Payment Mode: Pay at Counter Only */}
+              <div className="p-3.5 rounded-2xl border border-emerald-200 bg-[#EAF7EE]/70 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#114227] text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                  <CreditCard className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#114227]">Pay at Counter</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-[#114227] font-semibold">
+                      Cash / UPI / Card
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-600 mt-1 leading-relaxed">
+                    Your appointment is confirmed immediately with zero advance charge. Settle ₹{finalPrice} directly at the venue counter upon arrival.
                   </p>
-                ) : (
-                  <p>
-                    <strong>Pay upon arrival:</strong> Your slot is reserved immediately without upfront charge. Settle ₹{finalPrice} at the counter when you arrive.
-                  </p>
-                )}
+                </div>
               </div>
 
               {/* Actions */}
@@ -1286,11 +1170,7 @@ export default function BookingPage() {
                   disabled={bookingInProgress}
                   className="flex-1 py-3 rounded-2xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {bookingInProgress
-                    ? 'Reserving Slot...'
-                    : paymentChoice === 'ONLINE'
-                    ? `Pay with Razorpay (₹${finalPrice})`
-                    : `Confirm Booking (₹${finalPrice})`}
+                  {bookingInProgress ? 'Reserving Slot...' : `Confirm Appointment (₹${finalPrice})`}
                 </button>
               </div>
             </motion.div>

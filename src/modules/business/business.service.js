@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Business from "./business.model.js";
 import Booking from "../../booking/booking.model.js";
 import ApiError from "../../../utils/ApiError.js";
+import { isBusinessSubscriptionActive } from "../subscription/subscription.service.js";
 
 export const createBusiness = async (ownerId, data) => {
   const payload = { ...data, owner: ownerId };
@@ -208,7 +209,7 @@ export const enrichStaffAvailability = async (businesses) => {
 };
 
 export const getBusinessById = async (id) => {
-  const b = await Business.findById(id).populate("owner", "name avatar");
+  const b = await Business.findById(id).populate("owner", "name avatar subscription role");
   if (!b) throw new ApiError(404, "Business not found");
 
   const queue = await mongoose.model("Queue").findOne({ businessId: id });
@@ -228,6 +229,7 @@ export const getBusinessById = async (id) => {
   }
 
   await enrichStaffAvailability(bObj);
+  bObj.isSubscriptionActive = await isBusinessSubscriptionActive(b);
   return bObj;
 };
 
