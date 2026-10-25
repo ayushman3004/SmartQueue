@@ -52,10 +52,6 @@ function AdminLoginForm({ onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // const handleFillDemo = () => {
-  //   setEmail('admin@serveq.tech')
-  //   setPassword('admin123')
-  // }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -87,8 +83,8 @@ function AdminLoginForm({ onLoginSuccess }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 auth-background font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative overflow-hidden">
-      <div className="w-full max-w-md bg-white border border-zinc-200/90 rounded-3xl p-8 sm:p-10 shadow-xl space-y-6 text-left relative z-10">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#F8FAF9] font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
+      <div className="w-full max-w-md bg-white border border-zinc-200/90 rounded-3xl p-8 sm:p-10 shadow-xl space-y-6 text-left">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] text-[11px] font-black uppercase tracking-wider">
@@ -121,22 +117,6 @@ function AdminLoginForm({ onLoginSuccess }) {
             </button>
           </div>
         )}
-
-        {/* Quick Fill Demo Helper */}
-        {/* <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs">
-          <div>
-            <p className="font-bold text-zinc-900">Default Superadmin</p>
-            <p className="text-[11px] text-zinc-500 font-mono">admin@serveq.tech • admin123</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className="px-3 py-1.5 bg-[#114227] hover:bg-[#0D361F] text-white rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap cursor-pointer"
-          >
-            Auto-Fill
-          </button>
-        </div> */}
-
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
@@ -649,9 +629,9 @@ export default function AdminDashboard() {
   )
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
       {/* ── TOP STICKY HEADER BAR ── */}
-      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
         <div className="flex items-center gap-3">
           <button
