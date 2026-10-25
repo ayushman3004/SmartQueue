@@ -127,32 +127,6 @@ export default function HubCommandCenter() {
   const renderSidebarContent = (isMobile = false) => (
     <div className="flex flex-col justify-between min-h-full h-full space-y-6">
       <div className="space-y-6">
-        {/* Network Identity Card */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border border-[#BDE8CB] shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#114227] text-white flex items-center justify-center font-black text-lg shrink-0 shadow-xs">
-              <Building2 className="w-5 h-5 text-emerald-200" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-black text-xs text-zinc-950 truncate leading-tight">
-                Hub Operations
-              </h3>
-              <p className="text-[10px] text-zinc-500 font-medium truncate capitalize">
-                {myBusinesses.length} {myBusinesses.length === 1 ? 'Venue Node' : 'Venue Nodes'} Registered
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-2.5 border-t border-[#BDE8CB]/60 flex items-center justify-between text-[11px]">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-              Network Status
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
-              <span>{openCount} / {myBusinesses.length} Live</span>
-            </span>
-          </div>
-        </div>
 
         {/* Section 1: Command Filters & Views */}
         <div className="space-y-1">
