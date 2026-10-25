@@ -51,7 +51,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
 
     setLoading(true)
     try {
-      const res = await forgotPasswordSendOtp(trimmedEmail)
+      await forgotPasswordSendOtp(trimmedEmail)
       toast.success('Verification code sent to your email!', {
         style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
       })

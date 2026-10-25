@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
   Mail,
@@ -23,7 +23,6 @@ import { sendSupportMessage } from '../api/support.api'
 
 export default function HelpSupportPage() {
   const { user } = useAuth()
-  const navigate = useNavigate()
 
   useSeo({
     title: 'Help & Support — ServeQ',
@@ -33,7 +32,6 @@ export default function HelpSupportPage() {
   const role = user?.role || 'customer'
   const isOwner = role === 'owner'
   const isAdmin = role === 'admin'
-  const isCustomer = role === 'customer'
 
   const backPath = useMemo(() => {
     if (isOwner) return '/business'

@@ -22,10 +22,6 @@ export default function BusinessPortalPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  if (authLoading) {
-    return null
-  }
-
   useSeo({
     title: 'Business Hub Portal — Virtual Queues & Counter Control',
     description: 'Enterprise virtual queue management for salons, clinics, and service venues. Command customer flow and eliminate physical waiting lines.',
@@ -235,6 +231,10 @@ export default function BusinessPortalPage() {
   // ─────────────────────────────────────────────────────────────
   // RENDER: Authenticated as Customer Gate
   // ─────────────────────────────────────────────────────────────
+  if (authLoading) {
+    return null
+  }
+
   if (isCustomer) {
     return (
       <div className="min-h-screen auth-background text-zinc-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">

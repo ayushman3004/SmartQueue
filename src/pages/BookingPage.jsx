@@ -62,7 +62,7 @@ const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 
 export default function BookingPage() {
   const { businessId: paramBizId } = useParams()
-  const { user, setUser, logOut } = useAuth()
+  const { user, logOut } = useAuth()
   const { socket } = useSocket()
   const navigate = useNavigate()
 
@@ -101,6 +101,14 @@ export default function BookingPage() {
   const debouncedSearch = useDebounce(search, 300)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  const filteredBusinesses = useMemo(() => {
+    if (!debouncedSearch.trim()) return businesses
+    const q = debouncedSearch.toLowerCase()
+    return businesses.filter(
+      (b) => b.name?.toLowerCase().includes(q) || b.city?.toLowerCase().includes(q)
+    )
+  }, [businesses, debouncedSearch])
 
   useSeo({
     title: business?.name ? `${business.name} — Book Appointment | serveQ` : 'Book Appointment | serveQ',
@@ -258,16 +266,6 @@ export default function BookingPage() {
       return
     }
     setSelectedSlot(slot)
-    const canOnline =
-      (business?.paymentConfiguration?.paymentMode === 'ONLINE' ||
-        business?.paymentConfiguration?.paymentMode === 'BOTH') &&
-      business?.paymentConfiguration?.onlinePaymentStatus === 'ACTIVE'
-
-    if (business?.paymentConfiguration?.paymentMode === 'ONLINE' && canOnline) {
-      setPaymentChoice('ONLINE')
-    } else {
-      setPaymentChoice('PAY_AT_BUSINESS')
-    }
     setPaymentModalOpen(true)
   }
 
@@ -555,12 +553,12 @@ export default function BookingPage() {
           </div>
 
           {/* Quick Venue Switcher (Pill Row) */}
-          {businesses.length > 1 && (
+          {filteredBusinesses.length > 1 && (
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               <span className="text-xs font-bold text-zinc-400 shrink-0 uppercase tracking-wider">
                 Select Venue:
               </span>
-              {businesses.map((b) => {
+              {filteredBusinesses.map((b) => {
                 const isSelected = (selectedBizId || business?._id) === b._id
                 return (
                   <button

@@ -31,7 +31,7 @@ export default function AuthCallback() {
         localStorage.removeItem('auth_redirect')
         navigate(redirect === '/business' ? '/business' : '/login')
       })
-  }, [])
+  }, [logIn, navigate, params])
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-slate-50">

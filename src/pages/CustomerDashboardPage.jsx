@@ -34,9 +34,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses } from '../api/business.api'
 import { joinQueue, leaveQueue } from '../api/queue.api'
-import { getMyBookings, cancelBooking } from '../api/booking.api'
-import { getAvailableCoupons } from '../api/coupon.api'
-import { submitReview } from '../api/review.api'
+import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
@@ -63,7 +61,7 @@ const DEFAULT_SALON_IMAGES = [
 ]
 
 export default function CustomerDashboardPage() {
-  const { user, setUser, logOut } = useAuth()
+  const { user, logOut } = useAuth()
   const navigate = useNavigate()
   const { onBusinessStatus, socket } = useSocket()
 
@@ -76,8 +74,6 @@ export default function CustomerDashboardPage() {
   // State
   const [businesses, setBusinesses] = useState([])
   const [myBookings, setMyBookings] = useState([])
-  const [coupons, setCoupons] = useState([])
-  const [loading, setLoading] = useState(true)
   const [joiningBizId, setJoiningBizId] = useState(null)
   const [leavingBizId, setLeavingBizId] = useState(null)
 
@@ -103,7 +99,7 @@ export default function CustomerDashboardPage() {
   // Fetch initial dashboard data
   const fetchData = useCallback(async () => {
     try {
-      const [allRes, myBkRes, coupRes] = await Promise.all([
+      const [allRes, myBkRes] = await Promise.all([
         getAllBusinesses({
           search: debouncedSearch,
           category: categoryFilter,
@@ -111,13 +107,11 @@ export default function CustomerDashboardPage() {
           includeAll: false,
         }),
         getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
-        getAvailableCoupons().catch(() => ({ data: { data: { coupons: [] } } })),
       ])
 
       const bizList = allRes.data.data.businesses || []
       setBusinesses(bizList)
       setMyBookings(myBkRes.data.data.bookings || [])
-      setCoupons(coupRes.data.data.coupons || [])
 
       setSelectedServices((prev) => {
         const next = { ...prev }
@@ -149,8 +143,6 @@ export default function CustomerDashboardPage() {
     } catch (err) {
       console.error('Customer Dashboard fetch error:', err)
       toast.error('Could not refresh present queues')
-    } finally {
-      setLoading(false)
     }
   }, [debouncedSearch, categoryFilter, debouncedLocation])
 
@@ -298,77 +290,6 @@ export default function CustomerDashboardPage() {
     return active
   }, [businesses, user?._id])
 
-  // Unified records merging Active Live Queues + Booked Appointments + Completed Service History
-  const unifiedServiceRecords = useMemo(() => {
-    const list = []
-    const seenBookingIds = new Set()
-    const activeBizIdsInQueue = new Set()
-
-    myActiveQueues.forEach((activeQ) => {
-      const qItem = activeQ.myQueueItem || {}
-      const biz = activeQ.business || {}
-      const bkId = qItem.bookingId ? qItem.bookingId.toString() : null
-      if (bkId) seenBookingIds.add(bkId)
-      if (biz._id) activeBizIdsInQueue.add(biz._id.toString())
-
-      list.push({
-        _id: bkId || `active_queue_${biz._id}_${user?._id}`,
-        bookingId: bkId,
-        businessId: biz,
-        businessName: biz.name || 'Local Venue',
-        serviceType: qItem.serviceType || 'General Service',
-        services: qItem.services || [],
-        assignedStaff: qItem.assignedStaff || { name: '', role: '' },
-        paidAmount: qItem.paidAmount || 0,
-        paymentMethod: qItem.paymentMethod || 'counter',
-        paymentStatus: qItem.paymentStatus || 'pending',
-        status: activeQ.isServing ? 'serving' : 'waiting',
-        startTime: qItem.joinedAt || qItem.estimatedStartTime || new Date(),
-        entryType: 'live_queue',
-        isLiveQueue: true,
-        queuePosition: activeQ.position,
-        tokenNumber: activeQ.position,
-        peopleAhead: activeQ.peopleAhead,
-        totalInQueue: activeQ.totalInQueue,
-        isServing: activeQ.isServing,
-        estimatedStartTime: activeQ.estimatedStartTime,
-      })
-    })
-
-    myBookings.forEach((bk) => {
-      const bId = bk._id ? bk._id.toString() : null
-      if (bId && seenBookingIds.has(bId)) {
-        return
-      }
-
-      const bizIdStr = (bk.businessId?._id || bk.businessId)?.toString()
-      if (['waiting', 'serving'].includes(bk.status) && bizIdStr && activeBizIdsInQueue.has(bizIdStr)) {
-        return
-      }
-
-      const isQ =
-        bk.isLiveQueue ||
-        bk.entryType === 'live_queue' ||
-        bk.notes?.includes('Live Queue') ||
-        ['waiting', 'serving'].includes(bk.status)
-
-      list.push({
-        ...bk,
-        entryType: isQ ? 'live_queue' : 'appointment',
-        isLiveQueue: isQ,
-        isAppointment: !isQ,
-        businessName: bk.businessId?.name || 'Local Venue',
-      })
-    })
-
-    return list.sort((a, b) => {
-      const aActive = ['serving', 'waiting', 'confirmed', 'scheduled'].includes(a.status) ? 1 : 0
-      const bActive = ['serving', 'waiting', 'confirmed', 'scheduled'].includes(b.status) ? 1 : 0
-      if (aActive !== bActive) return bActive - aActive
-      return new Date(b.startTime || b.createdAt || 0) - new Date(a.startTime || a.createdAt || 0)
-    })
-  }, [myActiveQueues, myBookings, user?._id])
-
   const clinicsList = useMemo(() => {
     return businesses.filter(
       (b) => b.category === 'clinic' || b.category === 'healthcare' || b.category === 'doctor'
@@ -505,18 +426,6 @@ export default function CustomerDashboardPage() {
       toast.error(err.response?.data?.message || 'Could not leave queue')
     } finally {
       setLeavingBizId(null)
-    }
-  }
-
-  // Cancel Booking
-  const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Cancel this appointment?')) return
-    try {
-      const res = await cancelBooking(bookingId)
-      toast.success(res.data.message || 'Booking cancelled')
-      getMyBookings().then((r) => setMyBookings(r.data.data.bookings || []))
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to cancel booking')
     }
   }
 

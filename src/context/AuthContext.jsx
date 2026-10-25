@@ -13,7 +13,7 @@ export const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(localStorage.getItem("token")));
-  const lastActivityRef = useRef(Date.now());
+  const lastActivityRef = useRef(0);
   const timerRef = useRef(null);
 
   const logOut = useCallback((reason) => {

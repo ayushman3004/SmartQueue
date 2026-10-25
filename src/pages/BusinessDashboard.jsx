@@ -59,7 +59,7 @@ export default function BusinessDashboard() {
   const navigate = useNavigate()
 
   const [searchParams, setSearchParams] = useSearchParams()
-  const validTabs = ['queue', 'appointments', 'services', 'staff', 'analytics', 'profile']
+  const validTabs = useMemo(() => ['queue', 'appointments', 'services', 'staff', 'analytics', 'profile'], [])
   const initialTab = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState(
     initialTab && validTabs.includes(initialTab) ? initialTab : 'queue'
@@ -74,7 +74,7 @@ export default function BusinessDashboard() {
     if (tabFromUrl && validTabs.includes(tabFromUrl) && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl)
     }
-  }, [searchParams])
+  }, [searchParams, activeTab, validTabs])
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
@@ -117,7 +117,6 @@ export default function BusinessDashboard() {
   const [newStaff, setNewStaff] = useState({ name: '', role: '', specialties: '', phone: '' })
   const [savingStaff, setSavingStaff] = useState(false)
   const [loadingAIReview, setLoadingAIReview] = useState(false)
-  const [updatingPaymentMode, setUpdatingPaymentMode] = useState(false)
   const [upiVpa, setUpiVpa] = useState('')
   const [savingUpi, setSavingUpi] = useState(false)
 
@@ -160,19 +159,6 @@ export default function BusinessDashboard() {
       toast.error(err.response?.data?.message || 'Failed to update counter UPI')
     } finally {
       setSavingUpi(false)
-    }
-  }
-
-  const handleUpdatePaymentMode = async (mode) => {
-    setUpdatingPaymentMode(true)
-    try {
-      const res = await updatePaymentModes(businessId, { paymentMode: mode })
-      setBusiness(res.data.data.business)
-      toast.success(`Payment mode updated to ${mode.replace('_', ' ')}`)
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update payment mode')
-    } finally {
-      setUpdatingPaymentMode(false)
     }
   }
 

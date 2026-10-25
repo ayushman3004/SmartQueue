@@ -35,8 +35,8 @@ import {
 import CustomerSidebar from '../components/CustomerSidebar'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getQueue, joinQueue, leaveQueue } from '../api/queue.api'
-import { getAllBusinesses, getBusiness } from '../api/business.api'
+import { joinQueue, leaveQueue } from '../api/queue.api'
+import { getAllBusinesses } from '../api/business.api'
 import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
@@ -56,7 +56,7 @@ const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 export default function QueuePage() {
   const { businessId: paramBizId } = useParams()
   const { user, logOut } = useAuth()
-  const { socket, joinRoom } = useSocket()
+  const { socket } = useSocket()
   const navigate = useNavigate()
 
   useSeo({
@@ -69,7 +69,6 @@ export default function QueuePage() {
   const [businesses, setBusinesses] = useState([])
   const [myBookings, setMyBookings] = useState([])
   const [selectedBizId, setSelectedBizId] = useState(paramBizId || null)
-  const [currentQueue, setCurrentQueue] = useState(null)
   const [loading, setLoading] = useState(true)
   const [leavingQueue, setLeavingQueue] = useState(false)
   const [joiningQueue, setJoiningQueue] = useState(false)
@@ -90,6 +89,14 @@ export default function QueuePage() {
   const debouncedSearch = useDebounce(search, 300)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  const filteredBusinesses = useMemo(() => {
+    if (!debouncedSearch.trim()) return businesses
+    const q = debouncedSearch.toLowerCase()
+    return businesses.filter(
+      (b) => b.name?.toLowerCase().includes(q) || b.city?.toLowerCase().includes(q)
+    )
+  }, [businesses, debouncedSearch])
 
   // Live Queue Modal / Full View
   const [showLiveStreamModal, setShowLiveStreamModal] = useState(false)
@@ -144,10 +151,6 @@ export default function QueuePage() {
           return b
         })
       )
-
-      if (selectedBizId && (selectedBizId.toString() === targetBizId || selectedBizId.toString() === updatedQ._id?.toString())) {
-        setCurrentQueue(updatedQ)
-      }
     }
 
     socket.on('queue:update', handleQueueUpdate)
@@ -237,7 +240,7 @@ export default function QueuePage() {
       setSelectedService(null)
     }
     setSelectedStaff('any')
-  }, [activeBusiness?._id])
+  }, [activeBusiness?._id, activeBusiness?.services])
 
   // Active users in line for the chosen active business
   const activeUsers = useMemo(() => {
@@ -269,7 +272,6 @@ export default function QueuePage() {
   }, [hasJoinedQueue, activeBusiness, activeUsers, user])
 
   const isUserServing = hasJoinedQueue && (myQueueItem?.status === 'serving' || myPosition === 1)
-  const isUserWaiting = hasJoinedQueue && !isUserServing
   const peopleAhead = Math.max(0, myPosition - 1)
 
   // Serving user at this business
@@ -649,12 +651,12 @@ export default function QueuePage() {
           )}
 
           {/* Business Switcher */}
-          {businesses.length > 1 && (
+          {filteredBusinesses.length > 1 && (
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               <span className="text-xs font-bold text-zinc-400 shrink-0 uppercase tracking-wider">
                 Venues:
               </span>
-              {businesses.map((b) => {
+              {filteredBusinesses.map((b) => {
                 const isSelected = activeBusiness?._id === b._id
                 const isMyQueue = myActiveQueues.some((mq) => mq.business._id === b._id)
                 const count = b.activeQueue?.length || 0

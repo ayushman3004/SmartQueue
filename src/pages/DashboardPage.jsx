@@ -15,7 +15,7 @@ import { useDebounce } from '../hooks/useDebounce'
 const CATEGORIES = ['all', 'salon', 'clinic']
 
 export default function DashboardPage() {
-  const { user, setUser } = useAuth()
+  const { user } = useAuth()
   const isOwner = user?.role === 'owner'
   const navigate = useNavigate()
   const { onBusinessStatus, socket } = useSocket()

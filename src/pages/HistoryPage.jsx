@@ -46,7 +46,7 @@ const POPULAR_LOCATIONS = [
 ]
 
 export default function HistoryPage() {
-  const { user, setUser, logOut } = useAuth()
+  const { user, logOut } = useAuth()
   const { socket } = useSocket()
   const navigate = useNavigate()
 

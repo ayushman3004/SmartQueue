@@ -30,12 +30,7 @@ import {
   Shield,
   LogOut,
 } from 'lucide-react'
-import { connectRouteAccount } from '../api/payment.api'
 import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
-import {
-  createSubscriptionOrder,
-  verifySubscriptionPayment,
-} from '../api/subscription.api'
 
 const TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST +5:30)' },
@@ -122,7 +117,6 @@ export default function BusinessOnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [business, setBusiness] = useState(null)
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false)
-  const [subscribingPlan, setSubscribingPlan] = useState(null)
 
   // Email verification check & subscription check
   const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
@@ -190,87 +184,6 @@ export default function BusinessOnboardingPage() {
       toast.error(err.response?.data?.message || 'Invalid or expired OTP code')
     } finally {
       setVerifyingEmailOtp(false)
-    }
-  }
-
-  // Handle plan subscription in onboarding step
-  const handleSubscribeInOnboarding = async (plan) => {
-    setSubscribingPlan(plan.id)
-    try {
-      const res = await createSubscriptionOrder(plan.id)
-      const data = res.data.data
-      const order = data.order || data
-      const keyId = data.keyId || order.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID || localStorage.getItem('SERVEQ_RAZORPAY_KEY_ID')
-
-      if (!keyId || keyId === 'rzp_test_placeholder') {
-        setSubscriptionModalOpen(true)
-        return
-      }
-
-      const options = {
-        key: keyId,
-        amount: order.amount,
-        currency: order.currency || 'INR',
-        name: 'ServeQ Platform Technologies',
-        description: `${plan.name} Subscription (${plan.displayPrice}/mo)`,
-        image: '/logo.png',
-        ...(order?.id && !order.isMock && !order.id.startsWith('order_mock_') ? { order_id: order.id } : {}),
-        handler: async (response) => {
-          try {
-            const verifyRes = await verifySubscriptionPayment({
-              plan: plan.id,
-              razorpayOrderId: response.razorpay_order_id || order.id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature || 'mock_signature_verified',
-            })
-
-            const updatedData = verifyRes.data.data
-            if (setUser && updatedData.user) {
-              setUser((prev) => ({
-                ...prev,
-                subscription: updatedData.subscription,
-              }))
-            }
-            if (business) {
-              setBusiness((b) => ({
-                ...b,
-                subscription: updatedData.subscription,
-              }))
-            }
-
-            toast.success(`🎉 ${plan.name} activated! Unlocking Onboarding Studio...`, { duration: 5000 })
-          } catch (vErr) {
-            toast.error(vErr.response?.data?.message || 'Payment verification failed')
-          }
-        },
-        prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
-          contact: user?.phone || '',
-        },
-        theme: {
-          color: '#064E3B',
-        },
-        modal: {
-          ondismiss: () => {
-            toast('Payment cancelled', { icon: 'ℹ️' })
-          },
-        },
-      }
-
-      if (window.Razorpay) {
-        const rzp = new window.Razorpay(options)
-        rzp.on('payment.failed', (errRes) => {
-          toast.error(errRes.error?.description || 'Razorpay payment was not completed')
-        })
-        rzp.open()
-      } else {
-        setSubscriptionModalOpen(true)
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to start Razorpay checkout')
-    } finally {
-      setSubscribingPlan(null)
     }
   }
 
@@ -361,12 +274,6 @@ export default function BusinessOnboardingPage() {
     providerAccountReference: '',
     upiId: '',
   })
-  const [routeForm, setRouteForm] = useState({
-    legalBusinessName: '',
-    businessType: 'individual',
-    providerAccountReference: '',
-  })
-  const [connectingRoute, setConnectingRoute] = useState(false)
 
   // Sync state from loaded business
   const populateFromBusiness = useCallback((biz) => {
@@ -438,11 +345,6 @@ export default function BusinessOnboardingPage() {
       paymentProvider: biz.paymentConfiguration?.paymentProvider || 'razorpay',
       providerAccountReference: biz.paymentConfiguration?.providerAccountReference || '',
       upiId: biz.paymentConfiguration?.upiId || '',
-    })
-    setRouteForm({
-      legalBusinessName: biz.paymentConfiguration?.legalBusinessName || biz.name || '',
-      businessType: biz.paymentConfiguration?.businessType || 'individual',
-      providerAccountReference: biz.paymentConfiguration?.providerAccountReference || '',
     })
 
     // Current step
