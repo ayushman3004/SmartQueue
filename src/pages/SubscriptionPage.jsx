@@ -13,10 +13,8 @@ import {
   ArrowLeft,
   Zap,
   HelpCircle,
-  ExternalLink,
   CreditCard,
   LogOut,
-  Key,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -56,8 +54,6 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true)
   const [upgrading, setUpgrading] = useState(false)
   const [subscriptionData, setSubscriptionData] = useState(() => user?.subscription || null)
-  const [showKeyModal, setShowKeyModal] = useState(false)
-  const [customKeyInput, setCustomKeyInput] = useState(() => localStorage.getItem('SERVEQ_RAZORPAY_KEY_ID') || '')
 
   const effectiveSub =
     subscriptionData?.subscription ||
@@ -186,7 +182,6 @@ export default function SubscriptionPage() {
           errRes.error?.code === 'BAD_REQUEST_ERROR'
         ) {
           toast.error('Razorpay authentication failed: Invalid or expired API Key ID.', { duration: 5000 })
-          setShowKeyModal(true)
         } else {
           toast.error(desc || 'Razorpay payment was not completed')
         }
@@ -240,16 +235,6 @@ export default function SubscriptionPage() {
         </div>
 
         <div className="flex items-center gap-2 text-xs">
-          <button
-            type="button"
-            onClick={() => setShowKeyModal(true)}
-            className="px-3 py-1.5 rounded-xl border border-[#BDE8CB] bg-white hover:bg-[#EAF7EE] text-zinc-700 font-bold transition-colors cursor-pointer flex items-center gap-1.5"
-            title="Configure Razorpay API Key ID"
-          >
-            <Key className="w-3.5 h-3.5 text-[#114227]" />
-            <span className="hidden sm:inline">Razorpay Key</span>
-          </button>
-
           <button
             type="button"
             onClick={() => navigate('/support')}
@@ -664,81 +649,6 @@ export default function SubscriptionPage() {
       )}
       </main>
 
-      {/* ── RAZORPAY KEY CONFIGURATION MODAL ── */}
-      {showKeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white border border-zinc-200 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-lg font-black text-zinc-950 flex items-center gap-2">
-                  <Key className="w-5 h-5 text-emerald-600" />
-                  <span>Razorpay API Key</span>
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowKeyModal(false)}
-                  className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-              <p className="text-xs text-zinc-600 leading-relaxed">
-                To launch the live Razorpay modal, provide an active <strong>Key ID</strong> from your Razorpay Dashboard (starts with <code className="font-mono bg-zinc-100 px-1 py-0.5 rounded text-zinc-800">rzp_test_...</code> or <code className="font-mono bg-zinc-100 px-1 py-0.5 rounded text-zinc-800">rzp_live_...</code>).
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-zinc-700 uppercase tracking-wider block">
-                Razorpay Key ID
-              </label>
-              <input
-                type="text"
-                value={customKeyInput}
-                onChange={(e) => setCustomKeyInput(e.target.value)}
-                placeholder="rzp_test_xxxxxxxxxxxxxx"
-                className="w-full px-3.5 py-2.5 text-xs border border-zinc-300 rounded-xl font-mono focus:outline-none focus:border-emerald-600"
-                autoFocus
-              />
-            </div>
-
-            <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80 text-[11px] text-emerald-950 space-y-1">
-              <span className="font-bold flex items-center gap-1.5">
-                <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
-                Where to get your key:
-              </span>
-              <p>
-                Log in to <a href="https://dashboard.razorpay.com/#/access/api_keys" target="_blank" rel="noreferrer" className="underline font-bold">Razorpay Dashboard</a> &rarr; Account &amp; Settings &rarr; API Keys &rarr; Generate / Copy Key ID. You can also paste it into your <code className="font-mono font-bold">.env</code> file.
-              </p>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowKeyModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-xs font-bold text-zinc-600 hover:bg-zinc-50 cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const val = customKeyInput.trim()
-                  if (!val) {
-                    toast.error('Please enter a valid Razorpay Key ID')
-                    return
-                  }
-                  localStorage.setItem('SERVEQ_RAZORPAY_KEY_ID', val)
-                  toast.success('Razorpay Key updated successfully!')
-                  setShowKeyModal(false)
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md cursor-pointer"
-              >
-                Save &amp; Use Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
