@@ -171,6 +171,11 @@ export default function App() {
     location.pathname === '/403'
 
   const isNotFoundPage = !isKnownRoute || location.pathname === '/404'
+  const isUnauthorizedPage =
+    location.pathname === '/unauthorized' ||
+    location.pathname === '/401' ||
+    location.pathname === '/403'
+  const isStandalonePage = isNotFoundPage || isUnauthorizedPage
   const isLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
 
   if (authLoading) {
@@ -185,7 +190,7 @@ export default function App() {
     ? 'glow'
     : 'default'
 
-  const bgClass = isComingSoonPage || isNotFoundPage
+  const bgClass = isComingSoonPage || isStandalonePage
     ? ''
     : isLoginPage
     ? 'auth-background'
@@ -195,7 +200,7 @@ export default function App() {
 
   return (
     <div className={`page-wrapper ${bgClass}`}>
-      {!isComingSoonPage && !isNotFoundPage && <AmbientBackground variant={bgVariant} />}
+      {!isComingSoonPage && !isStandalonePage && <AmbientBackground variant={bgVariant} />}
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -209,14 +214,14 @@ export default function App() {
           },
         }}
       />
-      {user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && !isLegalPage && <Navbar />}
-      {user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && !isLegalPage && (
+      {user && !isOnboarding && !isCustomerDashboard && !isStandalonePage && !isLegalPage && <Navbar />}
+      {user && !isOnboarding && !isCustomerDashboard && !isStandalonePage && !isLegalPage && (
         <>
           <BackButton />
         </>
       )}
-      {user && !isOnboarding && !isComingSoonPage && !isNotFoundPage && <AIDesistant />}
-      <main className={user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && !isLegalPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
+      {user && !isOnboarding && !isComingSoonPage && !isStandalonePage && <AIDesistant />}
+      <main className={user && !isOnboarding && !isCustomerDashboard && !isStandalonePage && !isLegalPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
@@ -355,7 +360,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isLoginPage && !isComingSoonPage && !isNotFoundPage && <Footer />}
+      {!isLoginPage && !isComingSoonPage && !isStandalonePage && <Footer />}
     </div>
   )
 }

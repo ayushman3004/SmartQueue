@@ -10,7 +10,7 @@ export default function UnauthorizedPage({ message }) {
   })
 
   return (
-    <div className="fixed inset-0 z-[120] bg-[#EBF7F0]/95 backdrop-blur-xs text-zinc-900 flex flex-col justify-between selection:bg-[#049645]/20 selection:text-[#049645] overflow-y-auto">
+    <div className="min-h-screen bg-[#EBF7F0]/80 text-zinc-900 flex flex-col justify-between selection:bg-[#049645]/20 selection:text-[#049645]">
       {/* Top Header */}
       <header className="border-b border-zinc-200/70 bg-white sticky top-0 z-10 shrink-0">
         <div className="w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 h-16 sm:h-18 flex items-center justify-between">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signup, signin, upgradeToOwner } from '../api/auth.api'
 import { getMyBusinesses } from '../api/business.api'
@@ -229,69 +229,14 @@ export default function BusinessPortalPage() {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // RENDER: Authenticated as Customer Gate
+  // RENDER: Authenticated as Customer Gate -> Redirect to 401
   // ─────────────────────────────────────────────────────────────
   if (authLoading) {
     return null
   }
 
   if (isCustomer) {
-    return (
-      <div className="min-h-screen auth-background text-zinc-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[500px] bg-emerald-400/12 blur-[140px] pointer-events-none" />
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-lg bg-white border border-zinc-200 rounded-3xl p-8 sm:p-10 shadow-2xl relative z-10 text-center space-y-6"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto shadow-sm text-amber-800">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-800 bg-amber-100 px-3 py-1 rounded-full border border-amber-200">
-              Customer Account Detected
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">
-              Hub Owner Access Only
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-600 font-medium leading-relaxed max-w-md mx-auto">
-              You are currently signed in as <span className="text-zinc-900 font-bold">{user.email}</span> with a customer account. The <span className="text-teal-700 font-bold">serveq.tech/business</span> portal is exclusively reserved for Business & Hub Owners.
-            </p>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            <button
-              type="button"
-              disabled={upgrading}
-              onClick={handleUpgradeCurrentAccount}
-              className="w-full py-3.5 px-6 rounded-2xl bg-[#52b788] hover:bg-[#40916c] text-white font-bold text-xs uppercase tracking-wider shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              <span>{upgrading ? 'Upgrading Account...' : 'Upgrade Account to Hub Owner'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="w-full py-3.5 px-6 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold text-xs uppercase tracking-wider transition-all"
-            >
-              ← Return to Customer Dashboard
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { logOut(); navigate('/business') }}
-              className="text-[11px] font-bold text-zinc-400 hover:text-rose-600 transition-colors uppercase tracking-wider block mx-auto pt-2"
-            >
-              Sign Out & Switch Account
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    )
+    return <Navigate to="/401" replace />
   }
 
   // ─────────────────────────────────────────────────────────────
