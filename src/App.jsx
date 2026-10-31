@@ -28,6 +28,7 @@ import SubscriptionPage from './pages/SubscriptionPage'
 import Footer from './components/Footer'
 import AmbientBackground from './components/AmbientBackground'
 import NotFoundPage from './pages/NotFoundPage'
+import UnauthorizedPage from './pages/UnauthorizedPage'
 
 const LoadingScreen = () => (
   <div className="flex items-center justify-center min-h-screen page-wrapper">
@@ -82,23 +83,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <div className="text-center glass p-10 max-w-md">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
-            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
-          <p className="text-sm mb-6 text-neutral-400">
-            You are not allowed to perform this action.
-            {user.role === 'customer' ? ' This page is for business owners only.' : ' This page is for customers only.'}
-          </p>
-          <a href="/" className="btn-primary">← Back to Dashboard</a>
-        </div>
-      </div>
-    )
+    return <UnauthorizedPage />
   }
   return children
 }
@@ -180,9 +165,13 @@ export default function App() {
     location.pathname === '/support' ||
     location.pathname === '/help' ||
     location.pathname === '/privacy' ||
-    location.pathname === '/terms'
+    location.pathname === '/terms' ||
+    location.pathname === '/unauthorized' ||
+    location.pathname === '/401' ||
+    location.pathname === '/403'
 
   const isNotFoundPage = !isKnownRoute || location.pathname === '/404'
+  const isLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
 
   if (authLoading) {
     return <LoadingScreen />
@@ -220,14 +209,14 @@ export default function App() {
           },
         }}
       />
-      {user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && <Navbar />}
-      {user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && (
+      {user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && !isLegalPage && <Navbar />}
+      {user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && !isLegalPage && (
         <>
           <BackButton />
         </>
       )}
       {user && !isOnboarding && !isComingSoonPage && !isNotFoundPage && <AIDesistant />}
-      <main className={user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
+      <main className={user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && !isLegalPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
@@ -359,6 +348,9 @@ export default function App() {
           <Route path="/help" element={<Navigate to="/support" replace />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="/401" element={<UnauthorizedPage />} />
+          <Route path="/403" element={<UnauthorizedPage />} />
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

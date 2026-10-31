@@ -1,13 +1,17 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { useSeo } from '../utils/useSeo'
 
 export default function TermsPage() {
+  const { user } = useAuth()
   useSeo({
     title: 'Terms and Conditions',
     description: 'Review the terms and conditions for using serveQ, including virtual queue tokens, appointments, cancellations, and venue management.',
     robots: 'index, follow',
     canonical: 'https://serveq.tech/terms',
   })
+
+  const dashboardPath = user?.role === 'owner' ? '/business' : user?.role === 'admin' ? '/admin' : '/customers'
 
   return (
     <div className="min-h-screen app-background text-zinc-900 flex flex-col justify-between selection:bg-emerald-500/20 selection:text-emerald-900 relative">
@@ -25,12 +29,21 @@ export default function TermsPage() {
             >
               Home
             </Link>
-            <Link
-              to="/login"
-              className="text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded-full shadow-sm hover:shadow transition-all active:scale-95"
-            >
-              Sign In
-            </Link>
+            {user ? (
+              <Link
+                to={dashboardPath}
+                className="text-xs font-bold bg-[#114227] hover:bg-[#0c311d] text-white px-4 py-2 rounded-full shadow-sm hover:shadow transition-all active:scale-95"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="text-xs font-bold bg-[#114227] hover:bg-[#0c311d] text-white px-4 py-2 rounded-full shadow-sm hover:shadow transition-all active:scale-95"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </header>
