@@ -79,7 +79,7 @@ export default function LoginPage() {
       toast.success(tab === 'signin' ? 'Welcome back! Logged in successfully.' : 'Welcome to serveQ! Account created.', {
         style: { borderRadius: '14px', background: '#ffffff', color: '#09090b', border: '1px solid #e4e4e7' }
       })
-      navigate('/customers')
+      navigate(user?.role === 'admin' ? '/admin' : '/customers')
     } catch (err) {
       const msg = err.response?.data?.message || 'Unable to sign in. Please check your details.'
       if (

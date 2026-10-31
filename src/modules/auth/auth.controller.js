@@ -9,14 +9,14 @@ import { generateToken, setTokenCookie } from "../auth.utils.js";
 export const signup = asyncHandler(async (req, res) => {
   const { name, email, password, role } = req.body;
   const { user, token } = await authService.register({ name, email, password, role });
-  setTokenCookie(res, token);
+  setTokenCookie(res, token, req);
   res.status(201).json(new ApiResponse(201, { user, token }, "Registered successfully"));
 });
 
 export const signin = asyncHandler(async (req, res) => {
   const { email, password, requiredRole } = req.body;
   const { user, token } = await authService.login({ email, password, requiredRole });
-  setTokenCookie(res, token);
+  setTokenCookie(res, token, req);
   res.json(new ApiResponse(200, { user, token }, "Logged in successfully"));
 });
 

@@ -29,7 +29,14 @@ const api = axios.create({
 // Attach JWT from localStorage on every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    if (config.headers && typeof config.headers.set === "function") {
+      config.headers.set("Authorization", `Bearer ${token}`);
+    } else {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
   return config;
 });
 
@@ -37,16 +44,27 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url = err.config?.url || "";
+    const isAuthEndpoint =
+      url.includes("/auth/signin") ||
+      url.includes("/auth/signup") ||
+      url.includes("/auth/me");
+
+    // Don't hijack login/signup errors or initial profile fetch
+    if (err.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem("token");
       localStorage.removeItem("serveq_last_active");
-      if (
-        typeof window !== "undefined" &&
-        window.location.pathname !== "/login" &&
-        window.location.pathname !== "/" &&
-        !window.location.pathname.startsWith("/auth")
-      ) {
-        window.location.href = "/login";
+      if (typeof window !== "undefined") {
+        const path = window.location.pathname;
+        if (path !== "/login" && path !== "/" && !path.startsWith("/auth")) {
+          if (path.startsWith("/admin")) {
+            window.location.reload();
+          } else if (path.startsWith("/business")) {
+            window.location.href = "/business";
+          } else {
+            window.location.href = "/login";
+          }
+        }
       }
     }
     return Promise.reject(err);

@@ -8,6 +8,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3001"
+      CLIENT_URL: "http://localhost:8080"
     expose:
       - "3001"
     ports:

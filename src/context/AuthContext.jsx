@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { getMe } from "../api/auth.api.js";
+import api from "../api/axios.js";
 import {
   INACTIVITY_TIMEOUT_MS,
   ACTIVITY_THROTTLE_MS,
@@ -19,6 +20,7 @@ export const AuthProvider = ({ children }) => {
   const logOut = useCallback((reason) => {
     localStorage.removeItem("token");
     localStorage.removeItem(LAST_ACTIVE_KEY);
+    delete api.defaults.headers.common["Authorization"];
     setUser(null);
     if (reason === "inactivity") {
       toast("You have been logged out due to 10 minutes of inactivity.", {
@@ -33,23 +35,35 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     getMe()
       .then((res) => {
         setUser(res.data.data.user);
         localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
       })
-      .catch(() => localStorage.removeItem("token"))
+      .catch(() => {
+        localStorage.removeItem("token");
+        delete api.defaults.headers.common["Authorization"];
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const storeToken = (token) => {
-    if (token) localStorage.setItem("token", token);
+    if (token) {
+      localStorage.setItem("token", token);
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    }
   };
 
   const logIn = (userData, token) => {
     storeToken(token);
     setUser(userData);
+    setLoading(false);
     localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
   };
 

@@ -29,13 +29,14 @@ export const generateToken = (user) => {
  *   - secure: false
  *   - sameSite: "lax" (same-origin is fine for localhost)
  */
-export const setTokenCookie = (res, token) => {
-  const isProduction = process.env.NODE_ENV === "production";
+export const setTokenCookie = (res, token, req = null) => {
+  const isHttps = req ? Boolean(req.secure || req.headers?.["x-forwarded-proto"] === "https") : false;
+  const isProductionSecure = process.env.NODE_ENV === "production" && isHttps;
 
   res.cookie("token", token, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    secure: isProductionSecure,
+    sameSite: isProductionSecure ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     path: "/",
   });
