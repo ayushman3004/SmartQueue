@@ -160,6 +160,30 @@ export default function App() {
     location.pathname === '/coming-soon' ||
     (!user && location.pathname === '/')
 
+  const isKnownRoute =
+    location.pathname === '/' ||
+    location.pathname === '/login' ||
+    location.pathname === '/auth/callback' ||
+    location.pathname === '/coming-soon' ||
+    location.pathname === '/home' ||
+    location.pathname === '/preview-landing' ||
+    location.pathname === '/customers' ||
+    location.pathname === '/customer' ||
+    location.pathname === '/history' ||
+    location.pathname.startsWith('/queue') ||
+    location.pathname.startsWith('/booking') ||
+    location.pathname.startsWith('/business') ||
+    location.pathname === '/subscription' ||
+    location.pathname === '/wallet' ||
+    location.pathname === '/profile' ||
+    location.pathname === '/admin' ||
+    location.pathname === '/support' ||
+    location.pathname === '/help' ||
+    location.pathname === '/privacy' ||
+    location.pathname === '/terms'
+
+  const isNotFoundPage = !isKnownRoute || location.pathname === '/404'
+
   if (authLoading) {
     return <LoadingScreen />
   }
@@ -172,7 +196,7 @@ export default function App() {
     ? 'glow'
     : 'default'
 
-  const bgClass = isComingSoonPage
+  const bgClass = isComingSoonPage || isNotFoundPage
     ? ''
     : isLoginPage
     ? 'auth-background'
@@ -182,7 +206,7 @@ export default function App() {
 
   return (
     <div className={`page-wrapper ${bgClass}`}>
-      {!isComingSoonPage && <AmbientBackground variant={bgVariant} />}
+      {!isComingSoonPage && !isNotFoundPage && <AmbientBackground variant={bgVariant} />}
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -196,14 +220,14 @@ export default function App() {
           },
         }}
       />
-      {user && !isOnboarding && !isCustomerDashboard && <Navbar />}
-      {user && !isOnboarding && !isCustomerDashboard && (
+      {user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && <Navbar />}
+      {user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage && (
         <>
           <BackButton />
         </>
       )}
-      {user && !isOnboarding && !isComingSoonPage && <AIDesistant />}
-      <main className={user && !isOnboarding && !isCustomerDashboard ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
+      {user && !isOnboarding && !isComingSoonPage && !isNotFoundPage && <AIDesistant />}
+      <main className={user && !isOnboarding && !isCustomerDashboard && !isNotFoundPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
@@ -335,10 +359,11 @@ export default function App() {
           <Route path="/help" element={<Navigate to="/support" replace />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isLoginPage && !isComingSoonPage && <Footer />}
+      {!isLoginPage && !isComingSoonPage && !isNotFoundPage && <Footer />}
     </div>
   )
 }
