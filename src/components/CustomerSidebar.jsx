@@ -8,12 +8,10 @@ import {
   Calendar,
   Clock,
   HelpCircle,
-  Gift,
   X,
   User,
   Building2,
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 
 export default function CustomerSidebar({
@@ -104,20 +102,6 @@ export default function CustomerSidebar({
 
       {/* Bottom Sidebar Actions */}
       <div className="pt-4 border-t border-zinc-100 space-y-1">
-        <button
-          type="button"
-          onClick={() => {
-            if (navigator?.clipboard) {
-              navigator.clipboard.writeText('SERVEQ2026')
-            }
-            toast.success('Referral code copied to clipboard!')
-            if (isMobile) onCloseMobile()
-          }}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
-        >
-          <Gift className="w-4 h-4 text-purple-600" />
-          <span>Refer & Earn</span>
-        </button>
         <button
           type="button"
           onClick={() => {
