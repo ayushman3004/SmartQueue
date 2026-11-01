@@ -4,6 +4,7 @@ import { sendSMS } from "../../services/twilioService.js";
 import { generateToken, setTokenCookie } from "../auth.utils.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
+import ApiError from "../../../utils/ApiError.js";
 
 export const sendOtp = asyncHandler(async (req, res) => {
   const { phoneNumber } = req.body;
@@ -70,9 +71,11 @@ export const verifyOtp = asyncHandler(async (req, res) => {
       role: assignedRole
     });
   } else if (role === "owner" && user.role === "customer") {
-    // If authenticating via Hub Owner portal, upgrade customer to owner
-    user.role = "owner";
-    await user.save();
+    await Otp.deleteOne({ phoneNumber });
+    throw new ApiError(
+      403,
+      "This phone number is registered as a Customer. Customer accounts cannot be upgraded to Hub Owner."
+    );
   }
 
   // Cleanup OTP

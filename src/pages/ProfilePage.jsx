@@ -35,7 +35,7 @@ import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useSeo } from '../utils/useSeo'
 import { isValidEmail } from '../utils/validators'
-import { sendEmailOtp, verifyEmailOtp, upgradeToOwner } from '../api/auth.api'
+import { sendEmailOtp, verifyEmailOtp } from '../api/auth.api'
 import VerifyContactModal from '../components/VerifyContactModal'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
 import CustomerSidebar from '../components/CustomerSidebar'
@@ -53,7 +53,6 @@ export default function ProfilePage() {
   // Edit profile state
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [upgradingRole, setUpgradingRole] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   // Mobile drawer state
@@ -202,25 +201,6 @@ export default function ProfilePage() {
   }
 
   // Upgrade Account to Hub Owner (for customers)
-  const handleUpgradeAccount = async () => {
-    if (!window.confirm('Upgrade your account to Hub Owner? This will unlock venue registration and live counter management.')) {
-      return
-    }
-    setUpgradingRole(true)
-    try {
-      const res = await upgradeToOwner()
-      setUser(res.data.data.user)
-      toast.success('Congratulations! Your account is now upgraded to Hub Owner.', {
-        style: { borderRadius: '16px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
-      })
-      navigate('/business')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to upgrade account')
-    } finally {
-      setUpgradingRole(false)
-    }
-  }
-
   return (
     <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative">
       {/* ── TOP HEADER BAR ── */}
@@ -755,35 +735,6 @@ export default function ProfilePage() {
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
                   </Link>
-                </div>
-
-                {/* Upgrade to Owner CTA */}
-                <div className="pt-3 border-t border-zinc-100 p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border border-[#BDE8CB] space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#114227]" />
-                    <span className="text-xs font-black text-zinc-950">Run a Business Venue?</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-600 leading-relaxed font-medium">
-                    Upgrade to a Hub Owner account to register venues, manage service catalogs, and run live queues.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={upgradingRole}
-                    onClick={handleUpgradeAccount}
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    {upgradingRole ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Upgrading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Upgrade to Hub Owner</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
             )}

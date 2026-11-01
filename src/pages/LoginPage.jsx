@@ -6,6 +6,7 @@ import { signup, signin } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { isValidEmail, validatePasswordStrength } from '../utils/validators'
+import { useDebounce } from '../hooks/useDebounce'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
 
 // Fluid Apple-style spring curve
@@ -22,8 +23,17 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'customer' })
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [ownerMismatch, setOwnerMismatch] = useState(null)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+
+  // Debounced password validation for signup requirements
+  const debouncedPassword = useDebounce(form.password, 250)
+  const hasMinLength = debouncedPassword.length >= 8
+  const hasUppercase = /[A-Z]/.test(debouncedPassword)
+  const hasNumber = /[0-9]/.test(debouncedPassword)
+  const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(debouncedPassword)
+  const isPasswordValid = hasMinLength && hasUppercase && hasNumber && hasSpecial
   const { logIn } = useAuth()
   const navigate = useNavigate()
 
@@ -45,6 +55,11 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setOwnerMismatch(null)
+
+    if (!acceptPrivacy) {
+      toast.error('Please click the checkbox to accept our Privacy Policy to continue.')
+      return
+    }
 
     if (!isValidEmail(form.email)) {
       toast.error('Please enter a valid email address (e.g. name@example.com)')
@@ -97,6 +112,10 @@ export default function LoginPage() {
   }
 
   const handleGoogleAuth = () => {
+    if (!acceptPrivacy) {
+      toast.error('Please click the checkbox to accept our Privacy Policy to continue.')
+      return
+    }
     localStorage.removeItem('auth_redirect')
     const apiUrl = import.meta.env.VITE_API_URL || ''
     window.location.href = `${apiUrl}/api/auth/google?role=customer`
@@ -323,42 +342,101 @@ export default function LoginPage() {
                           </button>
                         </div>
 
-                        {/* Red Color Password Guidelines */}
-                        <div className="mt-2 p-3 hidden rounded-2xl bg-rose-50 border border-rose-200 text-xs space-y-1.5">
-                          <p className="font-bold text-rose-600 flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5 shrink-0 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                            Password Requirements:
-                          </p>
-                          <p className="text-red-500 text-[11px] font-semibold leading-relaxed">
-                            Password must contain numbers, capital letters, lowercase letters, and special symbols (minimum 8 characters).
-                          </p>
-                          <div className="grid grid-cols-2 gap-1 pt-0.5 text-[10px] font-bold">
-                            <span className={form.password.length >= 8 ? 'text-emerald-600' : 'text-red-500'}>
-                              {form.password.length >= 8 ? '✓' : '✗'} 8+ Characters
-                            </span>
-                            <span className={/[A-Z]/.test(form.password) ? 'text-emerald-600' : 'text-red-500'}>
-                              {/[A-Z]/.test(form.password) ? '✓' : '✗'} Capital Letter (A-Z)
-                            </span>
-                            <span className={/[0-9]/.test(form.password) ? 'text-emerald-600' : 'text-red-500'}>
-                              {/[0-9]/.test(form.password) ? '✓' : '✗'} Numbers (0-9)
-                            </span>
-                            <span className={/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(form.password) ? 'text-emerald-600' : 'text-red-500'}>
-                              {/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(form.password) ? '✓' : '✗'} Special Symbols
-                            </span>
-                          </div>
-                        </div>
+                        {/* Debounced Password Requirements (Hidden until user types) */}
+                        <AnimatePresence>
+                          {form.password.length > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0, y: -4 }}
+                              animate={{ opacity: 1, height: 'auto', y: 0 }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className={`mt-2 p-3 rounded-2xl border text-xs space-y-1.5 transition-colors overflow-hidden ${
+                                isPasswordValid
+                                  ? 'bg-emerald-50 border-emerald-200'
+                                  : 'bg-rose-50 border-rose-200'
+                              }`}
+                            >
+                              <p className={`font-bold flex items-center gap-1.5 ${isPasswordValid ? 'text-emerald-700' : 'text-rose-600'}`}>
+                                <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                                <span>Password Requirements:</span>
+                              </p>
+                              <p className={`text-[11px] font-semibold leading-relaxed ${isPasswordValid ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {isPasswordValid
+                                  ? '✓ All password security requirements met.'
+                                  : 'Password must contain numbers, capital letters, lowercase letters, and special symbols (minimum 8 characters).'}
+                              </p>
+                              <div className="grid grid-cols-2 gap-1 pt-0.5 text-[10px] font-bold">
+                                <span className={hasMinLength ? 'text-emerald-600' : 'text-red-500'}>
+                                  {hasMinLength ? '✓' : '✗'} 8+ Characters
+                                </span>
+                                <span className={hasUppercase ? 'text-emerald-600' : 'text-red-500'}>
+                                  {hasUppercase ? '✓' : '✗'} Capital Letter (A-Z)
+                                </span>
+                                <span className={hasNumber ? 'text-emerald-600' : 'text-red-500'}>
+                                  {hasNumber ? '✓' : '✗'} Numbers (0-9)
+                                </span>
+                                <span className={hasSpecial ? 'text-emerald-600' : 'text-red-500'}>
+                                  {hasSpecial ? '✓' : '✗'} Special Symbols
+                                </span>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
 
-                      {/* Primary Submit Button */}
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3.5 px-6 rounded-2xl bg-[#52b788] hover:bg-[#40916c] active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 mt-2"
-                      >
-                        {loading ? 'Creating Account...' : 'Create Account'}
-                      </button>
+                      {/* Privacy Policy Acceptance Checkbox (Signup) */}
+                      <div className="flex items-start gap-2.5 pt-1 text-left">
+                        <input
+                          type="checkbox"
+                          id="accept-privacy-signup"
+                          checked={acceptPrivacy}
+                          onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                          required
+                          className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 accent-[#114227] cursor-pointer shrink-0"
+                        />
+                        <label
+                          htmlFor="accept-privacy-signup"
+                          className="text-xs text-zinc-600 cursor-pointer select-none leading-relaxed"
+                        >
+                          Click this to accept our{' '}
+                          <Link
+                            to="/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#114227] font-bold underline hover:text-[#0c311d]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Privacy Policy
+                          </Link>
+                        </label>
+                      </div>
+
+                      {/* Primary Submit Button + Google Button Beside It */}
+                      <div className="flex items-stretch gap-2.5 mt-2">
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="flex-1 py-3.5 px-6 rounded-2xl bg-[#52b788] hover:bg-[#40916c] active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                        >
+                          {loading ? 'Creating Account...' : 'Create Account'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleGoogleAuth}
+                          title="Continue with Google"
+                          aria-label="Continue with Google"
+                          className="px-4 py-3.5 rounded-2xl bg-white border border-zinc-200/90 hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-xs flex items-center justify-center active:scale-[0.96] cursor-pointer shrink-0"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" className="shrink-0">
+                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
+                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
+                            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
+                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                          </svg>
+                        </button>
+                      </div>
                     </motion.div>
                   ) : (
                     <motion.div
@@ -431,14 +509,57 @@ export default function LoginPage() {
                         </div>
                       </div>
 
-                      {/* Primary Submit Button */}
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3.5 px-6 rounded-2xl bg-[#52b788] hover:bg-[#40916c] active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 mt-2"
-                      >
-                        {loading ? 'Signing In...' : 'Sign In'}
-                      </button>
+                      {/* Privacy Policy Acceptance Checkbox (Signin) */}
+                      <div className="flex items-start gap-2.5 pt-1 text-left">
+                        <input
+                          type="checkbox"
+                          id="accept-privacy-signin"
+                          checked={acceptPrivacy}
+                          onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                          required
+                          className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 accent-[#114227] cursor-pointer shrink-0"
+                        />
+                        <label
+                          htmlFor="accept-privacy-signin"
+                          className="text-xs text-zinc-600 cursor-pointer select-none leading-relaxed"
+                        >
+                          Click this to accept our{' '}
+                          <Link
+                            to="/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#114227] font-bold underline hover:text-[#0c311d]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Privacy Policy
+                          </Link>
+                        </label>
+                      </div>
+
+                      {/* Primary Submit Button + Google Button Beside It */}
+                      <div className="flex items-stretch gap-2.5 mt-2">
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="flex-1 py-3.5 px-6 rounded-2xl bg-[#52b788] hover:bg-[#40916c] active:scale-[0.98] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                        >
+                          {loading ? 'Signing In...' : 'Sign In'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleGoogleAuth}
+                          title="Continue with Google"
+                          aria-label="Continue with Google"
+                          className="px-4 py-3.5 rounded-2xl bg-white border border-zinc-200/90 hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-xs flex items-center justify-center active:scale-[0.96] cursor-pointer shrink-0"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" className="shrink-0">
+                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
+                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
+                            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
+                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                          </svg>
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -469,42 +590,6 @@ export default function LoginPage() {
                     </button>
                   </p>
                 )}
-              </div>
-
-              {/* OR Divider */}
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-zinc-200" />
-                </div>
-                <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-                  <span className="bg-white px-3 text-zinc-400">OR</span>
-                </div>
-              </div>
-
-              {/* Google Login Button */}
-              <button
-                type="button"
-                onClick={handleGoogleAuth}
-                className="w-full py-3.5 px-4 rounded-2xl bg-white border border-zinc-200/90 hover:bg-zinc-50 hover:border-zinc-300 text-zinc-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-3 active:scale-[0.98]"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" className="flex-shrink-0">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z" />
-                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.03 0 12s.45 3.82 1.25 5.42l4.03-3.15z" />
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-
-              {/* Business / Hub Owner Link */}
-              <div className="pt-2 text-center">
-                <Link
-                  to="/business"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 hover:text-teal-900 transition-colors"
-                >
-                  <span>Business / Hub Owner Portal</span>
-                  <span>→</span>
-                </Link>
               </div>
             </div>
           </motion.div>

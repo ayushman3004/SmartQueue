@@ -39,7 +39,7 @@ export const register = async ({ name, email, password, role }) => {
     if (existing.role === "customer" && userRole === "owner") {
       throw new ApiError(
         409,
-        "This email is already registered as a Customer. Please sign in to the Business Portal to upgrade your account or use the Customer Portal."
+        "This email is already registered as a Customer. Customer accounts cannot be upgraded to Hub Owner. Please use a different email address for your Business account."
       );
     }
     if (existing.role === "owner" && userRole === "customer") {
@@ -96,7 +96,7 @@ export const login = async ({ email, password, requiredRole }) => {
   if (requiredRole === "owner" && user.role !== "owner" && user.role !== "admin") {
     throw new ApiError(
       403,
-      "Access restricted to Hub Owners. This account is registered as a Customer. Please sign in at the Customer Portal or upgrade your account to Hub Owner."
+      "Access restricted to Hub Owners. This account is registered as a Customer. Customer accounts cannot be upgraded to Hub Owner."
     );
   }
 
@@ -121,13 +121,12 @@ export const login = async ({ email, password, requiredRole }) => {
   return { user: sanitize(user), token };
 };
 
-// ─── Upgrade Account to Hub Owner ────────────────────────────
-export const upgradeToOwner = async (userId) => {
-  const user = await User.findById(userId);
-  if (!user) throw new ApiError(404, "User not found");
-  user.role = "owner";
-  await user.save();
-  return sanitize(user);
+// ─── Upgrade Account to Hub Owner (Permanently Disabled) ────
+export const upgradeToOwner = async () => {
+  throw new ApiError(
+    403,
+    "Customer accounts cannot be upgraded to Hub Owner. Once registered as a Customer, role cannot be converted."
+  );
 };
 
 // ─── Google OAuth (called by Passport) ───────────────────────
