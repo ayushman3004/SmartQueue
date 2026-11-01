@@ -30,6 +30,7 @@ import {
   Activity,
 } from 'lucide-react'
 import CustomerSidebar from '../components/CustomerSidebar'
+import { BusinessGridSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses } from '../api/business.api'
@@ -74,6 +75,7 @@ export default function CustomerDashboardPage() {
   // State
   const [businesses, setBusinesses] = useState([])
   const [myBookings, setMyBookings] = useState([])
+  const [loading, setLoading] = useState(true)
   const [joiningBizId, setJoiningBizId] = useState(null)
   const [leavingBizId, setLeavingBizId] = useState(null)
 
@@ -143,6 +145,8 @@ export default function CustomerDashboardPage() {
     } catch (err) {
       console.error('Customer Dashboard fetch error:', err)
       toast.error('Could not refresh present queues')
+    } finally {
+      setLoading(false)
     }
   }, [debouncedSearch, categoryFilter, debouncedLocation])
 
@@ -1247,7 +1251,9 @@ export default function CustomerDashboardPage() {
               )}
             </div>
 
-            {displayedServices.length === 0 ? (
+            {loading ? (
+              <BusinessGridSkeleton count={6} />
+            ) : displayedServices.length === 0 ? (
               <div className="p-8 text-center bg-white border border-dashed border-zinc-200 rounded-3xl text-zinc-400 text-xs">
                 No services found matching your current filter. Try searching a different location.
               </div>

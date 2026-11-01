@@ -9,6 +9,7 @@ import { useSocket } from '../context/SocketContext'
 import { useSeo } from '../utils/useSeo'
 import { isValidEmail } from '../utils/validators'
 import { useDebounce } from '../hooks/useDebounce'
+import { AdminDashboardSkeleton, Skeleton } from '../components/Skeleton'
 import {
   Building2,
   Users,
@@ -328,11 +329,7 @@ export default function AdminDashboard() {
 
   // Check auth state
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <div className="w-12 h-12 border-4 border-[#114227] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+    return <AdminDashboardSkeleton />
   }
 
   // If unauthenticated or non-admin, render Admin Login Form directly
@@ -1485,9 +1482,14 @@ export default function AdminDashboard() {
               </div>
 
               {loadingDetail ? (
-                <div className="py-12 text-center space-y-3">
-                  <div className="w-8 h-8 border-3 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Inspecting Hub Node...</p>
+                <div className="space-y-4 py-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <Skeleton className="h-20 rounded-2xl" />
+                    <Skeleton className="h-20 rounded-2xl" />
+                    <Skeleton className="h-20 rounded-2xl" />
+                  </div>
+                  <Skeleton className="h-28 rounded-2xl" />
+                  <Skeleton className="h-36 rounded-2xl" />
                 </div>
               ) : selectedBusinessDetail ? (
                 <div className="space-y-5 text-xs">

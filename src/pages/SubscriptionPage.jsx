@@ -23,6 +23,7 @@ import {
   verifySubscriptionPayment,
 } from '../api/subscription.api'
 import { getMyBusinesses } from '../api/business.api'
+import { SubscriptionPlansSkeleton } from '../components/Skeleton'
 import { useSeo } from '../utils/useSeo'
 
 // Load official Razorpay Standard Checkout SDK
@@ -538,10 +539,7 @@ export default function SubscriptionPage() {
         {/* ── CASE 3: INACTIVE OR EXPIRED SUBSCRIPTION ── */}
         {!isBasic && !isPro && (
           loading ? (
-            <div className="p-12 text-center rounded-3xl bg-white border border-[#BDE8CB] shadow-xs space-y-3">
-              <div className="w-8 h-8 border-3 border-[#16A34A] border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Verifying your active subscription status...</p>
-            </div>
+            <SubscriptionPlansSkeleton />
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Card */}

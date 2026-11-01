@@ -8,6 +8,7 @@ import { getMyBookings, cancelBooking } from '../api/booking.api'
 import { getAvailableCoupons } from '../api/coupon.api'
 import { submitReview } from '../api/review.api'
 import BusinessCard from '../components/BusinessCard'
+import { BusinessGridSkeleton } from '../components/Skeleton'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 import { useDebounce } from '../hooks/useDebounce'
@@ -394,13 +395,7 @@ export default function DashboardPage() {
 
         {/* Businesses Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, idx) => (
-              <div key={idx} className="bezel-shell">
-                <div className="bezel-core h-64 bg-zinc-100/60 animate-pulse" />
-              </div>
-            ))}
-          </div>
+          <BusinessGridSkeleton count={6} />
         ) : businesses.length === 0 ? (
           <div className="bezel-shell">
             <div className="bezel-core p-16 text-center space-y-3">

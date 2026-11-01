@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { BusinessDashboardSkeleton } from '../components/Skeleton'
 import {
   Users,
   Calendar,
@@ -506,11 +507,7 @@ export default function BusinessDashboard() {
     }
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-      <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (loading) return <BusinessDashboardSkeleton />
 
   const users = queue?.users || []
   const serving = users.find((u) => u.status === 'serving')

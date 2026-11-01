@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMe } from '../api/auth.api'
+import { Skeleton } from '../components/Skeleton'
 
 export default function AuthCallback() {
   const [params] = useSearchParams()
@@ -34,10 +35,14 @@ export default function AuthCallback() {
   }, [logIn, navigate, params])
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-slate-50">
-      <div className="text-center space-y-6">
-        <div className="w-16 h-16 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto shadow-xl" />
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Synchronizing Identity...</p>
+    <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-[#F7FCF9]">
+      <div className="w-full max-w-sm p-8 rounded-3xl bg-white border border-zinc-200/80 shadow-xl text-center space-y-5">
+        <Skeleton className="w-16 h-16 rounded-full mx-auto" />
+        <div className="space-y-2">
+          <Skeleton className="w-40 h-5 mx-auto rounded-md" />
+          <Skeleton className="w-56 h-3.5 mx-auto rounded-md" />
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Synchronizing Identity...</p>
       </div>
     </div>
   )

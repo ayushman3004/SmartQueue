@@ -28,6 +28,7 @@ import {
   Menu,
 } from 'lucide-react'
 import CustomerSidebar from '../components/CustomerSidebar'
+import { HistoryPageSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses } from '../api/business.api'
@@ -611,10 +612,7 @@ export default function HistoryPage() {
 
           {/* Records Display */}
           {loading ? (
-            <div className="p-12 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-3">
-              <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="font-semibold text-zinc-600">Loading service history...</p>
-            </div>
+            <HistoryPageSkeleton count={4} />
           ) : filteredRecords.length === 0 ? (
             <div className="p-12 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-2">
               <p className="font-bold text-zinc-700 text-sm">No service history found</p>

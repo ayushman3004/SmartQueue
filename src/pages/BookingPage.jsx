@@ -33,6 +33,7 @@ import {
   Building,
 } from 'lucide-react'
 import CustomerSidebar from '../components/CustomerSidebar'
+import { BookingPageSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses, getBusiness } from '../api/business.api'
@@ -588,10 +589,7 @@ export default function BookingPage() {
           )}
 
           {loading ? (
-            <div className="p-16 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-3">
-              <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="font-semibold text-zinc-600">Loading appointment availability...</p>
-            </div>
+            <BookingPageSkeleton />
           ) : !business ? (
             <div className="p-12 text-center text-zinc-500 border border-dashed border-zinc-300 rounded-3xl bg-white space-y-3">
               <Building className="w-10 h-10 text-zinc-400 mx-auto" />

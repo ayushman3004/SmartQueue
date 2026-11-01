@@ -33,6 +33,7 @@ import {
   Info,
 } from 'lucide-react'
 import CustomerSidebar from '../components/CustomerSidebar'
+import { QueuePageSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { joinQueue, leaveQueue } from '../api/queue.api'
@@ -692,10 +693,7 @@ export default function QueuePage() {
 
           {/* ── CORE VIEW (LOADING / EMPTY / JOINED PASS / ACTUAL QUEUE) ── */}
           {loading ? (
-            <div className="p-16 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-3">
-              <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="font-semibold text-zinc-600">Connecting to live queue stream...</p>
-            </div>
+            <QueuePageSkeleton />
           ) : !activeBusiness ? (
             /* No business available */
             <div className="bg-white rounded-3xl border border-dashed border-zinc-300/80 p-10 sm:p-14 text-center space-y-4 shadow-2xs">

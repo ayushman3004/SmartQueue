@@ -31,6 +31,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
+import { OnboardingStudioSkeleton } from '../components/Skeleton'
 
 const TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'Asia/Kolkata (IST +5:30)' },
@@ -906,16 +907,7 @@ export default function BusinessOnboardingPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen app-background flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-zinc-600 font-bold text-xs uppercase tracking-widest">
-            Preparing Onboarding Studio...
-          </p>
-        </div>
-      </div>
-    )
+    return <OnboardingStudioSkeleton />
   }
 
   const completedSet = new Set(business?.onboarding?.completedSteps || [])

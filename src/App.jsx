@@ -29,15 +29,9 @@ import Footer from './components/Footer'
 import AmbientBackground from './components/AmbientBackground'
 import NotFoundPage from './pages/NotFoundPage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
+import { AppLoadingSkeleton } from './components/Skeleton'
 
-const LoadingScreen = () => (
-  <div className="flex items-center justify-center min-h-screen page-wrapper">
-    <div className="text-center space-y-4">
-      <div className="w-12 h-12 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
-      <p className="text-neutral-500 text-sm font-medium tracking-wide">Initializing Environment...</p>
-    </div>
-  </div>
-)
+const LoadingScreen = () => <AppLoadingSkeleton />
 
 const QueueRedirect = () => {
   const { user } = useAuth()
@@ -83,7 +77,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <UnauthorizedPage />
+    return <Navigate to="/401" replace />
   }
   return children
 }

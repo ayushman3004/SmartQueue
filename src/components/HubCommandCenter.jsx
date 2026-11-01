@@ -7,6 +7,7 @@ import { getMyBusinesses } from '../api/business.api'
 import { toast } from 'react-hot-toast'
 import RegisterHubModal from './RegisterHubModal'
 import ManageServicesModal from './ManageServicesModal'
+import { HubCommandCenterSkeleton } from './Skeleton'
 import {
   Building2,
   Users,
@@ -684,10 +685,7 @@ export default function HubCommandCenter() {
             </div>
 
             {fetchingHubs ? (
-              <div className="text-center py-16 space-y-3">
-                <div className="w-10 h-10 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Loading Hub Nodes...</p>
-              </div>
+              <HubCommandCenterSkeleton count={3} />
             ) : filteredHubs.length === 0 ? (
               <div className="bg-white border border-dashed border-zinc-300 rounded-3xl p-10 sm:p-14 text-center space-y-4 shadow-xs">
                 <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center font-black text-emerald-800 text-sm mx-auto shadow-xs">
