@@ -28,7 +28,10 @@ import {
   Eye,
   Sparkles,
   Activity,
+  Navigation,
+  Loader2,
 } from 'lucide-react'
+import { calculateDistanceKm, formatDistance, getCoordinatesForLocation } from '../utils/geoUtils'
 import CustomerSidebar from '../components/CustomerSidebar'
 import { BusinessGridSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
@@ -90,6 +93,57 @@ export default function CustomerDashboardPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sortBy, setSortBy] = useState('nearest') // 'nearest' | 'wait_time' | 'rating'
   const [showMapModal, setShowMapModal] = useState(false)
+
+  // Geolocation & Proximity State
+  const [userCoords, setUserCoords] = useState(() => {
+    try {
+      const saved = localStorage.getItem('serveq_user_coords')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return getCoordinatesForLocation('Kolkata, West Bengal')
+  })
+  const [detectingLocation, setDetectingLocation] = useState(false)
+
+  // Handle detecting user's physical GPS location
+  const handleDetectCustomerLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser')
+      return
+    }
+    setDetectingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = {
+          lat: Number(pos.coords.latitude.toFixed(6)),
+          lng: Number(pos.coords.longitude.toFixed(6)),
+        }
+        setUserCoords(coords)
+        localStorage.setItem('serveq_user_coords', JSON.stringify(coords))
+        setSelectedCity('Current Location (GPS)')
+        setLocationQuery('')
+        setSortBy('nearest')
+        setDetectingLocation(false)
+        setShowLocationPicker(false)
+        toast.success('Current location detected! Venues sorted by proximity.')
+      },
+      (err) => {
+        setDetectingLocation(false)
+        console.warn('Geolocation error:', err)
+        toast.error('Location access denied or unavailable. Please enable browser location permissions.')
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    )
+  }
+
+  const handleSelectCity = (loc) => {
+    setSelectedCity(loc)
+    setLocationQuery(loc.split(',')[0])
+    const coords = getCoordinatesForLocation(loc)
+    if (coords) {
+      setUserCoords(coords)
+    }
+    setShowLocationPicker(false)
+  }
 
   const debouncedSearch = useDebounce(search, 350)
   const debouncedLocation = useDebounce(locationQuery, 350)
@@ -307,10 +361,45 @@ export default function CustomerDashboardPage() {
   }, [businesses])
 
   const displayedServices = useMemo(() => {
-    if (categoryFilter === 'clinic') return clinicsList
-    if (categoryFilter === 'salon') return salonsList
-    return businesses
-  }, [categoryFilter, clinicsList, salonsList, businesses])
+    let list = businesses
+    if (categoryFilter === 'clinic') list = clinicsList
+    else if (categoryFilter === 'salon') list = salonsList
+
+    // Calculate proximity distance for each venue
+    const withDistance = list.map((b) => {
+      let dist = null
+      if (userCoords) {
+        if (b.coordinates?.lat && b.coordinates?.lng) {
+          dist = calculateDistanceKm(userCoords.lat, userCoords.lng, b.coordinates.lat, b.coordinates.lng)
+        } else {
+          const approx = getCoordinatesForLocation(`${b.location || ''} ${b.city || ''} ${b.address || ''}`)
+          if (approx) {
+            dist = calculateDistanceKm(userCoords.lat, userCoords.lng, approx.lat, approx.lng)
+          }
+        }
+      }
+      return { ...b, distance: dist }
+    })
+
+    // Sort by criteria
+    return [...withDistance].sort((a, b) => {
+      if (sortBy === 'nearest') {
+        if (a.distance !== null && b.distance !== null) return a.distance - b.distance
+        if (a.distance !== null) return -1
+        if (b.distance !== null) return 1
+        return 0
+      }
+      if (sortBy === 'wait_time') {
+        const waitA = a.estimatedWait || (a.activeQueue?.length || 0) * 15
+        const waitB = b.estimatedWait || (b.activeQueue?.length || 0) * 15
+        return waitA - waitB
+      }
+      if (sortBy === 'rating') {
+        return (b.averageRating || 4.5) - (a.averageRating || 4.5)
+      }
+      return 0
+    })
+  }, [categoryFilter, clinicsList, salonsList, businesses, userCoords, sortBy])
 
   // Toggle selection of service for a business
   const handleToggleService = (bizId, service) => {
@@ -596,7 +685,10 @@ export default function CustomerDashboardPage() {
       biz.logo ||
       (biz.category === 'clinic' ? defaultImg || DEFAULT_CLINIC_IMAGES[0] : defaultImg || DEFAULT_SALON_IMAGES[0])
 
-    const distanceDisplay = biz.distance ? `${biz.distance.toFixed(1)} km` : '1.2 km'
+    const distanceDisplay =
+      biz.distance !== null && biz.distance !== undefined
+        ? formatDistance(biz.distance)
+        : biz.location || biz.city || 'Nearby'
     const avgRating = biz.averageRating || 4.8
     const reviewCount = biz.reviewCount || 320
     const servicesList = biz.services?.length
@@ -930,24 +1022,40 @@ export default function CustomerDashboardPage() {
 
             {/* Location dropdown */}
             {showLocationPicker && (
-              <div className="absolute top-full left-0 mt-1.5 w-60 bg-white border border-zinc-200 rounded-2xl shadow-xl p-2 z-50 space-y-1">
-                <p className="text-[10px] font-bold uppercase text-zinc-400 px-2 py-1">Select Location</p>
-                {POPULAR_LOCATIONS.map((loc) => (
-                  <button
-                    key={loc}
-                    onClick={() => {
-                      setSelectedCity(loc)
-                      setLocationQuery(loc.split(',')[0])
-                      setShowLocationPicker(false)
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 ${
-                      selectedCity === loc ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-zinc-100 text-zinc-700'
-                    }`}
-                  >
-                    <MapPin className="w-3 h-3 text-zinc-400" />
-                    <span>{loc}</span>
-                  </button>
-                ))}
+              <div className="absolute top-full left-0 mt-1.5 w-64 bg-white border border-zinc-200 rounded-2xl shadow-xl p-2 z-50 space-y-1.5">
+                {/* Use Current GPS Location */}
+                <button
+                  type="button"
+                  onClick={handleDetectCustomerLocation}
+                  disabled={detectingLocation}
+                  className="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
+                >
+                  {detectingLocation ? (
+                    <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin shrink-0" />
+                  ) : (
+                    <Navigation className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  )}
+                  <div className="flex-1 truncate">
+                    <span className="block font-black text-emerald-950">Use Current Location</span>
+                    <span className="text-[10px] text-emerald-700 font-medium">Detect GPS & sort nearest</span>
+                  </div>
+                </button>
+
+                <div className="pt-1 border-t border-zinc-100">
+                  <p className="text-[10px] font-bold uppercase text-zinc-400 px-2 py-1">Popular Areas</p>
+                  {POPULAR_LOCATIONS.map((loc) => (
+                    <button
+                      key={loc}
+                      onClick={() => handleSelectCity(loc)}
+                      className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 ${
+                        selectedCity === loc ? 'bg-emerald-50 text-emerald-800 font-bold' : 'hover:bg-zinc-100 text-zinc-700'
+                      }`}
+                    >
+                      <MapPin className="w-3 h-3 text-zinc-400" />
+                      <span>{loc}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -1134,6 +1242,31 @@ export default function CustomerDashboardPage() {
             </div>
           )}
 
+          {/* Mobile Quick Location & GPS Bar */}
+          <div className="md:hidden flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDetectCustomerLocation}
+              disabled={detectingLocation}
+              className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-black flex items-center justify-center gap-2 shadow-2xs active:scale-98 transition-all"
+            >
+              {detectingLocation ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700" />
+              ) : (
+                <Navigation className="w-3.5 h-3.5 text-emerald-700" />
+              )}
+              <span className="truncate">{detectingLocation ? 'Detecting GPS...' : `📍 ${selectedCity}`}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowLocationPicker((prev) => !prev)}
+              className="py-2 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-700 text-xs font-bold shadow-2xs"
+            >
+              Change
+            </button>
+          </div>
+
           {/* ── HERO BANNER ── */}
           <div className="w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-[#D5EEDB] shadow-xs bg-[#EAF7EE]">
             <img
@@ -1294,10 +1427,29 @@ export default function CustomerDashboardPage() {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="h-64 rounded-2xl bg-zinc-100 border border-zinc-200 flex flex-col items-center justify-center text-center p-6 space-y-2">
-                <Map className="w-10 h-10 text-emerald-800" />
-                <p className="text-xs font-bold text-zinc-800">Showing {businesses.length} Hubs near {selectedCity}</p>
-                <p className="text-[11px] text-zinc-500">Live GPS tracking and walking routes enabled.</p>
+              <div className="max-h-72 rounded-2xl bg-zinc-50 border border-zinc-200 overflow-y-auto p-3 space-y-2">
+                <div className="flex items-center justify-between px-1 pb-1.5 border-b border-zinc-200/60">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase">Nearby Venues ({displayedServices.length})</span>
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase">Distance</span>
+                </div>
+                {displayedServices.map((b) => (
+                  <div
+                    key={b._id}
+                    className="flex items-center justify-between py-2 px-3 rounded-xl bg-white border border-zinc-200/80 text-xs hover:border-emerald-300 transition-colors cursor-pointer"
+                    onClick={() => {
+                      setShowMapModal(false)
+                      navigate(`/booking/${b._id}`)
+                    }}
+                  >
+                    <div className="truncate mr-2">
+                      <p className="font-black text-zinc-900 truncate">{b.name}</p>
+                      <p className="text-[10px] text-zinc-400 capitalize">{b.category} • {b.location || b.city || 'Local'}</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+                      {b.distance !== null && b.distance !== undefined ? formatDistance(b.distance) : b.location || 'Nearby'}
+                    </span>
+                  </div>
+                ))}
               </div>
               <button
                 onClick={() => setShowMapModal(false)}

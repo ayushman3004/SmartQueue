@@ -542,12 +542,47 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
         postalCode: String(stepData.postalCode || b.locationDetails?.postalCode || "").trim(),
       };
 
-      if (stepData.coordinates) {
-        b.coordinates = {
-          lat: Number(stepData.coordinates.lat) || 0,
-          lng: Number(stepData.coordinates.lng) || 0,
+      // Validate or resolve geographic coordinates for distance sorting
+      let lat = Number(stepData.coordinates?.lat) || Number(b.coordinates?.lat) || 0;
+      let lng = Number(stepData.coordinates?.lng) || Number(b.coordinates?.lng) || 0;
+
+      if (!lat || !lng || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
+        const query = `${b.location} ${b.locationDetails.city} ${b.address}`.toLowerCase();
+        const cityLookup = {
+          kolkata: { lat: 22.5726, lng: 88.3639 },
+          "salt lake": { lat: 22.5867, lng: 88.4178 },
+          "new town": { lat: 22.5958, lng: 88.4796 },
+          "park street": { lat: 22.5516, lng: 88.3524 },
+          jadavpur: { lat: 22.4988, lng: 88.3718 },
+          howrah: { lat: 22.5958, lng: 88.2636 },
+          bardhaman: { lat: 23.2324, lng: 87.8615 },
+          burdwan: { lat: 23.2324, lng: 87.8615 },
+          durgapur: { lat: 23.5204, lng: 87.3119 },
+          siliguri: { lat: 26.7271, lng: 88.3953 },
+          bangalore: { lat: 12.9716, lng: 77.5946 },
+          bengaluru: { lat: 12.9716, lng: 77.5946 },
+          indiranagar: { lat: 12.9784, lng: 77.6408 },
+          koramangala: { lat: 12.9352, lng: 77.6245 },
+          whitefield: { lat: 12.9698, lng: 77.75 },
+          mumbai: { lat: 19.076, lng: 72.8777 },
+          delhi: { lat: 28.6139, lng: 77.209 },
+          hyderabad: { lat: 17.385, lng: 78.4867 },
+          chennai: { lat: 13.0827, lng: 80.2707 },
+          pune: { lat: 18.5204, lng: 73.8567 },
         };
+        for (const [k, v] of Object.entries(cityLookup)) {
+          if (query.includes(k)) {
+            lat = v.lat;
+            lng = v.lng;
+            break;
+          }
+        }
       }
+
+      b.coordinates = {
+        lat: lat || 22.5726,
+        lng: lng || 88.3639,
+      };
 
       // Operating Hours Validation
       if (stepData.operatingHours || stepData.weeklySchedule) {
