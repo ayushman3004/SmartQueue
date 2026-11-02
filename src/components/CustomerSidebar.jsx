@@ -11,6 +11,7 @@ import {
   X,
   User,
   Building2,
+  LogOut,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -25,7 +26,7 @@ export default function CustomerSidebar({
   onCloseMobile = () => {},
 }) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, logOut } = useAuth()
 
   const isOwner = user?.role === 'owner'
   const isAdmin = user?.role === 'admin'
@@ -57,7 +58,10 @@ export default function CustomerSidebar({
       ]
 
   const handleItemClick = (item) => {
-    if (onSelectTab) {
+    if (item.id === 'profile' || item.route === '/profile') {
+      navigate('/profile')
+      if (onSelectTab) onSelectTab(item.id, item.route)
+    } else if (onSelectTab) {
       onSelectTab(item.id, item.route)
     } else {
       navigate(item.route)
@@ -102,16 +106,48 @@ export default function CustomerSidebar({
 
       {/* Bottom Sidebar Actions */}
       <div className="pt-4 border-t border-zinc-100 space-y-1">
+        {user && (
+          <button
+            type="button"
+            onClick={() => {
+              navigate('/profile')
+              if (isMobile) onCloseMobile()
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-2xl hover:bg-zinc-100/80 transition-colors cursor-pointer text-left"
+          >
+            <div className="w-8 h-8 rounded-full bg-emerald-700 text-white font-bold text-xs flex items-center justify-center shrink-0">
+              {user?.name?.[0]?.toUpperCase() || 'C'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-zinc-900 truncate">{user?.name || 'Customer'}</p>
+              <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
+            </div>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => {
             navigate('/support')
             if (isMobile) onCloseMobile()
           }}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
         >
           <HelpCircle className="w-4 h-4 text-zinc-500" />
           <span>Help & Support</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            logOut()
+            navigate('/login')
+            if (isMobile) onCloseMobile()
+          }}
+          className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-4 h-4 text-rose-500" />
+          <span>Sign Out</span>
         </button>
       </div>
     </div>

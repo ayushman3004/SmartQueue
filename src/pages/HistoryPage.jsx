@@ -401,8 +401,14 @@ export default function HistoryPage() {
 
           <div className="relative">
             <button
-              onClick={() => setShowUserMenu((prev) => !prev)}
-              className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-full hover:bg-zinc-100 transition-colors"
+              onClick={() => {
+                if (window.innerWidth < 768) {
+                  navigate('/profile')
+                } else {
+                  setShowUserMenu((prev) => !prev)
+                }
+              }}
+              className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer"
             >
               <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-700 text-white flex items-center justify-center font-bold text-xs border border-zinc-200">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'C'}
