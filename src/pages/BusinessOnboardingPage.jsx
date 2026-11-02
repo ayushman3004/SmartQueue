@@ -500,7 +500,7 @@ export default function BusinessOnboardingPage() {
           coordinates: { lat, lng },
         }))
         setDetectingGps(false)
-        toast.success(`Current location captured (${lat}, ${lng})`)
+        toast.success('Current location captured')
 
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
@@ -527,7 +527,7 @@ export default function BusinessOnboardingPage() {
         const coords = getCoordinatesForLocation(fallbackQuery)
         if (coords) {
           setStep2((prev) => ({ ...prev, coordinates: coords }))
-          toast.info(`Set estimated coordinates for ${fallbackQuery}: ${coords.lat}, ${coords.lng}`)
+          toast.info(`Set estimated location for ${fallbackQuery}`)
         } else {
           toast.error('Unable to retrieve device location. Please enable location permissions in your browser.')
         }
@@ -1264,34 +1264,14 @@ export default function BusinessOnboardingPage() {
           {/* STEP 2: LOCATION & OPERATING HOURS */}
           {currentStep === 2 && (
             <div className="space-y-6 text-left">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider">Step 02 &bull; Presence</span>
-                  <h2 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight mt-1">
-                    Location & Operating Hours
-                  </h2>
-                  <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
-                    Configure where patrons find your venue and when counters and appointment slots operate.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={detectVenueLocation}
-                  disabled={detectingGps}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 text-xs font-bold transition-all shadow-2xs active:scale-95 self-start sm:self-auto shrink-0 cursor-pointer"
-                  title="Detect GPS coordinates for customer proximity sorting"
-                >
-                  {detectingGps ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-700" />
-                  ) : (
-                    <MapPin className="w-3.5 h-3.5 text-teal-700" />
-                  )}
-                  <span>{detectingGps ? 'Fetching GPS...' : 'Fetch Current Location'}</span>
-                  {step2.coordinates?.lat && step2.coordinates?.lng ? (
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 ml-0.5" title="Location set" />
-                  ) : null}
-                </button>
+              <div>
+                <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider">Step 02 &bull; Presence</span>
+                <h2 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight mt-1">
+                  Location & Operating Hours
+                </h2>
+                <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
+                  Configure where patrons find your venue and when counters and appointment slots operate.
+                </p>
               </div>
 
               {/* Address Matrix */}
