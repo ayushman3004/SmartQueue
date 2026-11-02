@@ -30,6 +30,7 @@ import {
   KeyRound,
   Store,
   Menu,
+  Home,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -237,14 +238,12 @@ export default function ProfilePage() {
 
           <button
             type="button"
-            onClick={() => {
-              logOut()
-              navigate('/login')
-            }}
-            className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+            onClick={() => navigate(backPath)}
+            className="text-xs font-bold text-zinc-800 hover:text-zinc-950 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/80 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            title="Return to Home Dashboard"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Sign Out</span>
+            <Home className="w-3.5 h-3.5 text-[#114227]" />
+            <span>Home</span>
           </button>
         </div>
       </header>
@@ -855,6 +854,33 @@ export default function ProfilePage() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* SIGN OUT ACTION AT THE END */}
+        <div className="bg-white border border-rose-200/80 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 text-left">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+              <LogOut className="w-5 h-5 text-rose-600" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-zinc-950">Session Management</h4>
+              <p className="text-xs text-zinc-500 font-medium mt-0.5">
+                Sign out of your serveQ session on this device.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              logOut()
+              navigate('/login')
+            }}
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </button>
         </div>
         </main>
       </div>
