@@ -376,30 +376,8 @@ export default function HubCommandCenter() {
           </Link>
         </div>
 
-        {/* Center: Network Details */}
-        <div className="hidden md:flex items-center gap-3 bg-zinc-50/80 border border-zinc-200/70 px-4 py-1.5 rounded-full">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-bold text-xs text-zinc-900">
-            Network Command
-          </span>
-          <span className="text-zinc-300">•</span>
-          <span className="text-xs font-semibold text-zinc-600">
-            {myBusinesses.length} {myBusinesses.length === 1 ? 'Location' : 'Locations'}
-          </span>
-        </div>
-
-        {/* Right: Actions (+ Register New Hub, Profile) */}
+        {/* Right: Actions (Profile) */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* New Hub Action */}
-          <button
-            type="button"
-            onClick={handleRegisterHubClick}
-            className="px-4 py-1.5 rounded-full bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Register New Hub</span>
-            <span className="sm:hidden">New Hub</span>
-          </button>
 
           {/* Profile Menu */}
           <div className="relative">

@@ -166,7 +166,7 @@ export default function LoginPage() {
                     transition={{ duration: 0.22, ease: 'easeOut' }}
                   >
                     <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight uppercase">
-                      JOIN US
+                      JOIN US !
                     </h2>
                     <p className="text-xs sm:text-sm text-zinc-700 font-semibold max-w-xs mt-1">
                       Please add your information and create an account.
@@ -351,8 +351,8 @@ export default function LoginPage() {
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.2 }}
                               className={`mt-2 p-3 rounded-2xl border text-xs space-y-1.5 transition-colors overflow-hidden ${isPasswordValid
-                                  ? 'bg-emerald-50 border-emerald-200'
-                                  : 'bg-rose-50 border-rose-200'
+                                ? 'bg-emerald-50 border-emerald-200'
+                                : 'bg-rose-50 border-rose-200'
                                 }`}
                             >
                               <p className={`font-bold flex items-center gap-1.5 ${isPasswordValid ? 'text-emerald-700' : 'text-rose-600'}`}>
