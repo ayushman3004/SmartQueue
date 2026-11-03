@@ -1315,57 +1315,8 @@ export default function CustomerDashboardPage() {
             />
           </div>
 
-          {/* ── FILTER & SORT CONTROLS BAR ── */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            {/* Category Pills (Left) */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setCategoryFilter(categoryFilter === 'clinic' ? 'all' : 'clinic')
-                  setActiveNavTab('clinics')
-                }}
-                className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  categoryFilter === 'clinic'
-                    ? 'bg-[#114227] text-white shadow-xs'
-                    : 'bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-50'
-                }`}
-              >
-                <span className={`w-6 h-6 rounded-lg icon-3d ${categoryFilter === 'clinic' ? 'icon-3d-dark' : 'icon-3d-teal'} shrink-0`}>
-                  <Stethoscope className="w-3.5 h-3.5" />
-                </span>
-                <span>Clinics</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setCategoryFilter(categoryFilter === 'salon' ? 'all' : 'salon')
-                  setActiveNavTab('salons')
-                }}
-                className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  categoryFilter === 'salon'
-                    ? 'bg-[#114227] text-white shadow-xs'
-                    : 'bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-50'
-                }`}
-              >
-                <span className={`w-6 h-6 rounded-lg icon-3d ${categoryFilter === 'salon' ? 'icon-3d-dark' : 'icon-3d-rose'} shrink-0`}>
-                  <Scissors className="w-3.5 h-3.5" />
-                </span>
-                <span>Salons</span>
-              </button>
-
-              {categoryFilter !== 'all' && (
-                <button
-                  onClick={() => {
-                    setCategoryFilter('all')
-                    setActiveNavTab('dashboard')
-                  }}
-                  className="px-3 py-2 rounded-xl text-xs font-bold text-zinc-500 hover:text-zinc-900 transition-colors"
-                >
-                  Clear filter
-                </button>
-              )}
-            </div>
-
+          {/* ── SORT & VIEW CONTROLS BAR ── */}
+          <div className="flex items-center justify-end gap-3 pt-1">
             {/* Sort & Map View Pills (Right) */}
             <div className="flex items-center gap-2">
               <button

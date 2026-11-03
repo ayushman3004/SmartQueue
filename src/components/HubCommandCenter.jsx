@@ -668,27 +668,7 @@ export default function HubCommandCenter() {
               </div>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              {[
-                { id: 'all', label: 'All Hubs', count: myBusinesses.length },
-                { id: 'live', label: 'Live Now', count: openCount },
-                { id: 'onboarding', label: 'Setup In Progress', count: onboardingCount },
-                { id: 'closed', label: 'Closed', count: closedCount },
-              ].map((pill) => (
-                <button
-                  key={pill.id}
-                  type="button"
-                  onClick={() => setActiveFilter(pill.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${activeFilter === pill.id
-                      ? 'bg-[#114227] text-white shadow-xs'
-                      : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'
-                    }`}
-                >
-                  {pill.label} ({pill.count})
-                </button>
-              ))}
-            </div>
+
 
             {fetchingHubs ? (
               <HubCommandCenterSkeleton count={3} />

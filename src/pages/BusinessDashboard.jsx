@@ -1027,41 +1027,7 @@ export default function BusinessDashboard() {
             <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-emerald-200/40 rounded-full blur-2xl pointer-events-none" />
           </div>
 
-          {/* Quick Tabs Pill Switcher */}
-          <div className="flex items-center gap-2 border-b border-zinc-200/80 pb-2 overflow-x-auto scrollbar-none">
-            {[
-              { id: 'queue', label: 'Live Queue & Floor', count: users.length },
-              { id: 'appointments', label: 'Appointments', count: bookings.length },
-              { id: 'services', label: 'Services Catalog', count: profileForm.services?.length || 0 },
-              {
-                id: 'staff',
-                label: isClinic ? 'Doctors & Specialists' : 'Barbers & Stylists',
-                count: business?.staff?.length || 0,
-              },
-              { id: 'analytics', label: 'AI Analytics & Daily Traffic' },
-              { id: 'profile', label: 'Hub Settings' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${activeTab === tab.id
-                    ? 'bg-[#114227] text-white shadow-xs'
-                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
-                  }`}
-              >
-                <span>{tab.label}</span>
-                {tab.count !== undefined && (
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === tab.id ? 'bg-[#0D361F] text-emerald-200' : 'bg-zinc-200 text-zinc-700'
-                      }`}
-                  >
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+
 
           {/* TAB 1: LIVE QUEUE */}
           {activeTab === 'queue' && (

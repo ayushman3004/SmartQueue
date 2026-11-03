@@ -480,48 +480,8 @@ export default function HistoryPage() {
             </p>
           </div>
 
-          {/* Filter & Sort Bar (Matching Image 2) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-            {/* Left Category Filter Pills */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCategoryFilter('all')}
-                className={`px-4 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                  categoryFilter === 'all'
-                    ? 'bg-[#114227] text-white shadow-xs'
-                    : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setCategoryFilter('clinic')}
-                className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  categoryFilter === 'clinic'
-                    ? 'bg-[#114227] text-white shadow-xs'
-                    : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50'
-                }`}
-              >
-                <span className={`w-6 h-6 rounded-lg icon-3d ${categoryFilter === 'clinic' ? 'icon-3d-dark' : 'icon-3d-teal'} shrink-0`}>
-                  <Stethoscope className="w-3.5 h-3.5" />
-                </span>
-                <span>Clinics</span>
-              </button>
-              <button
-                onClick={() => setCategoryFilter('salon')}
-                className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  categoryFilter === 'salon'
-                    ? 'bg-[#114227] text-white shadow-xs'
-                    : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50'
-                }`}
-              >
-                <span className={`w-6 h-6 rounded-lg icon-3d ${categoryFilter === 'salon' ? 'icon-3d-dark' : 'icon-3d-rose'} shrink-0`}>
-                  <Scissors className="w-3.5 h-3.5" />
-                </span>
-                <span>Salons</span>
-              </button>
-            </div>
-
+          {/* Sort & View Controls */}
+          <div className="flex items-center justify-end gap-3 pt-1">
             {/* Right Controls: Sort Order & View Mode */}
             <div className="flex items-center gap-2 self-start sm:self-auto">
               {/* Sort Order Dropdown */}
