@@ -57,6 +57,19 @@ export default function CustomerSidebar({
         { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
       ]
 
+  const get3DIconTheme = (id) => {
+    switch (id) {
+      case 'dashboard': return 'icon-3d-emerald'
+      case 'clinics': return 'icon-3d-teal'
+      case 'salons': return 'icon-3d-rose'
+      case 'my-queues': return 'icon-3d-emerald'
+      case 'appointments': return 'icon-3d-amber'
+      case 'history': return 'icon-3d-blue'
+      case 'profile': return 'icon-3d-purple'
+      default: return 'icon-3d-emerald'
+    }
+  }
+
   const handleItemClick = (item) => {
     if (item.id === 'profile' || item.route === '/profile') {
       navigate('/profile')
@@ -86,9 +99,11 @@ export default function CustomerSidebar({
                   : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <IconComponent className={`w-4 h-4 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
-                <span>{item.label}</span>
+              <div className="flex items-center gap-2.5">
+                <span className={`w-7 h-7 rounded-xl icon-3d ${isActive ? 'icon-3d-dark scale-105' : get3DIconTheme(item.id)} shrink-0`}>
+                  <IconComponent className="w-3.5 h-3.5" />
+                </span>
+                <span className="truncate">{item.label}</span>
               </div>
               {item.count !== null && item.count !== undefined && item.count > 0 && (
                 <span
@@ -133,7 +148,9 @@ export default function CustomerSidebar({
           }}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
         >
-          <HelpCircle className="w-4 h-4 text-zinc-500" />
+          <span className="w-7 h-7 rounded-xl icon-3d icon-3d-zinc shrink-0">
+            <HelpCircle className="w-3.5 h-3.5" />
+          </span>
           <span>Help & Support</span>
         </button>
 
@@ -146,7 +163,9 @@ export default function CustomerSidebar({
           }}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
         >
-          <LogOut className="w-4 h-4 text-rose-500" />
+          <span className="w-7 h-7 rounded-xl icon-3d icon-3d-rose shrink-0">
+            <LogOut className="w-3.5 h-3.5" />
+          </span>
           <span>Sign Out</span>
         </button>
       </div>

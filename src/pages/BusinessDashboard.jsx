@@ -512,6 +512,18 @@ export default function BusinessDashboard() {
   const users = queue?.users || []
   const serving = users.find((u) => u.status === 'serving')
 
+  const getOps3DTheme = (id) => {
+    switch (id) {
+      case 'queue': return 'icon-3d-teal'
+      case 'appointments': return 'icon-3d-amber'
+      case 'counter': return 'icon-3d-blue'
+      case 'services': return 'icon-3d-emerald'
+      case 'analytics': return 'icon-3d-purple'
+      case 'profile': return 'icon-3d-zinc'
+      default: return 'icon-3d-emerald'
+    }
+  }
+
   const renderSidebarContent = (isMobile = false) => (
     <div className="flex flex-col justify-between min-h-full h-full space-y-6">
       <div className="space-y-6">
@@ -602,8 +614,10 @@ export default function BusinessDashboard() {
                     : 'text-zinc-600 hover:text-zinc-950 hover:bg-[#EAF7EE]/60'
                   }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#114227]' : 'text-zinc-500'}`} />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={`w-7 h-7 rounded-xl icon-3d ${isActive ? 'icon-3d-dark scale-105' : getOps3DTheme(item.id)} shrink-0`}>
+                    <IconComponent className="w-3.5 h-3.5" />
+                  </span>
                   <span className="truncate">{item.label}</span>
                 </div>
                 {item.badge && (
@@ -643,8 +657,10 @@ export default function BusinessDashboard() {
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <Building2 className="w-4 h-4 text-zinc-500 shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-emerald shrink-0">
+                <Building2 className="w-3.5 h-3.5" />
+              </span>
               <span className="truncate">All My Venues</span>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
@@ -659,8 +675,10 @@ export default function BusinessDashboard() {
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <Ticket className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-teal shrink-0">
+                <Ticket className="w-3.5 h-3.5" />
+              </span>
               <span className="truncate">Customer Live Queue</span>
             </div>
             <ExternalLink className="w-3 h-3 text-zinc-400" />
@@ -675,8 +693,10 @@ export default function BusinessDashboard() {
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <Store className="w-4 h-4 text-zinc-500 shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-blue shrink-0">
+                <Store className="w-3.5 h-3.5" />
+              </span>
               <span className="truncate">Customer Portal</span>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
@@ -691,8 +711,10 @@ export default function BusinessDashboard() {
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <CreditCard className="w-4 h-4 text-teal-600 shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-teal shrink-0">
+                <CreditCard className="w-3.5 h-3.5" />
+              </span>
               <span className="truncate">Payment Settings</span>
             </div>
             <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
@@ -709,8 +731,10 @@ export default function BusinessDashboard() {
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-[#114227] hover:bg-[#EAF7EE]/80 transition-colors cursor-pointer"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-amber shrink-0">
+                <Crown className="w-3.5 h-3.5" />
+              </span>
               <span className="truncate">My Subscription</span>
             </div>
             <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
@@ -745,7 +769,9 @@ export default function BusinessDashboard() {
           onClick={() => navigate('/support')}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
         >
-          <HelpCircle className="w-4 h-4 text-zinc-500" />
+          <span className="w-7 h-7 rounded-xl icon-3d icon-3d-zinc shrink-0">
+            <HelpCircle className="w-3.5 h-3.5" />
+          </span>
           <span>Help & Support</span>
         </button>
 
@@ -757,7 +783,9 @@ export default function BusinessDashboard() {
           }}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
         >
-          <LogOut className="w-4 h-4 text-rose-500" />
+          <span className="w-7 h-7 rounded-xl icon-3d icon-3d-rose shrink-0">
+            <LogOut className="w-3.5 h-3.5" />
+          </span>
           <span>Sign Out</span>
         </button>
       </div>

@@ -632,9 +632,9 @@ export default function QueuePage() {
           {myActiveQueues.length > 0 && myActiveQueues.some((q) => q.business._id !== activeBusiness?._id) && (
             <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <span className="w-8 h-8 rounded-xl icon-3d icon-3d-emerald text-white flex items-center justify-center shrink-0">
                   <Ticket className="w-4 h-4" />
-                </div>
+                </span>
                 <div className="text-xs">
                   <p className="font-bold text-emerald-950">
                     You have an active ticket at {myActiveQueues[0].business.name} (Token #{myActiveQueues[0].position})

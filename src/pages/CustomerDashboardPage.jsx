@@ -1324,13 +1324,15 @@ export default function CustomerDashboardPage() {
                   setCategoryFilter(categoryFilter === 'clinic' ? 'all' : 'clinic')
                   setActiveNavTab('clinics')
                 }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   categoryFilter === 'clinic'
                     ? 'bg-[#114227] text-white shadow-xs'
                     : 'bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-50'
                 }`}
               >
-                <Stethoscope className={`w-3.5 h-3.5 ${categoryFilter === 'clinic' ? 'text-white' : 'text-zinc-500'}`} />
+                <span className={`w-6 h-6 rounded-lg icon-3d ${categoryFilter === 'clinic' ? 'icon-3d-dark' : 'icon-3d-teal'} shrink-0`}>
+                  <Stethoscope className="w-3.5 h-3.5" />
+                </span>
                 <span>Clinics</span>
               </button>
 
@@ -1339,13 +1341,15 @@ export default function CustomerDashboardPage() {
                   setCategoryFilter(categoryFilter === 'salon' ? 'all' : 'salon')
                   setActiveNavTab('salons')
                 }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   categoryFilter === 'salon'
                     ? 'bg-[#114227] text-white shadow-xs'
                     : 'bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-50'
                 }`}
               >
-                <Scissors className={`w-3.5 h-3.5 ${categoryFilter === 'salon' ? 'text-white' : 'text-zinc-500'}`} />
+                <span className={`w-6 h-6 rounded-lg icon-3d ${categoryFilter === 'salon' ? 'icon-3d-dark' : 'icon-3d-rose'} shrink-0`}>
+                  <Scissors className="w-3.5 h-3.5" />
+                </span>
                 <span>Salons</span>
               </button>
 
@@ -1376,9 +1380,11 @@ export default function CustomerDashboardPage() {
 
               <button
                 onClick={() => setShowMapModal(true)}
-                className="px-3.5 py-2 rounded-xl bg-white border border-zinc-200/90 text-xs font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-1.5 transition-colors shadow-xs"
+                className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-50 flex items-center gap-2 transition-all shadow-xs cursor-pointer"
               >
-                <Map className="w-3.5 h-3.5 text-zinc-600" />
+                <span className="w-6 h-6 rounded-lg icon-3d icon-3d-blue shrink-0">
+                  <Map className="w-3.5 h-3.5" />
+                </span>
                 <span>Map View</span>
               </button>
             </div>

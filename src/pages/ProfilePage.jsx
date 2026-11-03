@@ -239,10 +239,12 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => navigate(backPath)}
-            className="text-xs font-bold text-zinc-800 hover:text-zinc-950 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/80 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+            className="text-xs font-bold text-zinc-800 hover:text-zinc-950 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/80 pl-2 pr-3.5 py-1.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-2xs active:scale-95"
             title="Return to Home Dashboard"
           >
-            <Home className="w-3.5 h-3.5 text-[#114227]" />
+            <span className="w-6 h-6 rounded-lg icon-3d icon-3d-emerald shrink-0">
+              <Home className="w-3.5 h-3.5" />
+            </span>
             <span>Home</span>
           </button>
         </div>
@@ -353,7 +355,9 @@ export default function ProfilePage() {
                   </>
                 ) : (
                   <>
-                    <Edit3 className="w-3.5 h-3.5" />
+                    <span className="w-6 h-6 rounded-lg icon-3d icon-3d-emerald shrink-0">
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </span>
                     <span>Edit Profile</span>
                   </>
                 )}
@@ -814,9 +818,9 @@ export default function ProfilePage() {
             {/* SECURITY & PASSWORD CARD */}
             <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-zinc-100 text-zinc-700 flex items-center justify-center">
+                <span className="w-8 h-8 rounded-xl icon-3d icon-3d-purple shrink-0">
                   <KeyRound className="w-4 h-4" />
-                </div>
+                </span>
                 <h4 className="font-black text-xs text-zinc-950 uppercase tracking-wider">
                   Security & Access
                 </h4>
@@ -859,9 +863,9 @@ export default function ProfilePage() {
         {/* SIGN OUT ACTION AT THE END */}
         <div className="bg-white border border-rose-200/80 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 text-left">
-            <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
-              <LogOut className="w-5 h-5 text-rose-600" />
-            </div>
+            <span className="w-10 h-10 rounded-2xl icon-3d icon-3d-rose shrink-0">
+              <LogOut className="w-5 h-5 text-white" />
+            </span>
             <div>
               <h4 className="text-sm font-black text-zinc-950">Session Management</h4>
               <p className="text-xs text-zinc-500 font-medium mt-0.5">
