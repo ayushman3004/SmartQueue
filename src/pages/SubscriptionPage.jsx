@@ -264,8 +264,7 @@ export default function SubscriptionPage() {
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8 text-left">
         {/* Page Title & Status Eyebrow */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] text-xs font-black uppercase tracking-wider">
-            <Crown className="w-3.5 h-3.5 text-amber-500" />
+          <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] text-xs font-black uppercase tracking-wider">
             <span>ServeQ Business Membership</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-black text-zinc-950 tracking-tight">

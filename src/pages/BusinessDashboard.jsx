@@ -819,29 +819,6 @@ export default function BusinessDashboard() {
           </Link>
         </div>
 
-        {/* Center: Venue Details Pill */}
-        <div className="hidden md:flex items-center gap-3 bg-zinc-50/80 border border-zinc-200/70 px-4 py-1.5 rounded-full">
-          <div className="w-6 h-6 rounded-full bg-[#114227] text-white flex items-center justify-center text-xs font-black shrink-0">
-            {business?.name?.[0] || 'V'}
-          </div>
-          <span className="font-bold text-xs text-zinc-900 truncate max-w-[200px]">
-            {business?.name || 'Loading venue...'}
-          </span>
-          <span className="text-zinc-300">•</span>
-          <span className="text-xs font-semibold text-zinc-500 capitalize">
-            {business?.category || 'venue'}
-          </span>
-          <span className="text-zinc-300">•</span>
-          <span
-            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${business?.isOpen
-                ? 'bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]'
-                : 'bg-rose-50 text-rose-700 border border-rose-200'
-              }`}
-          >
-            {business?.isOpen ? 'OPEN' : 'CLOSED'}
-          </span>
-        </div>
-
         {/* Right: Actions (Open/Close Services, Serve Next, Wallet, Profile) */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Quick Toggle Open/Close */}
