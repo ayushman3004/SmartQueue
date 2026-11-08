@@ -793,7 +793,7 @@ export default function BusinessDashboard() {
   )
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-hidden">
+    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP STICKY HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-[#f7fcf9]/90 backdrop-blur-md border-b border-[#BDE8CB]/70 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
@@ -2174,7 +2174,11 @@ export default function BusinessDashboard() {
                         AI Performance Intelligence
                       </span>
                       <span className="text-xs text-zinc-400">
-                        {analytics?.aiInsights?.isAiGenerated ? 'Powered by Google Gemini AI' : 'Deterministic Pacing Engine'}
+                        {analytics?.aiInsights?.isAiGenerated
+                          ? (analytics?.aiInsights?.modelUsed
+                              ? `Powered by AI (${analytics.aiInsights.modelUsed})`
+                              : 'Powered by AI')
+                          : 'Deterministic Pacing Engine'}
                       </span>
                     </div>
                     <h3 className="text-2xl font-black tracking-tight text-white mt-2">

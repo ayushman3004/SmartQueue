@@ -175,7 +175,7 @@ export default function CustomerSidebar({
   return (
     <>
       {/* Desktop Left Sidebar */}
-      <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 h-[calc(100vh-61px)] h-[calc(100dvh-61px)] min-h-[calc(100vh-61px)] bg-white/40 sticky top-[61px] self-start overflow-y-auto">
+      <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 h-[calc(100vh-61px)] min-h-[calc(100vh-61px)] max-h-[calc(100vh-61px)] bg-white/80 backdrop-blur-md sticky top-[61px] self-start overflow-y-auto custom-scrollbar">
         {renderNavList(false)}
       </aside>
 

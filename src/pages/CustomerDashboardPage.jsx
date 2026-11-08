@@ -1007,7 +1007,7 @@ export default function CustomerDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-hidden">
+    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Hamburger + Brand Logo */}

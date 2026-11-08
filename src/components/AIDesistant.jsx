@@ -77,7 +77,7 @@ export default function AIDesistant() {
                     transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
                     className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs font-semibold leading-relaxed ${
+                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs font-semibold leading-relaxed whitespace-pre-wrap ${
                       m.role === 'user' 
                         ? 'bg-zinc-950 text-white rounded-br-none shadow-xs' 
                         : 'bg-zinc-100 text-zinc-800 rounded-bl-none border border-zinc-200/60'

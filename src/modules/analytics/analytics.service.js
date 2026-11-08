@@ -4,7 +4,7 @@ import Booking from "../../booking/booking.model.js";
 import Review from "../review/review.model.js";
 import Queue from "../../queue/queue.model.js";
 import ApiError from "../../../utils/ApiError.js";
-import { generateBusinessAIAnalytics } from "../../../ai/gemini.service.js";
+import { generateBusinessAIAnalytics } from "../../../ai/openai.service.js";
 
 export const getBusinessAnalytics = async (businessId, requestingUserId, userRole, options = {}) => {
   const business = await Business.findById(businessId);
@@ -289,7 +289,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
       requiredPlan: "PRO",
       currentPlan: ownerPlan,
       message:
-        "AI Operational Insights and Predictive Rush Forecasting are exclusive to ServeQ Pro Plan subscribers. Upgrade from Basic to Pro (₹1,999/mo) to unlock real-time Gemini AI analytics, VIP regular analysis, and automated staff optimization.",
+        "AI Operational Insights and Predictive Rush Forecasting are exclusive to ServeQ Pro Plan subscribers. Upgrade from Basic to Pro (₹1,999/mo) to unlock real-time AI analytics, VIP regular analysis, and automated staff optimization.",
     };
   }
 

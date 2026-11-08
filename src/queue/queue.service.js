@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import Queue from "./queue.model.js";
 import QueueDS from "./queue.ds.js";
-import { predictServiceTime } from "../../ai/gemini.service.js";
+import { predictServiceTime } from "../../ai/openai.service.js";
 import Business from "../modules/business/business.model.js";
 import Booking from "../booking/booking.model.js";
 import ApiError from "../../utils/ApiError.js";

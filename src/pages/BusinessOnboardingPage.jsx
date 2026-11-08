@@ -2289,12 +2289,12 @@ export default function BusinessOnboardingPage() {
                       </div>
                       <div>
                         <h5 className="font-black text-base text-zinc-900">Pro Plan</h5>
-                        <p className="text-xs text-zinc-500 mt-0.5">Advanced automation & Google Gemini AI intelligence for busy venues.</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">Advanced automation & AI intelligence for busy venues.</p>
                       </div>
                       <ul className="space-y-1.5 text-xs text-zinc-600">
                         <li className="flex items-center gap-2 font-semibold text-teal-950">✓ Everything in Basic, plus:</li>
                         <li className="flex items-center gap-2">✓ Unlimited staff & specialists</li>
-                        <li className="flex items-center gap-2 text-teal-700 font-bold">✓ Google Gemini AI Intelligence</li>
+                        <li className="flex items-center gap-2 text-teal-700 font-bold">✓ Advanced AI Intelligence</li>
                         <li className="flex items-center gap-2">✓ Priority VIP queue passes</li>
                       </ul>
                     </div>
