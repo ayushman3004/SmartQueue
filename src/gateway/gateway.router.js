@@ -15,6 +15,7 @@ import waitlistRoutes from "../modules/waitlist/waitlist.routes.js";
 import supportRoutes from "../modules/support/support.routes.js";
 import healthRoutes from "../modules/health/health.routes.js";
 import subscriptionRoutes from "../modules/subscription/subscription.routes.js";
+import mapsRoutes from "../modules/maps/maps.routes.js";
 import {
   createStandardOrder,
   verifyStandardPayment,
@@ -91,6 +92,7 @@ export const createGatewayRouter = () => {
   router.use("/waitlist", waitlistRoutes);
   router.use("/support", supportRoutes);
   router.use("/subscriptions", subscriptionRoutes);
+  router.use("/maps", mapsRoutes);
 
   // Razorpay Standard Checkout endpoints
   router.post("/create-order", createStandardOrder);

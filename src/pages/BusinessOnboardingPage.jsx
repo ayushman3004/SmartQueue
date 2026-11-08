@@ -31,8 +31,12 @@ import {
   LogOut,
   MapPin,
   Navigation,
+  CheckCircle,
+  AlertCircle,
+  Search,
 } from 'lucide-react'
 import { getCoordinatesForLocation } from '../utils/geoUtils'
+import { autocompleteLocations, geocodeAddress, reverseGeocodeCoords } from '../api/maps.api'
 import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
 import { OnboardingStudioSkeleton } from '../components/Skeleton'
 
@@ -227,6 +231,55 @@ export default function BusinessOnboardingPage() {
     weeklyHolidays: ['sunday'],
   })
   const [detectingGps, setDetectingGps] = useState(false)
+  const [addressSuggestions, setAddressSuggestions] = useState([])
+  const [searchingAddress, setSearchingAddress] = useState(false)
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false)
+
+  const handleAddressInputChange = async (val) => {
+    setStep2((prev) => ({ ...prev, address: val }))
+    if (!val || val.trim().length < 2) {
+      setAddressSuggestions([])
+      setShowAddressSuggestions(false)
+      return
+    }
+    setSearchingAddress(true)
+    setShowAddressSuggestions(true)
+    try {
+      const results = await autocompleteLocations(val)
+      setAddressSuggestions(results || [])
+    } catch (err) {
+      console.warn('Address autocomplete error:', err)
+    } finally {
+      setSearchingAddress(false)
+    }
+  }
+
+  const handleSelectAddressSuggestion = async (item) => {
+    setShowAddressSuggestions(false)
+    setSearchingAddress(true)
+    try {
+      const geo = await geocodeAddress({ address: item.description, placeId: item.placeId })
+      if (geo && geo.lat && geo.lng) {
+        setStep2((prev) => ({
+          ...prev,
+          address: geo.formattedAddress || item.description,
+          city: geo.city || prev.city,
+          state: geo.state || prev.state,
+          postalCode: geo.postalCode || prev.postalCode,
+          location: geo.city || prev.location,
+          coordinates: {
+            lat: Number(geo.lat),
+            lng: Number(geo.lng),
+          },
+        }))
+        toast.success(`Coordinates verified for ${geo.city || geo.state || 'Address'}`)
+      }
+    } catch (err) {
+      console.warn('Address geocoding error:', err)
+    } finally {
+      setSearchingAddress(false)
+    }
+  }
 
   // Step 3 Form: Services Catalog
   const [services, setServices] = useState([])
@@ -503,18 +556,16 @@ export default function BusinessOnboardingPage() {
         toast.success('Current location captured')
 
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-          if (res.ok) {
-            const data = await res.json()
-            if (data?.address) {
-              setStep2((prev) => ({
-                ...prev,
-                city: prev.city || data.address.city || data.address.town || data.address.state_district || '',
-                state: prev.state || data.address.state || '',
-                postalCode: prev.postalCode || data.address.postcode || '',
-                location: prev.location || data.address.suburb || data.address.neighbourhood || '',
-              }))
-            }
+          const rev = await reverseGeocodeCoords(lat, lng)
+          if (rev) {
+            setStep2((prev) => ({
+              ...prev,
+              city: rev.city || prev.city,
+              state: rev.state || prev.state,
+              postalCode: rev.postalCode || prev.postalCode,
+              address: prev.address || rev.formattedAddress || '',
+              location: prev.location || rev.city || '',
+            }))
           }
         } catch {
           // Ignore reverse geocode network issues
@@ -697,8 +748,21 @@ export default function BusinessOnboardingPage() {
         }
         let finalCoords = step2.coordinates
         if (!finalCoords || (!finalCoords.lat && !finalCoords.lng)) {
-          const query = `${step2.location} ${step2.city} ${step2.state} ${step2.address}`.trim()
-          finalCoords = getCoordinatesForLocation(query) || { lat: 22.5726, lng: 88.3639 }
+          const query = `${step2.address} ${step2.location} ${step2.city} ${step2.state}`.trim()
+          try {
+            const geo = await geocodeAddress({ address: query })
+            if (geo && geo.lat && geo.lng) {
+              finalCoords = { lat: Number(geo.lat), lng: Number(geo.lng) }
+            }
+          } catch {}
+          if (!finalCoords || (!finalCoords.lat && !finalCoords.lng)) {
+            finalCoords = getCoordinatesForLocation(query)
+          }
+        }
+        if (!finalCoords || (!finalCoords.lat && !finalCoords.lng)) {
+          toast.error('Please select an address from suggestions or use GPS to pin your venue coordinates.')
+          setSaving(false)
+          return
         }
         payload = {
           address: step2.address.trim(),
@@ -1276,7 +1340,7 @@ export default function BusinessOnboardingPage() {
 
               {/* Address Matrix */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="sm:col-span-2 lg:col-span-4 space-y-1.5">
+                <div className="sm:col-span-2 lg:col-span-4 space-y-1.5 relative">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-zinc-700">Complete Physical Address *</label>
                     <button
@@ -1293,14 +1357,63 @@ export default function BusinessOnboardingPage() {
                       <span>{detectingGps ? 'Detecting...' : 'Use Current Location'}</span>
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    required
-                    value={step2.address}
-                    onChange={(e) => setStep2({ ...step2, address: e.target.value })}
-                    placeholder="Shop 14, Ground Floor, Orion Hub, 80ft Road"
-                    className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-teal-600"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={step2.address}
+                      onChange={(e) => handleAddressInputChange(e.target.value)}
+                      onFocus={() => {
+                        if (addressSuggestions.length > 0) setShowAddressSuggestions(true)
+                      }}
+                      placeholder="Search address or enter shop number, street, locality..."
+                      className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-teal-600"
+                    />
+                    {searchingAddress && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 className="w-4 h-4 text-teal-600 animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Autocomplete Suggestions Dropdown */}
+                  {showAddressSuggestions && addressSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg z-30 divide-y divide-zinc-100 max-h-48 overflow-y-auto">
+                      {addressSuggestions.map((item, idx) => (
+                        <button
+                          key={item.placeId || idx}
+                          type="button"
+                          onClick={() => handleSelectAddressSuggestion(item)}
+                          className="w-full px-4 py-2 text-left text-xs hover:bg-zinc-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-teal-600 mt-0.5 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-zinc-900 truncate">
+                              {item.mainText || item.description}
+                            </p>
+                            {item.secondaryText && (
+                              <p className="text-[11px] text-zinc-500 truncate">{item.secondaryText}</p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Coordinate Verification Status */}
+                  <div className="pt-1">
+                    {step2.coordinates?.lat && step2.coordinates?.lng ? (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Coordinates verified ({step2.coordinates.lat.toFixed(4)}, {step2.coordinates.lng.toFixed(4)})</span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Select address suggestion or click Use Current Location to verify coordinates</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">

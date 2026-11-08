@@ -12,12 +12,16 @@ export const create = asyncHandler(async (req, res) => {
 });
 
 export const getAll = asyncHandler(async (req, res) => {
-  const { search, category, location, onlyOpen } = req.query;
+  const { search, category, location, onlyOpen, lat, lng, radius, onlyWithinRadius } = req.query;
   const businesses = await businessService.getAllBusinesses({
     search,
     category,
     location,
     onlyOpen: onlyOpen !== "false",
+    lat,
+    lng,
+    radius,
+    onlyWithinRadius,
   });
   res.json(new ApiResponse(200, { businesses }));
 });

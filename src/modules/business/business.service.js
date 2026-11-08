@@ -46,6 +46,29 @@ export const createBusiness = async (ownerId, data) => {
   return business;
 };
 
+export const calculateHaversineKm = (lat1, lon1, lat2, lon2) => {
+  const nLat1 = Number(lat1);
+  const nLon1 = Number(lon1);
+  const nLat2 = Number(lat2);
+  const nLon2 = Number(lon2);
+  if (!nLat1 || !nLon1 || !nLat2 || !nLon2) return null;
+  if (isNaN(nLat1) || isNaN(nLon1) || isNaN(nLat2) || isNaN(nLon2)) return null;
+  if (nLat1 === 0 && nLon1 === 0) return null;
+  if (nLat2 === 0 && nLon2 === 0) return null;
+
+  const R = 6371; // Earth radius in km
+  const dLat = ((nLat2 - nLat1) * Math.PI) / 180;
+  const dLon = ((nLon2 - nLon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((nLat1 * Math.PI) / 180) *
+      Math.cos((nLat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(2));
+};
+
 export const getAllBusinesses = async (filters = {}) => {
   const match = {};
 
@@ -66,7 +89,24 @@ export const getAllBusinesses = async (filters = {}) => {
     }
   }
 
-  if (filters.location) {
+  const hasCoords =
+    filters.lat !== undefined &&
+    filters.lat !== null &&
+    filters.lat !== "" &&
+    filters.lng !== undefined &&
+    filters.lng !== null &&
+    filters.lng !== "";
+
+  const userLat = hasCoords ? Number(filters.lat) : null;
+  const userLng = hasCoords ? Number(filters.lng) : null;
+  const isValidUserCoords =
+    userLat !== null &&
+    userLng !== null &&
+    !isNaN(userLat) &&
+    !isNaN(userLng) &&
+    !(userLat === 0 && userLng === 0);
+
+  if (filters.location && !isValidUserCoords) {
     match.$or = [
       { location: { $regex: filters.location, $options: "i" } },
       { address: { $regex: filters.location, $options: "i" } },
@@ -141,6 +181,36 @@ export const getAllBusinesses = async (filters = {}) => {
   ]);
 
   await enrichStaffAvailability(businesses);
+
+  if (isValidUserCoords) {
+    for (const b of businesses) {
+      if (b.coordinates?.lat && b.coordinates?.lng) {
+        b.distanceKm = calculateHaversineKm(userLat, userLng, b.coordinates.lat, b.coordinates.lng);
+      } else {
+        b.distanceKm = null;
+      }
+    }
+
+    const maxRadius = Number(filters.radius) > 0 ? Number(filters.radius) : 30;
+    const filterRadius = filters.onlyWithinRadius !== false && filters.onlyWithinRadius !== "false";
+
+    let result = businesses;
+    if (filterRadius) {
+      // Exclude venues that have no valid coordinates or exceed the maximum search radius
+      result = result.filter((b) => b.distanceKm !== null && b.distanceKm <= maxRadius);
+    }
+
+    // Sort nearest first (lowest distanceKm first)
+    result.sort((a, b) => {
+      if (a.distanceKm === null && b.distanceKm === null) return 0;
+      if (a.distanceKm === null) return 1;
+      if (b.distanceKm === null) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
+
+    return result;
+  }
+
   return businesses;
 };
 

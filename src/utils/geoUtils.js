@@ -28,6 +28,14 @@ export const KNOWN_CITY_COORDINATES = {
   'hyderabad': { lat: 17.3850, lng: 78.4867, name: 'Hyderabad, Telangana' },
   'chennai': { lat: 13.0827, lng: 80.2707, name: 'Chennai, Tamil Nadu' },
   'pune': { lat: 18.5204, lng: 73.8567, name: 'Pune, Maharashtra' },
+  'jalandhar': { lat: 31.3056, lng: 75.5794, name: 'Jalandhar, Punjab' },
+  'model town': { lat: 31.3056, lng: 75.5794, name: 'Model Town, Jalandhar' },
+  'phagwara': { lat: 31.2530, lng: 75.7037, name: 'Phagwara, Punjab' },
+  'lpu': { lat: 31.2530, lng: 75.7037, name: 'Lovely Professional University (LPU), Phagwara' },
+  'gorakhpur': { lat: 26.7606, lng: 83.3732, name: 'Gorakhpur, Uttar Pradesh' },
+  'chandigarh': { lat: 30.7415, lng: 76.7794, name: 'Chandigarh, Punjab' },
+  'ludhiana': { lat: 30.8872, lng: 75.8364, name: 'Ludhiana, Punjab' },
+  'amritsar': { lat: 31.6340, lng: 74.8723, name: 'Amritsar, Punjab' },
 }
 
 /**

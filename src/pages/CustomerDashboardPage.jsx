@@ -33,6 +33,8 @@ import {
 } from 'lucide-react'
 import { calculateDistanceKm, formatDistance, getCoordinatesForLocation } from '../utils/geoUtils'
 import CustomerSidebar from '../components/CustomerSidebar'
+import LocationPickerModal from '../components/LocationPickerModal'
+import NoServiceState from '../components/NoServiceState'
 import { BusinessGridSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
@@ -104,7 +106,24 @@ export default function CustomerDashboardPage() {
     }
   }, [searchParams])
   const [search, setSearch] = useState('')
-  const [selectedCity, setSelectedCity] = useState('Kolkata, West Bengal')
+  const [currentLocation, setCurrentLocation] = useState(() => {
+    try {
+      const saved = localStorage.getItem('serveq_selected_location')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return null
+  })
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [selectedCity, setSelectedCity] = useState(() => {
+    try {
+      const saved = localStorage.getItem('serveq_selected_location')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed.name || parsed.city || parsed.formattedAddress || 'Select Location'
+      }
+    } catch {}
+    return 'Select Location'
+  })
   const [locationQuery, setLocationQuery] = useState('')
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -115,51 +134,60 @@ export default function CustomerDashboardPage() {
   // Geolocation & Proximity State
   const [userCoords, setUserCoords] = useState(() => {
     try {
+      const savedLoc = localStorage.getItem('serveq_selected_location')
+      if (savedLoc) {
+        const parsed = JSON.parse(savedLoc)
+        if (parsed.lat && parsed.lng) return { lat: Number(parsed.lat), lng: Number(parsed.lng) }
+      }
       const saved = localStorage.getItem('serveq_user_coords')
       if (saved) return JSON.parse(saved)
     } catch {}
-    return getCoordinatesForLocation('Kolkata, West Bengal')
+    return null
   })
   const [detectingLocation, setDetectingLocation] = useState(false)
 
+  // On first visit: if no location saved, open location picker modal automatically
+  useEffect(() => {
+    const saved = localStorage.getItem('serveq_selected_location')
+    if (!saved) {
+      setShowLocationModal(true)
+    }
+  }, [])
+
+  // Handle location selection from LocationPickerModal or Hub buttons
+  const handleSelectLocation = (loc) => {
+    if (!loc) return
+    setCurrentLocation(loc)
+    try {
+      localStorage.setItem('serveq_selected_location', JSON.stringify(loc))
+    } catch {}
+    const label = loc.name || loc.city || loc.formattedAddress || 'Selected Location'
+    setSelectedCity(label)
+    if (loc.lat && loc.lng) {
+      const coords = { lat: Number(loc.lat), lng: Number(loc.lng) }
+      setUserCoords(coords)
+      try {
+        localStorage.setItem('serveq_user_coords', JSON.stringify(coords))
+      } catch {}
+    }
+    setShowLocationModal(false)
+  }
+
   // Handle detecting user's physical GPS location
   const handleDetectCustomerLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser')
-      return
-    }
-    setDetectingLocation(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords = {
-          lat: Number(pos.coords.latitude.toFixed(6)),
-          lng: Number(pos.coords.longitude.toFixed(6)),
-        }
-        setUserCoords(coords)
-        localStorage.setItem('serveq_user_coords', JSON.stringify(coords))
-        setSelectedCity('Current Location (GPS)')
-        setLocationQuery('')
-        setSortBy('nearest')
-        setDetectingLocation(false)
-        setShowLocationPicker(false)
-        toast.success('Current location detected! Venues sorted by proximity.')
-      },
-      (err) => {
-        setDetectingLocation(false)
-        console.warn('Geolocation error:', err)
-        toast.error('Location access denied or unavailable. Please enable browser location permissions.')
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    )
+    setShowLocationModal(true)
   }
 
   const handleSelectCity = (loc) => {
-    setSelectedCity(loc)
-    setLocationQuery(loc.split(',')[0])
     const coords = getCoordinatesForLocation(loc)
-    if (coords) {
-      setUserCoords(coords)
-    }
+    handleSelectLocation({
+      name: loc,
+      formattedAddress: loc,
+      city: loc.split(',')[0],
+      lat: coords?.lat || 0,
+      lng: coords?.lng || 0,
+      isGps: false,
+    })
     setShowLocationPicker(false)
   }
 
@@ -173,19 +201,37 @@ export default function CustomerDashboardPage() {
   // Fetch initial dashboard data
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true)
+      const params = {
+        search: debouncedSearch,
+        category: categoryFilter,
+        includeAll: false,
+      }
+
+      const activeCoords =
+        currentLocation?.lat && currentLocation?.lng
+          ? { lat: currentLocation.lat, lng: currentLocation.lng }
+          : userCoords?.lat && userCoords?.lng
+          ? userCoords
+          : null
+
+      if (activeCoords) {
+        params.lat = activeCoords.lat
+        params.lng = activeCoords.lng
+        params.radius = 30
+        params.onlyWithinRadius = true
+      } else if (debouncedLocation) {
+        params.location = debouncedLocation
+      }
+
       const [allRes, myBkRes] = await Promise.all([
-        getAllBusinesses({
-          search: debouncedSearch,
-          category: categoryFilter,
-          location: debouncedLocation,
-          includeAll: false,
-        }),
+        getAllBusinesses(params),
         getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
       ])
 
-      const bizList = allRes.data.data.businesses || []
+      const bizList = allRes.data?.data?.businesses || []
       setBusinesses(bizList)
-      setMyBookings(myBkRes.data.data.bookings || [])
+      setMyBookings(myBkRes.data?.data?.bookings || [])
 
       setSelectedServices((prev) => {
         const next = { ...prev }
@@ -220,7 +266,7 @@ export default function CustomerDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, categoryFilter, debouncedLocation])
+  }, [debouncedSearch, categoryFilter, debouncedLocation, currentLocation, userCoords])
 
   useEffect(() => {
     fetchData()
@@ -238,13 +284,29 @@ export default function CustomerDashboardPage() {
 
   // Periodic background fallback sync every 12 seconds
   useEffect(() => {
+    const activeCoords =
+      currentLocation?.lat && currentLocation?.lng
+        ? { lat: currentLocation.lat, lng: currentLocation.lng }
+        : userCoords?.lat && userCoords?.lng
+        ? userCoords
+        : null
+
     const timer = setInterval(() => {
-      getAllBusinesses({
+      const syncParams = {
         search: debouncedSearch,
         category: categoryFilter,
-        location: debouncedLocation,
         includeAll: false,
-      })
+      }
+      if (activeCoords) {
+        syncParams.lat = activeCoords.lat
+        syncParams.lng = activeCoords.lng
+        syncParams.radius = 30
+        syncParams.onlyWithinRadius = true
+      } else if (debouncedLocation) {
+        syncParams.location = debouncedLocation
+      }
+
+      getAllBusinesses(syncParams)
         .then((res) => {
           const bizList = res.data?.data?.businesses || []
           if (bizList.length > 0) {
@@ -260,7 +322,7 @@ export default function CustomerDashboardPage() {
     }, 12000)
 
     return () => clearInterval(timer)
-  }, [debouncedSearch, categoryFilter, debouncedLocation])
+  }, [debouncedSearch, categoryFilter, debouncedLocation, currentLocation, userCoords])
 
   // Real-time socket listeners
   useEffect(() => {
@@ -383,17 +445,19 @@ export default function CustomerDashboardPage() {
     if (categoryFilter === 'clinic') list = clinicsList
     else if (categoryFilter === 'salon') list = salonsList
 
+    const activeCoords =
+      currentLocation?.lat && currentLocation?.lng
+        ? { lat: currentLocation.lat, lng: currentLocation.lng }
+        : userCoords?.lat && userCoords?.lng
+        ? userCoords
+        : null
+
     // Calculate proximity distance for each venue
     const withDistance = list.map((b) => {
-      let dist = null
-      if (userCoords) {
-        if (b.coordinates?.lat && b.coordinates?.lng) {
-          dist = calculateDistanceKm(userCoords.lat, userCoords.lng, b.coordinates.lat, b.coordinates.lng)
-        } else {
-          const approx = getCoordinatesForLocation(`${b.location || ''} ${b.city || ''} ${b.address || ''}`)
-          if (approx) {
-            dist = calculateDistanceKm(userCoords.lat, userCoords.lng, approx.lat, approx.lng)
-          }
+      let dist = b.distanceKm !== undefined && b.distanceKm !== null ? b.distanceKm : null
+      if (dist === null && activeCoords && b.coordinates?.lat && b.coordinates?.lng) {
+        if (b.coordinates.lat !== 0 || b.coordinates.lng !== 0) {
+          dist = calculateDistanceKm(activeCoords.lat, activeCoords.lng, b.coordinates.lat, b.coordinates.lng)
         }
       }
       return { ...b, distance: dist }
@@ -417,7 +481,7 @@ export default function CustomerDashboardPage() {
       }
       return 0
     })
-  }, [categoryFilter, clinicsList, salonsList, businesses, userCoords, sortBy])
+  }, [categoryFilter, clinicsList, salonsList, businesses, currentLocation, userCoords, sortBy])
 
   // Toggle selection of service for a business
   const handleToggleService = (bizId, service) => {
@@ -778,7 +842,7 @@ export default function CustomerDashboardPage() {
             </div>
             <p className="text-zinc-500 text-xs mt-1 flex items-center gap-1 line-clamp-1">
               <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
-              <span>{biz.location || biz.address || 'Kolkata, West Bengal'}</span>
+              <span>{biz.location || biz.locationDetails?.city || biz.address || 'Local Venue'}</span>
             </p>
           </div>
 
@@ -1030,52 +1094,13 @@ export default function CustomerDashboardPage() {
           {/* Location Selector Pill */}
           <div className="relative">
             <button
-              onClick={() => setShowLocationPicker((prev) => !prev)}
-              className="px-3.5 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/60 text-xs font-semibold text-zinc-800 flex items-center gap-1.5 transition-colors whitespace-nowrap"
+              onClick={() => setShowLocationModal(true)}
+              className="px-3.5 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/60 text-xs font-semibold text-zinc-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer shadow-2xs"
             >
-              <MapPin className="w-3.5 h-3.5 text-zinc-500" />
-              <span>{selectedCity}</span>
+              <MapPin className="w-3.5 h-3.5 text-[#049645]" />
+              <span className="max-w-[160px] truncate">{selectedCity}</span>
               <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
-
-            {/* Location dropdown */}
-            {showLocationPicker && (
-              <div className="absolute top-full left-0 mt-1.5 w-64 bg-white border border-zinc-200 rounded-2xl shadow-xl p-2 z-50 space-y-1.5">
-                {/* Use Current GPS Location */}
-                <button
-                  type="button"
-                  onClick={handleDetectCustomerLocation}
-                  disabled={detectingLocation}
-                  className="w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
-                >
-                  {detectingLocation ? (
-                    <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin shrink-0" />
-                  ) : (
-                    <Navigation className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                  )}
-                  <div className="flex-1 truncate">
-                    <span className="block font-black text-emerald-950">Use Current Location</span>
-                    <span className="text-[10px] text-emerald-700 font-medium">Detect GPS & sort nearest</span>
-                  </div>
-                </button>
-
-                <div className="pt-1 border-t border-zinc-100">
-                  <p className="text-[10px] font-bold uppercase text-zinc-400 px-2 py-1">Popular Areas</p>
-                  {POPULAR_LOCATIONS.map((loc) => (
-                    <button
-                      key={loc}
-                      onClick={() => handleSelectCity(loc)}
-                      className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 ${
-                        selectedCity === loc ? 'bg-emerald-50 text-emerald-800 font-bold' : 'hover:bg-zinc-100 text-zinc-700'
-                      }`}
-                    >
-                      <MapPin className="w-3 h-3 text-zinc-400" />
-                      <span>{loc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Search Input Bar */}
@@ -1279,28 +1304,20 @@ export default function CustomerDashboardPage() {
             </div>
           )}
 
-          {/* Mobile Quick Location & GPS Bar */}
+          {/* Mobile Quick Location Bar */}
           <div className="md:hidden flex items-center gap-2">
             <button
               type="button"
-              onClick={handleDetectCustomerLocation}
-              disabled={detectingLocation}
-              className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-black flex items-center justify-center gap-2 shadow-2xs active:scale-98 transition-all"
+              onClick={() => setShowLocationModal(true)}
+              className="flex-1 py-2.5 px-3.5 rounded-xl bg-white border border-zinc-200 text-zinc-800 text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs cursor-pointer active:scale-98 transition-all"
             >
-              {detectingLocation ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700" />
-              ) : (
-                <Navigation className="w-3.5 h-3.5 text-emerald-700" />
-              )}
-              <span className="truncate">{detectingLocation ? 'Detecting GPS...' : `📍 ${selectedCity}`}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowLocationPicker((prev) => !prev)}
-              className="py-2 px-3 rounded-xl bg-white border border-zinc-200 text-zinc-700 text-xs font-bold shadow-2xs"
-            >
-              Change
+              <div className="flex items-center gap-2 truncate">
+                <MapPin className="w-3.5 h-3.5 text-[#049645] shrink-0" />
+                <span className="truncate">{selectedCity}</span>
+              </div>
+              <span className="text-[11px] font-bold text-[#049645] uppercase tracking-wide shrink-0">
+                Change
+              </span>
             </button>
           </div>
 
@@ -1381,9 +1398,11 @@ export default function CustomerDashboardPage() {
             {loading ? (
               <BusinessGridSkeleton count={6} />
             ) : displayedServices.length === 0 ? (
-              <div className="p-8 text-center bg-white border border-dashed border-zinc-200 rounded-3xl text-zinc-400 text-xs">
-                No services found matching your current filter. Try searching a different location.
-              </div>
+              <NoServiceState
+                selectedLocationName={currentLocation?.name || selectedCity}
+                onChangeLocation={() => setShowLocationModal(true)}
+                onSelectHub={handleSelectLocation}
+              />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                 {displayedServices.map((biz, idx) => {
@@ -1455,6 +1474,14 @@ export default function CustomerDashboardPage() {
           </div>
         )}
       </AnimatePresence>
+      {/* ── LOCATION PICKER MODAL (DOMINO'S / ZOMATO STYLE) ── */}
+      <LocationPickerModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onSelectLocation={handleSelectLocation}
+        currentLocation={currentLocation}
+        canClose={Boolean(currentLocation)}
+      />
     </div>
   )
 }
