@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2510" viewBox="0 0 1440 2510" role="img" aria-labelledby="title desc">
+<title id="title">ServeQ customer service workflow</title>
+<desc id="desc">Three swimlanes show customer actions, backend operations, and business owner actions. Appointment and live queue paths converge at service delivery. Payment collection and delay/cancellation are separate operations. This is a target mobile workflow.</desc>
+<defs><marker id="arrow-6C8576" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#6C8576" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arrow-047857" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arrow-986117" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#986117" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1440" height="2510" fill="#FFFFFF"/>
+<g font-family="Arial, Helvetica, sans-serif">
+<text x="56" y="65" font-size="21" font-weight="600" fill="#047857" text-anchor="start">SERVEQ  /  WORKFLOW DESIGN</text>
+<text x="56" y="126" font-size="48" font-weight="600" fill="#17372A" text-anchor="start">From discovery to a completed visit</text>
+<text x="56" y="166" font-size="23" font-weight="400" fill="#52665B" text-anchor="start">Target customer mobile flow · Appointment and live queue journeys</text>
+<rect x="56" y="205" width="416" height="1758" rx="18" fill="#F7FCF9" stroke="none" stroke-width="2"/>
+<text x="80" y="247" font-size="23" font-weight="600" fill="#114227" text-anchor="start">CUSTOMER APP</text>
+<text x="80" y="279" font-size="20" font-weight="400" fill="#52665B" text-anchor="start">Choose, reserve, and track</text>
+<rect x="512" y="205" width="416" height="1758" rx="18" fill="#F7FCF9" stroke="none" stroke-width="2"/>
+<text x="536" y="247" font-size="23" font-weight="600" fill="#114227" text-anchor="start">BACKEND</text>
+<text x="536" y="279" font-size="20" font-weight="400" fill="#52665B" text-anchor="start">Validate, persist, and publish</text>
+<rect x="968" y="205" width="416" height="1758" rx="18" fill="#F7FCF9" stroke="none" stroke-width="2"/>
+<text x="992" y="247" font-size="23" font-weight="600" fill="#114227" text-anchor="start">BUSINESS OWNER</text>
+<text x="992" y="279" font-size="20" font-weight="400" fill="#52665B" text-anchor="start">Prepare venue and deliver service</text>
+<path d="M264 398 L264 440" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-6C8576)"/>
+<path d="M448 354 L536 354" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-6C8576)"/>
+<rect x="462.92" y="317" width="58.160000000000004" height="29" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="492" y="333" font-size="18" font-weight="500" fill="#52665B" text-anchor="middle">auth</text>
+<path d="M448 492 L536 492" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-6C8576)"/>
+<path d="M992 419 L948 419 L948 492 L904 492" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow-6C8576)"/>
+<path d="M720 544 L720 561 L264 561 L264 585" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-6C8576)"/>
+<path d="M264 685 L264 708" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-6C8576)"/>
+<path d="M264 808 L264 840" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M120 758 L64 758 L64 1220 L80 1220" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<rect x="102" y="1109" width="126.0" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="112" y="1127" font-size="20" font-weight="500" fill="#047857" text-anchor="start">Live queue</text>
+<path d="M448 895 L536 895" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M720 951 L720 990" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<rect x="737" y="962" width="48.620000000000005" height="29" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="747" y="978" font-size="18" font-weight="500" fill="#047857" text-anchor="start">Yes</text>
+<path d="M536 1042 L448 1042" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M904 895 L936 895 L936 818 L264 818 L264 840" fill="none" stroke="#986117" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow-986117)"/>
+<rect x="543.845" y="794" width="352.31" height="30" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="720" y="811" font-size="19" font-weight="500" fill="#986117" text-anchor="middle">Unavailable → choose another slot</text>
+<path d="M448 1220 L536 1220" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M720 1276 L720 1315" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<rect x="737" y="1287" width="48.620000000000005" height="29" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="747" y="1303" font-size="18" font-weight="500" fill="#047857" text-anchor="start">Yes</text>
+<path d="M536 1370 L448 1370" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M904 1220 L936 1220 L936 1140 L264 1140 L264 1165" fill="none" stroke="#986117" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow-986117)"/>
+<rect x="520.67" y="1116" width="402.66" height="30" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="722" y="1133" font-size="19" font-weight="500" fill="#986117" text-anchor="middle">Full or closed → choose another option</text>
+<path d="M904 1042 L952 1042 L952 1472 L1176 1472 L1176 1490" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-6C8576)"/>
+<path d="M904 1370 L952 1370" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="978.9" y="1441" width="306.2" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="1132" y="1459" font-size="20" font-weight="500" fill="#52665B" text-anchor="middle">New visit appears in portal</text>
+<path d="M264 1094 L264 1120 L460 1120 L460 1470 L264 1470 L264 1490" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow-6C8576)"/>
+<path d="M264 1425 L264 1490" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M992 1544 L904 1544" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M536 1544 L448 1544" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M1176 1598 L1176 1660" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M992 1714 L904 1714" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M536 1714 L448 1714" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M264 1768 L264 1820" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<rect x="148.265" y="1786" width="231.47" height="30" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="264" y="1803" font-size="19" font-weight="500" fill="#047857" text-anchor="middle">Completed visits only</text>
+<path d="M992 1873 L904 1873" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-6C8576)"/>
+<path d="M536 1873 L492 1873 L492 1714 L448 1714" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow-6C8576)"/>
+<rect x="80" y="310" width="368" height="88" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="104" y="347" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Welcome and sign in</text>
+<text x="104" y="380" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">First-launch onboarding · session</text>
+<rect x="536" y="310" width="368" height="88" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="560" y="347" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Verify customer session</text>
+<text x="560" y="380" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Identity and customer role</text>
+<rect x="80" y="440" width="368" height="104" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="477" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Choose location</text>
+<text x="104" y="510" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Current location or manual area</text>
+<rect x="536" y="440" width="368" height="104" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="560" y="477" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Load venue directory</text>
+<text x="560" y="510" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Location, services, availability</text>
+<rect x="80" y="585" width="368" height="100" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="622" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Find venue and services</text>
+<text x="104" y="655" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Salon / clinic · professional</text>
+<path d="M264.0 708 L408 758.0 L264.0 808 L120 758.0 Z" fill="#ECFDF5" stroke="#047857" stroke-width="2"/>
+<text x="264.0" y="766.0" font-size="25" font-weight="600" fill="#114227" text-anchor="middle">Choose visit type</text>
+<rect x="992" y="310" width="368" height="218" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="1016" y="347" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Prepare venue</text>
+<text x="1016" y="380" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Owner email verified</text>
+<text x="1016" y="409" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Active business subscription</text>
+<text x="1016" y="438" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Services, staff, and hours</text>
+<text x="1016" y="467" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Publish venue and accept visits</text>
+<text x="1016" y="575" font-size="20" font-weight="400" fill="#52665B" text-anchor="start">Venue readiness enables discovery</text>
+<rect x="80" y="840" width="368" height="110" rx="16" fill="#FFFFFF" stroke="#047857" stroke-width="2"/>
+<text x="104" y="877" font-size="26" font-weight="600" fill="#114227" text-anchor="start">Book appointment</text>
+<text x="104" y="910" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Choose time · review · confirm</text>
+<path d="M720.0 839 L904 895.0 L720.0 951 L536 895.0 Z" fill="#ECFDF5" stroke="#047857" stroke-width="2"/>
+<text x="720.0" y="891.0" font-size="25" font-weight="600" fill="#114227" text-anchor="middle">Slot available?</text>
+<text x="720.0" y="919.0" font-size="18" font-weight="400" fill="#52665B" text-anchor="middle">Services · time · capacity</text>
+<rect x="536" y="990" width="368" height="104" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="560" y="1027" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Create Booking</text>
+<text x="560" y="1060" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">confirmed · payment pending</text>
+<rect x="80" y="990" width="368" height="104" rx="16" fill="#ECFDF5" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="1027" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Appointment confirmed</text>
+<text x="104" y="1060" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Shown under upcoming visits</text>
+<rect x="80" y="1165" width="368" height="110" rx="16" fill="#FFFFFF" stroke="#047857" stroke-width="2"/>
+<text x="104" y="1202" font-size="26" font-weight="600" fill="#114227" text-anchor="start">Join live queue</text>
+<text x="104" y="1235" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Review wait · confirm services</text>
+<path d="M720.0 1164 L904 1220.0 L720.0 1276 L536 1220.0 Z" fill="#ECFDF5" stroke="#047857" stroke-width="2"/>
+<text x="720.0" y="1216.0" font-size="25" font-weight="600" fill="#114227" text-anchor="middle">Can customer join?</text>
+<text x="720.0" y="1244.0" font-size="18" font-weight="400" fill="#52665B" text-anchor="middle">Capacity and eligibility</text>
+<rect x="536" y="1315" width="368" height="110" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="560" y="1352" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Create linked records</text>
+<text x="560" y="1385" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Booking + Queue entry</text>
+<text x="560" y="1414" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Assign staff and recalculate ETA</text>
+<rect x="80" y="1315" width="368" height="110" rx="16" fill="#ECFDF5" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="1352" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Show live queue pass</text>
+<text x="104" y="1385" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Position · estimate · professional</text>
+<text x="104" y="1414" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">May be serving immediately</text>
+<rect x="992" y="1490" width="368" height="108" rx="16" fill="#FFFFFF" stroke="#047857" stroke-width="2"/>
+<text x="1016" y="1527" font-size="26" font-weight="600" fill="#114227" text-anchor="start">Start service / call next</text>
+<text x="1016" y="1560" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Authorized owner operation</text>
+<rect x="536" y="1490" width="368" height="108" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="560" y="1527" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Update visit and queue</text>
+<text x="560" y="1560" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Save state · send live events</text>
+<rect x="80" y="1490" width="368" height="108" rx="16" fill="#ECFDF5" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="1527" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Track current visit</text>
+<text x="104" y="1560" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Waiting or being served</text>
+<rect x="992" y="1660" width="368" height="108" rx="16" fill="#FFFFFF" stroke="#047857" stroke-width="2"/>
+<text x="1016" y="1697" font-size="26" font-weight="600" fill="#114227" text-anchor="start">Complete service</text>
+<text x="1016" y="1730" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Advance queue when applicable</text>
+<rect x="536" y="1660" width="368" height="108" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="560" y="1697" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Complete Booking</text>
+<text x="560" y="1730" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Remove queue entry if present</text>
+<rect x="80" y="1660" width="368" height="108" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="1697" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Visit history</text>
+<text x="104" y="1730" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Keep the completed visit record</text>
+<rect x="80" y="1820" width="368" height="108" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="1857" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Rate and review</text>
+<text x="104" y="1890" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">One review for the completed visit</text>
+<rect x="992" y="1820" width="368" height="108" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="1016" y="1857" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Record counter collection</text>
+<text x="1016" y="1890" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Separate authorized action</text>
+<rect x="536" y="1820" width="368" height="108" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="560" y="1857" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Payment pending → paid</text>
+<text x="560" y="1890" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Update the visit payment record</text>
+<rect x="56" y="2008" width="1328" height="286" rx="18" fill="#FFFCF5" stroke="#E7D8BB" stroke-width="2"/>
+<text x="80" y="2050" font-size="22" font-weight="600" fill="#986117" text-anchor="start">DELAY, CANCELLATION, OR LEAVING</text>
+<path d="M992 2139 L904 2139" fill="none" stroke="#986117" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-986117)"/>
+<path d="M536 2114 L448 2114" fill="none" stroke="#986117" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-986117)"/>
+<path d="M448 2180 L536 2180" fill="none" stroke="#986117" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-986117)"/>
+<rect x="459.475" y="2087" width="65.05000000000001" height="28" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="492" y="2102" font-size="17" font-weight="500" fill="#986117" text-anchor="middle">alert</text>
+<rect x="454.97" y="2191" width="74.06" height="28" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="492" y="2206" font-size="17" font-weight="500" fill="#986117" text-anchor="middle">choice</text>
+<rect x="80" y="2083" width="368" height="154" rx="16" fill="#FFFDF8" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="2120" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Choose what to do</text>
+<text x="104" y="2153" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Accept the revised estimate</text>
+<text x="104" y="2182" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">or cancel / leave the queue</text>
+<rect x="536" y="2083" width="368" height="154" rx="16" fill="#FFFDF8" stroke="#C9DAD0" stroke-width="2"/>
+<text x="560" y="2120" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Apply the chosen action</text>
+<text x="560" y="2153" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Keep visit OR cancel Booking</text>
+<text x="560" y="2182" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Remove queue entry if present</text>
+<text x="560" y="2211" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Retain cancelled visit in history</text>
+<rect x="992" y="2083" width="368" height="154" rx="16" fill="#FFFDF8" stroke="#C9DAD0" stroke-width="2"/>
+<text x="1016" y="2120" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Report service delay</text>
+<text x="1016" y="2153" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Extend time or change staff</text>
+<text x="1016" y="2182" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Backend revises the estimate</text>
+<text x="80" y="2272" font-size="21" font-weight="400" fill="#986117" text-anchor="start">Cancelled visits remain in history and do not become review-eligible.</text>
+<text x="56" y="2356" font-size="24" font-weight="600" fill="#17372A" text-anchor="start">Read this diagram</text>
+<text x="56" y="2396" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Green arrows: primary journey. Amber dashed arrows: retry or exception. Dashed boxes: planned mobile work.</text>
+<text x="56" y="2427" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Payment collection is independent of service completion. Foreground updates use Socket.IO.</text>
+<text x="56" y="2458" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Target design: mobile shell, stable tickets, atomic related writes, and reliable native push still need implementation.</text>
+</g>
+</svg>

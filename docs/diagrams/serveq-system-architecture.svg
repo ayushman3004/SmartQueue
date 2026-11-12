@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1840" viewBox="0 0 1440 1840" role="img" aria-labelledby="title desc">
+<title id="title">ServeQ system architecture</title>
+<desc id="desc">Customer web and planned Capacitor app, owner and admin portals connect to the same Express modular monolith. Domain services use MongoDB, Socket.IO, and external providers. Native background push is planned.</desc>
+<defs><marker id="arrow-6C8576" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#6C8576" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arrow-047857" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#047857" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arrow-986117" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#986117" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1440" height="1840" fill="#FFFFFF"/>
+<g font-family="Arial, Helvetica, sans-serif">
+<text x="56" y="65" font-size="21" font-weight="600" fill="#047857" text-anchor="start">SERVEQ  /  SYSTEM ARCHITECTURE</text>
+<text x="56" y="126" font-size="48" font-weight="600" fill="#17372A" text-anchor="start">One backend. Every customer journey.</text>
+<text x="56" y="166" font-size="23" font-weight="400" fill="#52665B" text-anchor="start">Existing modular monolith with a planned Capacitor customer app</text>
+<text x="56" y="236" font-size="22" font-weight="600" fill="#047857" text-anchor="start">01  CLIENT EXPERIENCES</text>
+<rect x="56" y="268" width="320" height="110" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="80" y="305" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Customer website</text>
+<text x="80" y="338" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Existing React application</text>
+<rect x="392" y="268" width="320" height="110" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="416" y="305" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Customer mobile</text>
+<text x="416" y="338" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">React + Capacitor · planned</text>
+<rect x="728" y="268" width="320" height="110" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="752" y="305" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Owner portal</text>
+<text x="752" y="338" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Venue operations</text>
+<rect x="1064" y="268" width="320" height="110" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="1088" y="305" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Admin portal</text>
+<text x="1088" y="338" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Platform moderation</text>
+<path d="M216 378 L216 434 L720 434" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M552 378 L552 434 L720 434" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6"/>
+<path d="M888 378 L888 434 L720 434" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1224 378 L1224 434 L720 434" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M720 434 L720 578" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<rect x="508.865" y="451" width="422.27000000000004" height="34" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="720" y="472" font-size="23" font-weight="500" fill="#047857" text-anchor="middle">HTTPS REST requests and responses</text>
+<rect x="56" y="506" width="1328" height="568" rx="20" fill="#F7FCF9" stroke="#C9DAD0" stroke-width="2"/>
+<text x="80" y="548" font-size="22" font-weight="600" fill="#047857" text-anchor="start">02  NODE.JS BACKEND · ONE PROCESS</text>
+<path d="M720 506 L720 578" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<rect x="410" y="578" width="620" height="126" rx="16" fill="#FFFFFF" stroke="#047857" stroke-width="2"/>
+<text x="434" y="615" font-size="26" font-weight="600" fill="#114227" text-anchor="start">Express API gateway</text>
+<text x="434" y="648" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Authentication · permissions · validation · rate limits</text>
+<text x="434" y="677" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Public endpoints and protected domain routes</text>
+<path d="M720 704 L720 744 L386 744 L386 790" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M720 744 L1054 744 L1054 790" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<rect x="80" y="790" width="612" height="190" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="104" y="827" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Core operations</text>
+<text x="104" y="860" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Business and service catalog</text>
+<text x="104" y="889" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Bookings and live queues</text>
+<text x="104" y="918" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Payments and owner subscriptions</text>
+<rect x="748" y="790" width="612" height="190" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="772" y="827" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Supporting domains</text>
+<text x="772" y="860" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Reviews · coupons · chat · support</text>
+<text x="772" y="889" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Maps · analytics · chatbot · waitlist</text>
+<text x="772" y="918" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Authentication, OTP, email, and health</text>
+<path d="M386 980 L386 1030 L720 1030" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1054 980 L1054 1030 L720 1030" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M720 1030 L720 1160" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M720 1160 L256 1160 L256 1190" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M720 1160 L1184 1160 L1184 1190" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M720 1160 L488 1160 L488 1288 L520 1288" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-047857)"/>
+<path d="M488 1288 L488 1530 L520 1530" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow-6C8576)"/>
+<text x="56" y="1138" font-size="22" font-weight="600" fill="#047857" text-anchor="start">03  DATA, LIVE DELIVERY, AND PROVIDERS</text>
+<rect x="56" y="1190" width="400" height="306" rx="18" fill="#ECFDF5" stroke="#C9DAD0" stroke-width="2"/>
+<text x="80" y="1232" font-size="30" font-weight="600" fill="#114227" text-anchor="start">MongoDB</text>
+<text x="80" y="1280" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Users and businesses</text>
+<text x="80" y="1317" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Bookings and live queue entries</text>
+<text x="80" y="1354" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Reviews, coupons, chat messages</text>
+<text x="80" y="1391" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">OTP, support, and waitlist records</text>
+<text x="80" y="1463" font-size="20" font-weight="400" fill="#52665B" text-anchor="start">Database accessed through the API only</text>
+<rect x="520" y="1190" width="400" height="190" rx="16" fill="#ECFDF5" stroke="#C9DAD0" stroke-width="2"/>
+<text x="544" y="1227" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Socket.IO</text>
+<text x="544" y="1260" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Foreground queue and visit updates</text>
+<text x="544" y="1289" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Owner operations and presence</text>
+<text x="544" y="1318" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Reconnect → refresh current visit</text>
+<rect x="520" y="1430" width="400" height="190" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="544" y="1467" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Native push — planned</text>
+<text x="544" y="1500" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Durable events + delivery worker</text>
+<text x="544" y="1529" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Device registration · APNs / FCM</text>
+<text x="544" y="1558" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Open visit and fetch latest state</text>
+<rect x="984" y="1190" width="400" height="430" rx="18" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
+<text x="1008" y="1232" font-size="27" font-weight="600" fill="#17372A" text-anchor="start">External integrations</text>
+<text x="1008" y="1280" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Google OAuth / Firebase Phone</text>
+<text x="1008" y="1328" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Google Maps / Nominatim</text>
+<text x="1008" y="1376" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Razorpay orders and webhooks</text>
+<text x="1008" y="1424" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">SMTP or Resend email</text>
+<text x="1008" y="1472" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Twilio SMS</text>
+<text x="1008" y="1520" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">OpenRouter assistance / analytics</text>
+<path d="M920 1288 L952 1288 L952 1150 L1415 1150 L1415 226 L552 226 L552 268" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow-6C8576)"/>
+<path d="M920 1530 L952 1530 L952 1288" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6"/>
+<rect x="912.0550000000001" y="201" width="291.89" height="30" rx="5" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="1058" y="218" font-size="19" font-weight="500" fill="#52665B" text-anchor="middle">Live events / native alerts</text>
+<text x="56" y="1690" font-size="24" font-weight="600" fill="#17372A" text-anchor="start">Architecture boundaries</text>
+<text x="56" y="1730" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Solid components exist in the repository. Dashed components are planned mobile integrations.</text>
+<text x="56" y="1762" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">The modules run together; they are not separate deployed microservices.</text>
+<text x="56" y="1794" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Payment verification, authorization, atomic writes, and reliable push need the corrections described in the design.</text>
+</g>
+</svg>
