@@ -33,23 +33,17 @@ import {
   Info,
 } from 'lucide-react'
 import CustomerSidebar from '../components/CustomerSidebar'
+import NoServiceState from '../components/NoServiceState'
 import { QueuePageSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
+import { useCustomerLocation } from '../context/LocationContext'
 import { joinQueue, leaveQueue } from '../api/queue.api'
 import { getAllBusinesses } from '../api/business.api'
 import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
-
-const POPULAR_LOCATIONS = [
-  'Kolkata, West Bengal',
-  'Bardhaman, West Bengal',
-  'Salt Lake, Kolkata',
-  'New Town, Kolkata',
-  'Park Street, Kolkata',
-]
 
 const DEFAULT_SALON_IMAGE = '/hubs/salon.png'
 const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
@@ -84,8 +78,14 @@ export default function QueuePage() {
   }, [paramBizId])
 
   // Header & Navigation states
-  const [selectedCity, setSelectedCity] = useState(POPULAR_LOCATIONS[0])
-  const [showLocationPicker, setShowLocationPicker] = useState(false)
+  const {
+    currentLocation,
+    selectedCity,
+    userCoords,
+    updateLocation,
+    openLocationModal,
+  } = useCustomerLocation()
+
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 300)
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -106,21 +106,39 @@ export default function QueuePage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
+      const params = { includeAll: false }
+      const activeCoords =
+        currentLocation?.lat && currentLocation?.lng
+          ? { lat: currentLocation.lat, lng: currentLocation.lng }
+          : userCoords?.lat && userCoords?.lng
+          ? userCoords
+          : null
+
+      if (activeCoords) {
+        params.lat = activeCoords.lat
+        params.lng = activeCoords.lng
+        params.radius = 30
+        params.onlyWithinRadius = true
+      }
+
       const [allRes, myBkRes] = await Promise.all([
-        getAllBusinesses({ includeAll: false }),
+        getAllBusinesses(params),
         getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
       ])
 
       const bizList = allRes.data?.data?.businesses || []
       setBusinesses(bizList)
       setMyBookings(myBkRes.data?.data?.bookings || [])
+      if (!paramBizId && bizList.length > 0 && !selectedBizId) {
+        setSelectedBizId(bizList[0]._id)
+      }
     } catch (err) {
       console.error('Failed to load queue data:', err)
       toast.error('Unable to fetch live queues')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentLocation, userCoords, paramBizId, selectedBizId])
 
   useEffect(() => {
     fetchData()
@@ -468,34 +486,13 @@ export default function QueuePage() {
         <div className="hidden md:flex items-center gap-2 flex-1 max-w-2xl mx-4">
           <div className="relative">
             <button
-              onClick={() => setShowLocationPicker((prev) => !prev)}
-              className="px-3.5 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/60 text-xs font-semibold text-zinc-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+              onClick={() => openLocationModal()}
+              className="px-3.5 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/60 text-xs font-semibold text-zinc-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer shadow-2xs"
             >
-              <MapPin className="w-3.5 h-3.5 text-zinc-500" />
-              <span>{selectedCity}</span>
+              <MapPin className="w-3.5 h-3.5 text-[#049645]" />
+              <span className="max-w-[160px] truncate">{selectedCity}</span>
               <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
-
-            {showLocationPicker && (
-              <div className="absolute top-full left-0 mt-1.5 w-60 bg-white border border-zinc-200 rounded-2xl shadow-xl p-2 z-50 space-y-1">
-                <p className="text-[10px] font-bold uppercase text-zinc-400 px-2 py-1">Select Location</p>
-                {POPULAR_LOCATIONS.map((loc) => (
-                  <button
-                    key={loc}
-                    onClick={() => {
-                      setSelectedCity(loc)
-                      setShowLocationPicker(false)
-                    }}
-                    className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer ${
-                      selectedCity === loc ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-zinc-100 text-zinc-700'
-                    }`}
-                  >
-                    <MapPin className="w-3 h-3 text-zinc-400" />
-                    <span>{loc}</span>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="relative flex-1">
@@ -701,18 +698,11 @@ export default function QueuePage() {
           {loading ? (
             <QueuePageSkeleton />
           ) : !activeBusiness ? (
-            /* No business available */
-            <div className="bg-white rounded-3xl border border-dashed border-zinc-300/80 p-10 sm:p-14 text-center space-y-4 shadow-2xs">
-              <div className="w-16 h-16 rounded-3xl bg-[#EAF7EE] text-[#16A34A] border border-[#BDE8CB] flex items-center justify-center mx-auto shadow-2xs">
-                <Ticket className="w-8 h-8" />
-              </div>
-              <div className="space-y-1.5 max-w-md mx-auto">
-                <h3 className="text-lg sm:text-xl font-black text-zinc-950">No Businesses Found</h3>
-                <p className="text-xs sm:text-sm text-zinc-500">
-                  There are currently no partner clinics or salons available.
-                </p>
-              </div>
-            </div>
+            <NoServiceState
+              selectedLocationName={currentLocation?.name || selectedCity}
+              onChangeLocation={openLocationModal}
+              onSelectHub={updateLocation}
+            />
           ) : hasJoinedQueue ? (
             /* ── VIEW A: USER HAS JOINED QUEUE -> SHOW THE PERSONAL PASS & STATUS ── */
             <div className="space-y-6">

@@ -39,7 +39,9 @@ export const createReview = async ({ bookingId, businessId, userId, rating, comm
   const total = allReviews.length;
   const avg = Math.round((allReviews.reduce((sum, r) => sum + r.rating, 0) / total) * 10) / 10;
   business.rating = avg;
+  business.averageRating = avg;
   business.totalReviews = total;
+  business.reviewCount = total;
 
   if (booking?.assignedStaff?.name && Array.isArray(business.staff)) {
     const staffMember = business.staff.find(

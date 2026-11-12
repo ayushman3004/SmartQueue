@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Business from "./business.model.js";
 import Booking from "../../booking/booking.model.js";
 import ApiError from "../../../utils/ApiError.js";
+import Review from "../review/review.model.js";
 import { isBusinessSubscriptionActive } from "../subscription/subscription.service.js";
 
 export const createBusiness = async (ownerId, data) => {
@@ -171,9 +172,31 @@ export const getAllBusinesses = async (filters = {}) => {
       },
     },
     {
+      $lookup: {
+        from: "reviews",
+        localField: "_id",
+        foreignField: "businessId",
+        as: "reviewsList",
+      },
+    },
+    {
+      $addFields: {
+        reviewCount: { $size: "$reviewsList" },
+        totalReviews: { $size: "$reviewsList" },
+        averageRating: {
+          $cond: [
+            { $gt: [{ $size: "$reviewsList" }, 0] },
+            { $round: [{ $avg: "$reviewsList.rating" }, 1] },
+            0,
+          ],
+        },
+      },
+    },
+    {
       $project: {
         queue: 0,
         queueData: 0,
+        reviewsList: 0,
         "owner.password": 0,
         "owner.__v": 0,
       },
@@ -300,6 +323,18 @@ export const getBusinessById = async (id) => {
 
   await enrichStaffAvailability(bObj);
   bObj.isSubscriptionActive = await isBusinessSubscriptionActive(b);
+
+  // Compute real review stats from the reviews collection
+  const reviews = await Review.find({ businessId: id }).select("rating");
+  bObj.reviewCount = reviews.length;
+  bObj.totalReviews = reviews.length;
+  if (reviews.length > 0) {
+    const sum = reviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+    bObj.averageRating = Math.round((sum / reviews.length) * 10) / 10;
+  } else {
+    bObj.averageRating = 0;
+  }
+
   return bObj;
 };
 

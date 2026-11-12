@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider, AuthContext } from './context/AuthContext.jsx'
 import { SocketProvider } from './context/SocketContext.jsx'
+import { LocationProvider } from './context/LocationContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')).render(
         <AuthContext.Consumer>
           {({ setUser, user }) => (
             <SocketProvider setUser={setUser} user={user}>
-              <App />
+              <LocationProvider>
+                <App />
+              </LocationProvider>
             </SocketProvider>
           )}
         </AuthContext.Consumer>

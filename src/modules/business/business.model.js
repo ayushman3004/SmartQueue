@@ -77,6 +77,22 @@ const businessSchema = new mongoose.Schema(
       enum: ["pending", "approved", "suspended"],
       default: "approved",
     },
+    rating: {
+      type: Number,
+      default: 0,
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
+    totalReviews: {
+      type: Number,
+      default: 0,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
+    },
     averageServiceTime: {
       type: Number,
       default: 10, // minutes

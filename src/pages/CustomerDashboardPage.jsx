@@ -33,25 +33,17 @@ import {
 } from 'lucide-react'
 import { calculateDistanceKm, formatDistance, getCoordinatesForLocation } from '../utils/geoUtils'
 import CustomerSidebar from '../components/CustomerSidebar'
-import LocationPickerModal from '../components/LocationPickerModal'
 import NoServiceState from '../components/NoServiceState'
 import { BusinessGridSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
+import { useCustomerLocation } from '../context/LocationContext'
 import { getAllBusinesses } from '../api/business.api'
 import { joinQueue, leaveQueue } from '../api/queue.api'
 import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
-
-const POPULAR_LOCATIONS = [
-  'Kolkata, West Bengal',
-  'Bardhaman, West Bengal',
-  'Salt Lake, Kolkata',
-  'New Town, Kolkata',
-  'Park Street, Kolkata',
-]
 
 // High-quality imagery matching the modern clinic and salon aesthetic in the screenshot
 const DEFAULT_CLINIC_IMAGES = [
@@ -106,76 +98,25 @@ export default function CustomerDashboardPage() {
     }
   }, [searchParams])
   const [search, setSearch] = useState('')
-  const [currentLocation, setCurrentLocation] = useState(() => {
-    try {
-      const saved = localStorage.getItem('serveq_selected_location')
-      if (saved) return JSON.parse(saved)
-    } catch {}
-    return null
-  })
-  const [showLocationModal, setShowLocationModal] = useState(false)
-  const [selectedCity, setSelectedCity] = useState(() => {
-    try {
-      const saved = localStorage.getItem('serveq_selected_location')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.name || parsed.city || parsed.formattedAddress || 'Select Location'
-      }
-    } catch {}
-    return 'Select Location'
-  })
+  const {
+    currentLocation,
+    selectedCity,
+    userCoords,
+    updateLocation: handleSelectLocation,
+    openLocationModal,
+  } = useCustomerLocation()
+
   const [locationQuery, setLocationQuery] = useState('')
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sortBy, setSortBy] = useState('nearest') // 'nearest' | 'wait_time' | 'rating'
   const [showMapModal, setShowMapModal] = useState(false)
-
-  // Geolocation & Proximity State
-  const [userCoords, setUserCoords] = useState(() => {
-    try {
-      const savedLoc = localStorage.getItem('serveq_selected_location')
-      if (savedLoc) {
-        const parsed = JSON.parse(savedLoc)
-        if (parsed.lat && parsed.lng) return { lat: Number(parsed.lat), lng: Number(parsed.lng) }
-      }
-      const saved = localStorage.getItem('serveq_user_coords')
-      if (saved) return JSON.parse(saved)
-    } catch {}
-    return null
-  })
   const [detectingLocation, setDetectingLocation] = useState(false)
-
-  // On first visit: if no location saved, open location picker modal automatically
-  useEffect(() => {
-    const saved = localStorage.getItem('serveq_selected_location')
-    if (!saved) {
-      setShowLocationModal(true)
-    }
-  }, [])
-
-  // Handle location selection from LocationPickerModal or Hub buttons
-  const handleSelectLocation = (loc) => {
-    if (!loc) return
-    setCurrentLocation(loc)
-    try {
-      localStorage.setItem('serveq_selected_location', JSON.stringify(loc))
-    } catch {}
-    const label = loc.name || loc.city || loc.formattedAddress || 'Selected Location'
-    setSelectedCity(label)
-    if (loc.lat && loc.lng) {
-      const coords = { lat: Number(loc.lat), lng: Number(loc.lng) }
-      setUserCoords(coords)
-      try {
-        localStorage.setItem('serveq_user_coords', JSON.stringify(coords))
-      } catch {}
-    }
-    setShowLocationModal(false)
-  }
 
   // Handle detecting user's physical GPS location
   const handleDetectCustomerLocation = () => {
-    setShowLocationModal(true)
+    openLocationModal()
   }
 
   const handleSelectCity = (loc) => {
@@ -477,7 +418,7 @@ export default function CustomerDashboardPage() {
         return waitA - waitB
       }
       if (sortBy === 'rating') {
-        return (b.averageRating || 4.5) - (a.averageRating || 4.5)
+        return (b.averageRating || 0) - (a.averageRating || 0)
       }
       return 0
     })
@@ -771,8 +712,9 @@ export default function CustomerDashboardPage() {
       biz.distance !== null && biz.distance !== undefined
         ? formatDistance(biz.distance)
         : biz.location || biz.city || 'Nearby'
-    const avgRating = biz.averageRating || 4.8
-    const reviewCount = biz.reviewCount || 320
+    const hasReviews = Number(biz.reviewCount) > 0
+    const avgRating = hasReviews ? Number(biz.averageRating || biz.rating || 0) : null
+    const reviewCount = Number(biz.reviewCount || 0)
     const servicesList = biz.services?.length
       ? biz.services
       : [{ name: 'General Consultation', duration: 15, price: 400 }]
@@ -836,9 +778,15 @@ export default function CustomerDashboardPage() {
               {biz.name}
             </h3>
             <div className="flex items-center gap-1.5 mt-1 text-xs">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span className="font-black text-zinc-900">{avgRating.toFixed(1)}</span>
-              <span className="text-zinc-500 font-medium">({reviewCount}+ reviews)</span>
+              {hasReviews ? (
+                <>
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span className="font-black text-zinc-900">{avgRating.toFixed(1)}</span>
+                  <span className="text-zinc-500 font-medium">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
+                </>
+              ) : (
+                <span className="text-zinc-400 text-xs font-medium">No reviews yet</span>
+              )}
             </div>
             <p className="text-zinc-500 text-xs mt-1 flex items-center gap-1 line-clamp-1">
               <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
@@ -1094,7 +1042,7 @@ export default function CustomerDashboardPage() {
           {/* Location Selector Pill */}
           <div className="relative">
             <button
-              onClick={() => setShowLocationModal(true)}
+              onClick={() => openLocationModal()}
               className="px-3.5 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200/80 border border-zinc-200/60 text-xs font-semibold text-zinc-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer shadow-2xs"
             >
               <MapPin className="w-3.5 h-3.5 text-[#049645]" />
@@ -1308,7 +1256,7 @@ export default function CustomerDashboardPage() {
           <div className="md:hidden flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowLocationModal(true)}
+              onClick={() => openLocationModal()}
               className="flex-1 py-2.5 px-3.5 rounded-xl bg-white border border-zinc-200 text-zinc-800 text-xs font-semibold flex items-center justify-between gap-2 shadow-2xs cursor-pointer active:scale-98 transition-all"
             >
               <div className="flex items-center gap-2 truncate">
@@ -1400,7 +1348,7 @@ export default function CustomerDashboardPage() {
             ) : displayedServices.length === 0 ? (
               <NoServiceState
                 selectedLocationName={currentLocation?.name || selectedCity}
-                onChangeLocation={() => setShowLocationModal(true)}
+                onChangeLocation={() => openLocationModal()}
                 onSelectHub={handleSelectLocation}
               />
             ) : (
@@ -1474,14 +1422,6 @@ export default function CustomerDashboardPage() {
           </div>
         )}
       </AnimatePresence>
-      {/* ── LOCATION PICKER MODAL (DOMINO'S / ZOMATO STYLE) ── */}
-      <LocationPickerModal
-        isOpen={showLocationModal}
-        onClose={() => setShowLocationModal(false)}
-        onSelectLocation={handleSelectLocation}
-        currentLocation={currentLocation}
-        canClose={Boolean(currentLocation)}
-      />
     </div>
   )
 }
