@@ -19,10 +19,10 @@ Uncommitted application changes were preserved.
 | REST | `src/api/axios.js` appends `/api` to `VITE_API_URL`, sends credentials and bearer tokens, and falls back to the production API host outside localhost. |
 | Realtime | `src/lib/socket.js` uses `VITE_API_URL` directly, credentials, WebSocket and polling. Without that variable it uses the frontend origin; Vercel's rewrites do **not** configure a Socket.IO proxy. |
 | Backend | `npm start` → `node server.js`, HTTP + Socket.IO, binds `0.0.0.0` on `process.env.PORT` or 3001. It starts listening only after MongoDB connects. |
-| Docker | Repository root context `.` and `Dockerfile.backend`; `node:22-alpine`, `npm ci --omit=dev`, `NODE_ENV=production`, `npm start`. `EXPOSE 3001` is metadata; Render's runtime `PORT` takes precedence. |
+| Docker | Repository root context `.` and `Dockerfile.backend`; `node:24-alpine`, `npm ci --omit=dev`, `NODE_ENV=production`, `npm start`. Runtime sources are copied explicitly rather than copying the whole repository. `EXPOSE 3001` is metadata; Render's runtime `PORT` takes precedence. |
 | Frontend Docker | `Dockerfile.frontend` builds Vite and serves `dist` with nginx. It is a local alternative, not the Vercel production deployment. It has no `VITE_API_URL` build argument; Compose therefore does not reproduce the production environment automatically. |
 | Compose | `compose.yaml` builds both Dockerfiles from root and uses a local `.env` for the backend, port 3001, frontend port 8080 and a localhost client origin. Not used for Render deployment. |
-| Node | The previous `>=18` engine was inaccurate. Locked Vite/plugin-react require `^20.19.0 || >=22.12.0`; Mongoose/MongoDB require `>=20.19.0`; OpenAI requires `>=22.0.0`. Root manifest and lockfile now declare `>=22.12.0`; CI uses Node 22 to match both Dockerfiles. |
+| Node | The previous `>=18` engine was inaccurate. Firebase's locked app/auth/firestore packages require `>=24.12.0`, which is stricter than Vite's and OpenAI's requirements. Root manifest and lockfile declare `>=24.12.0`; CI and both Dockerfiles use Node 24. Set the existing Vercel project's Node version to 24.x if it is pinned to an older major. |
 | Installation | `npm ci` for validation; `npm ci --omit=dev` in the backend image. No separate backend manifest or registry configuration. |
 | Lint | `npm run lint` → `eslint .`. Existing ESLint configuration excludes backend paths and tests; this workflow preserves that scope. |
 | Tests | `NODE_ENV=test npm test` → `node --test tests/*.test.js`. Existing tests mock model/service operations or use schema objects and local HTTP servers. No MongoDB service, Atlas URI, or external service credentials are required. These are not full integration tests of MongoDB, OAuth, email, payments or WebSockets. |
@@ -40,20 +40,36 @@ were available to inspect those settings. The implemented path supports **Scenar
 A (Git-backed Docker builds)**, with API preflight checks before any deploy hook
 request. Scenario B remains unconfigured pending the actual registry details.
 
-### Validation baseline and existing blockers
+### Failed run and remediation
 
-- `npm ci --no-audit --no-fund` succeeded.
-- All 131 existing automated tests passed with local HTTP port access.
+The first GitHub run built the image successfully but failed its secret-file
+check because the checked-in ignore file still included `.env.example`. Lint
+reported 16 errors and 5 warnings, and the dependency audit reported 21
+vulnerabilities, including 16 high and 2 critical findings. The gate correctly
+blocked production deployment.
+
+The fixes preserve all validation gates:
+
+- Exclude every `.env` variant, including the example; explicitly copy runtime sources in `Dockerfile.backend` so repository-root environment files are not copied even if ignore rules regress.
+- Remove unused page bindings and obsolete local location-picker handlers. Document intentional storage/geocoding fallbacks instead of leaving empty catches. Auth loading already initializes from token presence, so its redundant synchronous effect update was removed.
+- Refresh the lockfile using compatible dependency security updates, including patched Mongoose, Express dependencies, Socket.IO dependencies and Nodemailer.
+- Override `@grpc/grpc-js` to a patched 1.x version because Firebase still requests `~1.9.0`. Override `nodemailer-otp`'s Nodemailer to the root dependency because the wrapper otherwise installs vulnerable Nodemailer 6. Its use of `createTransport` and `sendMail` is verified by an offline transport compatibility test. Do not force-downgrade Firebase as suggested by npm's broad audit remediation.
+- Align Node with Firebase's actual `>=24.12.0` requirement.
+
+Final local verification on Node **24.22.3**:
+
+- Clean `npm ci --no-audit --no-fund` passed.
+- **143 tests passed**: 131 original, 11 deployment safety tests, and one OTP/Nodemailer compatibility test. The full suite was verified in a clean source copy without `.env` files or inherited service credentials.
 - The frontend build with `VITE_API_URL=https://api.serveq.tech` passed, with the existing large-bundle warning.
-- Existing lint reported **16 errors and 5 warnings**: `AuthContext.jsx` (synchronous effect state update), `LocationContext.jsx` and `BusinessOnboardingPage.jsx` (empty catches), and unused bindings in `BusinessPortalPage.jsx`, `CustomerDashboardPage.jsx`, and `HistoryPage.jsx`.
-- `npm audit --omit=dev --audit-level=high` reported **21 vulnerabilities: 3 moderate, 16 high, 2 critical**, including Mongoose and proxy-addr critical findings. Advisory results change over time; inspect the audit job for the current report. Review fixes in a separate dependency change; do not blindly run `npm audit fix --force`.
-- Deployment safety tests in `tests/render_deploy.test.js` exercise source/domain mismatches, stale runs, concurrency, ambiguous hook responses, failures, timeouts, retries, commit verification and readiness/CORS checks using mocked network responses.
-- Final verification on Node **22.23.5**: **142 tests passed** (131 existing plus 11 deployment tests); Vite build passed; lint retained the same 16 errors and 5 warnings. Both YAML files parsed successfully. A separate actionlint binary could not be downloaded because the release host timed out, so actionlint was not run.
-- The local Docker CLI is installed but its daemon is not running. Backend image build and runtime import checks must be confirmed in the GitHub Docker job or locally after starting Docker.
+- Lint passed with **0 errors and 5 existing Fast Refresh warnings**. No rules or tests were disabled.
+- `npm audit --omit=dev --audit-level=high` passed with **0 vulnerabilities**. The full development dependency audit still reports two moderate findings in nodemon/minimatch, below the production gate's threshold and outside its dependency scope.
+- The final `linux/amd64` backend Docker image built successfully; the exact environment-file exclusion and `app.js` runtime import checks passed without application credentials.
+- Both YAML files parsed successfully. A separate actionlint binary was unavailable during initial validation because its release host timed out; it was not run.
 
-**Lint and high/critical dependency findings remain blocking.** No tests or lint
-rules were disabled, no failures use `continue-on-error`, and production deployment
-cannot pass the CI gate until these existing issues are resolved.
+Advisories change over time. Keep the audit gate enabled and review future
+findings. Commit the code fixes, Dockerfiles, manifest, lockfile, workflow and
+supporting scripts together. Re-running the old failed commit does not apply
+working-tree fixes.
 
 ## Workflow jobs
 
@@ -61,7 +77,7 @@ The complete executable workflow is [`.github/workflows/ci-cd.yml`](../.github/w
 
 | Job/check | Behavior |
 | --- | --- |
-| `ServeQ lint` | Node 22, npm cache, clean installation, existing lint command. |
+| `ServeQ lint` | Node 24, npm cache, clean installation, existing lint command. |
 | `ServeQ test` | Same installation, all `tests/*.test.js`, `NODE_ENV=test`, no application credentials. |
 | `ServeQ build` | Same installation, existing build with canonical public API URL. Firebase/payment public variables are optional for compilation; this is build verification, not a functional test of those integrations. |
 | `ServeQ audit` | Audits production dependencies and blocks high/critical vulnerabilities. Moderate issues remain visible. Since both apps share dependencies, this includes frontend packages shipped in the backend image. |
@@ -158,7 +174,7 @@ push, or image-backed deployment.
 
 Preserve the existing project, GitHub integration, production branch `main`, SPA
 routing and domain `https://serveq.tech`. Use `npm ci`, `npm run build`, output
-`dist`, repository root, and Node **22.x**. Confirm the current dashboard settings;
+`dist`, repository root, and Node **24.x**. Confirm the current dashboard settings;
 they cannot be inferred from `vercel.json` alone.
 
 Set the Production environment value **`VITE_API_URL=https://api.serveq.tech`**
@@ -218,7 +234,7 @@ still allow the already validated commit to finish, followed by newer validation
 
 1. Keep `RENDER_DEPLOY_ENABLED` unset/false. Open a PR with this implementation and
    review the workflow, script and tests. Confirm no Render production job runs.
-2. Resolve the documented existing lint and dependency blockers in reviewed changes.
+2. Include the documented lint, dependency and Docker fixes in the reviewed changes.
    Never bypass the gate to test CD. Confirm all validation checks pass, including
    the backend Docker image build, exclusions and runtime imports on Linux.
 3. Configure branch protection and Vercel Deployment Checks. A failing test/lint
@@ -238,7 +254,7 @@ still allow the already validated commit to finish, followed by newer validation
    Confirm exactly one new Render deploy per eligible run. For a dry run, leave
    `deploy` unchecked; for a deployment pause, set the enable variable to `false`.
 
-Useful local checks (Node 22.12+; no production `.env` or inherited credentials):
+Useful local checks (Node 24.12+; no production `.env` or inherited credentials):
 
 ```sh
 npm ci
@@ -279,7 +295,7 @@ Open `https://serveq.tech` and check browser Network:
 
 | Symptom | Action |
 | --- | --- |
-| Gate fails | Read the failed matrix/Docker job. Existing lint/audit findings are real blockers, not deployment secret problems. |
+| Gate fails | Read the failed matrix/Docker job. Lint/audit failures must be fixed before deployment; changing deployment secrets does not resolve them. |
 | Production job skipped | Check ref/event, CI gate, repository enable variable and manual `deploy` input. |
 | Missing/invalid configuration | Confirm environment-scoped secrets and service ID; do not print their values. |
 | Preflight refuses source/domain/hook | Compare the **new** service's source, Docker paths, verified custom domain and hook. Do not change DNS to make an old service pass. |
