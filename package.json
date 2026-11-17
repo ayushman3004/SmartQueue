@@ -61,7 +61,13 @@
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.1"
   },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.6",
+    "nodemailer-otp": {
+      "nodemailer": "$nodemailer"
+    }
+  },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24.12.0"
   }
 }

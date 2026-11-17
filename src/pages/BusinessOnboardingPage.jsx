@@ -754,7 +754,9 @@ export default function BusinessOnboardingPage() {
             if (geo && geo.lat && geo.lng) {
               finalCoords = { lat: Number(geo.lat), lng: Number(geo.lng) }
             }
-          } catch {}
+          } catch {
+            // Fall back to the local coordinate lookup below if geocoding fails.
+          }
           if (!finalCoords || (!finalCoords.lat && !finalCoords.lng)) {
             finalCoords = getCoordinatesForLocation(query)
           }

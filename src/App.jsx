@@ -9,8 +9,6 @@ import BackButton from './components/BackButton'
 import AIDesistant from './components/AIDesistant'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
-import LandingPageBackup from './pages/LandingPageBackup'
-import ComingSoonPage from './pages/ComingSoonPage'
 import CustomerDashboardPage from './pages/CustomerDashboardPage'
 import HistoryPage from './pages/HistoryPage'
 import QueuePage from './pages/QueuePage'
@@ -135,17 +133,12 @@ export default function App() {
     location.pathname === '/login' ||
     location.pathname === '/auth/callback'
 
-  const isComingSoonPage =
-    location.pathname === '/coming-soon' ||
-    (!user && location.pathname === '/')
+
 
   const isKnownRoute =
     location.pathname === '/' ||
     location.pathname === '/login' ||
     location.pathname === '/auth/callback' ||
-    location.pathname === '/coming-soon' ||
-    location.pathname === '/home' ||
-    location.pathname === '/preview-landing' ||
     location.pathname === '/customers' ||
     location.pathname === '/customer' ||
     location.pathname === '/history' ||
@@ -176,15 +169,13 @@ export default function App() {
     return <LoadingScreen />
   }
 
-  const bgVariant = isComingSoonPage
-    ? null
-    : isLoginPage
+  const bgVariant = isLoginPage
     ? 'auth'
     : isCustomerDashboard
     ? 'glow'
     : 'default'
 
-  const bgClass = isComingSoonPage || isStandalonePage
+  const bgClass = isStandalonePage
     ? ''
     : isLoginPage
     ? 'auth-background'
@@ -194,7 +185,7 @@ export default function App() {
 
   return (
     <div className={`page-wrapper ${bgClass}`}>
-      {!isComingSoonPage && !isStandalonePage && <AmbientBackground variant={bgVariant} />}
+      {!isStandalonePage && <AmbientBackground variant={bgVariant} />}
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -214,7 +205,7 @@ export default function App() {
           <BackButton />
         </>
       )}
-      {user && !isOnboarding && !isComingSoonPage && !isStandalonePage && <AIDesistant />}
+      {user && !isOnboarding && !isStandalonePage && <AIDesistant />}
       <main className={user && !isOnboarding && !isCustomerDashboard && !isStandalonePage && !isLegalPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -231,9 +222,7 @@ export default function App() {
               )
             }
           />
-          <Route path="/coming-soon" element={<ComingSoonPage />} />
-          <Route path="/home" element={<LandingPageBackup />} />
-          <Route path="/preview-landing" element={<LandingPageBackup />} />
+          <Route path="/coming-soon" element={<Navigate to="/" replace />} />
           <Route
             path="/customers"
             element={
@@ -354,7 +343,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isLoginPage && !isComingSoonPage && !isStandalonePage && <Footer />}
+      {!isLoginPage && !isStandalonePage && <Footer />}
     </div>
   )
 }

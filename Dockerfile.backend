@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -7,7 +7,15 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-COPY . .
+# Copy only application runtime files. Environment files and repository tooling
+# must never become part of a production layer, even if ignore rules change.
+COPY app.js server.js ./
+COPY config ./config
+COPY middleware ./middleware
+COPY realtime ./realtime
+COPY ai ./ai
+COPY utils ./utils
+COPY src ./src
 
 EXPOSE 3001
 

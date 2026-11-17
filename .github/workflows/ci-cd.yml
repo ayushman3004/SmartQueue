@@ -40,7 +40,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
@@ -124,7 +124,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: '24'
           package-manager-cache: false
       # No npm install and no production application secrets in this job.
       - name: Validate service, deploy exact commit, and verify

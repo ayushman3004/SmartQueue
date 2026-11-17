@@ -31,7 +31,7 @@ import {
   Navigation,
   Loader2,
 } from 'lucide-react'
-import { calculateDistanceKm, formatDistance, getCoordinatesForLocation } from '../utils/geoUtils'
+import { calculateDistanceKm, formatDistance } from '../utils/geoUtils'
 import CustomerSidebar from '../components/CustomerSidebar'
 import NoServiceState from '../components/NoServiceState'
 import { BusinessGridSkeleton } from '../components/Skeleton'
@@ -106,34 +106,12 @@ export default function CustomerDashboardPage() {
     openLocationModal,
   } = useCustomerLocation()
 
-  const [locationQuery, setLocationQuery] = useState('')
-  const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sortBy, setSortBy] = useState('nearest') // 'nearest' | 'wait_time' | 'rating'
   const [showMapModal, setShowMapModal] = useState(false)
-  const [detectingLocation, setDetectingLocation] = useState(false)
-
-  // Handle detecting user's physical GPS location
-  const handleDetectCustomerLocation = () => {
-    openLocationModal()
-  }
-
-  const handleSelectCity = (loc) => {
-    const coords = getCoordinatesForLocation(loc)
-    handleSelectLocation({
-      name: loc,
-      formattedAddress: loc,
-      city: loc.split(',')[0],
-      lat: coords?.lat || 0,
-      lng: coords?.lng || 0,
-      isGps: false,
-    })
-    setShowLocationPicker(false)
-  }
 
   const debouncedSearch = useDebounce(search, 350)
-  const debouncedLocation = useDebounce(locationQuery, 350)
 
   // Selected services & staff for inline join
   const [selectedServices, setSelectedServices] = useState({})
@@ -161,8 +139,6 @@ export default function CustomerDashboardPage() {
         params.lng = activeCoords.lng
         params.radius = 30
         params.onlyWithinRadius = true
-      } else if (debouncedLocation) {
-        params.location = debouncedLocation
       }
 
       const [allRes, myBkRes] = await Promise.all([
@@ -207,7 +183,7 @@ export default function CustomerDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, categoryFilter, debouncedLocation, currentLocation, userCoords])
+  }, [debouncedSearch, categoryFilter, currentLocation, userCoords])
 
   useEffect(() => {
     fetchData()
@@ -243,8 +219,6 @@ export default function CustomerDashboardPage() {
         syncParams.lng = activeCoords.lng
         syncParams.radius = 30
         syncParams.onlyWithinRadius = true
-      } else if (debouncedLocation) {
-        syncParams.location = debouncedLocation
       }
 
       getAllBusinesses(syncParams)
@@ -263,7 +237,7 @@ export default function CustomerDashboardPage() {
     }, 12000)
 
     return () => clearInterval(timer)
-  }, [debouncedSearch, categoryFilter, debouncedLocation, currentLocation, userCoords])
+  }, [debouncedSearch, categoryFilter, currentLocation, userCoords])
 
   // Real-time socket listeners
   useEffect(() => {

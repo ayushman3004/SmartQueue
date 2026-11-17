@@ -55,7 +55,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
 
   // Filters & Controls
-  const [categoryFilter, setCategoryFilter] = useState('all') // 'all' | 'clinic' | 'salon'
+  const [categoryFilter] = useState('all') // 'all' | 'clinic' | 'salon'
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'live_queue' | 'appointment' | 'completed' | 'upcoming'
   const [sortOrder, setSortOrder] = useState('newest') // 'newest' | 'oldest'
   const [viewMode, setViewMode] = useState('cards') // 'cards' | 'table'
@@ -68,7 +68,6 @@ export default function HistoryPage() {
     currentLocation,
     selectedCity,
     userCoords,
-    updateLocation,
     openLocationModal,
   } = useCustomerLocation()
   const [showUserMenu, setShowUserMenu] = useState(false)

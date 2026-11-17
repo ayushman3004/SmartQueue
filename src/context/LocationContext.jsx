@@ -8,7 +8,9 @@ export function LocationProvider({ children }) {
     try {
       const saved = localStorage.getItem('serveq_selected_location')
       if (saved) return JSON.parse(saved)
-    } catch {}
+    } catch {
+      // Invalid or unavailable storage falls back to no selected location.
+    }
     return null
   })
 
@@ -28,7 +30,9 @@ export function LocationProvider({ children }) {
         const parsed = JSON.parse(saved)
         return parsed.name || parsed.city || parsed.formattedAddress || 'Select Location'
       }
-    } catch {}
+    } catch {
+      // Use the default label if the stored location cannot be read.
+    }
     return 'Select Location'
   })
 
@@ -43,7 +47,9 @@ export function LocationProvider({ children }) {
       }
       const savedCoords = localStorage.getItem('serveq_user_coords')
       if (savedCoords) return JSON.parse(savedCoords)
-    } catch {}
+    } catch {
+      // Coordinates are optional when storage is unavailable or invalid.
+    }
     return null
   })
 
@@ -96,7 +102,9 @@ export function LocationProvider({ children }) {
             setUserCoords({ lat: Number(loc.lat), lng: Number(loc.lng) })
           }
         }
-      } catch {}
+      } catch {
+        // Ignore malformed cross-tab updates and retain the current location.
+      }
     }
 
     window.addEventListener('storage', handleSync)

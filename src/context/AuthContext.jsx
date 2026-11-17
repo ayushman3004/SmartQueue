@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setLoading(false);
+      // Loading is already initialized from token presence on the first render.
       return;
     }
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;

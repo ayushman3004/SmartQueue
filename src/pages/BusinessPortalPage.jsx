@@ -19,7 +19,7 @@ const SLIDE_TRANSITION = {
 }
 
 export default function BusinessPortalPage() {
-  const { user, loading: authLoading, logIn, logOut, setUser } = useAuth()
+  const { user, loading: authLoading, logIn } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 

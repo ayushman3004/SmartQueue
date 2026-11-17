@@ -3,8 +3,8 @@ import axios from "axios";
 /**
  * Axios instance for API calls.
  * 
- * In production: VITE_API_URL = "https://smartqueue-p629.onrender.com"
- *                baseURL becomes "https://smartqueue-p629.onrender.com/api"
+ * In production: VITE_API_URL = "https://api.serveq.tech"
+ *                baseURL becomes "https://api.serveq.tech/api"
  * 
  * In development: VITE_API_URL can be empty/undefined — baseURL becomes "/api"
  *                 which works with the Vite dev proxy.
