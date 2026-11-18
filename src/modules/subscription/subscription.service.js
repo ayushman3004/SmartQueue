@@ -1,9 +1,10 @@
+import crypto from "node:crypto";
+import SubscriptionOrder from "./subscription-order.model.js";
 import User from "../auth/auth.model.js";
 import Business from "../business/business.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import {
   getRazorpayClient,
-  verifyPaymentSignature,
 } from "../payment/razorpay.service.js";
 
 export const SUBSCRIPTION_PLANS = {
@@ -62,66 +63,28 @@ export const createSubscriptionOrder = async (userId, planId) => {
     throw new ApiError(400, "Invalid plan selected. Choose either BASIC (₹999) or PRO (₹1,999).");
   }
 
+  if (user.subscription?.plan === "PRO" && user.subscription.status === "ACTIVE" &&
+      (!user.subscription.expiresAt || new Date(user.subscription.expiresAt) > new Date()) && plan.id === "BASIC") {
+    throw new ApiError(409, "Your Pro plan is active. Choose Basic after it expires.");
+  }
   const razorpay = getRazorpayClient();
   const keyId = process.env.RAZORPAY_KEY_ID || "";
   const receipt = `sub_${userId.toString().slice(-10)}_${Date.now()}`.slice(-40);
 
-  if (!razorpay) {
-    // Development / Mock mode
-    return {
-      order: {
-        id: `order_mock_sub_${Date.now()}`,
-        amount: plan.amountInPaise,
-        currency: "INR",
-        status: "created",
-        isMock: true,
-        keyId: keyId || "rzp_test_placeholder",
-      },
-      keyId: keyId || "rzp_test_placeholder",
-      plan,
-    };
+  if (!razorpay || !keyId) {
+    throw new ApiError(503, "Subscription payments are unavailable. Please contact support.");
   }
-
+  let order;
   try {
-    const order = await razorpay.orders.create({
-      amount: plan.amountInPaise,
-      currency: "INR",
-      receipt,
-      notes: {
-        type: "SERVEQ_BUSINESS_SUBSCRIPTION",
-        plan: plan.id,
-        userId: user._id.toString(),
-        userEmail: user.email,
-        userName: user.name,
-      },
+    order = await razorpay.orders.create({
+      amount: plan.amountInPaise, currency: "INR", receipt,
+      notes: { type: "SERVEQ_BUSINESS_SUBSCRIPTION", plan: plan.id, userId: user._id.toString() },
     });
-
-    return {
-      order: {
-        ...order,
-        keyId,
-        isMock: false,
-      },
-      keyId,
-      plan,
-    };
-  } catch (err) {
-    console.warn("Razorpay API order creation failed, providing seamless fallback order:", err.error?.description || err.message);
-    return {
-      order: {
-        id: `order_mock_sub_${Date.now()}`,
-        amount: plan.amountInPaise,
-        currency: "INR",
-        status: "created",
-        isMock: true,
-        keyId: keyId || "rzp_test_placeholder",
-      },
-      keyId: keyId || "rzp_test_placeholder",
-      plan,
-      isFallback: true,
-      authWarning: err.error?.description || "Razorpay API key authentication failed on server.",
-    };
+  } catch {
+    throw new ApiError(502, "Unable to create payment order. Please try again later.");
   }
+  await SubscriptionOrder.create({ orderId: order.id, owner: user._id, plan: plan.id, amount: plan.amountInPaise });
+  return { order, keyId, plan };
 };
 
 /**
@@ -144,45 +107,52 @@ export const verifySubscriptionPayment = async (
     throw new ApiError(400, "Missing required Razorpay payment verification parameters");
   }
 
-  // Cryptographic HMAC SHA256 Signature Verification
-  const isSignatureValid = verifyPaymentSignature({
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature,
-  });
-
-  if (!isSignatureValid) {
-    throw new ApiError(400, "Invalid Razorpay payment signature. Subscription activation aborted.");
+  if (!["owner", "admin"].includes(user.role)) throw new ApiError(403, "Only business owners can subscribe");
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!secret) throw new ApiError(503, "Subscription payments are unavailable. Please contact support.");
+  const expected = crypto.createHmac("sha256", secret).update(`${razorpayOrderId}|${razorpayPaymentId}`).digest("hex");
+  if (typeof razorpaySignature !== "string" || !/^[a-f0-9]{64}$/i.test(razorpaySignature) ||
+      !crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(razorpaySignature, "hex"))) {
+    throw new ApiError(400, "Invalid Razorpay payment signature.");
   }
-
-  const activatedAt = new Date();
-  const expiresAt = new Date(Date.now() + selectedPlan.durationDays * 24 * 60 * 60 * 1000);
-
-  // Update user subscription state
-  user.subscription = {
-    plan: selectedPlan.id,
-    status: "ACTIVE",
-    amount: selectedPlan.price,
-    activatedAt,
-    expiresAt,
-    razorpayOrderId,
-    razorpayPaymentId,
-  };
-
-  await user.save();
-
-  // Cascade plan update to all businesses owned by this owner
-  await Business.updateMany(
-    { owner: user._id },
-    {
-      $set: {
-        "subscription.plan": selectedPlan.id,
-        "subscription.status": "ACTIVE",
-        "subscription.amount": selectedPlan.price,
-        "subscription.expiresAt": expiresAt,
-      },
-    }
-  );
+  let purchase = await SubscriptionOrder.findOne({ orderId: razorpayOrderId, owner: user._id });
+  if (!purchase || purchase.plan !== selectedPlan.id || purchase.amount !== selectedPlan.amountInPaise) {
+    throw new ApiError(400, "Payment order does not match this account or plan.");
+  }
+  if (purchase.paymentId && purchase.paymentId !== razorpayPaymentId) throw new ApiError(400, "Order already verified with another payment.");
+  const razorpay = getRazorpayClient();
+  if (!razorpay) throw new ApiError(503, "Payment verification is temporarily unavailable.");
+  let payment;
+  try { payment = await razorpay.payments.fetch(razorpayPaymentId); }
+  catch { throw new ApiError(502, "Unable to confirm payment. Retry verification without paying again."); }
+  if (payment.order_id !== purchase.orderId || payment.amount !== purchase.amount || payment.currency !== "INR" || payment.status !== "captured") {
+    throw new ApiError(409, "Payment is not yet confirmed. Retry verification without paying again.");
+  }
+  // Store the entitlement dates once. Retried callbacks must never add another month.
+  if (!purchase.activatedAt) {
+    const activatedAt = new Date();
+    const renewalBase = user.subscription?.plan === selectedPlan.id && user.subscription?.status === "ACTIVE"
+      ? Math.max(Date.now(), new Date(user.subscription.expiresAt || 0).getTime()) : Date.now();
+    const updated = await SubscriptionOrder.findOneAndUpdate(
+      { _id: purchase._id, activatedAt: null },
+      { $set: { paymentId: razorpayPaymentId, activatedAt, expiresAt: new Date(renewalBase + selectedPlan.durationDays * 86400000) } },
+      { new: true }
+    );
+    purchase = updated || await SubscriptionOrder.findById(purchase._id);
+  }
+  // An old callback cannot replace a newer purchased plan.
+  if (!user.subscription?.activatedAt || new Date(user.subscription.activatedAt) <= new Date(purchase.activatedAt)) {
+    user.subscription = {
+      plan: selectedPlan.id, status: "ACTIVE", amount: selectedPlan.price,
+      activatedAt: purchase.activatedAt, expiresAt: purchase.expiresAt,
+      razorpayOrderId, razorpayPaymentId,
+    };
+    await user.save();
+  }
+  await Business.updateMany({ owner: user._id }, { $set: {
+    "subscription.plan": user.subscription.plan, "subscription.status": user.subscription.status,
+    "subscription.amount": user.subscription.amount, "subscription.expiresAt": user.subscription.expiresAt,
+  } });
 
   return {
     user: {
@@ -236,7 +206,6 @@ export const isBusinessSubscriptionActive = async (business) => {
     if (!business.subscription.expiresAt || new Date(business.subscription.expiresAt) > new Date()) {
       return true;
     }
-    return false;
   }
 
   // 2. Business owner account check

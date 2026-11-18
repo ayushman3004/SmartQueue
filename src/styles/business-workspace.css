@@ -1,0 +1,38 @@
+/* Business operations share the customer palette, with direct navigation and no door selection. */
+.business-page {
+  --business-ink: #315b45;
+  --business-soft: #e6f0e8;
+  --business-line: #c1d5c7;
+  color: #153c2b;
+}
+.business-page :is(h1, h2, h3) { color: #153c2b; font-weight: 650; letter-spacing: -.035em; text-wrap: balance; }
+.business-page > header { background: #fbfefbef; border-color: var(--business-line); box-shadow: none; }
+.business-page aside { background: #fbfefb99; border-color: var(--business-line); }
+.business-page aside nav button { border-radius: 14px; box-shadow: none; font-weight: 600; }
+.business-page aside button[aria-current='page'] { background: var(--business-soft); border-color: var(--business-line); color: var(--business-ink); }
+.business-page .icon-3d { display: inline-flex; align-items: center; justify-content: center; background: var(--business-soft); color: var(--business-ink); border: 1px solid var(--business-line); border-radius: 12px 12px 5px 5px; box-shadow: none; transform: none; }
+.business-page .icon-3d::before, .business-page .icon-3d::after { display: none; }
+.business-page .business-surface, .business-page .customer-surface { background: #fffffc; border-color: var(--business-line); border-radius: 24px 24px 18px 18px; box-shadow: 0 4px 0 var(--business-soft); }
+.business-page :is(input, select, textarea) { border-color: var(--business-line); accent-color: var(--business-ink); }
+.business-page :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--business-ink); outline-offset: 3px; }
+.business-page button[class*='bg-[#114227]'], .business-page button[class*='bg-teal-600'], .business-page button[class*='bg-emerald-600'], .business-page a[class*='bg-teal-600'] { background: var(--business-ink); color: #fff; box-shadow: none; }
+.business-page button[class*='bg-[#EAF7EE]'], .business-page button[class*='bg-teal-50'] { background: var(--business-soft); color: var(--business-ink); border-color: var(--business-line); }
+.business-page table { font-variant-numeric: tabular-nums; }
+.business-page thead { background: var(--business-soft); }
+.business-page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 28px; border-bottom: 1px solid var(--business-line); }
+.business-eyebrow { color: var(--business-ink); font-size: 10px; font-weight: 750; letter-spacing: .17em; }
+.business-plan-card { display: flex; flex-direction: column; background: #fffffc; border: 1px solid var(--business-line); border-radius: 24px 48px 18px 18px; padding: 28px; box-shadow: 0 4px 0 var(--business-soft); }
+.business-plan-card:nth-child(2) { --business-soft: #f3e9e1; --business-line: #dfcbbd; --business-ink: #765546; }
+.business-plan-card h2 { font-size: 23px; }
+.business-plan-badge { border: 1px solid var(--business-line); background: var(--business-soft); color: var(--business-ink); border-radius: 8px; padding: 5px 8px; font-size: 10px; font-weight: 600; }
+.business-plan-price { font-size: 36px; font-weight: 650; letter-spacing: -.04em; margin-block: 20px 12px; color: var(--business-ink); }
+.business-plan-price span { font-size: 12px; font-weight: 400; letter-spacing: 0; color: #617168; }
+.business-primary { background: var(--business-ink); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 13px; font-weight: 650; cursor: pointer; }
+.business-primary:disabled { opacity: .5; cursor: default; }
+.business-plan-notice { border: 1px solid var(--business-line); background: var(--business-soft); padding: 20px; border-radius: 18px; color: #315b45; }
+.business-subscription-dialog { border-color: var(--business-line); }
+@media (hover: hover) and (pointer: fine) { .business-primary:not(:disabled):hover { filter: brightness(.92); } }
+@media (max-width: 640px) { .business-plan-card { padding: 22px; } .business-page-header { padding: 16px; } }
+
+.business-page .customer-tab > header { background: #fbfefbef; border-color: var(--business-line); }
+.business-page .customer-tab aside nav > button[aria-current="page"] { background: var(--business-soft); color: var(--business-ink); border-color: var(--business-line); }

@@ -24,6 +24,7 @@ import HelpSupportPage from './pages/HelpSupportPage'
 import SubscriptionPage from './pages/SubscriptionPage'
 import Footer from './components/Footer'
 import './styles/customer-workspace.css'
+import './styles/business-workspace.css'
 import AmbientBackground from './components/AmbientBackground'
 import NotFoundPage from './pages/NotFoundPage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
@@ -56,6 +57,8 @@ export default function App() {
   const isOnboarding = location.pathname.startsWith('/business/onboarding')
   const isCustomerWorkspace = Boolean(user && !['owner', 'admin'].includes(user.role) &&
     (/^\/(customers|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
+  const isBusinessWorkspace = Boolean(user && ['owner', 'admin'].includes(user.role) &&
+    (/^\/(business|subscription|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
   const requestedService = new URLSearchParams(location.search).get('category')
   const storedService = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
   const workspaceService = ['clinic', 'salon'].includes(requestedService) ? requestedService : storedService
@@ -146,7 +149,7 @@ export default function App() {
     : 'app-background'
 
   return (
-    <div data-service={isCustomerWorkspace ? workspaceService : undefined} className={`page-wrapper ${bgClass} ${isCustomerWorkspace ? 'customer-workspace' : ''}`}>
+    <div data-service={isCustomerWorkspace ? workspaceService : undefined} className={`page-wrapper ${bgClass} ${isCustomerWorkspace ? 'customer-workspace' : ''} ${location.pathname === '/' ? 'landing-shell' : ''} ${isBusinessWorkspace ? 'business-page' : ''}`}>
       {!isStandalonePage && <AmbientBackground variant={bgVariant} />}
       <Toaster 
         position="top-right"

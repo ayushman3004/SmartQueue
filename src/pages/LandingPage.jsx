@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { useSeo } from '../utils/useSeo'
 import WebsiteTour from '../components/WebsiteTour'
+import './LandingPage.css'
 
 const VENUES = [
   {
@@ -111,7 +112,7 @@ export default function LandingPage() {
   }, [mobileMenuOpen])
 
   return (
-    <div className="min-h-screen app-background text-zinc-900 selection:bg-emerald-500/20 selection:text-emerald-900 relative">
+    <div className="landing-page min-h-screen app-background-glow text-zinc-900 selection:bg-emerald-500/20 selection:text-emerald-900 relative">
       {/* ── Top Navigation Bar ── */}
       <header className="sticky top-0 z-50 bg-[#fafaf9]/85 backdrop-blur-md border-b border-zinc-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -147,6 +148,7 @@ export default function LandingPage() {
             </Link>
             <button
               onClick={() => navigate('/login')}
+              id="tour-join-queue-btn"
               className="text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm hover:shadow transition-all active:scale-95"
             >
               Get Started
@@ -232,131 +234,14 @@ export default function LandingPage() {
         </AnimatePresence>
       </header>
 
-      {/* ── Hero Section ── */}
-      <section className="relative pt-16 pb-20 sm:pt-24 sm:pb-28 overflow-hidden">
-        {/* Subtle background glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-teal-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
-
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            
-            {/* Left Column: Value Prop */}
-            <div id="tour-welcome-hero" className="lg:col-span-7 text-center lg:text-left space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200/70 text-teal-800 text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-                Live Virtual Queue Management
-              </div>
-
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-zinc-950 tracking-tight leading-[1.1]">
-                Wait from anywhere, <br />
-                <span className="text-teal-600">not in line.</span>
-              </h1>
-
-              <p className="text-base sm:text-lg text-zinc-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                Join virtual lines on your phone, track live wait times, and walk straight in when your turn arrives. ServeQ eliminates crowded waiting rooms for salons, clinics, and service venues alike.
-              </p>
-
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
-                <button
-                  id="tour-join-queue-btn"
-                  type="button"
-                  onClick={() => navigate('/customers')}
-                  className="px-6 py-3.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold tracking-wide uppercase shadow-md shadow-teal-600/20 active:scale-95 transition-all cursor-pointer"
-                >
-                  Join a Queue →
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/business')}
-                  className="px-6 py-3.5 rounded-full bg-white hover:bg-zinc-50 border border-zinc-200/90 text-zinc-800 text-xs font-bold tracking-wide uppercase shadow-xs active:scale-95 transition-all cursor-pointer"
-                >
-                  Business Portal
-                </button>
-              </div>
-
-              {/* Accurate Value Props */}
-              <div className="pt-6 border-t border-zinc-200/80 grid grid-cols-3 gap-2 sm:gap-8 sm:flex sm:items-center sm:justify-start text-left">
-                <div>
-                  <p className="text-sm sm:text-xl font-black text-zinc-950">Real-Time</p>
-                  <p className="text-[9px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">WebSocket Sync</p>
-                </div>
-                <div className="hidden sm:block w-px h-8 bg-zinc-200" />
-                <div>
-                  <p className="text-sm sm:text-xl font-black text-zinc-950">Virtual</p>
-                  <p className="text-[9px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Queue Position</p>
-                </div>
-                <div className="hidden sm:block w-px h-8 bg-zinc-200" />
-                <div>
-                  <p className="text-sm sm:text-xl font-black text-teal-600">Automated</p>
-                  <p className="text-[9px] sm:text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Token Alerts</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Clean Interactive Mockup */}
-            <div className="lg:col-span-5 flex justify-center">
-              <motion.div
-                id="tour-live-pass-card"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full max-w-sm bg-white rounded-3xl p-4.5 sm:p-6 border border-zinc-200/80 shadow-xl shadow-zinc-950/5 space-y-4 sm:space-y-5 text-left"
-              >
-                {/* Live Pass Header */}
-                <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-100">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse" />
-                    <span className="text-xs font-bold text-zinc-900 tracking-wide">Live Queue Pass</span>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200/70">
-                    Active
-                  </span>
-                </div>
-
-                {/* Venue Info */}
-                <div>
-                  <p className="text-xs font-medium text-zinc-500">Venue</p>
-                  <h3 className="text-base font-bold text-zinc-950">Metropolitan Health Clinic</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">Counter 02 • General Physician</p>
-                </div>
-
-                {/* Token Display */}
-                <div className="bg-zinc-50 rounded-2xl p-4 sm:p-5 border border-zinc-100 text-center space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Your Token Number</p>
-                  <p className="text-4xl sm:text-5xl font-black tracking-tight text-teal-600">#24</p>
-                  <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-zinc-600 pt-1">
-                    <span>Now Serving:</span>
-                    <span className="text-zinc-950 font-black">#22</span>
-                  </div>
-                </div>
-
-                {/* Status Grid */}
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="bg-teal-50/50 rounded-xl p-3 border border-teal-100">
-                    <p className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">Ahead Of You</p>
-                    <p className="text-lg font-black text-teal-950 mt-0.5">2 People</p>
-                  </div>
-                  <div className="bg-zinc-50 rounded-xl p-3 border border-zinc-100">
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Estimated Wait</p>
-                    <p className="text-lg font-black text-zinc-900 mt-0.5">~4 Mins</p>
-                  </div>
-                </div>
-
-                {/* Bottom Notification Callout */}
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-teal-600/5 border border-teal-500/20 text-xs text-teal-900 font-medium">
-                  <svg className="w-4 h-4 text-teal-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  <span>We'll notify you on your phone when your turn is next.</span>
-                </div>
-              </motion.div>
-            </div>
-
-          </div>
-        </div>
+      {/* Full-screen statement; navigation stays in the header. */}
+      <section className="landing-hero" aria-labelledby="landing-headline">
+        <h1 id="landing-headline">
+          <span id="tour-welcome-hero" className="landing-headline-line"><span>Wait from anywhere.</span></span>
+          <span className="landing-headline-line"><span>Not in line.</span></span>
+        </h1>
       </section>
 
-      {/* ── How It Works ── */}
       <section id="how-it-works" className="py-20 bg-white border-y border-zinc-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto space-y-3 mb-14">
@@ -371,7 +256,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {STEPS.map((s) => (
-              <div key={s.step} className="bg-zinc-50 rounded-2xl p-7 border border-zinc-200/70 space-y-3 text-left hover:border-zinc-300 transition-colors">
+              <div key={s.step} className="landing-step bg-zinc-50 rounded-2xl p-7 border border-zinc-200/70 space-y-3 text-left hover:border-zinc-300 transition-colors">
                 <span className="text-xs font-black text-teal-600 bg-teal-50 px-2.5 py-1 rounded-md border border-teal-200/60">
                   {s.step}
                 </span>
@@ -405,9 +290,9 @@ export default function LandingPage() {
             {VENUES.map((v) => (
               <div
                 key={v.title}
-                className="bg-white rounded-2xl border border-zinc-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-zinc-300 transition-all text-left flex flex-col"
+                className="landing-venue bg-white rounded-2xl border border-zinc-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-zinc-300 transition-all text-left flex flex-col"
               >
-                <div className="h-44 overflow-hidden bg-zinc-100 relative">
+                <div className="landing-venue-image h-44 overflow-hidden bg-zinc-100 relative">
                   <img
                     src={v.image}
                     alt={v.title}
@@ -459,7 +344,7 @@ export default function LandingPage() {
             {FEATURES.map((f) => (
               <div
                 key={f.title}
-                className="bg-zinc-50 rounded-2xl p-6 border border-zinc-200/70 space-y-3 text-left hover:border-zinc-300 transition-all"
+                className="landing-feature bg-zinc-50 rounded-2xl p-6 border border-zinc-200/70 space-y-3 text-left hover:border-zinc-300 transition-all"
               >
                 <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200/80 flex items-center justify-center text-lg shadow-xs">
                   {f.icon}

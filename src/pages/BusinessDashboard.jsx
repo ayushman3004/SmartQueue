@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { hasActiveSubscription } from '../utils/subscription'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { BusinessDashboardSkeleton } from '../components/Skeleton'
@@ -189,11 +190,7 @@ export default function BusinessDashboard() {
 
       // Safe route protection: verify email and subscription before granting dashboard access
       const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
-      const isSubscribed = Boolean(
-        user?.subscription?.status === 'ACTIVE' &&
-        user?.subscription?.plan &&
-        user?.subscription?.plan !== 'NONE'
-      )
+      const isSubscribed = hasActiveSubscription(user?.subscription)
       if (user?.role !== 'admin' && !isEmailVerified) {
         navigate(`/business/onboarding`)
         return
@@ -608,6 +605,7 @@ export default function BusinessDashboard() {
               <button
                 key={item.id}
                 type="button"
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => handleTabChange(item.id)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${isActive
                     ? 'bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB] shadow-xs'
@@ -615,7 +613,7 @@ export default function BusinessDashboard() {
                   }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className={`w-7 h-7 rounded-xl icon-3d ${isActive ? 'icon-3d-dark scale-105' : getOps3DTheme(item.id)} shrink-0`}>
+                  <span className={`w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d ${isActive ? 'icon-3d-dark scale-105' : getOps3DTheme(item.id)} shrink-0`}>
                     <IconComponent className="w-3.5 h-3.5" />
                   </span>
                   <span className="truncate">{item.label}</span>
@@ -658,7 +656,7 @@ export default function BusinessDashboard() {
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-emerald shrink-0">
+              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-emerald shrink-0">
                 <Building2 className="w-3.5 h-3.5" />
               </span>
               <span className="truncate">All My Venues</span>
@@ -676,7 +674,7 @@ export default function BusinessDashboard() {
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-teal shrink-0">
+              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-teal shrink-0">
                 <Ticket className="w-3.5 h-3.5" />
               </span>
               <span className="truncate">Customer Live Queue</span>
@@ -694,7 +692,7 @@ export default function BusinessDashboard() {
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-blue shrink-0">
+              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-blue shrink-0">
                 <Store className="w-3.5 h-3.5" />
               </span>
               <span className="truncate">Customer Portal</span>
@@ -712,7 +710,7 @@ export default function BusinessDashboard() {
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-teal shrink-0">
+              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-teal shrink-0">
                 <CreditCard className="w-3.5 h-3.5" />
               </span>
               <span className="truncate">Payment Settings</span>
@@ -732,7 +730,7 @@ export default function BusinessDashboard() {
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-[#114227] hover:bg-[#EAF7EE]/80 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 rounded-xl icon-3d icon-3d-amber shrink-0">
+              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-amber shrink-0">
                 <Crown className="w-3.5 h-3.5" />
               </span>
               <span className="truncate">My Subscription</span>
@@ -769,7 +767,7 @@ export default function BusinessDashboard() {
           onClick={() => navigate('/support')}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
         >
-          <span className="w-7 h-7 rounded-xl icon-3d icon-3d-zinc shrink-0">
+          <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-zinc shrink-0">
             <HelpCircle className="w-3.5 h-3.5" />
           </span>
           <span>Help & Support</span>
@@ -783,7 +781,7 @@ export default function BusinessDashboard() {
           }}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
         >
-          <span className="w-7 h-7 rounded-xl icon-3d icon-3d-rose shrink-0">
+          <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-rose shrink-0">
             <LogOut className="w-3.5 h-3.5" />
           </span>
           <span>Sign Out</span>
@@ -793,7 +791,7 @@ export default function BusinessDashboard() {
   )
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
+    <div className="business-page min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP STICKY HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-[#f7fcf9]/90 backdrop-blur-md border-b border-[#BDE8CB]/70 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
@@ -1034,7 +1032,7 @@ export default function BusinessDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Active Serving Card */}
               <div className="lg:col-span-12">
-                <div className="bg-white border border-teal-200 rounded-3xl p-6 md:p-8 shadow-sm bg-gradient-to-r from-teal-50/60 to-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="business-surface bg-white border border-teal-200 rounded-3xl p-6 md:p-8 shadow-sm bg-gradient-to-r from-teal-50/60 to-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                   <div className="flex items-center gap-5">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black border ${serving ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-slate-100 border-zinc-200 text-slate-400'
                       }`}>
@@ -1149,7 +1147,7 @@ export default function BusinessDashboard() {
               </div>
 
               {/* Queue Table */}
-              <div className="lg:col-span-12 bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
+              <div className="business-surface lg:col-span-12 bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-black text-zinc-950 uppercase tracking-wider">Queue Roster</h3>
@@ -1290,7 +1288,7 @@ export default function BusinessDashboard() {
 
           {/* TAB 2: APPOINTMENTS */}
           {activeTab === 'appointments' && (
-            <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
+            <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
                 <div>
                   <h3 className="text-base font-black text-zinc-950">Appointments & Time Slots</h3>
@@ -1417,7 +1415,7 @@ export default function BusinessDashboard() {
           {/* TAB: SERVICES CATALOG */}
           {activeTab === 'services' && (
             <div className="space-y-6 text-left">
-              <div className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+              <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
                   <div>
                     <h3 className="text-xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
@@ -1635,7 +1633,7 @@ export default function BusinessDashboard() {
           {/* TAB: STAFF ROSTER (BARBERS OR DOCTORS) */}
           {activeTab === 'staff' && (
             <div className="space-y-6 text-left">
-              <div className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+              <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
                   <div>
                     <h3 className="text-xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
@@ -1823,7 +1821,7 @@ export default function BusinessDashboard() {
           {/* TAB 3: PROFILE & SERVICES SETUP */}
           {activeTab === 'profile' && (
             <form onSubmit={handleSaveProfile} className="space-y-8">
-              <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6">
+              <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6">
                 <h3 className="text-lg font-black text-zinc-950">Venue Details & Profile Setup</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1918,7 +1916,7 @@ export default function BusinessDashboard() {
               </div>
 
               {/* Service & Price Management */}
-              <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6">
+              <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6">
                 <h3 className="text-lg font-black text-zinc-950">Add / Edit Services & Prices</h3>
 
                 {/* List of services */}
@@ -1985,7 +1983,7 @@ export default function BusinessDashboard() {
               </div>
 
               {/* Customer Payment & Counter Settlement Configuration */}
-              <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6 text-left">
+              <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6 text-left">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
                   <div>
                     <h3 className="text-lg font-black text-zinc-950 flex items-center gap-2">
@@ -2046,7 +2044,7 @@ export default function BusinessDashboard() {
             <div className="space-y-8 text-left">
               {/* Executive Overview Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="bg-white border border-teal-200 p-5 rounded-3xl shadow-sm bg-gradient-to-br from-teal-50/40 to-white">
+                <div className="business-surface bg-white border border-teal-200 p-5 rounded-3xl shadow-sm bg-gradient-to-br from-teal-50/40 to-white">
                   <p className="text-xs font-bold uppercase text-teal-800 tracking-wider">Total Revenue</p>
                   <p className="text-3xl font-black text-teal-700 mt-2">₹{analytics?.metrics?.totalRevenue ?? 0}</p>
                   <p className="text-[10px] text-zinc-500 mt-1 font-medium">
@@ -2054,19 +2052,19 @@ export default function BusinessDashboard() {
                   </p>
                 </div>
 
-                <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
+                <div className="business-surface bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
                   <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Unique Customers</p>
                   <p className="text-3xl font-black text-zinc-950 mt-2">{analytics?.metrics?.customerCount ?? 0}</p>
                   <p className="text-[10px] text-slate-400 mt-1">Patrons booked & served</p>
                 </div>
 
-                <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
+                <div className="business-surface bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
                   <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Active Bookings</p>
                   <p className="text-3xl font-black text-teal-800 mt-2">{analytics?.metrics?.activeBookings ?? 0}</p>
                   <p className="text-[10px] text-teal-700 font-semibold mt-1">Confirmed & in-service</p>
                 </div>
 
-                <div className="bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
+                <div className="business-surface bg-white border border-zinc-200 p-5 rounded-3xl shadow-sm">
                   <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Completed Visits</p>
                   <p className="text-3xl font-black text-indigo-700 mt-2">{analytics?.metrics?.completedBookings ?? 0}</p>
                   <p className="text-[10px] text-slate-400 mt-1">Finished appointments</p>
@@ -2083,7 +2081,7 @@ export default function BusinessDashboard() {
               </div>
 
               {/* PER-DAY CUSTOMER TRAFFIC DATA */}
-              <div className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+              <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-5">
                   <div>
                     <h3 className="text-lg font-black text-zinc-950 flex items-center gap-2">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { hasActiveSubscription } from '../utils/subscription'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
@@ -128,11 +129,7 @@ export default function BusinessOnboardingPage() {
 
   // Email verification check & subscription check
   const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
-  const isSubscribed = Boolean(
-    user?.subscription?.status === 'ACTIVE' &&
-    user?.subscription?.plan &&
-    user?.subscription?.plan !== 'NONE'
-  )
+  const isSubscribed = hasActiveSubscription(user?.subscription)
 
   // Once email is verified, if not subscribed, direct to /subscription page
   useEffect(() => {
@@ -821,7 +818,7 @@ export default function BusinessOnboardingPage() {
   const handleLaunch = async () => {
     if (!business?._id) return
 
-    if (user?.subscription?.status !== 'ACTIVE' && business?.subscription?.status !== 'ACTIVE') {
+    if (!hasActiveSubscription(user?.subscription) && !hasActiveSubscription(business?.subscription)) {
       toast.error('An active ServeQ subscription (Basic ₹999 or Pro ₹1,999) is required to launch your business.', {
         duration: 5000,
       })
@@ -856,12 +853,12 @@ export default function BusinessOnboardingPage() {
   // Block onboarding if email is unverified
   if (!isEmailVerified) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-4 selection:bg-emerald-500/20 selection:text-emerald-900">
+      <div className="business-page fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-4 selection:bg-emerald-500/20 selection:text-emerald-900">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-zinc-200 text-center space-y-6 text-zinc-900"
+          className="business-surface w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-zinc-200 text-center space-y-6 text-zinc-900"
         >
           {/* Header Icon */}
           <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mx-auto shadow-sm">
@@ -992,7 +989,7 @@ export default function BusinessOnboardingPage() {
   // Block onboarding until subscription is active on /subscription
   if (!isSubscribed) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-4 selection:bg-emerald-500/20 selection:text-emerald-900">
+      <div className="business-page fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-4 selection:bg-emerald-500/20 selection:text-emerald-900">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1046,12 +1043,12 @@ export default function BusinessOnboardingPage() {
   const completedSet = new Set(business?.onboarding?.completedSteps || [])
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-2 sm:p-4 md:p-6 overflow-hidden selection:bg-teal-500/20 selection:text-teal-900">
+    <div className="business-page fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-2 sm:p-4 md:p-6 overflow-hidden selection:bg-teal-500/20 selection:text-teal-900">
       <motion.div
         initial={{ opacity: 0, scale: 0.97, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full h-full max-w-6xl max-h-[96vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-zinc-200/90 relative text-left"
+        className="business-surface w-full h-full max-w-6xl max-h-[96vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-zinc-200/90 relative text-left"
       >
         {/* Modal Top Header */}
         <div className="flex-shrink-0 bg-white border-b border-zinc-200/80 px-6 py-4 grid grid-cols-3 items-center">
@@ -2321,7 +2318,7 @@ export default function BusinessOnboardingPage() {
               </div>
 
               {/* 7. ServeQ Business Subscription Plan Selection */}
-              <div className="p-5 sm:p-6 rounded-3xl border border-zinc-200 bg-white shadow-xs space-y-4">
+              <div className="business-surface p-5 sm:p-6 rounded-3xl border border-zinc-200 bg-white shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">

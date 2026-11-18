@@ -12,6 +12,9 @@ import User from "../src/modules/auth/auth.model.js";
 import Business from "../src/modules/business/business.model.js";
 import Queue from "../src/queue/queue.model.js";
 import mongoose from "mongoose";
+import { getBusinessDate } from "../src/utils/bookingDates.js";
+import SubscriptionOrder from "../src/modules/subscription/subscription-order.model.js";
+import { getRazorpayClient } from "../src/modules/payment/razorpay.service.js";
 
 test("Subscription Flow - Plan Specifications & Pricing", async (t) => {
   await t.test("Basic Plan is priced at ₹999 with 30-day duration", () => {
@@ -33,120 +36,80 @@ test("Subscription Flow - Plan Specifications & Pricing", async (t) => {
   });
 });
 
-test("Subscription Flow - Order Creation & Role Security", async (t) => {
-  const origFindById = User.findById;
-
-  try {
-    await t.test("Rejects subscription order for customer role", async () => {
-      User.findById = async () => ({
-        _id: "user_customer_1",
-        role: "customer",
-      });
-
-      await assert.rejects(
-        () => createSubscriptionOrder("user_customer_1", "BASIC"),
-        /business owners/
-      );
-    });
-
-    await t.test("Rejects invalid plan names", async () => {
-      User.findById = async () => ({
-        _id: "user_owner_1",
-        role: "owner",
-        email: "owner@test.com",
-        name: "Owner Test",
-      });
-
-      await assert.rejects(
-        () => createSubscriptionOrder("user_owner_1", "ULTRA_TIER"),
-        /Invalid plan selected/
-      );
-    });
-
-    await t.test("Creates mock/verified order for Basic Plan (₹999)", async () => {
-      User.findById = async () => ({
-        _id: "user_owner_1",
-        role: "owner",
-        email: "owner@test.com",
-        name: "Owner Test",
-      });
-
-      const res = await createSubscriptionOrder("user_owner_1", "BASIC");
-      assert.ok(res.order);
-      assert.equal(res.order.amount, 99900);
-      assert.equal(res.plan.id, "BASIC");
-      assert.equal(res.plan.price, 999);
-    });
-
-    await t.test("Creates mock/verified order for Pro Plan (₹1,999)", async () => {
-      User.findById = async () => ({
-        _id: "user_owner_1",
-        role: "owner",
-        email: "owner@test.com",
-        name: "Owner Test",
-      });
-
-      const res = await createSubscriptionOrder("user_owner_1", "PRO");
-      assert.ok(res.order);
-      assert.equal(res.order.amount, 199900);
-      assert.equal(res.plan.id, "PRO");
-      assert.equal(res.plan.price, 1999);
-    });
-  } finally {
-    User.findById = origFindById;
-  }
-});
-
-test("Subscription Flow - Payment Verification & Plan Activation", async (t) => {
-  const origUserFindById = User.findById;
-  const origBusinessUpdateMany = Business.updateMany;
-
-  try {
-    await t.test("Successfully verifies mock subscription payment and updates user & businesses", async () => {
-      let savedUser = null;
-      let updatedBusinessesFilter = null;
-      let updatedBusinessesSet = null;
-
-      const mockOwner = {
-        _id: "owner_12345",
-        name: "Salon Owner",
-        email: "salon@serveq.tech",
-        role: "owner",
-        subscription: { plan: "NONE", status: "INACTIVE" },
-        save: async function () {
-          savedUser = this;
-        },
-      };
-
-      User.findById = async () => mockOwner;
-      Business.updateMany = async (filter, update) => {
-        updatedBusinessesFilter = filter;
-        updatedBusinessesSet = update;
-        return { modifiedCount: 2 };
-      };
-
-      const result = await verifySubscriptionPayment("owner_12345", {
-        plan: "PRO",
-        razorpayOrderId: "order_mock_sub_9988",
-        razorpayPaymentId: "pay_mock_sub_7766",
-        razorpaySignature: "mock_signature_verified",
-      });
-
-      assert.ok(result);
-      assert.equal(result.subscription.plan, "PRO");
-      assert.equal(result.subscription.status, "ACTIVE");
-      assert.equal(result.subscription.amount, 1999);
-      assert.ok(result.subscription.activatedAt);
-      assert.ok(result.subscription.expiresAt);
-
-      assert.equal(savedUser.subscription.plan, "PRO");
-      assert.equal(updatedBusinessesSet.$set["subscription.plan"], "PRO");
-      assert.equal(updatedBusinessesSet.$set["subscription.status"], "ACTIVE");
-    });
-  } finally {
-    User.findById = origUserFindById;
-    Business.updateMany = origBusinessUpdateMany;
-  }
+test("Subscription checkout creates real orders, binds payments, and retries without extending twice", async (t) => {
+  const savedEnv = { NODE_ENV: process.env.NODE_ENV, RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET };
+  process.env.NODE_ENV = "production";
+  process.env.RAZORPAY_KEY_ID = "rzp_test_subscription_unit";
+  process.env.RAZORPAY_KEY_SECRET = "subscription-unit-secret";
+  const client = getRazorpayClient();
+  const originals = { user: User.findById, update: Business.updateMany, create: SubscriptionOrder.create, find: SubscriptionOrder.findOne, activate: SubscriptionOrder.findOneAndUpdate, order: client.orders.create, payment: client.payments.fetch };
+  t.after(() => {
+    User.findById = originals.user; Business.updateMany = originals.update;
+    SubscriptionOrder.create = originals.create; SubscriptionOrder.findOne = originals.find; SubscriptionOrder.findOneAndUpdate = originals.activate;
+    client.orders.create = originals.order; client.payments.fetch = originals.payment;
+    for (const [key, value] of Object.entries(savedEnv)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+  });
+  const user = { _id: "owner_test", role: "owner", subscription: { plan: "BASIC", status: "ACTIVE", expiresAt: new Date(Date.now() + 86400000) }, async save() {} };
+  let purchase;
+  let cascade;
+  let paymentStatus = "captured";
+  User.findById = async () => user;
+  Business.updateMany = async (filter, update) => { cascade = update.$set; };
+  client.orders.create = async (options) => ({ id: "order_sub_real", ...options });
+  client.payments.fetch = async () => ({ id: "pay_sub_real", order_id: "order_sub_real", amount: 99900, currency: "INR", status: paymentStatus });
+  SubscriptionOrder.create = async (data) => { purchase = { _id: "purchase_1", ...data }; return purchase; };
+  SubscriptionOrder.findOne = async (filter) => filter.owner === purchase.owner ? purchase : null;
+  SubscriptionOrder.findOneAndUpdate = async (_filter, update) => Object.assign(purchase, update.$set);
+  const sign = (order, payment) => crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(`${order}|${payment}`).digest("hex");
+  const payload = { plan: "BASIC", razorpayOrderId: "order_sub_real", razorpayPaymentId: "pay_sub_real", razorpaySignature: sign("order_sub_real", "pay_sub_real") };
+  await t.test("creates a persisted order using the catalog amount", async () => {
+    const result = await createSubscriptionOrder(user._id, "basic");
+    assert.equal(result.order.id, "order_sub_real"); assert.equal(result.order.amount, 99900); assert.equal(purchase.owner, user._id);
+  });
+  await t.test("rejects mock signatures and a plan that does not match the purchase", async () => {
+    await assert.rejects(() => verifySubscriptionPayment(user._id, { ...payload, razorpaySignature: "mock_signature_verified" }), /signature/);
+    await assert.rejects(() => verifySubscriptionPayment(user._id, { ...payload, plan: "PRO" }), /does not match/);
+  });
+  await t.test("rejects another owner's order", async () => {
+    const owner = purchase.owner;
+    purchase.owner = "another_owner";
+    await assert.rejects(() => verifySubscriptionPayment(user._id, payload), /does not match/);
+    purchase.owner = owner;
+  });
+  await t.test("does not activate an uncaptured payment", async () => {
+    paymentStatus = "authorized";
+    await assert.rejects(() => verifySubscriptionPayment(user._id, payload), /not yet confirmed/);
+    assert.equal(purchase.activatedAt, undefined);
+    paymentStatus = "captured";
+  });
+  await t.test("renewal preserves remaining days and duplicate verification is idempotent", async () => {
+    const previousExpiry = new Date(user.subscription.expiresAt).getTime();
+    const result = await verifySubscriptionPayment(user._id, payload);
+    assert.equal(new Date(result.subscription.expiresAt).getTime(), previousExpiry + 30 * 86400000);
+    const expiry = new Date(result.subscription.expiresAt).getTime();
+    await verifySubscriptionPayment(user._id, payload);
+    assert.equal(new Date(user.subscription.expiresAt).getTime(), expiry);
+    assert.equal(cascade["subscription.plan"], "BASIC");
+  });
+  await t.test("activation can retry a failed business sync without extending again", async () => {
+    const expiry = new Date(user.subscription.expiresAt).getTime();
+    Business.updateMany = async () => { throw new Error("temporary database error"); };
+    await assert.rejects(() => verifySubscriptionPayment(user._id, payload), /database error/);
+    Business.updateMany = async (_filter, update) => { cascade = update.$set; };
+    await verifySubscriptionPayment(user._id, payload);
+    assert.equal(new Date(user.subscription.expiresAt).getTime(), expiry);
+  });
+  await t.test("payment provider failure never returns a mock order", async () => {
+    client.orders.create = async () => { throw new Error("provider down"); };
+    await assert.rejects(() => createSubscriptionOrder(user._id, "PRO"), /Unable to create/);
+  });
+  await t.test("rejects customer access and checkout without configured credentials", async () => {
+    user.role = "customer";
+    await assert.rejects(() => createSubscriptionOrder(user._id, "BASIC"), /Only registered/);
+    user.role = "owner";
+    delete process.env.RAZORPAY_KEY_SECRET;
+    await assert.rejects(() => createSubscriptionOrder(user._id, "BASIC"), /unavailable/);
+  });
 });
 
 test("Subscription Flow - Get Current Subscription", async (t) => {
@@ -232,7 +195,7 @@ test("Subscription Flow - Venue Subscription Enforcement & Pay-at-Counter Safegu
       Business.findById = async () => unsubscribedBiz;
 
       await assert.rejects(
-        () => getAvailableSlots(testBizId, new Date()),
+        () => getAvailableSlots(testBizId, getBusinessDate(new Date())),
         (err) => {
           assert.equal(err.statusCode, 403);
           assert.match(err.message, /subscription is inactive/i);

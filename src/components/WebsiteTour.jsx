@@ -47,7 +47,7 @@ export default function WebsiteTour({ manualTrigger, onTourClose }) {
         badge: 'Core Feature',
         description:
           'Monitor your live token number, see who is currently being served at the counter, and watch your estimated turnaround time sync in real-time via WebSockets.',
-        selector: '#tour-live-pass-card',
+        selector: '#features',
         fallbackPlacement: 'bottom',
       },
       {
@@ -55,7 +55,7 @@ export default function WebsiteTour({ manualTrigger, onTourClose }) {
         title: 'Find Venues & Join Queues',
         badge: 'Key Action',
         description:
-          'Tap "Join a Queue" to search nearby salons, medical clinics, and wellness lounges. Reserve your virtual place in line before stepping out of your home.',
+          'Tap "Get Started" to search nearby salons, medical clinics, and wellness lounges. Reserve your virtual place in line before stepping out of your home.',
         selector: '#tour-join-queue-btn',
         fallbackPlacement: 'bottom',
       },

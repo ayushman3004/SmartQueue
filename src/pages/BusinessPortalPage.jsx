@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { hasActiveSubscription } from '../utils/subscription'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link, useSearchParams, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -95,11 +96,7 @@ export default function BusinessPortalPage() {
   const isCustomer = user && user.role === 'customer'
 
   const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
-  const isSubscribed = Boolean(
-    user?.subscription?.status === 'ACTIVE' &&
-    user?.subscription?.plan &&
-    user?.subscription?.plan !== 'NONE'
-  )
+  const isSubscribed = hasActiveSubscription(user?.subscription)
 
   // Guided Gate: Enforce Email Verification & Active Subscription
   useEffect(() => {
@@ -178,11 +175,7 @@ export default function BusinessPortalPage() {
         })
 
         const verified = Boolean(authUser.isEmailVerified || authUser.authProvider === 'google')
-        const subscribed = Boolean(
-          authUser.subscription?.status === 'ACTIVE' &&
-          authUser.subscription?.plan &&
-          authUser.subscription?.plan !== 'NONE'
-        )
+        const subscribed = hasActiveSubscription(authUser.subscription)
 
         if (!verified) {
           navigate('/business/onboarding')
@@ -254,7 +247,7 @@ export default function BusinessPortalPage() {
   // RENDER: Unauthenticated Hub Owner Portal (serveq.tech/business)
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 relative overflow-x-hidden flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
+    <div className="business-page min-h-screen app-background-glow text-zinc-900 relative overflow-x-hidden flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
       {/* Background Soft Glows */}
       <div className="fixed top-0 left-1/4 w-[450px] h-[450px] bg-emerald-400/12 rounded-full blur-[140px] pointer-events-none -z-10" />
       <div className="fixed bottom-0 right-1/4 w-[450px] h-[450px] bg-teal-400/12 rounded-full blur-[140px] pointer-events-none -z-10" />
