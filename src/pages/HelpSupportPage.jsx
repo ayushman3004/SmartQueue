@@ -127,7 +127,7 @@ export default function HelpSupportPage() {
   }
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 pb-20 font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative overflow-hidden">
+    <div className="customer-tab min-h-screen app-background-glow text-zinc-900 pb-20 font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative overflow-hidden">
       {/* ── TOP NAV BREADCRUMB BAR ── */}
       <div className="bg-white/85 backdrop-blur-md border-b border-zinc-200/80 sticky top-0 z-30 px-4 sm:px-6 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
@@ -217,7 +217,7 @@ export default function HelpSupportPage() {
         </AnimatePresence>
 
         {/* ── CARD CONTAINER (Matching Screenshot) ── */}
-        <div className="bg-white rounded-3xl border border-zinc-200/80 shadow-xl shadow-zinc-950/4 p-6 sm:p-8 md:p-10">
+        <div className="customer-surface bg-white rounded-3xl border border-zinc-200/80 shadow-xl shadow-zinc-950/4 p-6 sm:p-8 md:p-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
             
             {/* LEFT COLUMN: FORM */}

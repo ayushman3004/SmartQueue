@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   MapPin,
   Search,
@@ -12,6 +12,9 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { autocompleteLocations, geocodeAddress, reverseGeocodeCoords } from '../api/maps.api'
+import { useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import './LocationPickerModal.css'
 
 const QUICK_HUBS = [
   {
@@ -59,6 +62,12 @@ export default function LocationPickerModal({
   currentLocation,
   canClose = true,
 }) {
+  const { user } = useAuth()
+  const { search } = useLocation()
+  const reduceMotion = useReducedMotion()
+  const requestedCategory = new URLSearchParams(search).get('category')
+  const savedCategory = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
+  const serviceCategory = ['clinic', 'salon'].includes(requestedCategory) ? requestedCategory : savedCategory
   const [searchInput, setSearchInput] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [searching, setSearching] = useState(false)
@@ -228,33 +237,33 @@ export default function LocationPickerModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <div data-service={serviceCategory} className="location-picker fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={canClose ? onClose : undefined}
-          className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+          className="location-picker-backdrop fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
         />
 
         {/* Modal Dialog Card */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 12 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-100 overflow-hidden z-10"
+          initial={{ opacity: 0, transform: reduceMotion ? 'none' : 'translateY(12px) scale(0.96)' }}
+          animate={{ opacity: 1, transform: 'translateY(0) scale(1)' }}
+          exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'translateY(12px) scale(0.96)' }}
+          transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+          aria-labelledby="location-picker-title" role="dialog" aria-modal="true" className="location-picker-dialog relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-100 overflow-hidden z-10"
         >
           {/* Header */}
-          <div className="px-6 pt-6 pb-4 border-b border-zinc-100 flex items-center justify-between">
+          <div className="location-picker-heading px-6 pt-6 pb-4 border-b border-zinc-100 flex items-center justify-between">
             <div className="space-y-0.5">
-              <h2 className="text-lg font-bold text-zinc-950 flex items-center gap-2">
+              <h2 id="location-picker-title" className="text-lg font-bold text-zinc-950 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-[#049645]" />
-                <span>Select Your Location</span>
+                <span>Select your location</span>
               </h2>
               <p className="text-xs text-zinc-500">
-                Discover clinics and salons serving your exact area
+                Find {serviceCategory === 'salon' ? 'salons' : serviceCategory === 'clinic' ? 'clinics' : 'clinics and salons'} in your neighborhood.
               </p>
             </div>
             {canClose && (
@@ -269,16 +278,16 @@ export default function LocationPickerModal({
             )}
           </div>
 
-          <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+          <div className="location-picker-body p-6 space-y-4 max-h-[75vh] overflow-y-auto">
             {/* Primary Action: Use Current Location (GPS) */}
             <button
               type="button"
               onClick={handleUseCurrentLocation}
               disabled={detectingGps}
-              className="w-full flex items-center justify-between p-3.5 rounded-2xl border-2 border-emerald-500/20 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-950 hover:border-emerald-500/40 transition-all cursor-pointer group shadow-2xs"
+              className="location-picker-gps w-full flex items-center justify-between p-3.5 rounded-2xl border-2 border-emerald-500/20 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-950 hover:border-emerald-500/40 transition-all cursor-pointer group shadow-2xs"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#049645] text-white flex items-center justify-center shadow-xs">
+                <div className="location-picker-gps-icon w-10 h-10 rounded-xl bg-[#049645] text-white flex items-center justify-center shadow-xs">
                   {detectingGps ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
@@ -309,7 +318,7 @@ export default function LocationPickerModal({
             )}
 
             {/* Divider */}
-            <div className="relative flex items-center justify-center">
+            <div className="location-picker-divider relative flex items-center justify-center">
               <div className="w-full border-t border-zinc-200" />
               <span className="absolute bg-white px-3 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
                 Or search manually
@@ -320,6 +329,7 @@ export default function LocationPickerModal({
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input
+                aria-label="Search for your location"
                 ref={searchInputRef}
                 type="text"
                 value={searchInput}
@@ -343,7 +353,7 @@ export default function LocationPickerModal({
 
             {/* Autocomplete Suggestions List */}
             {suggestions.length > 0 && (
-              <div className="border border-zinc-200 rounded-2xl divide-y divide-zinc-100 overflow-hidden bg-white shadow-xs max-h-56 overflow-y-auto">
+              <div className="location-picker-results border border-zinc-200 rounded-2xl divide-y divide-zinc-100 overflow-hidden bg-white shadow-xs max-h-56 overflow-y-auto">
                 {suggestions.map((item, idx) => (
                   <button
                     key={item.placeId || idx}
@@ -368,9 +378,9 @@ export default function LocationPickerModal({
             {/* Popular Hubs */}
             <div className="space-y-2 pt-2">
               <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
-                Popular Service Hubs
+                Popular neighborhoods
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="location-picker-hubs grid grid-cols-2 gap-2">
                 {QUICK_HUBS.map((hub) => (
                   <button
                     key={hub.name}
@@ -390,7 +400,7 @@ export default function LocationPickerModal({
 
             {/* Current Selected Location Indicator */}
             {currentLocation && (
-              <div className="pt-2 text-center border-t border-zinc-100">
+              <div className="location-picker-current pt-2 text-center border-t border-zinc-100">
                 <span className="text-xs text-zinc-400">
                   Currently viewing: <strong className="text-zinc-700 font-semibold">{currentLocation.name || currentLocation.formattedAddress}</strong>
                 </span>

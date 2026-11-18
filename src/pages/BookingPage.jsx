@@ -432,7 +432,7 @@ export default function BookingPage() {
   const finalPrice = Math.max(0, totalServicePrice - discountAmount)
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
+    <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP HEADER BAR (UNIFIED WITH OTHER PAGES) ── */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Hamburger + Brand Logo */}
@@ -466,7 +466,7 @@ export default function BookingPage() {
           <div className="relative flex-1">
             <input
               type="text"
-              placeholder="Search clinic or salon for appointment..."
+              placeholder="Search venues for an appointment..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-full bg-zinc-100/90 border border-zinc-200/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all"
@@ -630,7 +630,7 @@ export default function BookingPage() {
                 onSelectHub={updateLocation}
               />
             ) : (
-              <div className="p-12 text-center text-zinc-500 border border-dashed border-zinc-300 rounded-3xl bg-white space-y-3">
+              <div className="customer-surface p-12 text-center text-zinc-500 border border-dashed border-zinc-300 rounded-3xl bg-white space-y-3">
                 <Building className="w-10 h-10 text-zinc-400 mx-auto" />
                 <p className="font-bold text-zinc-800 text-base">No venue selected</p>
                 <p className="text-xs text-zinc-500">Please choose a clinic or salon to book your appointment.</p>
@@ -647,7 +647,7 @@ export default function BookingPage() {
               {/* ── LEFT COLUMN: VENUE INFO, MULTI-SERVICE SELECTION & SPECIALIST ── */}
               <div className="lg:col-span-5 space-y-6">
                 {/* Venue Overview Card */}
-                <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                <div className="customer-surface bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
                   <div className="flex items-start gap-4">
                     <img
                       src={
@@ -694,7 +694,7 @@ export default function BookingPage() {
                 </div>
 
                 {/* Multi-Service Selection */}
-                <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                <div className="customer-surface bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
@@ -754,7 +754,7 @@ export default function BookingPage() {
 
                 {/* Doctor / Specialist Selector */}
                 {business?.bookingSettings?.allowStaffSelection !== false && (
-                  <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                  <div className="customer-surface bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
                         Choose {staffRoleLabel}
@@ -853,7 +853,7 @@ export default function BookingPage() {
                 )}
 
                 {/* Coupon Code Section */}
-                <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-3">
+                <div className="customer-surface bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-3">
                   <label className="block text-xs font-bold uppercase text-zinc-400 tracking-wider">
                     Have a promo coupon?
                   </label>
@@ -883,7 +883,7 @@ export default function BookingPage() {
                 </div>
 
                 {/* User's Existing Bookings at This Venue */}
-                <div className="bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
+                <div className="customer-surface bg-white rounded-3xl p-6 border border-zinc-200/80 shadow-xs space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
                     Your Bookings at {business.name}
                   </h3>
@@ -956,7 +956,7 @@ export default function BookingPage() {
 
               {/* ── RIGHT COLUMN: DATE & TIME SLOTS SELECTION ── */}
               <div className="lg:col-span-7 space-y-6">
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-zinc-200/80 shadow-xs space-y-6">
+                <div className="customer-surface bg-white rounded-3xl p-6 sm:p-8 border border-zinc-200/80 shadow-xs space-y-6">
                   {/* Date Selector Header */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 pb-5">
                     <div>

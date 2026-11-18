@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Stethoscope,
   Scissors,
+  Sparkle,
   Ticket,
   Calendar,
   Star,
@@ -32,6 +33,7 @@ import {
 import { calculateDistanceKm, formatDistance } from '../utils/geoUtils'
 import CustomerSidebar from '../components/CustomerSidebar'
 import CustomerServiceChoice from '../components/CustomerServiceChoice'
+import './CustomerDashboardPage.css'
 import NoServiceState from '../components/NoServiceState'
 import { BusinessGridSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
@@ -82,6 +84,9 @@ export default function CustomerDashboardPage() {
   const categoryFilter = searchParams.has('choose') ? 'all'
     : ['clinic', 'salon'].includes(requestedCategory) ? requestedCategory
     : ['clinic', 'salon'].includes(savedCategory) ? savedCategory : 'all'
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [categoryFilter])
   const activeNavTab = categoryFilter === 'clinic' ? 'clinics' : categoryFilter === 'salon' ? 'salons' : 'dashboard'
   const selectCategory = (category) => {
     sessionStorage.setItem(`customer-service:${user?._id || user?.id}`, category)
@@ -702,10 +707,10 @@ export default function CustomerDashboardPage() {
     return (
       <div
         key={biz._id}
-        className="bg-white border border-zinc-200/90 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden hover:shadow-md transition-all flex flex-col justify-between group"
+        className="customer-venue-card bg-white border border-zinc-200/90 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden flex flex-col justify-between group"
       >
         {/* Photo Banner */}
-        <div className="relative h-44 sm:h-48 w-full overflow-hidden bg-zinc-100">
+        <div className="customer-venue-photo relative h-44 sm:h-48 w-full overflow-hidden bg-zinc-100">
           <img
             src={photoUrl}
             alt={biz.name}
@@ -764,7 +769,7 @@ export default function CustomerDashboardPage() {
           </div>
 
           {/* 3-Column Real-Time Live Queue Panel */}
-          <div className="bg-[#F4F8F5] border border-[#E3EDE5] rounded-2xl p-2.5 grid grid-cols-3 text-center divide-x divide-[#E0EBE2]">
+          <div className="customer-queue-stats bg-[#F4F8F5] border border-[#E3EDE5] rounded-2xl p-2.5 grid grid-cols-3 text-center divide-x divide-[#E0EBE2]">
             <div className="px-1">
               <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Now Serving</p>
               <p className="text-sm sm:text-base font-black text-[#114227] mt-0.5">
@@ -947,7 +952,7 @@ export default function CustomerDashboardPage() {
               <button
                 onClick={() => handleJoinQueue(biz)}
                 disabled={!biz.isOpen || joiningBizId === biz._id}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-[#114227] hover:bg-[#0D361F] disabled:bg-zinc-200 disabled:text-zinc-400 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-xs transition-transform active:scale-98"
+                className="customer-join-button flex-1 py-2.5 px-3 rounded-xl bg-[#114227] hover:bg-[#0D361F] disabled:bg-zinc-200 disabled:text-zinc-400 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-xs transition-transform active:scale-98"
               >
                 {joiningBizId === biz._id ? (
                   <>
@@ -989,7 +994,7 @@ export default function CustomerDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
+    <div data-service={categoryFilter} className="customer-dashboard min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Hamburger + Brand Logo */}
@@ -1167,7 +1172,7 @@ export default function CustomerDashboardPage() {
         />
 
         {/* MAIN CANVAS */}
-        <main className="flex-1 px-4 py-4 sm:px-6 sm:py-5 space-y-6 min-w-0">
+        <main className="customer-canvas flex-1 min-w-0">
           {/* Active Live Queues Callout (If user is currently in line) */}
           {myActiveQueues.length > 0 && (
             <div className="bg-gradient-to-r from-teal-900 to-emerald-950 text-white rounded-3xl p-5 sm:p-6 shadow-lg border border-teal-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1239,33 +1244,25 @@ export default function CustomerDashboardPage() {
             </button>
           </div>
 
-          {/* ── HERO BANNER ── */}
-          <div className="w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-[#D5EEDB] shadow-xs bg-[#EAF7EE]">
-            <img
-              src="/hero-banner.png"
-              srcSet="/hero-banner.png 1x, /hero-banner@2x.png 2x"
-              alt="Skip the wait. Live smarter. Join live queues, book appointments and get real-time updates at your favourite clinics, salons and more."
-              className="w-full h-auto object-cover block select-none"
-              loading="eager"
-            />
-          </div>
-
-          {/* ── SORT CONTROLS BAR ── */}
-          <div className="flex items-center justify-end gap-3 pt-1">
-            {/* Sort control (Right) */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() =>
-                  setSortBy((prev) => (prev === 'nearest' ? 'wait_time' : prev === 'wait_time' ? 'rating' : 'nearest'))
-                }
-                className="px-3.5 py-2 rounded-xl bg-white border border-zinc-200/90 text-xs font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-1.5 transition-colors shadow-xs"
-              >
-                <span>Sort by: {sortBy === 'nearest' ? 'Nearest' : sortBy === 'wait_time' ? 'Shortest Wait' : 'Top Rated'}</span>
-                <ChevronDown className="w-3 h-3 text-zinc-400" />
-              </button>
-
+          <section className="customer-welcome" aria-labelledby="customer-welcome-title">
+            <div className="customer-welcome-copy">
+              <p className="customer-welcome-eyebrow">{categoryFilter === 'salon' ? 'A LITTLE SELF-CARE' : 'GOOD CARE STARTS HERE'}</p>
+              <h1 id="customer-welcome-title">{categoryFilter === 'salon' ? 'Good hair. Great day.' : 'Feel better, sooner.'}</h1>
+              <p>{categoryFilter === 'salon' ? 'A fresh cut or a little me-time. Find your spot, pick a service and leave the waiting behind.' : 'Your next visit, with a little less waiting. Find a doctor nearby and make time for feeling better.'}</p>
+              <a href="#services-section">{categoryFilter === 'salon' ? 'Find your salon' : 'Find your clinic'} <ArrowRight size={17} /></a>
             </div>
-          </div>
+            <div className="customer-welcome-art" aria-hidden="true">
+              <Sparkle className="customer-art-spark customer-art-spark-one" size={26} strokeWidth={1.4} />
+              <span className="customer-mini-door">
+                <span className="customer-mini-window">{categoryFilter === 'salon' ? <Scissors size={38} strokeWidth={1.5} /> : <Stethoscope size={38} strokeWidth={1.5} />}</span>
+                <span className="customer-mini-sign">Come on in.</span>
+                <span className="customer-mini-handle" />
+                <span className="customer-mini-inset" />
+              </span>
+              <Sparkle className="customer-art-spark customer-art-spark-two" size={32} strokeWidth={1.4} />
+              <span className="customer-welcome-note">{categoryFilter === 'salon' ? 'A fresh start awaits.' : 'You’re in good hands.'}</span>
+            </div>
+          </section>
 
           {/* ── SECTION: NEARBY SERVICES (CLINICS + SALONS IN ONE ROW) ── */}
           <section id="services-section" className="space-y-4">
@@ -1286,21 +1283,15 @@ export default function CustomerDashboardPage() {
                     : 'Join live queues or book appointments at verified clinics, salons & services near you.'}
                 </p>
               </div>
-              {categoryFilter !== 'all' ? (
-                <button
-                  onClick={() => {
-                    navigate('/customers?choose=1')
-                  }}
-                  className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 group"
-                >
-                  <span>Switch service</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              ) : (
-                <div className="text-xs text-zinc-400 font-semibold">
-                  {displayedServices.length} {displayedServices.length === 1 ? 'place' : 'places'} found
-                </div>
-              )}
+              <button
+                onClick={() =>
+                  setSortBy((prev) => (prev === 'nearest' ? 'wait_time' : prev === 'wait_time' ? 'rating' : 'nearest'))
+                }
+                className="customer-sort-button shrink-0 px-3.5 py-2 rounded-xl bg-white border border-zinc-200/90 text-xs font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-1.5 transition-colors shadow-xs"
+              >
+                <span>Sort by: {sortBy === 'nearest' ? 'Nearest' : sortBy === 'wait_time' ? 'Shortest Wait' : 'Top Rated'}</span>
+                <ChevronDown className="w-3 h-3 text-zinc-400" />
+              </button>
             </div>
 
             {loading ? (

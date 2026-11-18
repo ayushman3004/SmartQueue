@@ -1,0 +1,62 @@
+/* Shared with the sage and clay doors on the customer welcome screen. */
+.customer-dashboard {
+  --service-ink: #315b45;
+  --service-soft: #e6f0e8;
+  --service-door: #b7d5c2;
+  --service-line: #c1d5c7;
+  color: #153c2b;
+}
+.customer-dashboard[data-service='salon'] {
+  --service-ink: #765546;
+  --service-soft: #f3e9e1;
+  --service-door: #dfc8bb;
+  --service-line: #dfcbbd;
+}
+.customer-dashboard > header { background: #fbfefbe8; border-color: var(--service-line); box-shadow: none; }
+.customer-dashboard > .flex-1 > main { width: 100%; max-width: 1440px; margin-inline: auto; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 24px; }
+.customer-dashboard aside { background: #fbfefb99; border-color: var(--service-line); padding-top: 24px; }
+.customer-dashboard aside nav { display: flex; flex-direction: column; gap: 4px; }
+.customer-dashboard aside nav > button { border: 1px solid transparent; border-radius: 14px; padding-block: 9px; margin: 0; font-weight: 600; box-shadow: none; }
+.customer-dashboard aside nav > button[aria-current='page'] { background: var(--service-soft); color: var(--service-ink); border-color: var(--service-line); }
+.customer-dashboard .icon-3d { display: inline-flex; align-items: center; justify-content: center; background: var(--service-soft); color: var(--service-ink); box-shadow: none; border: 1px solid var(--service-line); transform: none; border-radius: 12px 12px 5px 5px; }
+.customer-dashboard .icon-3d::before, .customer-dashboard .icon-3d::after { display: none; }
+.customer-welcome { display: grid; grid-template-columns: minmax(0, 1fr) 185px; align-items: center; gap: 24px; background: var(--service-soft); border: 1px solid var(--service-line); border-radius: 24px 64px 24px 24px; padding: 24px 32px; min-height: 218px; }
+.customer-welcome-eyebrow { color: var(--service-ink); font-size: 10px; font-weight: 750; letter-spacing: .19em; margin-bottom: 12px; }
+.customer-welcome h1 { font-size: clamp(28px, 2.8vw, 38px); font-weight: 650; letter-spacing: -.055em; line-height: 1.12; color: #153c2b; text-wrap: balance; }
+.customer-welcome-copy > p:not(.customer-welcome-eyebrow) { font-size: 13px; line-height: 1.65; color: #617168; max-width: 430px; margin-top: 12px; }
+.customer-welcome-copy > a { display: inline-flex; align-items: center; gap: 20px; margin-top: 14px; color: var(--service-ink); font-size: 12px; font-weight: 750; padding-bottom: 4px; border-bottom: 1px solid var(--service-line); }
+.customer-welcome-art { position: relative; display: flex; flex-direction: column; align-items: center; padding: 4px 0 0; }
+.customer-mini-door { display: block; position: relative; width: 104px; height: 148px; border-radius: 70px 70px 0 0; border: 5px solid var(--service-ink); background: var(--service-door); box-shadow: inset 3px 2px #ffffff60, 5px 6px 0 var(--service-line); transform: rotate(5deg); }
+.customer-mini-window { position: absolute; top: 12px; left: 17px; right: 17px; height: 49px; border: 1px solid var(--service-ink); border-radius: 40px 40px 4px 4px; display: grid; place-items: center; color: var(--service-ink); background: #ffffff30; }
+.customer-mini-sign { position: absolute; top: 73px; inset-inline: 0; text-align: center; font-size: 11px; font-weight: 650; color: var(--service-ink); }
+.customer-mini-handle { position: absolute; right: 8px; top: 95px; width: 18px; height: 4px; border-radius: 3px; background: var(--service-ink); }
+.customer-mini-inset { position: absolute; left: 15px; right: 15px; bottom: 11px; height: 26px; border: 1px solid var(--service-line); }
+.customer-art-spark { position: absolute; color: var(--service-ink); }
+.customer-art-spark-one { top: 8px; left: 13px; font-size: 32px; transform: rotate(-15deg); }
+.customer-art-spark-two { bottom: 40px; right: 5px; font-size: 40px; }
+.customer-welcome-note { font-size: 10px; color: var(--service-ink); margin-top: 12px; transform: rotate(-4deg); }
+.customer-dashboard #services-section > div:first-child { border-color: var(--service-line); padding-bottom: 14px; align-items: center; gap: 16px; }
+.customer-dashboard #services-section h2 { color: #153c2b; font-weight: 650; letter-spacing: -.04em; }
+.customer-dashboard #services-section > div:first-child p { color: #647268; font-weight: 400; margin-top: 5px; line-height: 1.6; }
+.customer-venue-card { border-color: var(--service-line); border-radius: 25px 25px 18px 18px; box-shadow: 0 4px 0 var(--service-soft); background: #fffffc; transition: border-color 180ms ease, box-shadow 180ms ease; }
+.customer-venue-photo { margin: 10px 10px 0; width: calc(100% - 20px); border-radius: 36px 36px 12px 12px; height: 165px; }
+.customer-venue-card h3 { font-weight: 650; color: #153c2b; letter-spacing: -.035em; }
+.customer-venue-card .customer-queue-stats { background: var(--service-soft); border-color: var(--service-line); border-radius: 14px; font-variant-numeric: tabular-nums; }
+.customer-venue-card .customer-join-button:not(:disabled) { background: var(--service-ink); }
+.customer-venue-card select { background-color: var(--service-soft); border-color: var(--service-line); }
+.customer-dashboard button:focus-visible, .customer-dashboard a:focus-visible { outline: 2px solid var(--service-ink); outline-offset: 4px; }
+@media (hover: hover) and (pointer: fine) {
+  .customer-venue-card:hover { border-color: var(--service-ink); box-shadow: 0 5px 0 var(--service-line); }
+  .customer-join-button:not(:disabled):hover { filter: brightness(.92); }
+}
+@media (max-width: 1100px) and (min-width: 1024px) { .customer-dashboard #services-section > .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .customer-dashboard > .flex-1 > main { padding: 18px 16px 32px; } .customer-welcome { grid-template-columns: 1fr 130px; padding: 24px; gap: 12px; border-radius: 22px 55px 22px 22px; } .customer-welcome h1 { font-size: 30px; } .customer-art-spark { display: none; } .customer-welcome-note { font-size: 9px; } }
+@media (max-width: 460px) { .customer-welcome { grid-template-columns: 1fr; position: relative; padding: 26px 22px; } .customer-welcome-art { display: none; } .customer-welcome-copy > p:not(.customer-welcome-eyebrow) { max-width: 290px; } .customer-dashboard #services-section > div:first-child { align-items: flex-start; } .customer-dashboard #services-section > div:first-child > button { white-space: nowrap; font-size: 10px; margin-top: 6px; } }
+@media (prefers-reduced-motion: reduce) { .customer-venue-card { transition: none; } .customer-venue-photo img { transition: none; transform: none; } }
+
+.customer-dashboard #services-section { scroll-margin-top: 85px; }
+.customer-dashboard #services-section > div:first-child { flex-wrap: wrap; }
+.customer-dashboard .customer-sort-button { color: var(--service-ink); border-color: var(--service-line); box-shadow: none; min-height: 36px; }
+.customer-dashboard .customer-mini-window svg { width: 30px; height: 30px; }
+.customer-dashboard aside .icon-3d > svg { flex-shrink: 0; }
+@media (max-width: 767px) { .customer-dashboard > .flex-1 > main { gap: 20px; } .customer-welcome { min-height: 200px; } }

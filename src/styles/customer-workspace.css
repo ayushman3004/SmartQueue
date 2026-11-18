@@ -1,0 +1,48 @@
+/* One visual language for every customer sidebar destination. */
+.customer-workspace {
+  --service-ink: #315b45;
+  --service-soft: #e6f0e8;
+  --service-door: #b7d5c2;
+  --service-line: #c1d5c7;
+  --customer-text: #153c2b;
+}
+.customer-workspace[data-service='salon'] {
+  --service-ink: #765546;
+  --service-soft: #f3e9e1;
+  --service-door: #dfc8bb;
+  --service-line: #dfcbbd;
+}
+.customer-workspace .customer-tab { color: var(--customer-text); }
+.customer-workspace .customer-tab > header,
+.customer-workspace .customer-tab > div.sticky { background: #fbfefbe8; border-color: var(--service-line); box-shadow: none; }
+.customer-workspace .customer-tab > .flex-1 > main { width: 100%; max-width: 1440px; margin-inline: auto; padding: 24px 28px 40px; }
+.customer-workspace .customer-tab aside { background: #fbfefb99; border-color: var(--service-line); padding-top: 24px; }
+.customer-workspace .customer-tab aside nav { display: flex; flex-direction: column; gap: 4px; }
+.customer-workspace .customer-tab aside nav > button { border: 1px solid transparent; border-radius: 14px; padding-block: 9px; margin: 0; font-weight: 600; box-shadow: none; }
+.customer-workspace .customer-tab aside nav > button[aria-current='page'] { background: var(--service-soft); color: var(--service-ink); border-color: var(--service-line); }
+.customer-workspace .customer-tab aside nav > button[aria-current='page'] > span { background: var(--service-ink); color: #fff; }
+.customer-workspace .customer-tab .icon-3d { display: inline-flex; align-items: center; justify-content: center; background: var(--service-soft); color: var(--service-ink); border: 1px solid var(--service-line); border-radius: 12px 12px 5px 5px; box-shadow: none; transform: none; }
+.customer-workspace .customer-tab .icon-3d::before,
+.customer-workspace .customer-tab .icon-3d::after { display: none; }
+.customer-workspace .customer-tab :is(h1, h2, h3) { color: var(--customer-text); font-weight: 650; letter-spacing: -.035em; text-wrap: balance; }
+.customer-workspace .customer-tab h1 { letter-spacing: -.045em; }
+.customer-workspace .customer-tab h1 > span { color: var(--service-ink); }
+.customer-workspace .customer-surface { background: #fffffc; border-color: var(--service-line); border-radius: 24px 24px 18px 18px; box-shadow: 0 4px 0 var(--service-soft); }
+.customer-workspace .customer-illustrated-banner { background: var(--service-soft); border-color: var(--service-line); border-radius: 24px 64px 24px 24px; box-shadow: none; }
+/* The queue illustration retains its source, placement, size, and visibility. */
+.customer-workspace .customer-tab :is(input, select, textarea) { border-color: var(--service-line); accent-color: var(--service-ink); }
+.customer-workspace .customer-tab :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--service-ink); outline-offset: 3px; }
+.customer-workspace .customer-tab :is(button, a)[class*='bg-[#114227]'],
+.customer-workspace .customer-tab button[class*='bg-emerald-600'],
+.customer-workspace .customer-tab button[class*='bg-emerald-700'] { background-color: var(--service-ink); }
+.customer-workspace .customer-tab button[class*='bg-emerald-50'],
+.customer-workspace .customer-tab button[class*='bg-[#EAF5EC]'] { background-color: var(--service-soft); border-color: var(--service-line); color: var(--service-ink); }
+.customer-workspace .customer-tab table { font-variant-numeric: tabular-nums; }
+.customer-workspace .customer-tab thead { background: var(--service-soft); color: var(--service-ink); }
+@media (hover: hover) and (pointer: fine) {
+  .customer-workspace .customer-tab aside nav > button:not([aria-current='page']):hover { background: var(--service-soft); color: var(--service-ink); }
+}
+@media (max-width: 767px) {
+  .customer-workspace .customer-tab > .flex-1 > main { padding: 18px 16px 32px; }
+  .customer-workspace .customer-illustrated-banner { border-radius: 22px 48px 22px 22px; }
+}

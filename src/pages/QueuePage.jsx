@@ -464,7 +464,7 @@ export default function QueuePage() {
   const isSalon = activeBusiness?.category === 'salon' || activeBusiness?.category === 'barbershop'
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
+    <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP HEADER BAR (MATCHING SCREENSHOT) ── */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Hamburger + Brand Logo */}
@@ -498,7 +498,7 @@ export default function QueuePage() {
           <div className="relative flex-1">
             <input
               type="text"
-              placeholder="Search clinic or salon..."
+              placeholder="Search venues..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-full bg-zinc-100/90 border border-zinc-200/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all"
@@ -595,7 +595,7 @@ export default function QueuePage() {
         {/* MAIN CANVAS */}
         <main className="flex-1 px-4 py-5 sm:px-8 sm:py-7 space-y-6 min-w-0 max-w-6xl">
           {/* ── TOP GREETING BANNER (MATCHING SCREENSHOT) ── */}
-          <div className="rounded-3xl bg-gradient-to-r from-[#F4F9F5] via-[#EBF5ED] to-[#E2F0E5] border border-[#DCEDE0] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-2xs">
+          <div className="customer-illustrated-banner rounded-3xl bg-gradient-to-r from-[#F4F9F5] via-[#EBF5ED] to-[#E2F0E5] border border-[#DCEDE0] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden shadow-2xs">
             <div className="space-y-1.5 z-10">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-zinc-950 tracking-tight font-sans">
                 Welcome back,{' '}
@@ -709,7 +709,7 @@ export default function QueuePage() {
               {/* 2-Column Main Queue Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
                 {/* ── LEFT CARD: YOUR TURN / TOKEN STATUS ── */}
-                <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs flex flex-col justify-between relative overflow-hidden">
+                <div className="customer-surface lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs flex flex-col justify-between relative overflow-hidden">
                   <div>
                     {/* Top Status Badge & Graphic Header */}
                     <div className="flex items-center justify-between">
@@ -775,7 +775,7 @@ export default function QueuePage() {
                 </div>
 
                 {/* ── RIGHT CARD: LIVE QUEUE STREAM & TRACKING ── */}
-                <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs space-y-5 flex flex-col justify-between">
+                <div className="customer-surface lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs space-y-5 flex flex-col justify-between">
                   <div>
                     {/* Top Row: Business Thumbnail, Name, Waiting Count & Open Pill */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -967,7 +967,7 @@ export default function QueuePage() {
               </div>
 
               {/* ── BOTTOM CALLOUT CARD: BOOK APPOINTMENT INSTEAD ── */}
-              <div className="rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+              <div className="customer-surface rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] text-[#16A34A] flex items-center justify-center shrink-0">
                     <Calendar className="w-6 h-6 text-[#16A34A]" />
@@ -996,7 +996,7 @@ export default function QueuePage() {
             /* ── VIEW B: NOT IN QUEUE -> SHOW THE ACTUAL QUEUE & JOIN CARD ── */
             <div className="space-y-6">
               {/* Business Overview & Live Key Stats Strip */}
-              <div className="rounded-3xl bg-white border border-zinc-200/80 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="customer-surface rounded-3xl bg-white border border-zinc-200/80 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
                   <img
                     src={
@@ -1056,7 +1056,7 @@ export default function QueuePage() {
               {/* 2-Column Board: Join Queue (Left) & The Actual Queue (Right) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
                 {/* ── LEFT: JOIN THE LIVE QUEUE CARD ── */}
-                <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs flex flex-col justify-between space-y-6">
+                <div className="customer-surface lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs flex flex-col justify-between space-y-6">
                   <div className="space-y-5">
                     {/* Header */}
                     <div>
@@ -1205,7 +1205,7 @@ export default function QueuePage() {
                 </div>
 
                 {/* ── RIGHT: THE ACTUAL LIVE QUEUE BOARD ── */}
-                <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs space-y-6 flex flex-col justify-between">
+                <div className="customer-surface lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-zinc-200/80 shadow-xs space-y-6 flex flex-col justify-between">
                   <div className="space-y-6">
                     {/* Header with Live Indicator */}
                     <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
@@ -1353,7 +1353,7 @@ export default function QueuePage() {
               </div>
 
               {/* Bottom Callout: Booking Alternative */}
-              <div className="rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+              <div className="customer-surface rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] text-[#16A34A] flex items-center justify-center shrink-0">
                     <Calendar className="w-6 h-6 text-[#16A34A]" />
@@ -1390,7 +1390,7 @@ export default function QueuePage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+              className="customer-surface bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>

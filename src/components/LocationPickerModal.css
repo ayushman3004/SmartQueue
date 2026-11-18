@@ -1,0 +1,53 @@
+.location-picker {
+  --location-ink: #315b45;
+  --location-soft: #e6f0e8;
+  --location-line: #c1d5c7;
+  --location-door: #b7d5c2;
+}
+.location-picker[data-service='salon'] {
+  --location-ink: #765546;
+  --location-soft: #f3e9e1;
+  --location-line: #dfcbbd;
+  --location-door: #dfc8bb;
+}
+.location-picker .location-picker-backdrop { background: #17372955; }
+.location-picker .location-picker-dialog { background: #fffffc; border: 1px solid var(--location-line); border-radius: 28px 64px 28px 28px; box-shadow: 0 16px 64px #153c2b26; max-height: calc(100svh - 32px); display: flex; flex-direction: column; }
+.location-picker-heading { background: var(--location-soft); border-color: var(--location-line); padding: 24px; align-items: flex-start; gap: 16px; }
+.location-picker-heading h2 { color: #153c2b; font-size: 23px; font-weight: 650; letter-spacing: -.04em; gap: 12px; }
+.location-picker-heading h2 > svg { color: var(--location-ink); width: 32px; height: 40px; padding: 7px 4px; border: 1px solid var(--location-ink); border-radius: 18px 18px 5px 5px; flex-shrink: 0; }
+.location-picker-heading p { margin-top: 8px; color: #617168; font-size: 12px; line-height: 1.6; }
+.location-picker-heading > button { background: #fffffc99; color: var(--location-ink); flex-shrink: 0; margin-top: 5px; }
+.location-picker-body { min-height: 0; padding: 24px; }
+.location-picker .location-picker-gps { background: var(--location-soft); border: 1px solid var(--location-line); box-shadow: none; border-radius: 18px; gap: 10px; transition: background-color 180ms ease, border-color 180ms ease; }
+.location-picker-gps-icon { background: var(--location-ink); border-radius: 18px 18px 6px 6px; box-shadow: none; flex-shrink: 0; }
+.location-picker-gps > div > div:last-child > div { color: #153c2b; font-weight: 650; flex-wrap: wrap; }
+.location-picker-gps > div > div:last-child > div > span:last-child { color: var(--location-ink); background: #fffffc80; font-size: 9px; font-weight: 650; }
+.location-picker-gps > svg { color: var(--location-ink); flex-shrink: 0; }
+.location-picker-gps p { color: #617168; font-size: 11px; margin-top: 3px; }
+.location-picker-divider { padding-block: 8px; }
+.location-picker-divider > div { border-color: var(--location-line); }
+.location-picker-divider > span { background: #fffffc; color: #7b877f; font-size: 9px; letter-spacing: .12em; }
+.location-picker input { background: #f8faf6; border-color: var(--location-line); border-radius: 14px; font-size: 13px; transition: border-color 180ms ease, background-color 180ms ease; }
+.location-picker input:focus { border-color: var(--location-ink); box-shadow: none; outline: 2px solid var(--location-ink); outline-offset: 2px; background: #fff; }
+.location-picker :is(button, a):focus-visible { outline: 2px solid var(--location-ink); outline-offset: 3px; }
+.location-picker-results { border-color: var(--location-line); box-shadow: none; border-radius: 16px; }
+.location-picker-results button > svg { color: var(--location-ink); }
+.location-picker-hubs > button { background: #f8faf6; border-color: var(--location-line); border-radius: 18px 18px 10px 10px; padding: 13px 12px; transition: background-color 180ms ease, border-color 180ms ease; }
+.location-picker-hubs > button > div { color: #153c2b; font-weight: 600; }
+.location-picker-hubs svg { color: var(--location-ink); }
+.location-picker-hubs p { color: #617168; padding-left: 20px; margin-top: 4px; }
+.location-picker .location-picker-current { border-color: var(--location-line); padding-top: 14px; }
+.location-picker-current strong { color: var(--location-ink); }
+@media (hover: hover) and (pointer: fine) {
+  .location-picker .location-picker-gps:hover, .location-picker-hubs > button:hover, .location-picker-results button:hover { background: var(--location-soft); border-color: var(--location-ink); }
+}
+@media (max-width: 480px) {
+  .location-picker .location-picker-dialog { border-radius: 24px 44px 24px 24px; }
+  .location-picker-heading, .location-picker-body { padding: 20px; }
+  .location-picker-heading h2 { font-size: 21px; }
+  .location-picker-gps > div { gap: 10px; }
+  .location-picker-gps > div > div:last-child > div { font-size: 12px; }
+  .location-picker-gps p { font-size: 10px; }
+  .location-picker-hubs { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .location-picker button, .location-picker input, .location-picker button svg { transition: none; } .location-picker button:hover svg { transform: none; } }

@@ -99,6 +99,7 @@ export default function CustomerSidebar({
             <button
               key={item.id}
               type="button"
+              aria-current={isActive ? 'page' : undefined}
               onClick={() => handleItemClick(item)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                 isActive
@@ -107,7 +108,7 @@ export default function CustomerSidebar({
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className={`w-7 h-7 rounded-xl icon-3d ${isActive ? 'icon-3d-dark scale-105' : get3DIconTheme(item.id)} shrink-0`}>
+                <span className={`w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d ${isActive ? 'icon-3d-dark scale-105' : get3DIconTheme(item.id)} shrink-0`}>
                   <IconComponent className="w-3.5 h-3.5" />
                 </span>
                 <span className="truncate">{item.label}</span>
@@ -155,7 +156,7 @@ export default function CustomerSidebar({
           }}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
         >
-          <span className="w-7 h-7 rounded-xl icon-3d icon-3d-zinc shrink-0">
+          <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-zinc shrink-0">
             <HelpCircle className="w-3.5 h-3.5" />
           </span>
           <span>Help & Support</span>
@@ -170,7 +171,7 @@ export default function CustomerSidebar({
           }}
           className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
         >
-          <span className="w-7 h-7 rounded-xl icon-3d icon-3d-rose shrink-0">
+          <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-rose shrink-0">
             <LogOut className="w-3.5 h-3.5" />
           </span>
           <span>Sign Out</span>

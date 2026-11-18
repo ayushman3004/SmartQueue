@@ -243,7 +243,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
+    <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Brand Logo & Mobile Menu Toggle */}
@@ -490,7 +490,7 @@ export default function HistoryPage() {
           {loading ? (
             <HistoryPageSkeleton count={4} />
           ) : filteredRecords.length === 0 ? (
-            <div className="p-12 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-2">
+            <div className="customer-surface p-12 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-3xl bg-white space-y-2">
               <p className="font-bold text-zinc-700 text-sm">No service history found</p>
               <p className="text-zinc-500 text-xs">
                 Your completed services, live queues, and appointments will appear here with rating options.
@@ -531,7 +531,7 @@ export default function HistoryPage() {
                   <div
                     key={item._id}
                     onClick={() => setSelectedRecordId(item._id)}
-                    className="bg-white rounded-2xl sm:rounded-3xl border border-zinc-200/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs hover:shadow-xs hover:border-zinc-300 transition-all cursor-pointer group"
+                    className="customer-surface bg-white rounded-2xl sm:rounded-3xl border border-zinc-200/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs hover:shadow-xs hover:border-zinc-300 transition-all cursor-pointer group"
                   >
                     {/* Left: Icon + Business + Service + Specialist */}
                     <div className="flex items-center gap-4 min-w-0">
@@ -646,7 +646,7 @@ export default function HistoryPage() {
             </div>
           ) : (
             /* ── TABLE VIEW (MATCHING IMAGE 1) ── */
-            <div className="overflow-x-auto bg-white rounded-3xl border border-zinc-200 shadow-xs">
+            <div className="customer-surface overflow-x-auto bg-white rounded-3xl border border-zinc-200 shadow-xs">
               <table className="w-full text-left text-xs">
                 <thead className="bg-zinc-50 text-zinc-500 font-bold uppercase border-b border-zinc-100">
                   <tr>

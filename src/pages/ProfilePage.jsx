@@ -31,6 +31,7 @@ import {
   Store,
   Menu,
   Home,
+  Upload,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
@@ -40,6 +41,7 @@ import { sendEmailOtp, verifyEmailOtp } from '../api/auth.api'
 import VerifyContactModal from '../components/VerifyContactModal'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
 import CustomerSidebar from '../components/CustomerSidebar'
+import { prepareAvatar } from '../utils/avatarUpload'
 
 export default function ProfilePage() {
   const { user, setUser, logOut } = useAuth()
@@ -54,6 +56,8 @@ export default function ProfilePage() {
   // Edit profile state
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [processingAvatar, setProcessingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
   const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   // Mobile drawer state
@@ -147,6 +151,7 @@ export default function ProfilePage() {
   // Verify Email OTP Handler
   const handleVerifyEmailOtp = async (e) => {
     e?.preventDefault()
+    if (processingAvatar || saving) return
     const targetEmail = (form.email || user?.email || '').trim()
     const code = emailOtp.trim()
 
@@ -173,6 +178,23 @@ export default function ProfilePage() {
       toast.error(err.response?.data?.message || 'Invalid or expired OTP code')
     } finally {
       setVerifyingEmailOtp(false)
+    }
+  }
+
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setAvatarError('')
+    setProcessingAvatar(true)
+    try {
+      const avatar = await prepareAvatar(file)
+      setForm((prev) => ({ ...prev, avatar }))
+      setEditing(true)
+    } catch (error) {
+      setAvatarError(error.message || 'Unable to load this photo.')
+    } finally {
+      setProcessingAvatar(false)
     }
   }
 
@@ -203,7 +225,7 @@ export default function ProfilePage() {
 
   // Upgrade Account to Hub Owner (for customers)
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative">
+    <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative">
       {/* ── TOP HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -265,7 +287,7 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white border border-zinc-200/90 rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden"
+          className="customer-surface bg-white border border-zinc-200/90 rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden"
         >
           {/* Decorative ambient gradient backdrop */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-emerald-500/10 via-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -483,7 +505,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
           {/* LEFT 2 COLUMNS: CORE PROFILE INFORMATION */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
+            <div className="customer-surface bg-white border border-zinc-200/90 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
                 <div className="space-y-0.5">
                   <h3 className="text-lg font-black text-zinc-950 tracking-tight">
@@ -636,23 +658,30 @@ export default function ProfilePage() {
                     />
                   </div>
 
-                  {/* Avatar URL */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                      Avatar Picture URL
+                  {/* Avatar upload */}
+                  <div className="space-y-2">
+                    <label htmlFor="avatar-upload" className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                      Profile photo
                     </label>
-                    <input
-                      type="text"
-                      readOnly={!editing}
-                      value={form.avatar}
-                      onChange={(e) => setForm({ ...form, avatar: e.target.value })}
-                      placeholder="https://images.unsplash.com/..."
-                      className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
-                        editing
-                          ? 'bg-white border border-zinc-300 focus:outline-none focus:border-[#114227]'
-                          : 'bg-zinc-50 border border-zinc-100 text-zinc-800 cursor-default'
-                      }`}
-                    />
+                    <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                      {form.avatar ? (
+                        <img src={form.avatar} alt="Profile photo preview" className="h-14 w-14 shrink-0 rounded-full object-cover border border-zinc-200" />
+                      ) : (
+                        <span className="h-14 w-14 shrink-0 rounded-full bg-[#114227] text-white flex items-center justify-center text-xl font-bold" aria-hidden="true">{form.name?.[0]?.toUpperCase() || 'U'}</span>
+                      )}
+                      <div className="min-w-0 space-y-1.5">
+                        <label className={`inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-700 ${processingAvatar || saving ? 'opacity-50' : 'cursor-pointer hover:bg-zinc-100'} focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-emerald-700`}>
+                          {processingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          <span>{processingAvatar ? 'Preparing photo…' : form.avatar ? 'Change photo' : 'Upload photo'}</span>
+                          <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarUpload} disabled={processingAvatar || saving} aria-describedby="avatar-upload-help avatar-upload-error" className="sr-only" />
+                        </label>
+                        <p id="avatar-upload-help" className="text-[10px] leading-relaxed text-zinc-500">JPG, PNG or WebP, up to 5 MB. Save changes to update your photo.</p>
+                        {form.avatar && (
+                          <button type="button" disabled={processingAvatar || saving} onClick={() => { setForm((prev) => ({ ...prev, avatar: '' })); setEditing(true); setAvatarError('') }} className="text-[11px] font-semibold text-rose-700 hover:underline disabled:opacity-50">Remove photo</button>
+                        )}
+                      </div>
+                    </div>
+                    <p id="avatar-upload-error" role="alert" className="text-xs text-rose-700">{avatarError}</p>
                   </div>
                 </div>
 
@@ -680,7 +709,7 @@ export default function ProfilePage() {
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pt-2">
                     <button
                       type="submit"
-                      disabled={saving}
+                      disabled={saving || processingAvatar}
                       className="w-full py-3.5 px-6 rounded-2xl bg-[#114227] hover:bg-[#0D361F] text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {saving ? (
@@ -705,7 +734,7 @@ export default function ProfilePage() {
           <div className="space-y-6">
             {/* 1. ROLE HIGHLIGHT CARD */}
             {isCustomer && (
-              <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-5">
+              <div className="customer-surface bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-5">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-black">
                     <UserCheck className="w-5 h-5" />
@@ -743,7 +772,7 @@ export default function ProfilePage() {
             )}
 
             {isOwner && (
-              <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-5">
+              <div className="customer-surface bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-5">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#EAF7EE] text-[#114227] border border-[#BDE8CB] flex items-center justify-center font-black">
                     <Building2 className="w-5 h-5" />
@@ -785,7 +814,7 @@ export default function ProfilePage() {
             )}
 
             {isAdmin && (
-              <div className="bg-white border border-purple-200/90 rounded-3xl p-6 shadow-xs space-y-5">
+              <div className="customer-surface bg-white border border-purple-200/90 rounded-3xl p-6 shadow-xs space-y-5">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center font-black">
                     <ShieldAlert className="w-5 h-5" />
@@ -816,7 +845,7 @@ export default function ProfilePage() {
             )}
 
             {/* SECURITY & PASSWORD CARD */}
-            <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-4">
+            <div className="customer-surface bg-white border border-zinc-200/90 rounded-3xl p-6 shadow-xs space-y-4">
               <div className="flex items-center gap-2.5">
                 <span className="w-8 h-8 rounded-xl icon-3d icon-3d-purple shrink-0">
                   <KeyRound className="w-4 h-4" />
@@ -861,7 +890,7 @@ export default function ProfilePage() {
         </div>
 
         {/* SIGN OUT ACTION AT THE END */}
-        <div className="bg-white border border-rose-200/80 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="customer-surface bg-white border border-rose-200/80 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 text-left">
             <span className="w-10 h-10 rounded-2xl icon-3d icon-3d-rose shrink-0">
               <LogOut className="w-5 h-5 text-white" />

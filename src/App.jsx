@@ -24,6 +24,7 @@ import TermsPage from './pages/TermsPage'
 import HelpSupportPage from './pages/HelpSupportPage'
 import SubscriptionPage from './pages/SubscriptionPage'
 import Footer from './components/Footer'
+import './styles/customer-workspace.css'
 import AmbientBackground from './components/AmbientBackground'
 import NotFoundPage from './pages/NotFoundPage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
@@ -85,6 +86,12 @@ export default function App() {
   const { socket, joinUser } = useSocket()
   const location = useLocation()
   const isOnboarding = location.pathname.startsWith('/business/onboarding')
+  const isCustomerWorkspace = Boolean(user && !['owner', 'admin'].includes(user.role) &&
+    (/^\/(customers|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
+  const requestedService = new URLSearchParams(location.search).get('category')
+  const storedService = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
+  const workspaceService = ['clinic', 'salon'].includes(requestedService) ? requestedService : storedService
+
 
   // Join user's private socket room for wallet:update and notifications
   useEffect(() => {
@@ -184,7 +191,7 @@ export default function App() {
     : 'app-background'
 
   return (
-    <div className={`page-wrapper ${bgClass}`}>
+    <div data-service={isCustomerWorkspace ? workspaceService : undefined} className={`page-wrapper ${bgClass} ${isCustomerWorkspace ? 'customer-workspace' : ''}`}>
       {!isStandalonePage && <AmbientBackground variant={bgVariant} />}
       <Toaster 
         position="top-right"
@@ -343,7 +350,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isLoginPage && !isStandalonePage && location.pathname !== '/customers' && <Footer />}
+      {!isLoginPage && !isStandalonePage && !isCustomerWorkspace && location.pathname !== '/customers' && <Footer />}
     </div>
   )
 }
