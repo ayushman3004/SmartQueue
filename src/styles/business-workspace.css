@@ -73,3 +73,8 @@
 .verification-dialog > .absolute[class*='blur-3xl'] { display: none; }
 .verification-dialog button[type='submit'] { background: #315b45; color: #fff; }
 @media (max-width: 639px) { .business-setup-progress { gap: 10px; }.business-setup-progress li { font-size: 9px; gap: 5px; }.business-pricing .business-plan-card { padding: 24px; }.business-otp-gate { align-items: flex-start; }.business-onboarding-header { grid-template-columns: 1fr; gap: 12px; }.business-onboarding-header > div { justify-content: center; text-align: center; }.business-otp-gate .business-setup-progress { gap: 8px; } }
+.business-checkout-feedback { scroll-margin-top: 90px; }
+.business-checkout-feedback:empty { display: none; }
+.business-checkout-feedback > p { padding: 16px 20px; border: 1px solid #c1d5c7; border-radius: 14px; background: #e6f0e8; color: #315b45; font-size: 13px; font-weight: 600; }
+.business-checkout-feedback > div { border: 1px solid #dfcbbd; border-radius: 14px; padding: 18px 20px; background: #f3e9e1; color: #765546; font-size: 13px; }
+.business-checkout-feedback > div > p { margin-top: 6px; line-height: 1.7; }

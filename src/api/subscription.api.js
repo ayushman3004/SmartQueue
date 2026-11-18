@@ -8,8 +8,8 @@ export const getCurrentSubscription = () => axios.get("/subscriptions/current");
 
 // Create Razorpay order to pay for Basic (799) or Pro (1499) plan
 export const createSubscriptionOrder = (plan) =>
-  axios.post("/subscriptions/create-order", { plan });
+  axios.post("/subscriptions/create-order", { plan }, { timeout: 25000 });
 
 // Verify Razorpay payment signature & activate plan
 export const verifySubscriptionPayment = (paymentData) =>
-  axios.post("/subscriptions/verify", paymentData);
+  axios.post("/subscriptions/verify", paymentData, { timeout: 25000 });

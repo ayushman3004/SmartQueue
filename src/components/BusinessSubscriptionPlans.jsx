@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, RefreshCw } from 'lucide-react'
 import { getCurrentSubscription } from '../api/subscription.api'
 import { useAuth } from '../context/AuthContext'
@@ -11,6 +11,10 @@ export default function BusinessSubscriptionPlans({ onSuccess, onBusyChange }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const checkout = useSubscriptionCheckout(onSuccess)
+  const feedback = useRef(null)
+  useEffect(() => {
+    if (checkout.busy || checkout.error) feedback.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
+  }, [checkout.busy, checkout.error])
   const load = useCallback(() => {
     getCurrentSubscription().then(({ data }) => {
       setCatalog(data.data.availablePlans)
@@ -21,6 +25,10 @@ export default function BusinessSubscriptionPlans({ onSuccess, onBusyChange }) {
   useEffect(() => { onBusyChange?.(checkout.busy) }, [checkout.busy, onBusyChange])
   const active = hasActiveSubscription(user?.subscription)
   return <div className="business-plans space-y-6">
+    <div ref={feedback} className="business-checkout-feedback" aria-live="polite">
+      {checkout.busy && <p role="status">{checkout.stage}</p>}
+      {checkout.error && <div role="alert"><strong>Checkout could not complete</strong><p>{checkout.error}</p></div>}
+    </div>
     {loading ? <p role="status" className="py-8 text-sm text-zinc-500">Loading your subscription…</p> : error ? <div role="alert" className="business-plan-notice"><p>{error}</p><button type="button" onClick={() => { setLoading(true); setError(''); load() }} className="mt-3 text-sm font-semibold underline">Retry loading plans</button></div> : <>
       {active && <div className="business-plan-notice"><strong>{catalog?.[user.subscription.plan]?.name} is active</strong><p className="mt-1 text-sm">Valid until {user.subscription.expiresAt ? new Date(user.subscription.expiresAt).toLocaleDateString('en-IN') : 'your current period ends'}. Renewal adds 30 days to your remaining time.</p></div>}
       {checkout.pending && <div className="business-plan-notice" role="status"><strong>Your payment needs verification.</strong><p className="my-2 text-sm">Retry activation here. You will not be charged again.</p><button type="button" disabled={checkout.busy} onClick={checkout.retry} className="business-primary inline-flex items-center gap-2"><RefreshCw size={15} />Retry verification</button></div>}
@@ -32,12 +40,10 @@ export default function BusinessSubscriptionPlans({ onSuccess, onBusyChange }) {
           <p className="business-plan-price">₹{plan.price.toLocaleString('en-IN')} <span>/ month</span></p>
           <p className="text-sm leading-relaxed text-zinc-600">{plan.tagline}</p>
           <ul className="my-6 space-y-3">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm leading-relaxed"><Check size={16} className="mt-1 shrink-0" /><span>{feature}</span></li>)}</ul>
-          <button type="button" disabled={checkout.busy || Boolean(checkout.pending) || downgrade} onClick={() => checkout.subscribe(plan)} className="business-primary mt-auto w-full">{downgrade ? 'Available after Pro expires' : current ? 'Renew for 30 days' : active ? 'Upgrade to Pro' : `Choose ${plan.name}`}</button>
+          <button type="button" disabled={checkout.busy || Boolean(checkout.pending) || downgrade} onClick={() => checkout.subscribe(plan)} className="business-primary mt-auto w-full">{checkout.busy && checkout.selectedPlan === plan.id ? checkout.stage : downgrade ? 'Available after Pro expires' : current ? 'Renew for 30 days' : active ? 'Upgrade to Pro' : `Choose ${plan.name}`}</button>
         </section>
       })}</div>
       <p className="text-xs text-zinc-500 leading-relaxed">Each month covers 30 days. One-time payment for each period. No automatic renewal. A Pro upgrade starts a new 30-day period at full price; unused Basic time is not credited.</p>
     </>}
-    {checkout.busy && <p role="status" className="text-sm font-semibold">{checkout.stage}</p>}
-    {checkout.error && <p role="alert" className="text-sm text-rose-700">{checkout.error}</p>}
   </div>
 }
