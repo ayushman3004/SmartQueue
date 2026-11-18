@@ -15,6 +15,7 @@ export const allowedOrigins = [
   "https://smart-queue-git-main-ayushman3004s-projects.vercel.app",
   "https://smartqueue-p629.onrender.com",
   process.env.CLIENT_URL,
+  ...(process.env.CORS_ADDITIONAL_ORIGINS || "").split(",").map(value => value.trim()),
 ].filter(Boolean);
 
 export const isOriginAllowed = (origin) => {
@@ -22,8 +23,7 @@ export const isOriginAllowed = (origin) => {
   if (allowedOrigins.includes(origin)) return true;
   // Allow all local dev and Docker container ports on localhost or 127.0.0.1
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
-  if (origin.endsWith(".vercel.app")) return true;
-  if (origin.endsWith(".onrender.com")) return true;
+  // Preview domains must be explicitly listed; arbitrary hosted apps are not trusted.
   return false;
 };
 

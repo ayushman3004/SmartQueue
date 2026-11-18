@@ -5,6 +5,10 @@ import User from "../src/modules/auth/auth.model.js";
 import * as verificationService from "../src/modules/auth/verification.service.js";
 
 test("Profile Contact Verification Flow - Phone & Email OTP (nodemailer-otp & Nodemailer)", async (t) => {
+  const oldKey=process.env.RESEND_API_KEY;
+  process.env.RESEND_API_KEY='test-provider';
+  t.mock.method(globalThis,'fetch',async()=>({ok:true,json:async()=>({id:'test-delivery'})}));
+  t.after(()=>{if(oldKey===undefined)delete process.env.RESEND_API_KEY;else process.env.RESEND_API_KEY=oldKey});
   const originalOtpFindOne = Otp.findOne;
   const originalOtpFindOneAndUpdate = Otp.findOneAndUpdate;
   const originalOtpDeleteOne = Otp.deleteOne;

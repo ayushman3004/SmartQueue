@@ -3,7 +3,7 @@ export const SITE_URL = 'https://www.serveq.tech'
 // Shared by the router, build output and sitemap so discovery cannot drift.
 export const publicPages = [
   { path: '/', title: 'Live Virtual Queue Management & Online Waiting', description: 'Join virtual queues on your phone, track real-time counter updates, and walk straight in when your turn arrives at salons, clinics, and service venues.' },
-  { path: '/business', title: 'Business Hub Portal — Virtual Queues & Counter Control', description: 'Enterprise virtual queue management for salons, clinics, and service venues. Command customer flow and eliminate physical waiting lines.' },
+  { path: '/business', title: 'ServeQ for Business — Apply to Join', description: 'Manage queues, appointments and staff in one place. Apply for a personally reviewed ServeQ business account.' },
   { path: '/support', title: 'Help & Support — ServeQ', description: 'Get in touch with the ServeQ support team for help with your queues, appointments, and business account.' },
   { path: '/privacy', title: 'Privacy Policy — serveQ', description: 'Learn how serveQ collects, uses, stores, processes, and protects your personal information, venue data, and payment details.' },
   { path: '/terms', title: 'Terms and Conditions', description: 'Review the terms and conditions for using serveQ, including virtual queue tokens, appointments, cancellations, and venue management.' },

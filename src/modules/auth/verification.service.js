@@ -1,3 +1,6 @@
+import crypto from "node:crypto";
+import { activateOwner } from "../business-application/business-application.service.js";
+import { sanitize } from "./auth.service.js";
 import NodemailerHelper from "nodemailer-otp";
 import nodemailer from "nodemailer";
 import Otp from "./otp.model.js";
@@ -26,7 +29,7 @@ const sanitizeUser = (user) => ({
  * Robust Email Sender Helper (without Twilio)
  * Uses Nodemailer and Resend API to deliver OTPs directly to inbox.
  */
-const sendEmailMessage = async ({ to, subject, html, text }) => {
+export const sendEmailMessage = async ({ to, subject, html, text }) => {
   const from = process.env.EMAIL_SECURITY_FROM || '"ServeQ Security" <security@serveq.tech>';
   const replyTo = process.env.EMAIL_SUPPORT || "support@serveq.tech";
 
@@ -36,6 +39,7 @@ const sendEmailMessage = async ({ to, subject, html, text }) => {
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
+        signal: AbortSignal.timeout(10000),
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
           "Content-Type": "application/json",
@@ -54,9 +58,9 @@ const sendEmailMessage = async ({ to, subject, html, text }) => {
         console.log(`✅ [Resend API] Delivered to ${to} (ID: ${data.id})`);
         return true;
       }
-      console.warn(`⚠️ [Resend API] Delivery failed for ${to}:`, data);
+      console.warn("[email] Provider rejected delivery", response.status);
     } catch (fetchErr) {
-      console.warn(`⚠️ [Resend API] Fetch error:`, fetchErr.message);
+      console.warn("[email] Provider unavailable", fetchErr.name);
     }
   }
 
@@ -75,7 +79,7 @@ const sendEmailMessage = async ({ to, subject, html, text }) => {
       console.log(`✅ [Nodemailer] Delivered email to ${to}`);
       return true;
     } catch (nmErr) {
-      console.warn(`⚠️ [Nodemailer] Transporter send failed:`, nmErr.message);
+      console.warn("[email] SMTP delivery failed", nmErr.code);
     }
   }
 
@@ -85,7 +89,7 @@ const sendEmailMessage = async ({ to, subject, html, text }) => {
 /**
  * ─── EMAIL VERIFICATION OTP (using nodemailer-otp & nodemailer) ────
  */
-export const sendEmailVerificationOtp = async ({ email, userId, userName }) => {
+export const sendEmailVerificationOtp = async ({ email, userId, userName, ownerTokenVersion }) => {
   if (!email || typeof email !== "string") {
     throw new ApiError(400, "Valid email address is required");
   }
@@ -133,7 +137,7 @@ export const sendEmailVerificationOtp = async ({ email, userId, userName }) => {
 
   // Fallback generation if helper was not instantiated
   if (!otp || otp.length !== 6) {
-    otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otp = crypto.randomInt(100000, 1000000).toString();
   }
 
   // Expiry in 10 minutes
@@ -144,6 +148,7 @@ export const sendEmailVerificationOtp = async ({ email, userId, userName }) => {
     { email: normalizedEmail, purpose: "email_verification" },
     {
       otp,
+      ownerTokenVersion,
       expiresAt,
       attempts: 0,
       verified: false,
@@ -208,6 +213,7 @@ export const sendEmailVerificationOtp = async ({ email, userId, userName }) => {
     });
   }
 
+  if (!emailSent) throw new ApiError(503, "Email could not be delivered. Please retry shortly.");
   return {
     success: true,
     message: "Verification code sent to your email address.",
@@ -218,7 +224,7 @@ export const sendEmailVerificationOtp = async ({ email, userId, userName }) => {
 /**
  * ─── VERIFY EMAIL OTP ──────────────────────────────────────────
  */
-export const verifyEmailVerificationOtp = async ({ email, otp, userId }) => {
+export const verifyEmailVerificationOtp = async ({ email, otp, userId, ownerTokenVersion }) => {
   if (!email || !otp) {
     throw new ApiError(400, "Email and OTP code are required");
   }
@@ -257,9 +263,16 @@ export const verifyEmailVerificationOtp = async ({ email, otp, userId }) => {
     throw new ApiError(404, "User account not found");
   }
 
-  user.email = normalizedEmail;
-  user.isEmailVerified = true;
-  await user.save();
+  let activatedUser;
+  if (user.ownerAccess?.applicationId && user.ownerAccess.status === "INVITED") {
+    if (record.ownerTokenVersion !== ownerTokenVersion || ownerTokenVersion !== user.tokenVersion) throw new ApiError(403, "Invitation changed. Sign in and request a new OTP.");
+    if (normalizedEmail !== user.email) throw new ApiError(403, "Verify your approved business email.");
+    activatedUser = await activateOwner(user);
+  } else {
+    user.email = normalizedEmail;
+    user.isEmailVerified = true;
+    await user.save();
+  }
 
   // Clear OTP record
   await Otp.deleteOne({ _id: record._id });
@@ -267,7 +280,8 @@ export const verifyEmailVerificationOtp = async ({ email, otp, userId }) => {
   return {
     success: true,
     message: "Email address verified successfully!",
-    user: sanitizeUser(user),
+    ...(activatedUser ? { activatedUser } : {}),
+    user: sanitize(activatedUser || user),
   };
 };
 
@@ -315,7 +329,7 @@ export const sendPhoneVerificationOtp = async ({ phone, userId }) => {
   }
 
   if (!otp || otp.length !== 6) {
-    otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otp = crypto.randomInt(100000, 1000000).toString();
   }
 
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes

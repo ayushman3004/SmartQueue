@@ -1,3 +1,5 @@
+import { ownerState } from "../business-application/owner-lifecycle.js";
+import { comparePassword } from "../auth.utils.js";
 import crypto from "crypto";
 import User from "./auth.model.js";
 import Otp from "./otp.model.js";
@@ -162,17 +164,24 @@ export const resetPassword = async ({ rawEmail, resetToken, otp, newPassword }) 
     throw new ApiError(400, "Invalid or expired password reset session. Please request a new verification code.");
   }
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    throw new ApiError(404, "User account not found");
-  }
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) throw new ApiError(404, "User account not found");
+  if (user.ownerAccess?.applicationId && !["ACTIVE","PASSWORD_REQUIRED"].includes(ownerState(user))) throw new ApiError(403, "Complete invitation activation before resetting your password. Ask ServeQ to reissue an expired invitation.");
+  if (user.ownerAccess?.mustChangePassword && user.password && await comparePassword(newPassword,user.password)) throw new ApiError(400, "Choose a different password from your temporary password.");
 
   const hashedPassword = await hashPassword(newPassword);
-  user.password = hashedPassword;
-  if (user.authProvider === "google") {
-    user.authProvider = "both";
+  if (user.ownerAccess?.applicationId) {
+    const updated = await User.findOneAndUpdate({ _id: user._id, tokenVersion: user.tokenVersion || 0, password: user.password, "ownerAccess.status": "ACTIVE" }, {
+      $set: { password: hashedPassword, "ownerAccess.mustChangePassword": false, "ownerAccess.passwordChangedAt": new Date(), ...(user.authProvider === "google" ? { authProvider: "both" } : {}) },
+      $inc: { tokenVersion: 1 },
+    });
+    if (!updated) throw new ApiError(409, "Account changed. Please restart password recovery.");
+  } else {
+    user.password = hashedPassword;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    if (user.authProvider === "google") user.authProvider = "both";
+    await user.save();
   }
-  await user.save();
 
   // Invalidate OTP record so token cannot be reused
   await Otp.deleteMany({ email, purpose: "forgot_password" });

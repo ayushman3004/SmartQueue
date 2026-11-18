@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, matchPath, useLocation } from 'react-router-dom'
 import { Toaster, toast } from 'react-hot-toast'
 import { useAuth } from './context/AuthContext'
@@ -16,7 +16,9 @@ import BusinessDashboard from './pages/BusinessDashboard'
 import AuthCallback from './pages/AuthCallback'
 import AdminDashboard from './pages/AdminDashboard'
 import ProfilePage from './pages/ProfilePage'
-import BusinessPortalPage from './pages/BusinessPortalPage'
+import BusinessMarketingPage from './pages/BusinessMarketingPage'
+import BusinessApplicationPage from './pages/BusinessApplicationPage'
+import HubLoginPage, { HubHome, OwnerPasswordPage } from './pages/HubLoginPage'
 import BusinessOnboardingPage from './pages/BusinessOnboardingPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsPage from './pages/TermsPage'
@@ -42,23 +44,31 @@ const AliasRedirect = ({ to }) => {
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth()
   const location = useLocation()
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
   if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`} replace />
+  if (!user) return <Navigate to={`${allowedRoles?.includes('owner') ? '/hub/login' : '/login'}?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`} replace />
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/401" replace />
+  }
+  if (user.role === 'owner' && user.ownerAccess) {
+    if (user.ownerAccess.status === 'INVITED') return <Navigate to="/hub/activate" replace />
+    if (!['ACTIVE', 'PASSWORD_REQUIRED'].includes(user.ownerAccess.status)) return <Navigate to="/hub/login" replace />
+    if (user.ownerAccess.mustChangePassword && now >= new Date(user.ownerAccess.passwordChangeDeadline).getTime() && location.pathname !== '/hub/change-password') return <Navigate to="/hub/change-password" replace />
   }
   return children
 }
 
 export default function App() {
   const { user, loading: authLoading } = useAuth()
-  const { socket, joinUser } = useSocket()
+  const { socket, joinUser, connected } = useSocket()
   const location = useLocation()
+  const isHubPage = location.pathname.startsWith('/hub')
   const isOnboarding = location.pathname.startsWith('/business/onboarding')
   const isCustomerWorkspace = Boolean(user && !['owner', 'admin'].includes(user.role) &&
     (/^\/(customers|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
   const isBusinessWorkspace = Boolean(user && ['owner', 'admin'].includes(user.role) &&
-    (/^\/(business|subscription|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
+    (/^\/(hub|business|subscription|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
   const requestedService = new URLSearchParams(location.search).get('category')
   const storedService = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
   const workspaceService = ['clinic', 'salon'].includes(requestedService) ? requestedService : storedService
@@ -66,10 +76,10 @@ export default function App() {
 
   // Join user's private socket room for wallet:update and notifications
   useEffect(() => {
-    if (user?._id) {
+    if (user?._id && connected) {
       joinUser(user._id)
     }
-  }, [user?._id, joinUser])
+  }, [user?._id, joinUser, connected])
   
   useEffect(() => {
     if (!socket) return
@@ -116,6 +126,7 @@ export default function App() {
   const isKnownRoute = [
     '/', '/login', '/auth/callback', '/customers', '/customer', '/history',
     '/queue', '/queue/:businessId', '/booking', '/booking/:businessId',
+    '/hub/login', '/hub/activate', '/hub/dashboard', '/hub/change-password', '/business/apply', '/admin/login', '/admin/dashboard', '/admin/applications',
     '/business', '/business/onboarding', '/business/onboarding/:businessId',
     '/business/:businessId', '/business/:businessId/manage', '/subscription',
     '/wallet', '/profile', '/admin', '/support', '/help', '/privacy', '/terms',
@@ -127,7 +138,7 @@ export default function App() {
     location.pathname === '/unauthorized' ||
     location.pathname === '/401' ||
     location.pathname === '/403'
-  const isAdminSignIn = location.pathname === '/admin' && user?.role !== 'admin'
+  const isAdminSignIn = location.pathname.startsWith('/admin') && user?.role !== 'admin'
   const isStandalonePage = isNotFoundPage || isUnauthorizedPage || isAdminSignIn
   const isLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
 
@@ -165,16 +176,25 @@ export default function App() {
           },
         }}
       />
-      {user && !isOnboarding && !isCustomerDashboard && !isStandalonePage && !isLegalPage && <Navbar />}
-      {user && !isOnboarding && !isCustomerDashboard && !isStandalonePage && !isLegalPage && (
+      {user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !isLegalPage && <Navbar />}
+      {user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !isLegalPage && (
         <>
           <BackButton />
         </>
       )}
       {user && !isOnboarding && !isStandalonePage && <AIDesistant />}
-      <main className={user && !isOnboarding && !isCustomerDashboard && !isStandalonePage && !isLegalPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
+      {user?.role === 'owner' && user.ownerAccess?.mustChangePassword && ['ACTIVE','PASSWORD_REQUIRED'].includes(user.ownerAccess.status) && <aside className="owner-password-banner" role="status">Change your temporary password by {new Date(user.ownerAccess.passwordChangeDeadline).toLocaleString()}. <a href="/hub/change-password">Change password</a></aside>}
+      <main className={user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !isLegalPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
         <Routes>
           {guidePages.map(page => <Route key={page.path} path={page.path} element={<PublicGuidePage page={page} />} />)}
+          <Route path="/business/apply" element={<BusinessApplicationPage />} />
+          <Route path="/hub/login" element={<HubLoginPage />} />
+          <Route path="/hub/activate" element={<HubLoginPage />} />
+          <Route path="/hub/dashboard" element={<ProtectedRoute allowedRoles={['owner','admin']}><HubHome /></ProtectedRoute>} />
+          <Route path="/hub/change-password" element={<ProtectedRoute allowedRoles={['owner']}><OwnerPasswordPage /></ProtectedRoute>} />
+          <Route path="/admin/login" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/applications" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard key="applications" /></ProtectedRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
@@ -183,7 +203,7 @@ export default function App() {
               !user ? (
                 <LandingPage />
               ) : user.role === 'owner' ? (
-                <Navigate to="/business" replace />
+                <Navigate to="/hub/dashboard" replace />
               ) : (
                 <Navigate to="/customers" replace />
               )
@@ -241,7 +261,7 @@ export default function App() {
           />
           <Route
             path="/business"
-            element={<BusinessPortalPage />}
+            element={<BusinessMarketingPage />}
           />
           <Route
             path="/business/onboarding"
@@ -310,7 +330,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isLoginPage && !isStandalonePage && !isCustomerWorkspace && location.pathname !== '/customers' && <Footer />}
+      {!isHubPage && !isLoginPage && !isStandalonePage && !isCustomerWorkspace && location.pathname !== '/customers' && <Footer />}
     </div>
   )
 }

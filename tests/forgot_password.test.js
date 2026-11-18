@@ -186,7 +186,7 @@ test("Forgot Password Flow - Nodemailer OTP Verification & Password Reset", asyn
       authProvider: "local",
       save: async function () {},
     };
-    User.findOne = async () => userDoc;
+    User.findOne = () => ({ select: async () => userDoc });
 
     const result = await resetPassword({
       rawEmail: "user@serveq.tech",

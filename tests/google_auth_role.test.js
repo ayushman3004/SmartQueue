@@ -12,7 +12,7 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
     User.create = originalCreate;
   });
 
-  await t.test("creates new user as owner when role is owner", async () => {
+  await t.test("rejects public Google owner registration without creating an account", async () => {
     let createdPayload = null;
     User.findOne = async () => null;
     User.create = async (payload) => {
@@ -20,17 +20,14 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
       return { ...payload, _id: "user-owner-123" };
     };
 
-    const user = await findOrCreateGoogleUser({
+    await assert.rejects(findOrCreateGoogleUser({
       googleId: "google-111",
       email: "owner@example.com",
       name: "Owner John",
       avatar: "https://avatar.com/1",
       role: "owner",
-    });
-
-    assert.equal(createdPayload.role, "owner");
-    assert.equal(createdPayload.googleId, "google-111");
-    assert.equal(user.role, "owner");
+    }), /invitation-only/);
+    assert.equal(createdPayload, null);
   });
 
   await t.test("creates new user as customer when role is customer or unspecified", async () => {

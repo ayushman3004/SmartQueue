@@ -17,6 +17,9 @@ export const SocketProvider = ({ children, setUser, user }) => {
 
   useEffect(() => {
     userRef.current = user;
+    socket.auth = { token: localStorage.getItem("token") };
+    socket.disconnect();
+    if (user?.ownerAccess?.status !== "INVITED" && user?.ownerAccess?.status !== "EXPIRED" && user?.ownerAccess?.status !== "PASSWORD_REQUIRED") socket.connect();
   }, [user]);
 
   useEffect(() => {

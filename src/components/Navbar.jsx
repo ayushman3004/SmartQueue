@@ -34,7 +34,7 @@ export default function Navbar() {
   }
 
   const navLinks = user ? [
-    { name: 'Dashboard', path: user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/business' : '/customers' },
+    { name: 'Dashboard', path: user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/hub/dashboard' : '/customers' },
     { name: 'Profile', path: '/profile' },
     ...(user?.role === 'admin' ? [{ name: 'Admin Portal', path: '/admin' }] : []),
   ] : []
@@ -52,7 +52,7 @@ export default function Navbar() {
             : 'bg-white/70 backdrop-blur-md border-zinc-200/60 shadow-sm'
         }`}>
           {/* Logo */}
-          <Link to={user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/business' : '/customers'} className="flex items-center gap-2.5 no-underline group">
+          <Link to={user.role === 'admin' ? '/admin' : user.role === 'owner' ? '/hub/dashboard' : '/customers'} className="flex items-center gap-2.5 no-underline group">
             <img src="/serveq-logo.png" alt="serveQ" className="h-7 md:h-8 w-auto object-contain transition-transform group-hover:scale-105" />
             <span className="hidden sm:inline-block text-[9px] font-extrabold uppercase tracking-[0.2em] text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
               Enterprise

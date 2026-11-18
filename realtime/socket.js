@@ -1,3 +1,6 @@
+import Booking from "../src/booking/booking.model.js";
+import User from "../src/modules/auth/auth.model.js";
+import { ownerState } from "../src/modules/business-application/owner-lifecycle.js";
 import jwt from "jsonwebtoken";
 import { getQueue } from "../src/queue/queue.service.js";
 import Business from "../src/modules/business/business.model.js";
@@ -106,10 +109,16 @@ export const initSocket = (io) => {
       if (token) {
         try {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          const user = await User.findById(decoded.id);
+          if (!user || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0) || decoded.purpose === "activation" || ownerState(user) !== "ACTIVE") return next(new Error("Account activation or password change required."));
+          if (user.ownerAccess?.mustChangePassword) {
+            const timer = setTimeout(() => socket.disconnect(true), Math.max(1, new Date(user.ownerAccess.passwordChangeDeadline).getTime() - Date.now()));
+            timer.unref?.(); socket.on("disconnect", () => clearTimeout(timer));
+          }
           socket.user = {
             _id: decoded.id,
             id: decoded.id,
-            role: decoded.role,
+            role: user.role,
           };
         } catch (err) {
           console.warn(`⚠️ Socket authentication token invalid: ${err.message}`);
@@ -173,7 +182,7 @@ export const initSocket = (io) => {
         }
 
         const business = await Business.findById(businessId);
-        if (business && business.owner.toString() === socket.user.id.toString()) {
+        if (business && business.approvalStatus === "approved" && business.owner.toString() === socket.user.id.toString()) {
           socket.join(`business:${businessId}:admin`);
           trackHubSocket(businessId, socket.id);
         } else {
@@ -189,7 +198,7 @@ export const initSocket = (io) => {
       if (!userId) return;
 
       // Allow users to join their private updates
-      if (socket.user && socket.user.id.toString() !== userId.toString() && socket.user.role !== "admin") {
+      if (!socket.user || (socket.user.id.toString() !== userId.toString() && socket.user.role !== "admin")) {
         socket.emit("error", { message: "Access denied to foreign user notifications" });
         return;
       }
@@ -199,9 +208,20 @@ export const initSocket = (io) => {
     });
 
     // Booking-specific chat room
-    socket.on("join:booking", ({ bookingId }) => {
-      if (bookingId && socket.user) {
-        socket.join(`booking:${bookingId}`);
+    socket.on("join:booking", async ({ bookingId }) => {
+      if (!bookingId || !socket.user) return;
+      try {
+        const booking = await Booking.findById(bookingId);
+        if (!booking) return;
+        let allowed = socket.user.role === "admin" || (booking.userId?._id || booking.userId)?.toString() === socket.user.id.toString();
+        if (!allowed && socket.user.role === "owner") {
+          const businessId = booking.businessId?._id || booking.businessId;
+          allowed = Boolean(await Business.findOne({_id:businessId,owner:socket.user.id,approvalStatus:"approved"}));
+        }
+        if (allowed) socket.join(`booking:${bookingId}`);
+        else socket.emit("error", {message:"Access denied to this booking."});
+      } catch {
+        socket.emit("error", {message:"Unable to join this booking."});
       }
     });
 

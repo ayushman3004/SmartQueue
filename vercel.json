@@ -95,6 +95,14 @@
     {
       "source": "/unauthorized",
       "destination": "/app"
+    },
+    {
+      "source": "/hub/:path*",
+      "destination": "/app"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/app"
     }
   ],
   "cleanUrls": true,

@@ -23,10 +23,10 @@ export default function SubscriptionPage() {
       const completed = businesses.find((business) => business.onboarding?.status === 'COMPLETED')
       const draft = businesses.find((business) => business.onboarding?.status === 'IN_PROGRESS')
       navigate(completed ? `/business/${completed._id}` : draft ? `/business/onboarding/${draft._id}` : '/business/onboarding')
-    } catch { navigate('/business') }
+    } catch { navigate('/hub/dashboard') }
   }
   return <div className="business-page business-pricing min-h-screen app-background-glow">
-    <header className="business-page-header"><button type="button" onClick={() => navigate('/business')} className="inline-flex items-center gap-2 text-sm"><ArrowLeft size={16} />Business home</button><img src="/serveq-logo.png" alt="serveQ" className="h-7 w-auto" /><button type="button" onClick={() => navigate('/support')} className="text-sm">Support</button></header>
+    <header className="business-page-header"><button type="button" onClick={() => navigate('/hub/dashboard')} className="inline-flex items-center gap-2 text-sm"><ArrowLeft size={16} />Business home</button><img src="/serveq-logo.png" alt="serveQ" className="h-7 w-auto" /><button type="button" onClick={() => navigate('/support')} className="text-sm">Support</button></header>
     <main className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
       <BusinessSetupProgress current={2} />
       <div className="business-pricing-intro space-y-3"><p className="business-eyebrow">YOUR BUSINESS, AT ITS BEST</p><h1 className="text-3xl sm:text-4xl">A little less waiting.<br />More room to grow.</h1><p className="text-sm text-zinc-600">Choose your plan, complete payment, then continue setting up your venue.</p></div>

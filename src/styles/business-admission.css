@@ -1,0 +1,364 @@
+.admission {
+  --admission-ink: #173d2f;
+  --admission-line: #c6d8ca;
+  color: var(--admission-ink);
+  background: #f6faf6;
+  min-height: 100%;
+  font-family: inherit;
+}
+.admission-nav {
+  max-width: 1220px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 25px 28px;
+  border-bottom: 1px solid var(--admission-line);
+  gap: 20px;
+}
+.admission-nav nav {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+}
+.admission a {
+  text-decoration: none;
+  color: inherit;
+}
+.admission a:focus-visible,
+.admission button:focus-visible,
+.admission input:focus-visible,
+.admission select:focus-visible,
+.admission textarea:focus-visible {
+  outline: 3px solid #759981;
+  outline-offset: 4px;
+}
+.admission-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 0;
+  background: #315b45 !important;
+  color: #fff !important;
+  border-radius: 14px;
+  padding: 15px 24px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.admission button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.admission-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admission-form {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 65px 28px 80px;
+}
+.admission-form h1 {
+  font-size: clamp(32px, 4vw, 50px);
+  line-height: 1.1;
+  letter-spacing: -0.05em;
+  margin: 12px 0 20px;
+}
+.admission p {
+  line-height: 1.7;
+  color: #63766a;
+}
+.admission form {
+  display: grid;
+  gap: 20px;
+  margin-top: 30px;
+}
+.admission label {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.admission label > span,
+.admission-fine {
+  font-size: 13px;
+  font-weight: 400;
+}
+.admission input,
+.admission select,
+.admission textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--admission-line);
+  border-radius: 12px;
+  padding: 13px 15px;
+  background: #fff;
+  color: var(--admission-ink);
+  font: inherit;
+  font-size: 16px;
+}
+.admission-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.admission-check {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 12px !important;
+  line-height: 1.6;
+}
+.admission-check input {
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.admission-check a {
+  text-decoration: underline;
+}
+.admission-notice {
+  background: #e6efe7;
+  padding: 24px;
+  border-radius: 18px;
+  border: 1px solid #bdd1c2;
+}
+.admission .admission-error {
+  background: #f6e8e0;
+  color: #8a3b2a;
+  padding: 16px;
+  border-radius: 12px;
+}
+.admission-otp-error {
+  position: relative;
+  z-index: 10;
+  max-width: 650px;
+  margin: 20px auto;
+}
+.admission-login {
+  max-width: 530px;
+  padding-top: 70px;
+}
+.admission-login-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.admission-login-links button {
+  cursor: pointer;
+}
+.business-marketing-hero {
+  text-align: center;
+  max-width: 1100px;
+  margin: auto;
+  padding: 95px 28px 105px;
+}
+.business-marketing-hero h1 {
+  font-size: clamp(60px, 9vw, 120px);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.065em;
+  margin: 30px 0;
+}
+.business-marketing-hero em {
+  font-style: normal;
+  color: #758e72;
+}
+.business-marketing-hero > p:not(.admission-eyebrow) {
+  max-width: 630px;
+  margin: 30px auto;
+  font-size: 18px;
+}
+.business-marketing-hero > span {
+  display: block;
+  margin-top: 18px;
+  color: #6c7c70;
+  font-size: 13px;
+}
+.admission-section {
+  max-width: 1220px;
+  margin: auto;
+  padding: 65px 30px;
+  border-top: 1px solid var(--admission-line);
+}
+.admission-section h2 {
+  font-size: clamp(29px, 4vw, 46px);
+  line-height: 1.13;
+  letter-spacing: -0.045em;
+  max-width: 760px;
+  margin-bottom: 34px;
+}
+.admission-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px;
+  list-style: none;
+  padding: 0;
+}
+.admission-grid article,
+.admission-grid li {
+  border-top: 1px solid var(--admission-line);
+  padding-top: 24px;
+}
+.admission-grid h3 {
+  font-size: 22px;
+  letter-spacing: -0.025em;
+  margin: 16px 0 12px;
+}
+.admission-clay {
+  background: #f3e9e1;
+  border-radius: 30px;
+}
+.admission-sage {
+  background: #e7f0e8;
+  border-radius: 30px;
+}
+.admission-faq {
+  max-width: 860px;
+}
+.admission-faq details {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--admission-line);
+}
+.admission-faq summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+.admission-embedded {
+  border-top: 1px solid var(--admission-line);
+}
+.owner-password-banner {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  background: #f2e4d8;
+  color: #694b3d;
+  padding: 14px 24px;
+  font-size: 14px;
+  z-index: 30;
+  position: relative;
+}
+.owner-password-banner a {
+  text-decoration: underline;
+  font-weight: 700;
+}
+.admission-admin {
+  background: transparent;
+  padding: 24px 0;
+}
+.admission-admin-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(0, 1.4fr);
+  gap: 28px;
+  margin-top: 25px;
+}
+.application-row {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding: 20px;
+  text-align: left;
+  border: 1px solid #c6d8ca;
+  border-radius: 16px;
+  margin: 12px 0;
+  background: white;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.application-row[aria-pressed="true"] {
+  background: #e6efe7;
+  border-color: #315b45;
+}
+.application-row span,
+.application-row small {
+  font-size: 13px;
+}
+.application-detail {
+  padding: 25px;
+  background: white;
+  border: 1px solid #c6d8ca;
+  border-radius: 20px;
+  overflow-wrap: anywhere;
+}
+.application-detail h3 {
+  font-size: 25px;
+}
+.application-detail dl > div {
+  padding: 10px 0;
+  border-bottom: 1px solid #e7eee8;
+}
+.application-detail dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b796f;
+}
+.application-detail dd {
+  margin: 4px 0;
+}
+.application-detail label {
+  margin: 20px 0;
+}
+.application-detail h4 {
+  margin-top: 24px;
+}
+@media (max-width: 700px) {
+  .admission-grid,
+  .admission-admin-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .admission-fields {
+    grid-template-columns: 1fr;
+  }
+  .admission-nav {
+    padding: 20px;
+    gap: 14px;
+  }
+  .admission-nav nav {
+    gap: 14px;
+    font-size: 13px;
+  }
+  .admission-nav .admission-primary {
+    padding: 12px;
+  }
+  .admission-section {
+    padding: 40px 24px;
+  }
+  .business-marketing-hero {
+    padding: 65px 22px;
+  }
+  .admission-form {
+    padding: 45px 22px;
+  }
+  .admission-clay,
+  .admission-sage {
+    border-radius: 0;
+  }
+  .admission-admin {
+    padding-inline: 0;
+  }
+}
+
+.admission-google-login {
+  margin-top: 24px;
+  text-align: center;
+}
+.admission-secondary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 14px 20px;
+  border: 1px solid var(--admission-line);
+  border-radius: 14px;
+  background: #fff;
+  font-weight: 600;
+}

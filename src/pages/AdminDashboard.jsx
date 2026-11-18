@@ -1,6 +1,7 @@
+import AdminBusinessApplications from '../components/AdminBusinessApplications'
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import axios from '../api/axios'
 import { signin } from '../api/auth.api'
@@ -193,7 +194,8 @@ export default function AdminDashboard() {
   const [showUserMenu, setShowUserMenu] = useState(false)
 
   // Active Tab: 'hubs' | 'customers' | 'prelaunch'
-  const [activeTab, setActiveTab] = useState('hubs')
+  const applicationLocation = useLocation()
+  const [activeTab, setActiveTab] = useState(applicationLocation.pathname === '/admin/applications' ? 'applications' : 'hubs')
 
   // Search & Filters
   const [hubSearch, setHubSearch] = useState('')
@@ -471,6 +473,7 @@ export default function AdminDashboard() {
             Operations Console
           </p>
           {[
+            { id: 'applications', label: 'Business Applications', icon: Building2 },
             {
               id: 'hubs',
               label: 'Hubs & Operations',
@@ -929,6 +932,7 @@ export default function AdminDashboard() {
           {/* Directory Navigation Tabs Pills */}
           <div className="flex border-b border-zinc-200 space-x-2 text-xs font-bold overflow-x-auto pb-2">
             {[
+              { id: 'applications', label: 'Business Applications', pill: 'Review & invite' },
               {
                 id: 'hubs',
                 label: 'Hubs & Operations Directory',
@@ -967,6 +971,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* ── TAB 1: HUBS & OPERATIONS DIRECTORY ── */}
+          {activeTab === 'applications' && <AdminBusinessApplications />}
           {activeTab === 'hubs' && (
             <div className="bg-white border border-zinc-200/90 rounded-3xl shadow-xs overflow-hidden space-y-6 p-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">

@@ -28,6 +28,7 @@ const otpSchema = new mongoose.Schema(
       ],
       default: "forgot_password",
     },
+    ownerTokenVersion: Number,
     resetToken: {
       type: String,
       sparse: true,

@@ -1,3 +1,5 @@
+import { ownerState, assertOwnerLogin, publicOwnerAccess } from "../business-application/owner-lifecycle.js";
+import { validateInvitation } from "../business-application/business-application.service.js";
 import User from "./auth.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import {
@@ -10,6 +12,7 @@ export const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 // ─── Register ─────────────────────────────────────────────────
 export const register = async ({ name, email, password, role }) => {
+  if (role && role !== "customer") throw new ApiError(403, "Business registration is invitation-only. Apply at /business/apply.");
   if (!name || !email || !password) throw new ApiError(400, "Name, email, and password are required");
 
   const normEmail = (email || "").trim().toLowerCase();
@@ -34,25 +37,10 @@ export const register = async ({ name, email, password, role }) => {
   }
 
   const existing = await User.findOne({ email: normEmail });
-  if (existing) {
-    const userRole = role === "owner" ? "owner" : "customer";
-    if (existing.role === "customer" && userRole === "owner") {
-      throw new ApiError(
-        409,
-        "This email is already registered as a Customer. Customer accounts cannot be upgraded to Hub Owner. Please use a different email address for your Business account."
-      );
-    }
-    if (existing.role === "owner" && userRole === "customer") {
-      throw new ApiError(
-        409,
-        "This email is already registered as a Hub Owner. Please sign in via the Business Command Center at /business."
-      );
-    }
-    throw new ApiError(409, "Email already registered");
-  }
+  if (existing) throw new ApiError(409, "Email already registered. Sign in or use account recovery.");
 
-  // Disallow admin self-registration: only customer or owner permitted
-  const userRole = role === "owner" ? "owner" : "customer";
+  // Public registration creates customers only; owners are admin-provisioned.
+  const userRole = "customer";
   const hashed = await hashPassword(password);
   const user = await User.create({ name: name.trim(), email: normEmail, password: hashed, role: userRole });
 
@@ -61,7 +49,7 @@ export const register = async ({ name, email, password, role }) => {
 };
 
 // ─── Login ────────────────────────────────────────────────────
-export const login = async ({ email, password, requiredRole }) => {
+export const login = async ({ email, password, requiredRole, activationCredential }) => {
   if (!email || !password) throw new ApiError(400, "Email and password are required");
 
   const normEmail = (email || "").trim().toLowerCase();
@@ -69,13 +57,13 @@ export const login = async ({ email, password, requiredRole }) => {
     throw new ApiError(400, "Invalid email format. Please provide a valid email address (e.g. name@example.com)");
   }
 
-  const adminEmail = (process.env.ADMIN_EMAIL || "admin@serveq.tech").toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+  const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
   let user = await User.findOne({ email: normEmail }).select("+password");
 
   // Bootstrap or upgrade superadmin if logging in as admin or using admin email
-  if ((requiredRole === "admin" || normEmail === adminEmail) && normEmail === adminEmail) {
+  if (adminEmail && adminPassword && password === adminPassword && normEmail === adminEmail) {
     if (!user) {
       const hashed = await hashPassword(adminPassword);
       user = await User.create({
@@ -85,12 +73,15 @@ export const login = async ({ email, password, requiredRole }) => {
         role: "admin",
       });
     } else if (user.role !== "admin") {
-      user.role = "admin";
-      await user.save();
+      throw new ApiError(403, "The administrator email belongs to another account. Configure a separate administrator identity.");
     }
   }
 
   if (!user) throw new ApiError(401, "Invalid credentials");
+
+  if (!user.password) throw new ApiError(401, "Invalid credentials. Use your existing sign-in method.");
+  const valid = await comparePassword(password, user.password);
+  if (!valid) throw new ApiError(401, "Invalid credentials");
 
   // Role verification checks
   if (requiredRole === "owner" && user.role !== "owner" && user.role !== "admin") {
@@ -111,12 +102,20 @@ export const login = async ({ email, password, requiredRole }) => {
     throw new ApiError(403, "Access restricted to Administrators. You do not have administrator permissions.");
   }
 
-  if (!user.password)
-    throw new ApiError(401, "This account uses Google login. Please sign in with Google.");
-
-  const valid = await comparePassword(password, user.password);
-  if (!valid) throw new ApiError(401, "Invalid credentials");
-
+  if (user.role === "owner") {
+    if (ownerState(user) === "EXPIRED" && user.ownerAccess?.status === "INVITED") {
+      await User.updateOne({_id:user._id,"ownerAccess.status":"INVITED","ownerAccess.invitationExpiresAt":{$lte:new Date()}}, {$set:{"ownerAccess.status":"EXPIRED"},$unset:{"ownerAccess.activationTokenHash":1}});
+    }
+    assertOwnerLogin(user);
+    if (ownerState(user) === "INVITED") {
+      if (typeof activationCredential !== "string" || !activationCredential.trim()) {
+        const activationRequired = new ApiError(403, "Enter the activation code from your approval email to continue to email verification.");
+        activationRequired.code = "OWNER_ACTIVATION_REQUIRED";
+        throw activationRequired;
+      }
+      await validateInvitation(user, activationCredential);
+    }
+  }
   const token = generateToken(user);
   return { user: sanitize(user), token };
 };
@@ -144,6 +143,7 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, ro
         "This email is registered as a Customer. Hub Owner login is not allowed for customer accounts."
       );
     }
+    if (user.role === "owner" && user.ownerAccess?.applicationId && ownerState(user) !== "ACTIVE") throw new ApiError(403, "Complete your invitation using password login and email OTP.");
     return user;
   }
 
@@ -158,6 +158,7 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, ro
           "This email is registered as a Customer. Hub Owner login is not allowed for customer accounts."
         );
       }
+      if (user.role === "owner" && user.ownerAccess?.applicationId && ownerState(user) !== "ACTIVE") throw new ApiError(403, "Complete your invitation using password login and email OTP.");
       user.googleId = googleId;
       if (user.authProvider === "local") {
         user.authProvider = "both";
@@ -167,6 +168,8 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, ro
       return user;
     }
   }
+
+  if (selectedRole === "owner") throw new ApiError(403, "Business registration is invitation-only. Apply at /business/apply.");
 
   // New user entirely
   return await User.create({
@@ -196,10 +199,15 @@ export const updateProfile = async (userId, data) => {
   delete data.walletBalance;
   delete data._id;
 
+  if (data.email !== undefined && typeof data.email !== "string") throw new ApiError(400, "Invalid email.");
+  if (data.phone !== undefined && typeof data.phone !== "string") throw new ApiError(400, "Invalid phone.");
+
   // If phone changed, reset verification
   if (data.phone !== undefined && data.phone !== user.phone) {
     user.isPhoneVerified = false;
   }
+
+  if (user.ownerAccess?.applicationId && data.email && data.email.toLowerCase().trim() !== user.email) throw new ApiError(403, "Contact ServeQ to change an approved business login email.");
 
   // If email is explicitly provided and changed
   if (data.email && data.email.toLowerCase().trim() !== user.email) {
@@ -213,7 +221,12 @@ export const updateProfile = async (userId, data) => {
   }
   delete data.email;
 
-  Object.assign(user, data);
+  for (const key of ["name", "avatar", "phone", "bio", "location"]) {
+    if (data[key] !== undefined) {
+      if (typeof data[key] !== "string") throw new ApiError(400, "Invalid profile field.");
+      user[key] = data[key];
+    }
+  }
   await user.save();
   return sanitize(user);
 };
@@ -232,5 +245,6 @@ export const sanitize = (user) => ({
   isEmailVerified: Boolean(user.isEmailVerified || user.authProvider === "google"),
   bio: user.bio || "",
   location: user.location || "",
+  ownerAccess: publicOwnerAccess(user),
   subscription: user.subscription || { plan: "NONE", status: "INACTIVE", amount: 0 },
 });

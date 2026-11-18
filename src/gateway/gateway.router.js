@@ -1,3 +1,4 @@
+import { applicationRoutes, adminApplicationRoutes } from "../modules/business-application/business-application.routes.js";
 import { Router } from "express";
 import authRoutes from "../modules/auth/auth.routes.js";
 import businessRoutes from "../modules/business/business.routes.js";
@@ -77,6 +78,8 @@ export const createGatewayRouter = () => {
   router.use("/health", healthRoutes);
 
   // Domain Routes Registration
+  router.use("/business-applications", applicationRoutes);
+  router.use("/admin/applications", adminApplicationRoutes);
   router.use("/auth", authLimiter, authRoutes);
   router.use("/businesses", businessRoutes);
   router.use("/bookings", bookingRoutes);
@@ -88,7 +91,7 @@ export const createGatewayRouter = () => {
   router.use("/admin", adminRoutes);
   router.use("/chat", chatRoutes);
   router.use("/chatbot", chatbotRoutes);
-  router.use("/otp", otpRoutes);
+  router.use("/otp", authLimiter, otpRoutes);
   router.use("/waitlist", waitlistRoutes);
   router.use("/support", supportRoutes);
   router.use("/subscriptions", subscriptionRoutes);

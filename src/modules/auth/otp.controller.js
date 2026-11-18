@@ -1,3 +1,6 @@
+import crypto from "node:crypto";
+import { ownerState } from "../business-application/owner-lifecycle.js";
+import { sanitize } from "./auth.service.js";
 import Otp from "./otp.model.js";
 import User from "./auth.model.js";
 import { sendSMS } from "../../services/twilioService.js";
@@ -13,18 +16,18 @@ export const sendOtp = asyncHandler(async (req, res) => {
   }
 
   // Cooldown check (30 seconds)
-  const existingOtp = await Otp.findOne({ phoneNumber });
+  const existingOtp = await Otp.findOne({ phoneNumber, purpose: "phone_login" });
   if (existingOtp && (Date.now() - new Date(existingOtp.updatedAt).getTime() < 30000)) {
     return res.status(429).json(new ApiResponse(429, null, "Please wait 30 seconds before requesting another OTP"));
   }
 
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = crypto.randomInt(100000, 1000000).toString();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
   // Store OTP (overwrite if exists)
   await Otp.findOneAndUpdate(
-    { phoneNumber },
+    { phoneNumber, purpose: "phone_login" },
     { otp, expiresAt, attempts: 0 },
     { upsert: true, new: true }
   );
@@ -38,13 +41,14 @@ export const sendOtp = asyncHandler(async (req, res) => {
 
 export const verifyOtp = asyncHandler(async (req, res) => {
   const { phoneNumber, otp, role } = req.body;
+  if (role && !["customer", "owner"].includes(role)) throw new ApiError(403, "This sign-in method is not available for that role.");
   if (!phoneNumber || !otp) {
     return res.status(400).json(new ApiResponse(400, null, "Phone number and OTP are required"));
   }
 
-  const otpRecord = await Otp.findOne({ phoneNumber });
+  const otpRecord = await Otp.findOne({ phoneNumber, purpose: "phone_login" });
 
-  if (!otpRecord) {
+  if (!otpRecord || new Date(otpRecord.expiresAt).getTime() <= Date.now()) {
     return res.status(400).json(new ApiResponse(400, null, "OTP expired or not found"));
   }
 
@@ -62,7 +66,8 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   let user = await User.findOne({ phone: phoneNumber });
 
   if (!user) {
-    const assignedRole = role === "owner" ? "owner" : "customer";
+    if (role === "owner") throw new ApiError(403, "Business registration is invitation-only. Apply at /business/apply.");
+    const assignedRole = "customer";
     user = await User.create({
       name: `User ${phoneNumber.slice(-4)}`,
       phone: phoneNumber,
@@ -78,22 +83,17 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     );
   }
 
+  if (user.role === "admin" || (user.role === "owner" && !["ACTIVE", "PASSWORD_REQUIRED"].includes(ownerState(user)))) throw new ApiError(403, "Use your invitation password and email OTP at /hub/activate, or contact ServeQ for a fresh invitation.");
+
   // Cleanup OTP
   await Otp.deleteOne({ phoneNumber });
 
   // Generate JWT and set cookie
   const token = generateToken(user);
-  setTokenCookie(res, token);
+  setTokenCookie(res, token, req);
 
   res.status(200).json(new ApiResponse(200, {
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatar: user.avatar,
-      phone: user.phone
-    },
+    user: { ...sanitize(user), id: user._id },
     token
   }, "Login successful"));
 });

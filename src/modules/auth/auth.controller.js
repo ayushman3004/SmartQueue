@@ -14,8 +14,8 @@ export const signup = asyncHandler(async (req, res) => {
 });
 
 export const signin = asyncHandler(async (req, res) => {
-  const { email, password, requiredRole } = req.body;
-  const { user, token } = await authService.login({ email, password, requiredRole });
+  const { email, password, requiredRole, activationCredential } = req.body;
+  const { user, token } = await authService.login({ email, password, requiredRole, activationCredential });
   setTokenCookie(res, token, req);
   res.json(new ApiResponse(200, { user, token }, "Logged in successfully"));
 });
@@ -28,7 +28,7 @@ export const upgradeToOwner = asyncHandler(async (req, res) => {
 export const googleCallback = asyncHandler(async (req, res) => {
   // User attached by Passport
   const token = generateToken(req.user);
-  setTokenCookie(res, token);
+  setTokenCookie(res, token, req);
   // Redirect to frontend with token in query (client stores it)
   res.redirect(`${process.env.CLIENT_URL}/auth/callback?token=${token}`);
 });
@@ -56,8 +56,10 @@ export const logout = asyncHandler(async (_req, res) => {
 
 export const forgotPasswordSendOtp = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  const result = await forgotPasswordService.sendPasswordResetOtp(email);
-  res.status(200).json(new ApiResponse(200, result, "Verification code sent to your email"));
+  try { await forgotPasswordService.sendPasswordResetOtp(email); }
+  catch (error) { if (error.statusCode === 400) throw error; }
+  // Identical public response for unknown accounts, cooldown and delivery failures.
+  res.status(200).json(new ApiResponse(200, { sent: true }, "If an eligible account exists, a verification code will be sent. Check your email or try again shortly."));
 });
 
 export const forgotPasswordVerifyOtp = asyncHandler(async (req, res) => {
@@ -74,6 +76,8 @@ export const forgotPasswordReset = asyncHandler(async (req, res) => {
     otp,
     newPassword,
   });
+  const resetUser = await User.findOne({email: result.email});
+  if (resetUser) req.app.get("io")?.in(`user:${resetUser._id}`).disconnectSockets(true);
   res.status(200).json(new ApiResponse(200, result, "Password reset successfully. You can now log in."));
 });
 
@@ -99,23 +103,31 @@ export const verifyPhoneVerificationOtp = asyncHandler(async (req, res) => {
 });
 
 export const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
-  const email = req.body.email || req.user.email;
+  const email = req.user.ownerAccess?.applicationId ? req.user.email : (req.body.email || req.user.email);
   const result = await verificationService.sendEmailVerificationOtp({
     email,
     userId: req.user._id,
     userName: req.user.name,
+    ownerTokenVersion: req.user.ownerAccess?.status === "INVITED" ? req.user.tokenVersion : undefined,
   });
   res.status(200).json(new ApiResponse(200, result, result.message));
 });
 
 export const verifyEmailVerificationOtp = asyncHandler(async (req, res) => {
-  const email = req.body.email || req.user.email;
+  const email = req.user.ownerAccess?.applicationId ? req.user.email : (req.body.email || req.user.email);
   const { otp } = req.body;
   const result = await verificationService.verifyEmailVerificationOtp({
     email,
     otp,
     userId: req.user._id,
+    ownerTokenVersion: req.user.ownerAccess?.status === "INVITED" ? req.user.tokenVersion : undefined,
   });
+  if (result.activatedUser) {
+    const token = generateToken(result.activatedUser);
+    setTokenCookie(res, token, req);
+    delete result.activatedUser;
+    result.token = token;
+  }
   res.status(200).json(new ApiResponse(200, result, result.message));
 });
 

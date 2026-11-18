@@ -1,3 +1,4 @@
+import { changePasswordHandler } from "../business-application/business-application.routes.js";
 import { Router } from "express";
 import passport from "passport";
 import {
@@ -28,6 +29,8 @@ router.post("/logout", logout);
 router.get("/me", protect, getMe);
 router.patch("/me", protect, updateMe);
 router.post("/upgrade-to-owner", protect, upgradeToOwner);
+
+router.post("/change-password", protect, changePasswordHandler);
 
 // Profile Contact Verification
 router.post("/phone/send-otp", protect, sendPhoneVerificationOtp);
@@ -67,7 +70,7 @@ router.get("/google/callback", (req, res, next) => {
 
   passport.authenticate("google", { session: false }, (err, user) => {
     const role = req.query?.state === "owner" ? "owner" : "customer";
-    const failureUrl = role === "owner" ? `${clientUrl}/business` : `${clientUrl}/login`;
+    const failureUrl = role === "owner" ? `${clientUrl}/hub/login` : `${clientUrl}/login`;
 
     if (err) {
       const code = err.statusCode === 403 ? "customer_account_forbidden" : "oauth_error";

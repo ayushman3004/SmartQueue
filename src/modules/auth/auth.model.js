@@ -61,6 +61,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    tokenVersion: { type: Number, default: 0 },
+    ownerAccess: {
+      applicationId: { type: mongoose.Schema.Types.ObjectId, ref: "BusinessApplication" },
+      status: { type: String, enum: ["INVITED", "ACTIVE", "EXPIRED", "SUSPENDED"] },
+      activationTokenHash: { type: String, select: false },
+      invitationIssuedAt: Date, invitationExpiresAt: Date, activatedAt: Date, firstLoginAt: Date,
+      mustChangePassword: { type: Boolean, default: false }, passwordChangeDeadline: Date, passwordChangedAt: Date,
+    },
     subscription: {
       plan: {
         type: String,

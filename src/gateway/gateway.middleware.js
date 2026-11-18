@@ -1,3 +1,4 @@
+import { ownerState } from "../modules/business-application/owner-lifecycle.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import User from "../modules/auth/auth.model.js";
@@ -48,6 +49,7 @@ export const gatewayAuthenticate = async (req, res, next) => {
       });
     }
 
+    if ((decoded.tokenVersion || 0) !== (user.tokenVersion || 0) || decoded.purpose === "activation" || ownerState(user) !== "ACTIVE") return res.status(403).json({success:false,message:"Account activation or password change required."});
     req.user = user;
     next();
   } catch (err) {
@@ -78,7 +80,7 @@ export const gatewayOptionalAuth = async (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.id).select("-password");
-      if (user) req.user = user;
+      if (user && (decoded.tokenVersion || 0) === (user.tokenVersion || 0) && decoded.purpose !== "activation" && ownerState(user) === "ACTIVE") req.user = user;
     }
   } catch (_err) {
     // Continue silently if invalid or expired
@@ -154,6 +156,7 @@ export const gatewayErrorHandler = (err, req, res, _next) => {
     message,
     ...(err.retryAfterSeconds ? { retryAfterSeconds: err.retryAfterSeconds } : {}),
     requestId: req.id,
+    ...(err.code === "OWNER_ACTIVATION_REQUIRED" ? { code: err.code } : {}),
     ...(process.env.NODE_ENV !== "production" && statusCode >= 500 ? { stack: err.stack } : {}),
   });
 };

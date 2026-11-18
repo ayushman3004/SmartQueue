@@ -650,7 +650,7 @@ export default function BusinessDashboard() {
           <button
             type="button"
             onClick={() => {
-              navigate('/business')
+              navigate('/hub/dashboard')
               if (isMobile) setMobileSidebarOpen(false)
             }}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
@@ -805,7 +805,7 @@ export default function BusinessDashboard() {
             <Menu className="w-5 h-5" />
           </button>
 
-          <Link to="/business" className="flex items-center gap-2.5 text-decoration-none group">
+          <Link to="/hub/dashboard" className="flex items-center gap-2.5 text-decoration-none group">
             <img
               src="/serveq-logo.png"
               alt="serveQ"
@@ -890,7 +890,7 @@ export default function BusinessDashboard() {
                 <button
                   type="button"
                   onClick={() => {
-                    navigate('/business')
+                    navigate('/hub/dashboard')
                     setShowUserMenu(false)
                   }}
                   className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"

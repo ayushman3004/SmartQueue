@@ -21,9 +21,9 @@ export default function AuthCallback() {
         const redirect = localStorage.getItem('auth_redirect')
         localStorage.removeItem('auth_redirect')
         if (redirect) {
-          navigate(safeReturnTo(redirect, loggedUser?.role === 'owner' ? '/business' : '/customers'), { replace: true })
+          navigate(safeReturnTo(redirect, loggedUser?.role === 'owner' ? '/hub/dashboard' : '/customers'), { replace: true })
         } else if (loggedUser?.role === 'owner') {
-          navigate('/business', { replace: true })
+          navigate('/hub/dashboard', { replace: true })
         } else {
           navigate('/customers', { replace: true })
         }

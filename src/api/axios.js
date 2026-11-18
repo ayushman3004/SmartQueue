@@ -59,14 +59,15 @@ api.interceptors.response.use(
         if (path !== "/login" && path !== "/" && !path.startsWith("/auth")) {
           if (path.startsWith("/admin")) {
             window.location.reload();
-          } else if (path.startsWith("/business")) {
-            window.location.href = "/business";
+          } else if ((path.startsWith("/business") || path.startsWith("/hub"))) {
+            window.location.href = "/hub/login";
           } else {
             window.location.href = "/login";
           }
         }
       }
     }
+    if (err.response?.status === 403 && err.response?.data?.message?.startsWith("Password change required")) window.location.href = "/hub/change-password";
     return Promise.reject(err);
   }
 );

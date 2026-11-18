@@ -196,6 +196,8 @@ export const getAllBusinesses = async (filters = {}) => {
         queueData: 0,
         reviewsList: 0,
         "owner.password": 0,
+        "owner.ownerAccess": 0,
+        "owner.tokenVersion": 0,
         "owner.__v": 0,
       },
     },
@@ -351,6 +353,8 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
   if (userRole !== "admin") {
     delete safeData.isActive;
     delete safeData.approvalStatus;
+    delete safeData.subscription;
+    delete safeData.onboarding;
   }
 
   // Validate averageServiceTime if provided

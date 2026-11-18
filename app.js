@@ -1,3 +1,4 @@
+import { cookieOriginGuard } from "./middleware/cookie-origin.middleware.js";
 import express from "express";
 import cors from "cors";
 import passport from "passport";
@@ -44,6 +45,7 @@ app.use(
   })
 );
 app.use(cookieParser());
+app.use(cookieOriginGuard);
 app.use(passport.initialize());
 
 // ─── API Gateway Boundary ─────────────────────────────────────────

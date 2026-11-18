@@ -11,7 +11,7 @@ export const comparePassword = async (password, hashed) => {
 
 export const generateToken = (user) => {
   return jwt.sign(
-    { id: user._id || user, role: user.role || "user" },
+    { id: user._id || user, role: user.role || "user", tokenVersion: user.tokenVersion || 0, purpose: user.ownerAccess?.status === "INVITED" ? "activation" : "session" },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );

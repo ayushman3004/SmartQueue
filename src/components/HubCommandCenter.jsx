@@ -386,7 +386,7 @@ export default function HubCommandCenter() {
             <Menu className="w-5 h-5" />
           </button>
 
-          <Link to="/business" className="flex items-center gap-2.5 text-decoration-none group">
+          <Link to="/hub/dashboard" className="flex items-center gap-2.5 text-decoration-none group">
             <img
               src="/serveq-logo.png"
               alt="serveQ"

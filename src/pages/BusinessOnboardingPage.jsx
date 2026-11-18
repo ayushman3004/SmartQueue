@@ -804,7 +804,7 @@ export default function BusinessOnboardingPage() {
           fontWeight: 'bold',
         },
       })
-      navigate(launched?._id ? `/business/${launched._id}` : '/business')
+      navigate(launched?._id ? `/business/${launched._id}` : '/hub/dashboard')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Pre-flight launch validation failed')
     } finally {
@@ -904,7 +904,7 @@ export default function BusinessOnboardingPage() {
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => navigate('/business')}
+              onClick={() => navigate('/hub/dashboard')}
               className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-950 text-xs font-bold transition-all flex items-center gap-1.5"
               title="Save progress and exit to dashboard"
             >
