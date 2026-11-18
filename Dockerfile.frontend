@@ -7,7 +7,10 @@ RUN npm ci
 
 COPY . .
 
-RUN npm run build
+ARG VITE_API_URL=https://api.serveq.tech
+ENV VITE_API_URL=$VITE_API_URL
+
+RUN npm run ci:frontend
 
 FROM nginx:alpine
 

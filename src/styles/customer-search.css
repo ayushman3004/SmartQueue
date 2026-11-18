@@ -1,0 +1,101 @@
+/* Give search its own header row until all desktop controls fit comfortably. */
+.customer-search-header {
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 12px;
+}
+.customer-search-header > :first-child { flex-shrink: 0; }
+.customer-search-header > :last-child { flex-shrink: 0; margin-left: auto; }
+.customer-search-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  order: 3;
+  flex: 1 0 100%;
+  min-width: 0;
+}
+.customer-search-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--service-line, #c1d5c7);
+  border-radius: 14px;
+  background: #f5faf6;
+  color: #153c2b;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.customer-search-location > svg { flex-shrink: 0; }
+.customer-search-location > span {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.customer-search-field {
+  position: relative;
+  min-width: 0;
+  border: 1px solid #8eaf9c;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 5px #153c2b0a;
+}
+.customer-search-field:focus-within {
+  border-color: var(--service-ink, #315b45);
+  box-shadow: 0 0 0 3px var(--service-soft, #e6f0e8);
+}
+.customer-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--service-ink, #315b45);
+  pointer-events: none;
+}
+.customer-search-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 48px 12px 44px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: #153c2b;
+  font-size: 16px; /* Prevent input zoom on iOS. */
+  line-height: 24px;
+}
+.customer-search-input::placeholder { color: #52675b; opacity: 1; }
+.customer-search-input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.customer-search-clear {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: #52675b;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+@media (min-width: 640px) {
+  .customer-search-tools { grid-template-columns: minmax(0, 200px) minmax(0, 1fr); }
+}
+@media (min-width: 1280px) {
+  .customer-search-header { flex-wrap: nowrap; }
+  .customer-search-tools {
+    order: 0;
+    flex: 1 1 0%;
+    max-width: 768px;
+    margin-inline: auto;
+  }
+}

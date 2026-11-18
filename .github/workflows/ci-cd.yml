@@ -52,7 +52,7 @@ jobs:
           case "$TASK" in
             lint) npm run lint ;;
             test) NODE_ENV=test npm test ;;
-            build) npm run build ;;
+            build) npm run build && npm run check:build ;;
             audit) npm audit --omit=dev --audit-level=high ;;
             *) exit 1 ;;
           esac
@@ -92,10 +92,50 @@ jobs:
           docker run --rm --env NODE_ENV=test --entrypoint node "$IMAGE" \
             --input-type=module -e "await import('./app.js')"
 
+  frontend:
+    name: ServeQ frontend Docker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: false
+          load: true
+          tags: serveq-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=serveq-frontend
+          cache-to: type=gha,mode=max,scope=serveq-frontend
+      - name: Validate Nginx and production HTTP routing
+        env:
+          IMAGE: serveq-frontend:${{ github.sha }}
+        run: |
+          docker run --rm --add-host backend:127.0.0.1 "$IMAGE" nginx -t
+          docker run --detach --name serveq-frontend --add-host backend:127.0.0.1 --publish 127.0.0.1:8080:80 "$IMAGE"
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:8080/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/check-frontend-http.mjs
+      - name: Container diagnostics
+        if: ${{ failure() }}
+        run: docker logs serveq-frontend || true
+      - name: Stop smoke test container
+        if: ${{ always() }}
+        run: docker rm --force serveq-frontend || true
+
   gate:
     name: ServeQ CI gate
     if: ${{ always() }}
-    needs: [quality, docker]
+    needs: [quality, docker, frontend]
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:
@@ -103,7 +143,8 @@ jobs:
         env:
           QUALITY: ${{ needs.quality.result }}
           DOCKER: ${{ needs.docker.result }}
-        run: test "$QUALITY" = success && test "$DOCKER" = success
+          FRONTEND: ${{ needs.frontend.result }}
+        run: test "$QUALITY" = success && test "$DOCKER" = success && test "$FRONTEND" = success
 
   deploy:
     name: ServeQ Render production

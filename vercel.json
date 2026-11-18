@@ -135,5 +135,7 @@
         }
       ]
     }
-  ]
+  ],
+  "buildCommand": "npm run ci:frontend",
+  "installCommand": "npm ci --no-audit --no-fund"
 }

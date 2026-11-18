@@ -172,6 +172,12 @@ push, or image-backed deployment.
 
 ## Vercel configuration
 
+The repository now sets Vercel's install command to `npm ci --no-audit --no-fund`
+and build command to `npm run ci:frontend`. That command requires lint, the entire
+test suite, the production build, and generated artifact checks to pass. A failed
+command stops the build. Keep backend credentials out of Vercel; these checks
+need no live database, payment, mail, or AI credentials.
+
 Preserve the existing project, GitHub integration, production branch `main`, SPA
 routing and domain `https://serveq.tech`. Use `npm ci`, `npm run build`, output
 `dist`, repository root, and Node **24.x**. Confirm the current dashboard settings;
@@ -325,6 +331,32 @@ For a failed release:
 5. Revert/fix the bad code on `main`, require green CI, confirm head matches the
    intended release, then re-enable automatic deployment. Leaving main on the bad
    revision risks redeploying it on the next enabled push.
+
+## Validation update — November 18, 2026
+
+- Fixed the subscription slot fixture to pass the API's `YYYY-MM-DD` date format
+  in the venue timezone; the 403 subscription assertion is retained.
+- Mocked the linked booking writes in three queue unit tests, eliminating real
+  database buffering timeouts. Test execution now always sets `NODE_ENV=test`
+  and imposes a 60-second test timeout. The payment client no longer loads a
+  developer `.env` file in test mode.
+- Added `npm run check:build` to verify built public pages, canonical URLs,
+  CSS/JavaScript entries, favicons, sitemap, robots, and private/404 noindex tags.
+- Added a frontend Docker job to build the real Nginx image, run `nginx -t`, and
+  check public/private URLs, asset status/MIME/CORS, permanent redirects with
+  query preservation, and a true HTTP 404 over HTTP. The CI gate now requires
+  quality checks plus both backend and frontend Docker jobs before Render deploys.
+- Local validation: 174 tests passed, lint had zero errors (five existing Fast
+  Refresh warnings), production artifact checks passed, backend imports passed,
+  and the production dependency audit reported zero vulnerabilities. Workflow
+  YAML and action SHA pins were validated. Docker is unavailable on this machine;
+  the actual Linux container checks must pass in GitHub Actions after pushing.
+
+Run `VITE_API_URL=https://api.serveq.tech npm run ci:frontend` on a POSIX shell
+to reproduce the frontend release gate. The HTTP smoke checker can also be run
+with `node scripts/check-frontend-http.mjs http://127.0.0.1:8080` against a locally
+running frontend container. These checks do not replace live service readiness,
+OAuth/payment verification, or the deployment checks already described above.
 
 ## Platform references
 

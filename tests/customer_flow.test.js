@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { MockPaymentProvider } from "../src/modules/payment/payment.provider.js";
 import { validateAmount } from "../src/modules/payment/payment.service.js";
 import QueueDS from "../src/queue/queue.ds.js";
+import BookingModel from "../src/booking/booking.model.js";
 
 test("Customer Flow - Payment Provider Abstraction & Safe Positive Amounts", async (t) => {
   await t.test("Validates positive amounts strictly", () => {
@@ -288,7 +289,11 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
   const businessId = new mongoose.Types.ObjectId();
   const userId = new mongoose.Types.ObjectId();
 
-  await t.test("joinQueue records multiple services and assigns available doctor", async () => {
+  await t.test("joinQueue records multiple services and assigns available doctor", async (t) => {
+    // Queue joins write their linked booking; keep this unit test offline.
+    t.mock.method(BookingModel, "create", async (payload) => ({
+      ...payload, _id: new mongoose.Types.ObjectId(),
+    }));
     const origQueueFindOne = Queue.findOne;
     const fakeQueueDoc = {
       businessId,
@@ -343,7 +348,11 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
     }
   });
 
-  await t.test("joinQueue auto-assigns General Physician if preferred doctor is unavailable/busy", async () => {
+  await t.test("joinQueue auto-assigns General Physician if preferred doctor is unavailable/busy", async (t) => {
+    // Queue joins write their linked booking; keep this unit test offline.
+    t.mock.method(BookingModel, "create", async (payload) => ({
+      ...payload, _id: new mongoose.Types.ObjectId(),
+    }));
     const origQueueFindOne = Queue.findOne;
     const fakeQueueDoc = {
       businessId,
@@ -394,7 +403,11 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
     }
   });
 
-  await t.test("joinQueue auto-assigns available barber in salon when 'any' is selected", async () => {
+  await t.test("joinQueue auto-assigns available barber in salon when 'any' is selected", async (t) => {
+    // Queue joins write their linked booking; keep this unit test offline.
+    t.mock.method(BookingModel, "create", async (payload) => ({
+      ...payload, _id: new mongoose.Types.ObjectId(),
+    }));
     const origQueueFindOne = Queue.findOne;
     const fakeQueueDoc = {
       businessId,

@@ -9,11 +9,13 @@
     "build": "node scripts/generate-sitemap.js && vite build && node scripts/generate-route-html.js",
     "generate:sitemap": "node scripts/generate-sitemap.js",
     "lint": "eslint .",
-    "test": "node --test tests/*.test.js",
+    "test": "node scripts/run-tests.mjs",
     "preview": "vite preview",
     "start": "node server.js",
     "server": "node server.js",
-    "server:dev": "nodemon server.js"
+    "server:dev": "nodemon server.js",
+    "check:build": "node scripts/check-production-build.mjs",
+    "ci:frontend": "npm run lint && npm test && npm run build && npm run check:build"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.3",
