@@ -25,6 +25,20 @@ export const getByBusiness = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, result));
 });
 
+export const update = asyncHandler(async (req, res) => {
+  const review = await reviewService.updateReview({
+    reviewId: req.params.id,
+    userId: req.user._id,
+    rating: req.body.rating,
+    comment: req.body.comment,
+  });
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`business:${review.businessId}`).emit("review:updated", { businessId: review.businessId, review });
+  }
+  res.json(new ApiResponse(200, { review }, "Review updated successfully"));
+});
+
 export const getMine = asyncHandler(async (req, res) => {
   const reviews = await reviewService.getMyReviews(req.user._id);
   res.json(new ApiResponse(200, { reviews }));

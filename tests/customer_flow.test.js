@@ -124,7 +124,7 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
       const result = await createBooking({
         businessId,
         userId,
-        startTime: "2026-10-14T10:00:00Z",
+        startTime: new Date(Date.now() + 86400000).toISOString(),
         services: [
           { name: "General Consultation", duration: 15, price: 400 },
           { name: "Diagnostic Blood Test", duration: 10, price: 200 },
@@ -194,7 +194,7 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
       const result = await createBooking({
         businessId,
         userId,
-        startTime: "2026-10-14T10:00:00Z",
+        startTime: new Date(Date.now() + 86400000).toISOString(),
         services: [
           { name: "General Consultation", duration: 15, price: 400 },
         ],
@@ -254,7 +254,7 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
       const result = await createBooking({
         businessId,
         userId,
-        startTime: "2026-10-14T11:00:00Z",
+        startTime: new Date(Date.now() + 86400000).toISOString(),
         services: [
           { name: "Haircut", duration: 25, price: 250 },
           { name: "Beard Trim", duration: 15, price: 150 },

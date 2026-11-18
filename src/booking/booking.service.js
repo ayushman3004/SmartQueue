@@ -8,6 +8,7 @@ import ApiError from "../../utils/ApiError.js";
 import { getRazorpayClient } from "../modules/payment/razorpay.service.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
 import { isBusinessSubscriptionActive } from "../modules/subscription/subscription.service.js";
+import { getBookingDateError, getBusinessDate } from "../utils/bookingDates.js";
 
 const RATE_PER_MINUTE = 20; // ₹20 per extra minute
 const FLEX_WINDOW = 10; // ±10 minutes flexibility
@@ -16,6 +17,11 @@ const FLEX_WINDOW = 10; // ±10 minutes flexibility
 export const getAvailableSlots = async (businessId, date) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
+
+  const dateError = getBookingDateError(date, business);
+  if (dateError) {
+    throw new ApiError(business.bookingSettings?.enableAppointments === false ? 403 : 400, dateError);
+  }
 
   const isSubscribed = await isBusinessSubscriptionActive(business);
   if (!isSubscribed) {
@@ -128,18 +134,10 @@ export const createBooking = async ({
   }
 
   const now = new Date();
-  const maxAdvanceDays = business.bookingSettings?.maxAdvanceBookingDays || 14;
-  const maxAdvanceDate = new Date(now.getTime() + maxAdvanceDays * 24 * 60 * 60 * 1000);
-  if (new Date(startTime) > maxAdvanceDate) {
-    throw new ApiError(400, `Appointments cannot be booked more than ${maxAdvanceDays} days in advance`);
-  }
-
-  if (business.bookingSettings?.allowSameDayBooking === false) {
-    const isSameDay = new Date(startTime).toDateString() === now.toDateString();
-    if (isSameDay) {
-      throw new ApiError(400, "Same-day booking is not permitted by this business");
-    }
-  }
+  const requestedStart = new Date(startTime);
+  const dateError = getBookingDateError(getBusinessDate(requestedStart, business), business, now);
+  if (dateError) throw new ApiError(400, dateError);
+  if (requestedStart <= now) throw new ApiError(400, "Appointments cannot be booked in the past");
 
   // 1. Process multiple services or fallback to single service
   let selectedServicesList = [];
@@ -489,6 +487,8 @@ export const startService = async (bookingId, requesterId, requesterRole) => {
   }
 
   booking.status = "serving";
+  booking.startTime = new Date();
+  booking.endTime = new Date(booking.startTime.getTime() + Math.max(1, Number(booking.duration) || 15) * 60000);
   await booking.save();
 
   // Synchronize with live Queue if present
@@ -503,6 +503,8 @@ export const startService = async (bookingId, requesterId, requesterRole) => {
         );
         if (u) {
           u.status = "serving";
+          u.estimatedStartTime = booking.startTime;
+          u.serviceTime = booking.duration;
           await queueDoc.save();
         }
       }
@@ -528,6 +530,27 @@ export const completeService = async (bookingId, requesterId, requesterRole) => 
     throw new ApiError(400, `Cannot complete service from '${booking.status}' status`);
   }
 
+  const claimed = await Booking.findOneAndUpdate({
+    _id: bookingId, status: { $in: ["serving", "in-progress"] },
+  }, { $set: { status: "completed" } }, { new: true });
+  if (!claimed) throw new ApiError(409, "This service has already been completed or changed");
+  return finalizeCompletedBooking(claimed, business);
+};
+
+// Atomic claim prevents overlapping background runs from completing/counting the same booking twice.
+export const completeExpiredBooking = async (bookingId, now = new Date()) => {
+  const booking = await Booking.findOneAndUpdate({
+    _id: bookingId,
+    status: { $in: ["confirmed", "scheduled", "delayed", "serving", "in-progress", "waiting"] },
+    endTime: { $lte: now },
+  }, { $set: { status: "completed" } }, { new: true });
+  if (!booking) return null;
+  const business = await Business.findById(booking.businessId);
+  if (!business) return booking;
+  return finalizeCompletedBooking(booking, business);
+};
+
+const finalizeCompletedBooking = async (booking, business) => {
   booking.status = "completed";
 
   // Ensure paidAmount is populated if was 0 or unrecorded
@@ -602,8 +625,13 @@ export const getMyBookings = async (userId) => {
       );
       if (idx !== -1) {
         const qUser = qDoc.users[idx];
+        const linkedBooking = qUser.bookingId && bookings.find(
+          (booking) => booking._id?.toString() === qUser.bookingId.toString()
+        );
+        // Completion can be read before its queue cleanup finishes. Never resurrect a terminal booking.
+        if (linkedBooking && ["completed", "cancelled", "refunded"].includes(linkedBooking.status)) continue;
         const position = idx + 1;
-        const isServing = qUser.status === "serving" || idx === 0;
+        const isServing = qUser.status === "serving" || (!qUser.status && idx === 0);
         const peopleAhead = Math.max(0, idx);
 
         const existingBooking = bookings.find(

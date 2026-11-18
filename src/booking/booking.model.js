@@ -164,6 +164,7 @@ bookingSchema.index({ businessId: 1, userId: 1, startTime: 1 });
 bookingSchema.index({ businessId: 1, status: 1, startTime: 1 }); // for filtered status queries
 bookingSchema.index({ businessId: 1, extendedTime: 1, createdAt: 1 }); // for AI buffer history
 bookingSchema.index({ userId: 1, status: 1 }); // for getMyBookings
+bookingSchema.index({ status: 1, endTime: 1 }); // automatic completion of expired appointments
 
 const Booking = mongoose.models.Booking || mongoose.model("Booking", bookingSchema);
 if (!mongoose.models.Appointment) {

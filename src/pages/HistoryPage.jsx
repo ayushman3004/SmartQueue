@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import {
@@ -34,10 +34,11 @@ import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses } from '../api/business.api'
 import { getMyBookings, cancelBooking } from '../api/booking.api'
-import { submitReview } from '../api/review.api'
+import { submitReview, updateReview } from '../api/review.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
+import { buildHistoryRecords } from '../utils/historyRecords'
 
 export default function HistoryPage() {
   const { user, logOut } = useAuth()
@@ -76,7 +77,15 @@ export default function HistoryPage() {
   const [rating, setRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
-  const [selectedRecordDetails, setSelectedRecordDetails] = useState(null)
+  const [selectedRecordId, setSelectedRecordId] = useState(null)
+  const bookingsRequest = useRef(0)
+  const refreshBookings = useCallback(async () => {
+    const request = ++bookingsRequest.current
+    const res = await getMyBookings()
+    if (request === bookingsRequest.current) {
+      setMyBookings(res.data?.data?.bookings || [])
+    }
+  }, [])
 
   // Fetch bookings and businesses
   const fetchData = useCallback(async () => {
@@ -96,155 +105,53 @@ export default function HistoryPage() {
         params.radius = 30
       }
 
-      const [allRes, myBkRes] = await Promise.all([
+      const [allRes] = await Promise.all([
         getAllBusinesses(params),
-        getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
+        refreshBookings(),
       ])
       setBusinesses(allRes.data?.data?.businesses || [])
-      setMyBookings(myBkRes.data?.data?.bookings || [])
     } catch (err) {
       console.error('Failed to load history data:', err)
       toast.error('Unable to load history records')
     } finally {
       setLoading(false)
     }
-  }, [currentLocation, userCoords])
+  }, [currentLocation, userCoords, refreshBookings])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // Real-time socket updates for live status changes
+  // The booking API includes current queue entries; business discovery snapshots can be stale.
+  const unifiedServiceRecords = useMemo(
+    () => buildHistoryRecords(myBookings, sortOrder),
+    [myBookings, sortOrder]
+  )
+  const myActiveQueues = unifiedServiceRecords.filter(
+    (record) => record.isLiveQueue && ['waiting', 'serving'].includes(record.status)
+  )
+  const hasActiveRecords = unifiedServiceRecords.some(
+    (record) => ['waiting', 'serving', 'confirmed', 'scheduled', 'delayed'].includes(record.status)
+  )
+  const selectedRecordDetails = unifiedServiceRecords.find((record) => record._id === selectedRecordId) || null
+
   useEffect(() => {
-    if (!socket) return
-
-    const handleQueueChange = () => {
-      getMyBookings()
-        .then((res) => setMyBookings(res.data?.data?.bookings || []))
-        .catch(() => {})
-    }
-
-    socket.on('queue:update', handleQueueChange)
-    socket.on('queue:updated', handleQueueChange)
-    socket.on('service:started', handleQueueChange)
-    socket.on('service:completed', handleQueueChange)
-    socket.on('bookings:updated', handleQueueChange)
-    socket.on('booking:confirmed', handleQueueChange)
-
+    const refresh = () => { refreshBookings().catch(() => {}) }
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
+    const events = ['connect', 'queue:update', 'queue:updated', 'service:started',
+      'service:completed', 'bookings:updated', 'booking:confirmed']
+    events.forEach((event) => socket?.on(event, refresh))
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisible)
+    // Recover missed completion events while a booking is active, without showing a loading screen.
+    const timer = hasActiveRecords ? window.setInterval(refresh, 5000) : null
     return () => {
-      socket.off('queue:update', handleQueueChange)
-      socket.off('queue:updated', handleQueueChange)
-      socket.off('service:started', handleQueueChange)
-      socket.off('service:completed', handleQueueChange)
-      socket.off('bookings:updated', handleQueueChange)
-      socket.off('booking:confirmed', handleQueueChange)
+      events.forEach((event) => socket?.off(event, refresh))
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisible)
+      if (timer !== null) window.clearInterval(timer)
     }
-  }, [socket])
-
-  // Active queues for current user
-  const myActiveQueues = useMemo(() => {
-    if (!user?._id) return []
-    const myIdStr = user._id.toString()
-    const active = []
-
-    businesses.forEach((biz) => {
-      const qUsers = biz.activeQueue || []
-      const foundIdx = qUsers.findIndex((u) => {
-        const uId = (u.userId?._id || u.userId)?.toString()
-        return uId === myIdStr
-      })
-
-      if (foundIdx !== -1) {
-        const myItem = qUsers[foundIdx]
-        const position = foundIdx + 1
-        active.push({
-          business: biz,
-          myQueueItem: myItem,
-          position,
-          peopleAhead: Math.max(0, foundIdx),
-          totalInQueue: qUsers.length,
-          isServing: myItem.status === 'serving' || foundIdx === 0,
-          estimatedStartTime: myItem.estimatedStartTime,
-        })
-      }
-    })
-
-    return active
-  }, [businesses, user?._id])
-
-  // Unified records merging Active Live Queues + Bookings + Service History
-  const unifiedServiceRecords = useMemo(() => {
-    const list = []
-    const seenBookingIds = new Set()
-    const activeBizIdsInQueue = new Set()
-
-    myActiveQueues.forEach((activeQ) => {
-      const qItem = activeQ.myQueueItem || {}
-      const biz = activeQ.business || {}
-      const bkId = qItem.bookingId ? qItem.bookingId.toString() : null
-      if (bkId) seenBookingIds.add(bkId)
-      if (biz._id) activeBizIdsInQueue.add(biz._id.toString())
-
-      list.push({
-        _id: bkId || `active_queue_${biz._id}_${user?._id}`,
-        bookingId: bkId,
-        businessId: biz,
-        businessName: biz.name || 'Local Venue',
-        businessCategory: biz.category || 'clinic',
-        serviceType: qItem.serviceType || 'General Service',
-        services: qItem.services || [],
-        assignedStaff: qItem.assignedStaff || { name: '', role: '' },
-        paidAmount: qItem.paidAmount || biz.basePrice || 0,
-        status: activeQ.isServing ? 'serving' : 'waiting',
-        startTime: qItem.joinedAt || qItem.estimatedStartTime || new Date(),
-        entryType: 'live_queue',
-        isLiveQueue: true,
-        isAppointment: false,
-        queuePosition: activeQ.position,
-        tokenNumber: activeQ.position,
-        peopleAhead: activeQ.peopleAhead,
-        totalInQueue: activeQ.totalInQueue,
-        isServing: activeQ.isServing,
-        estimatedStartTime: activeQ.estimatedStartTime,
-      })
-    })
-
-    myBookings.forEach((bk) => {
-      const bId = bk._id ? bk._id.toString() : null
-      if (bId && seenBookingIds.has(bId)) {
-        return
-      }
-
-      const bizIdStr = (bk.businessId?._id || bk.businessId)?.toString()
-      if (['waiting', 'serving'].includes(bk.status) && bizIdStr && activeBizIdsInQueue.has(bizIdStr)) {
-        return
-      }
-
-      const isQ =
-        bk.isLiveQueue ||
-        bk.entryType === 'live_queue' ||
-        bk.notes?.includes('Live Queue') ||
-        ['waiting', 'serving'].includes(bk.status)
-
-      const bCategory = bk.businessId?.category || 'clinic'
-
-      list.push({
-        ...bk,
-        entryType: isQ ? 'live_queue' : 'appointment',
-        isLiveQueue: isQ,
-        isAppointment: !isQ,
-        businessName: bk.businessId?.name || 'Local Venue',
-        businessCategory: bCategory,
-        paidAmount: bk.paidAmount || bk.price || 0,
-      })
-    })
-
-    return list.sort((a, b) => {
-      const timeA = new Date(a.startTime || a.createdAt || 0).getTime()
-      const timeB = new Date(b.startTime || b.createdAt || 0).getTime()
-      return sortOrder === 'newest' ? timeB - timeA : timeA - timeB
-    })
-  }, [myActiveQueues, myBookings, user?._id, sortOrder])
+  }, [socket, refreshBookings, hasActiveRecords])
 
   // Filtered list based on category filter, status filter, and search
   const filteredRecords = useMemo(() => {
@@ -262,7 +169,7 @@ export default function HistoryPage() {
       // Status filter
       if (statusFilter === 'completed' && record.status !== 'completed') return false
       if (statusFilter === 'upcoming') {
-        if (!['waiting', 'serving', 'confirmed', 'scheduled'].includes(record.status)) return false
+        if (!['waiting', 'serving', 'confirmed', 'scheduled', 'delayed'].includes(record.status)) return false
       }
       if (statusFilter === 'live_queue') {
         if (!record.isLiveQueue && record.entryType !== 'live_queue') return false
@@ -290,8 +197,8 @@ export default function HistoryPage() {
   const handleOpenReview = (record, e) => {
     if (e) e.stopPropagation()
     setSelectedBookingForReview(record)
-    setRating(5)
-    setReviewComment('')
+    setRating(record.review?.rating ?? 5)
+    setReviewComment(record.review?.comment ?? '')
     setReviewModalOpen(true)
   }
 
@@ -300,13 +207,20 @@ export default function HistoryPage() {
     if (!selectedBookingForReview) return
     setSubmittingReview(true)
     try {
-      await submitReview({
+      const payload = {
         bookingId: selectedBookingForReview._id,
         businessId: selectedBookingForReview.businessId?._id || selectedBookingForReview.businessId,
         rating,
         comment: reviewComment,
-      })
-      toast.success('Thank you! Review submitted successfully.')
+      }
+      const res = selectedBookingForReview.review?._id
+        ? await updateReview(selectedBookingForReview.review._id, payload)
+        : await submitReview(payload)
+      const savedReview = res.data.data.review
+      setMyBookings((bookings) => bookings.map((booking) =>
+        booking._id === selectedBookingForReview._id ? { ...booking, review: savedReview } : booking
+      ))
+      toast.success(selectedBookingForReview.review ? 'Your review has been updated.' : 'Thank you! Review submitted successfully.')
       setReviewModalOpen(false)
       fetchData()
     } catch (err) {
@@ -565,7 +479,7 @@ export default function HistoryPage() {
               Upcoming (
               {
                 unifiedServiceRecords.filter(
-                  (b) => ['waiting', 'serving', 'confirmed', 'scheduled'].includes(b.status)
+                  (b) => ['waiting', 'serving', 'confirmed', 'scheduled', 'delayed'].includes(b.status)
                 ).length
               }
               )
@@ -616,7 +530,7 @@ export default function HistoryPage() {
                 return (
                   <div
                     key={item._id}
-                    onClick={() => setSelectedRecordDetails(item)}
+                    onClick={() => setSelectedRecordId(item._id)}
                     className="bg-white rounded-2xl sm:rounded-3xl border border-zinc-200/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs hover:shadow-xs hover:border-zinc-300 transition-all cursor-pointer group"
                   >
                     {/* Left: Icon + Business + Service + Specialist */}
@@ -705,11 +619,11 @@ export default function HistoryPage() {
                       {isCompleted && (
                         <div>
                           {item.review ? (
-                            <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold">
+                            <button type="button" onClick={(e) => handleOpenReview(item, e)} className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold cursor-pointer">
                               <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                               <span className="text-amber-600 font-black">{item.review.rating}</span>
-                              <span className="text-[10px] text-amber-700 font-medium hidden sm:inline">Rated</span>
-                            </span>
+                              <span className="text-[10px] text-amber-700 font-medium">Edit your review</span>
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -818,11 +732,11 @@ export default function HistoryPage() {
                         <td className="py-4 px-4 text-right space-x-2">
                           {isCompleted &&
                             (b.review ? (
-                              <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold">
+                              <button type="button" onClick={(e) => handleOpenReview(b, e)} className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold cursor-pointer">
                                 <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                                 <span className="text-amber-500 font-black">{b.review.rating}</span>
-                                <span className="text-[10px] text-amber-700 font-semibold">Rated</span>
-                              </span>
+                                <span className="text-[10px] text-amber-700 font-semibold">Edit your review</span>
+                              </button>
                             ) : (
                               <button
                                 onClick={(e) => handleOpenReview(b, e)}
@@ -881,7 +795,7 @@ export default function HistoryPage() {
                   <p className="text-xs text-zinc-500">Service Receipt & Details</p>
                 </div>
                 <button
-                  onClick={() => setSelectedRecordDetails(null)}
+                  onClick={() => setSelectedRecordId(null)}
                   className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
@@ -928,21 +842,21 @@ export default function HistoryPage() {
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-zinc-100">
-                {selectedRecordDetails.status === 'completed' && !selectedRecordDetails.review && (
+                {selectedRecordDetails.status === 'completed' && (
                   <button
                     onClick={() => {
                       const item = selectedRecordDetails
-                      setSelectedRecordDetails(null)
+                      setSelectedRecordId(null)
                       handleOpenReview(item)
                     }}
                     className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs"
                   >
                     <Star className="w-3.5 h-3.5 fill-white" />
-                    <span>Rate Service</span>
+                    <span>{selectedRecordDetails.review ? 'Edit your review' : 'Rate Service'}</span>
                   </button>
                 )}
                 <button
-                  onClick={() => setSelectedRecordDetails(null)}
+                  onClick={() => setSelectedRecordId(null)}
                   className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold text-xs rounded-xl"
                 >
                   Close
@@ -963,7 +877,7 @@ export default function HistoryPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5"
             >
-              <h3 className="text-lg font-black text-zinc-950">Leave a Verified Review</h3>
+              <h3 className="text-lg font-black text-zinc-950">{selectedBookingForReview?.review ? 'Edit your review' : 'Leave a Verified Review'}</h3>
               <form onSubmit={handleSubmitReview} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Rating</label>
@@ -1013,7 +927,7 @@ export default function HistoryPage() {
                     disabled={submittingReview}
                     className="px-5 py-2 rounded-xl text-xs font-bold bg-[#114227] text-white shadow-xs cursor-pointer"
                   >
-                    {submittingReview ? 'Submitting...' : 'Post Review'}
+                    {submittingReview ? 'Saving...' : selectedBookingForReview?.review ? 'Save changes' : 'Post Review'}
                   </button>
                 </div>
               </form>

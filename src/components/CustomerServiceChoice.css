@@ -1,0 +1,27 @@
+.service-choice { min-height: 100svh; color: #153c2b; padding: 24px 32px 32px; }
+.service-choice-header { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: auto; }
+.service-choice-header img { width: 112px; height: auto; }
+.service-choice-header button { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #53665a; padding: 10px; cursor: pointer; }
+.service-choice-intro { text-align: center; margin: 40px auto 32px; }
+.service-choice-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: .2em; margin-bottom: 12px; }
+.service-choice-intro h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 650; letter-spacing: -.045em; line-height: 1.15; }
+.service-choice-intro > p:last-child { color: #647268; font-size: 14px; margin-top: 14px; }
+.service-doors { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; max-width: 720px; margin: auto; }
+.service-door-choice { --door-color: #b7d5c2; --door-dark: #315b45; text-align: center; cursor: pointer; border-radius: 8px; padding: 8px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.service-door-salon { --door-color: #dfc8bb; --door-dark: #765546; }
+.service-door-frame { display: block; position: relative; width: 210px; height: 260px; margin: auto; border: 8px solid var(--door-dark); border-bottom-width: 4px; border-radius: 105px 105px 0 0; background: #173729; perspective: 900px; box-shadow: 0 14px 18px -15px #153c2b70; }
+.service-door-interior { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #f7f8ed; font-size: 14px; }
+.service-door-panel { position: absolute; inset: 0; background: var(--door-color); border-radius: 98px 98px 0 0; transform-origin: left center; transition: transform 280ms cubic-bezier(.23, 1, .32, 1); backface-visibility: hidden; border: 2px solid #ffffff45; }
+.service-door-window { position: absolute; top: 22px; left: 38px; right: 38px; height: 82px; display: grid; place-items: center; border: 1px solid var(--door-dark); border-radius: 60px 60px 6px 6px; color: var(--door-dark); background: #ffffff45; }
+.service-door-plaque { position: absolute; top: 122px; left: 0; right: 0; font-size: 20px; font-weight: 650; color: var(--door-dark); }
+.service-door-handle { position: absolute; right: 13px; top: 155px; width: 23px; height: 5px; border-radius: 4px; background: var(--door-dark); box-shadow: 0 2px 2px #0002; }
+.service-door-inset { position: absolute; bottom: 15px; left: 24px; right: 24px; height: 59px; border: 1px solid #0002; }
+.service-door-copy { display: flex; flex-direction: column; align-items: center; gap: 9px; padding-top: 24px; }
+.service-door-copy strong { font-size: 20px; letter-spacing: -.025em; }
+.service-door-copy > span { font-size: 13px; line-height: 1.6; max-width: 260px; color: #647268; }
+.service-door-copy b { display: flex; gap: 12px; align-items: center; margin-top: 8px; font-size: 13px; }
+.service-door-choice[data-opening='true'] .service-door-panel { transform: rotateY(-82deg); }
+.service-door-choice:focus-visible { outline: 3px solid #15834b; outline-offset: 6px; }
+@media (hover: hover) and (pointer: fine) { .service-door-choice:not(:disabled):hover .service-door-panel { transform: rotateY(-18deg); } }
+@media (max-width: 560px) { .service-choice { padding: 20px 16px; } .service-choice-intro { margin-top: 32px; } .service-doors { gap: 12px; } .service-door-frame { width: 140px; height: 200px; border-width: 5px; } .service-door-window { left: 23px; right: 23px; height: 65px; top: 17px; } .service-door-window svg { width: 30px; } .service-door-plaque { top: 98px; font-size: 17px; } .service-door-handle { top: 132px; right: 8px; width: 18px; } .service-door-inset { height: 36px; left: 17px; right: 17px; bottom: 12px; } .service-door-copy strong { font-size: 17px; } .service-door-copy > span { font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { .service-door-panel { transition: opacity 150ms ease; transform: none !important; } .service-door-choice[data-opening='true'] .service-door-panel { opacity: 0; } }

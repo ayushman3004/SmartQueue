@@ -66,12 +66,12 @@ class QueueDS {
 
       if (!staffFinishMap.has(staffKey)) {
         // First active patron in line for this specific staff member is serving
-        current.status = "serving";
-        if (!current.estimatedStartTime) {
+        if (current.status !== "serving" || !current.estimatedStartTime) {
           current.estimatedStartTime = new Date(now);
         } else {
           current.estimatedStartTime = new Date(current.estimatedStartTime);
         }
+        current.status = "serving";
 
         const duration = Math.max(1, Number(current.serviceTime) || 15);
         const finishMs = current.estimatedStartTime.getTime() + (duration + BUFFER) * 60000;

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Stethoscope,
@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function CustomerSidebar({
   activeNavTab,
+  serviceCategory,
   onSelectTab,
   clinicsCount = 0,
   salonsCount = 0,
@@ -27,6 +28,12 @@ export default function CustomerSidebar({
 }) {
   const navigate = useNavigate()
   const { user, logOut } = useAuth()
+  const location = useLocation()
+  const urlCategory = new URLSearchParams(location.search).get('category')
+  const category = serviceCategory || urlCategory || sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
+  const selectedCategory = ['clinic', 'salon'].includes(category) ? category : null
+  const dashboardRoute = selectedCategory ? `/customers?category=${selectedCategory}` : '/customers'
+
 
   const isOwner = user?.role === 'owner'
   const isAdmin = user?.role === 'admin'
@@ -48,9 +55,9 @@ export default function CustomerSidebar({
         { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
       ]
     : [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/customers', count: null },
-        { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: '/customers?category=clinic', count: clinicsCount },
-        { id: 'salons', label: 'Salons', icon: Scissors, route: '/customers?category=salon', count: salonsCount },
+        ...(selectedCategory === 'clinic' ? [{ id: 'clinics', label: 'Clinics', icon: Stethoscope, route: dashboardRoute, count: clinicsCount }] : []),
+        ...(selectedCategory === 'salon' ? [{ id: 'salons', label: 'Salons', icon: Scissors, route: dashboardRoute, count: salonsCount }] : []),
+        { id: 'switch-service', label: 'Switch service', icon: Building2, route: '/customers?choose=1', count: null },
         { id: 'my-queues', label: 'My Queues', icon: Ticket, route: '/queue', count: myActiveQueuesCount },
         { id: 'appointments', label: 'Appointments', icon: Calendar, route: '/booking', count: myBookingsCount },
         { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
@@ -202,7 +209,7 @@ export default function CustomerSidebar({
               className="relative w-72 max-w-[85vw] bg-white h-full z-10 shadow-2xl p-4 flex flex-col justify-between overflow-y-auto"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-100 mb-4">
-                <Link to="/customers" onClick={onCloseMobile} className="flex items-center gap-2 text-decoration-none">
+                <Link to={dashboardRoute} onClick={onCloseMobile} className="flex items-center gap-2 text-decoration-none">
                   <img src="/serveq-logo.png" alt="serveQ" className="h-6.5 w-auto object-contain" />
                   <span className="text-[9px] font-black uppercase text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
                     Customer

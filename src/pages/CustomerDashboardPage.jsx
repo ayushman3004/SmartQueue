@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
   MapPin,
@@ -20,19 +20,18 @@ import {
   LogOut,
   Users,
   User,
-  Map,
   X,
   Menu,
   Check,
   CheckCircle,
   Eye,
-  Sparkles,
   Activity,
   Navigation,
   Loader2,
 } from 'lucide-react'
 import { calculateDistanceKm, formatDistance } from '../utils/geoUtils'
 import CustomerSidebar from '../components/CustomerSidebar'
+import CustomerServiceChoice from '../components/CustomerServiceChoice'
 import NoServiceState from '../components/NoServiceState'
 import { BusinessGridSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
@@ -78,25 +77,22 @@ export default function CustomerDashboardPage() {
 
   // Navigation & Filtering
   const [searchParams] = useSearchParams()
-  const [activeNavTab, setActiveNavTab] = useState(() => {
-    const cat = new URLSearchParams(window.location.search).get('category')
-    return cat === 'clinic' ? 'clinics' : cat === 'salon' ? 'salons' : 'dashboard'
-  })
-  const [categoryFilter, setCategoryFilter] = useState(() => {
-    const cat = new URLSearchParams(window.location.search).get('category')
-    return cat === 'clinic' ? 'clinic' : cat === 'salon' ? 'salon' : 'all'
-  })
-
+  const requestedCategory = searchParams.get('category')
+  const savedCategory = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
+  const categoryFilter = searchParams.has('choose') ? 'all'
+    : ['clinic', 'salon'].includes(requestedCategory) ? requestedCategory
+    : ['clinic', 'salon'].includes(savedCategory) ? savedCategory : 'all'
+  const activeNavTab = categoryFilter === 'clinic' ? 'clinics' : categoryFilter === 'salon' ? 'salons' : 'dashboard'
+  const selectCategory = (category) => {
+    sessionStorage.setItem(`customer-service:${user?._id || user?.id}`, category)
+    setSearch('')
+    navigate(`/customers?category=${category}`)
+  }
   useEffect(() => {
-    const cat = searchParams.get('category')
-    if (cat === 'clinic') {
-      setCategoryFilter('clinic')
-      setActiveNavTab('clinics')
-    } else if (cat === 'salon') {
-      setCategoryFilter('salon')
-      setActiveNavTab('salons')
+    if (['clinic', 'salon'].includes(requestedCategory)) {
+      sessionStorage.setItem(`customer-service:${user?._id || user?.id}`, requestedCategory)
     }
-  }, [searchParams])
+  }, [requestedCategory, user?._id, user?.id])
   const [search, setSearch] = useState('')
   const {
     currentLocation,
@@ -109,7 +105,6 @@ export default function CustomerDashboardPage() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [sortBy, setSortBy] = useState('nearest') // 'nearest' | 'wait_time' | 'rating'
-  const [showMapModal, setShowMapModal] = useState(false)
 
   const debouncedSearch = useDebounce(search, 350)
 
@@ -905,30 +900,27 @@ export default function CustomerDashboardPage() {
               </div>
 
               {/* Personal queue live status badge for selected staff */}
-              <div className="text-[10px] rounded-xl px-2.5 py-1.5 border border-zinc-200/80 bg-zinc-50/70">
-                {curStaffName === 'any' ? (
-                  <div className="flex items-center gap-1.5 text-zinc-600 font-medium">
-                    <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
-                    <span>Auto-assigns doctor with zero rush or fastest available turn.</span>
-                  </div>
-                ) : selectedStaffStats?.isServing ? (
-                  <div className="flex items-center justify-between gap-1 text-amber-900">
-                    <span className="flex items-center gap-1.5 font-bold truncate">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
-                      <span>{curStaffName} is serving</span>
-                      <span className="text-zinc-500 font-normal">({selectedStaffStats.waitingUsers.length} ahead in their queue)</span>
-                    </span>
-                    <span className="font-black shrink-0 text-amber-800 bg-amber-100/70 border border-amber-200 px-1.5 py-0.5 rounded text-[9px]">
-                      Slot: ~{selectedStaffStats.nextSlotTimeStr}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-emerald-800 font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    <span>{curStaffName} is Free Now! You will be served immediately.</span>
-                  </div>
-                )}
-              </div>
+              {curStaffName !== 'any' && (
+                <div className="text-[10px] rounded-xl px-2.5 py-1.5 border border-zinc-200/80 bg-zinc-50/70">
+                  {selectedStaffStats?.isServing ? (
+                    <div className="flex items-center justify-between gap-1 text-amber-900">
+                      <span className="flex items-center gap-1.5 font-bold truncate">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                        <span>{curStaffName} is serving</span>
+                        <span className="text-zinc-500 font-normal">({selectedStaffStats.waitingUsers.length} ahead in their queue)</span>
+                      </span>
+                      <span className="font-black shrink-0 text-amber-800 bg-amber-100/70 border border-amber-200 px-1.5 py-0.5 rounded text-[9px]">
+                        Slot: ~{selectedStaffStats.nextSlotTimeStr}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-emerald-800 font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span>{curStaffName} is Free Now! You will be served immediately.</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -992,6 +984,10 @@ export default function CustomerDashboardPage() {
     )
   }
 
+  if (categoryFilter === 'all' && user?.role !== 'owner' && user?.role !== 'admin') {
+    return <CustomerServiceChoice onChoose={selectCategory} onSignOut={() => { logOut(); navigate('/login') }} />
+  }
+
   return (
     <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP HEADER BAR ── */}
@@ -1029,7 +1025,7 @@ export default function CustomerDashboardPage() {
           <div className="relative flex-1">
             <input
               type="text"
-              placeholder="Search clinic or salon..."
+              placeholder={categoryFilter === 'salon' ? 'Search salons...' : 'Search clinics...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-full bg-zinc-100/90 border border-zinc-200/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all"
@@ -1117,19 +1113,19 @@ export default function CustomerDashboardPage() {
         {/* CUSTOMER SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
         <CustomerSidebar
           activeNavTab={activeNavTab}
+          serviceCategory={categoryFilter}
           onSelectTab={(tabId, route) => {
-            setActiveNavTab(tabId)
             if (tabId === 'clinics') {
-              setCategoryFilter('clinic')
+              selectCategory('clinic')
             } else if (tabId === 'salons') {
-              setCategoryFilter('salon')
+              selectCategory('salon')
             } else if (tabId === 'dashboard') {
               if (user?.role === 'owner') {
                 navigate('/business')
               } else if (user?.role === 'admin') {
                 navigate('/admin')
               } else {
-                setCategoryFilter('all')
+                navigate(`/customers?category=${categoryFilter}`)
               }
             } else if (tabId === 'my-queues') {
               if (myActiveQueues.length > 0 && myActiveQueues[0].business?._id) {
@@ -1254,9 +1250,9 @@ export default function CustomerDashboardPage() {
             />
           </div>
 
-          {/* ── SORT & VIEW CONTROLS BAR ── */}
+          {/* ── SORT CONTROLS BAR ── */}
           <div className="flex items-center justify-end gap-3 pt-1">
-            {/* Sort & Map View Pills (Right) */}
+            {/* Sort control (Right) */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() =>
@@ -1268,15 +1264,6 @@ export default function CustomerDashboardPage() {
                 <ChevronDown className="w-3 h-3 text-zinc-400" />
               </button>
 
-              <button
-                onClick={() => setShowMapModal(true)}
-                className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-50 flex items-center gap-2 transition-all shadow-xs cursor-pointer"
-              >
-                <span className="w-6 h-6 rounded-lg icon-3d icon-3d-blue shrink-0">
-                  <Map className="w-3.5 h-3.5" />
-                </span>
-                <span>Map View</span>
-              </button>
             </div>
           </div>
 
@@ -1302,12 +1289,11 @@ export default function CustomerDashboardPage() {
               {categoryFilter !== 'all' ? (
                 <button
                   onClick={() => {
-                    setCategoryFilter('all')
-                    setActiveNavTab('dashboard')
+                    navigate('/customers?choose=1')
                   }}
                   className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 group"
                 >
-                  <span>Show All Services</span>
+                  <span>Switch service</span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               ) : (
@@ -1343,59 +1329,6 @@ export default function CustomerDashboardPage() {
         </main>
       </div>
 
-      {/* ── MAP VIEW MODAL ── */}
-      <AnimatePresence>
-        {showMapModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-zinc-200 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4"
-            >
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-                <h3 className="text-lg font-black text-zinc-950">Nearby Clinics & Salons Map</h3>
-                <button
-                  onClick={() => setShowMapModal(false)}
-                  className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="max-h-72 rounded-2xl bg-zinc-50 border border-zinc-200 overflow-y-auto p-3 space-y-2">
-                <div className="flex items-center justify-between px-1 pb-1.5 border-b border-zinc-200/60">
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase">Nearby Venues ({displayedServices.length})</span>
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase">Distance</span>
-                </div>
-                {displayedServices.map((b) => (
-                  <div
-                    key={b._id}
-                    className="flex items-center justify-between py-2 px-3 rounded-xl bg-white border border-zinc-200/80 text-xs hover:border-emerald-300 transition-colors cursor-pointer"
-                    onClick={() => {
-                      setShowMapModal(false)
-                      navigate(`/booking/${b._id}`)
-                    }}
-                  >
-                    <div className="truncate mr-2">
-                      <p className="font-black text-zinc-900 truncate">{b.name}</p>
-                      <p className="text-[10px] text-zinc-400 capitalize">{b.category} • {b.location || b.city || 'Local'}</p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
-                      {b.distance !== null && b.distance !== undefined ? formatDistance(b.distance) : b.location || 'Nearby'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => setShowMapModal(false)}
-                className="w-full py-2.5 bg-[#114227] text-white rounded-xl font-bold text-xs"
-              >
-                Close Map
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

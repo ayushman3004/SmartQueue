@@ -6,7 +6,7 @@ import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses, getMyBusinesses } from '../api/business.api'
 import { getMyBookings, cancelBooking } from '../api/booking.api'
 import { getAvailableCoupons } from '../api/coupon.api'
-import { submitReview } from '../api/review.api'
+import { submitReview, updateReview } from '../api/review.api'
 import BusinessCard from '../components/BusinessCard'
 import { BusinessGridSkeleton } from '../components/Skeleton'
 import { CATEGORY_METADATA } from '../utils/servicePresets'
@@ -123,8 +123,8 @@ export default function DashboardPage() {
 
   const handleOpenReview = (booking) => {
     setSelectedBookingForReview(booking)
-    setRating(5)
-    setReviewComment('')
+    setRating(booking.review?.rating ?? 5)
+    setReviewComment(booking.review?.comment ?? '')
     setReviewModalOpen(true)
   }
 
@@ -133,13 +133,20 @@ export default function DashboardPage() {
     if (!selectedBookingForReview) return
     setSubmittingReview(true)
     try {
-      await submitReview({
+      const payload = {
         bookingId: selectedBookingForReview._id,
         businessId: selectedBookingForReview.businessId?._id || selectedBookingForReview.businessId,
         rating,
         comment: reviewComment,
-      })
-      toast.success("Thank you! Review submitted successfully.")
+      }
+      const res = selectedBookingForReview.review?._id
+        ? await updateReview(selectedBookingForReview.review._id, payload)
+        : await submitReview(payload)
+      const savedReview = res.data.data.review
+      setMyBookings((bookings) => bookings.map((booking) =>
+        booking._id === selectedBookingForReview._id ? { ...booking, review: savedReview } : booking
+      ))
+      toast.success(selectedBookingForReview.review ? 'Your review has been updated.' : 'Thank you! Review submitted successfully.')
       setReviewModalOpen(false)
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to submit review")
@@ -287,7 +294,7 @@ export default function DashboardPage() {
                         onClick={() => handleOpenReview(b)}
                         className="flex-1 py-2.5 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 font-black text-xs hover:bg-teal-100 transition-colors active:scale-[0.98]"
                       >
-                        Leave Review
+                        {b.review ? 'Edit your review' : 'Leave Review'}
                       </button>
                     ) : b.status === 'cancelled' || b.status === 'refunded' ? (
                       <span className="text-xs font-semibold text-zinc-400">Archived Record</span>
@@ -429,7 +436,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-black text-zinc-950">Review Service</h3>
+                  <h3 className="text-xl font-black text-zinc-950">{selectedBookingForReview?.review ? 'Edit your review' : 'Review Service'}</h3>
                   <p className="text-xs text-slate-500">{selectedBookingForReview?.businessId?.name}</p>
                 </div>
                 <button onClick={() => setReviewModalOpen(false)} className="text-slate-400 hover:text-zinc-900 font-bold">✕</button>
@@ -477,7 +484,7 @@ export default function DashboardPage() {
                     disabled={submittingReview}
                     className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 disabled:opacity-50"
                   >
-                    {submittingReview ? 'Submitting...' : 'Post Review'}
+                    {submittingReview ? 'Saving...' : selectedBookingForReview?.review ? 'Save changes' : 'Post Review'}
                   </button>
                 </div>
               </form>

@@ -359,7 +359,7 @@ export default function WebsiteTour({ manualTrigger, onTourClose }) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={handleCloseTour}
-              className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs transition-opacity"
+              className="fixed inset-0 bg-zinc-950/70 backdrop-blur-[1px] transition-opacity"
             />
 
             {/* Target Element Spotlight Ring */}

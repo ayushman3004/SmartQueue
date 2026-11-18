@@ -46,11 +46,12 @@ import {
   cancelBooking,
 } from '../api/booking.api'
 import { validateCoupon } from '../api/coupon.api'
-import { submitReview } from '../api/review.api'
+import { submitReview, updateReview } from '../api/review.api'
 import { STAFF_PRESETS } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
+import { getBookingDateRange, getBookingDateError, getBusinessDate } from '../utils/bookingDates'
 
 const DEFAULT_SALON_IMAGE = '/hubs/salon.png'
 const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
@@ -71,7 +72,7 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true)
 
   // Booking Form State
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(() => getBookingDateRange().minDate)
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [selectedServices, setSelectedServices] = useState([])
   const [selectedStaff, setSelectedStaff] = useState('any')
@@ -101,6 +102,7 @@ export default function BookingPage() {
   const debouncedSearch = useDebounce(search, 300)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const bookingDateRange = getBookingDateRange(business || {})
 
   const filteredBusinesses = useMemo(() => {
     if (!debouncedSearch.trim()) return businesses
@@ -162,6 +164,15 @@ export default function BookingPage() {
       const biz = bRes.data.data.business
       setBusiness(biz)
 
+      const { minDate, maxDate } = getBookingDateRange(biz)
+      if (!selectedDate || selectedDate < minDate || selectedDate > maxDate) {
+        setSlots([])
+        setSelectedSlot(null)
+        setPaymentModalOpen(false)
+        setSelectedDate(minDate)
+        return
+      }
+
       // Default select first service if none selected or if switching venue
       if (biz.services?.length > 0 && selectedServices.length === 0) {
         setSelectedServices([biz.services[0]])
@@ -176,7 +187,9 @@ export default function BookingPage() {
       }
 
       const [sRes, mRes] = await Promise.all([
-        getAvailableSlots(selectedBizId, selectedDate).catch((sErr) => {
+        (biz.bookingSettings?.enableAppointments === false
+          ? Promise.resolve({ data: { data: { slots: [] } } })
+          : getAvailableSlots(selectedBizId, selectedDate)).catch((sErr) => {
           if (sErr.response?.status === 403 && sErr.response?.data?.message?.includes('subscription')) {
             setIsSubscriptionInactive(true)
           }
@@ -276,6 +289,11 @@ export default function BookingPage() {
 
   // Select slot
   const handleSlotSelect = (slot) => {
+    const dateError = getBookingDateError(getBusinessDate(slot.startTime, business), business)
+    if (dateError) {
+      toast.error(dateError)
+      return
+    }
     if (selectedServices.length === 0) {
       toast.error('Please select at least one service before choosing a time slot')
       return
@@ -287,6 +305,14 @@ export default function BookingPage() {
   // Confirm booking (Pay at Counter only)
   const handleConfirmBooking = async () => {
     if (!selectedSlot || !selectedBizId) return
+    const dateError = getBookingDateError(getBusinessDate(selectedSlot.startTime, business), business)
+    if (dateError) {
+      toast.error(dateError)
+      setPaymentModalOpen(false)
+      setSelectedSlot(null)
+      fetchData()
+      return
+    }
     if (selectedServices.length === 0) {
       toast.error('Please select at least one service')
       return
@@ -344,8 +370,8 @@ export default function BookingPage() {
   // Review handling
   const handleOpenReview = (booking) => {
     setSelectedBookingForReview(booking)
-    setRating(5)
-    setReviewComment('')
+    setRating(booking.review?.rating ?? 5)
+    setReviewComment(booking.review?.comment ?? '')
     setReviewModalOpen(true)
   }
 
@@ -354,13 +380,20 @@ export default function BookingPage() {
     if (!selectedBookingForReview) return
     setSubmittingReview(true)
     try {
-      await submitReview({
+      const payload = {
         bookingId: selectedBookingForReview._id,
         businessId: selectedBookingForReview.businessId?._id || selectedBookingForReview.businessId,
         rating,
         comment: reviewComment,
-      })
-      toast.success('Thank you! Review submitted successfully.')
+      }
+      const res = selectedBookingForReview.review?._id
+        ? await updateReview(selectedBookingForReview.review._id, payload)
+        : await submitReview(payload)
+      const savedReview = res.data.data.review
+      setMyBookings((bookings) => bookings.map((booking) =>
+        booking._id === selectedBookingForReview._id ? { ...booking, review: savedReview } : booking
+      ))
+      toast.success(selectedBookingForReview.review ? 'Your review has been updated.' : 'Thank you! Review submitted successfully.')
       setReviewModalOpen(false)
       fetchData()
     } catch (err) {
@@ -902,7 +935,7 @@ export default function BookingPage() {
                                   onClick={() => handleOpenReview(b)}
                                   className="text-xs font-bold text-[#114227] hover:underline cursor-pointer"
                                 >
-                                  Leave Review
+                                  {b.review ? 'Edit your review' : 'Leave Review'}
                                 </button>
                               ) : b.status === 'scheduled' || b.status === 'confirmed' ? (
                                 <button
@@ -933,14 +966,32 @@ export default function BookingPage() {
                       <p className="text-xs text-zinc-500 font-medium mt-0.5">
                         Choose your preferred date and verified time slot.
                       </p>
+                      {business?.bookingSettings?.enableAppointments !== false && (
+                        <p className="text-xs text-zinc-500 font-medium mt-1">
+                          Book up to {bookingDateRange.maxAdvanceDays} days in advance.
+                          {business?.bookingSettings?.allowSameDayBooking === false && ' Same-day booking is unavailable.'}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
                       <input
                         type="date"
                         value={selectedDate}
-                        min={new Date().toISOString().split('T')[0]}
+                        min={bookingDateRange.minDate}
+                        max={bookingDateRange.maxDate}
+                        aria-label="Appointment date"
+                        disabled={business?.bookingSettings?.enableAppointments === false || isSubscriptionInactive}
                         onChange={(e) => {
+                          const dateError = getBookingDateError(e.target.value, business || {})
+                          if (dateError) {
+                            toast.error(dateError)
+                            return
+                          }
+                          if (e.target.value === selectedDate) return
+                          setSlots([])
+                          setSelectedSlot(null)
+                          setPaymentModalOpen(false)
                           setSelectedDate(e.target.value)
                           setLoading(true)
                         }}
@@ -1193,7 +1244,7 @@ export default function BookingPage() {
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
-                  <h3 className="text-lg font-black text-zinc-950">Leave a Verified Review</h3>
+                  <h3 className="text-lg font-black text-zinc-950">{selectedBookingForReview?.review ? 'Edit your review' : 'Leave a Verified Review'}</h3>
                   <p className="text-xs text-zinc-500">{business?.name}</p>
                 </div>
                 <button
@@ -1256,7 +1307,7 @@ export default function BookingPage() {
                     disabled={submittingReview}
                     className="flex-1 py-2.5 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    {submittingReview ? 'Submitting...' : 'Post Review'}
+                    {submittingReview ? 'Saving...' : selectedBookingForReview?.review ? 'Save changes' : 'Post Review'}
                   </button>
                 </div>
               </form>

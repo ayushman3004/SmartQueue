@@ -338,7 +338,7 @@ export const leaveQueue = async (businessId, userId, io = null) => {
 };
 
 // ⏭️ CALL NEXT
-export const callNext = async (businessId, requesterId, requesterRole, io, staffName, targetUserId) => {
+export const callNext = async (businessId, requesterId, requesterRole, io, staffName, targetUserId, autoCompleteAt = null) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
@@ -353,6 +353,14 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
   if (targetUserId) {
     const tId = targetUserId.toString();
     previousHead = queue.users.find((u) => (u.userId?._id || u.userId)?.toString() === tId);
+  }
+  // Background completion must never fall through to a different customer or ignore an extension.
+  if (autoCompleteAt) {
+    const start = previousHead?.estimatedStartTime || previousHead?.joinedAt;
+    const finish = new Date(start).getTime() + Math.max(1, Number(previousHead?.serviceTime) || 15) * 60000;
+    if (!previousHead || previousHead.status !== "serving" || !Number.isFinite(finish) || finish > autoCompleteAt.getTime()) {
+      return queue;
+    }
   }
   if (!previousHead && staffName) {
     previousHead = queue.users.find(
@@ -376,6 +384,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
 
   // Create or update completed booking record so service history, revenue, analytics, and rating options are populated
   let completedBooking = null;
+  let recordedCompletion = false;
   if (uId) {
     try {
       if (previousHead.bookingId) {
@@ -392,12 +401,15 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
       }
 
       if (completedBooking) {
-        completedBooking.status = "completed";
-        completedBooking.endTime = endTime;
-        if (!completedBooking.paidAmount || completedBooking.paidAmount === 0) {
-          completedBooking.paidAmount = finalAmountEarned;
-        }
-        await completedBooking.save();
+        const claimed = await Booking.findOneAndUpdate({
+          _id: completedBooking._id,
+          status: { $nin: ["completed", "cancelled", "refunded"] },
+        }, { $set: {
+          status: "completed", endTime,
+          paidAmount: completedBooking.paidAmount || finalAmountEarned,
+        } }, { new: true });
+        recordedCompletion = Boolean(claimed);
+        completedBooking = claimed || await Booking.findById(completedBooking._id);
       } else {
         // Build clean sanitized services array
         const sanitizedServices = (previousHead.services || []).map((s) => ({
@@ -432,10 +444,11 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
           pricingLabel: previousHead.pricingLabel || "",
           notes: "Direct Live Queue Entry - Completed",
         });
+        recordedCompletion = true;
       }
 
       // Update staff member customersServed count
-      if (previousHead.assignedStaff?.name && Array.isArray(business.staff)) {
+      if (recordedCompletion && previousHead.assignedStaff?.name && Array.isArray(business.staff)) {
         const staffMember = business.staff.find(
           (s) => s.name?.toLowerCase() === previousHead.assignedStaff.name.toLowerCase()
         );
@@ -446,6 +459,8 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
       }
     } catch (saveErr) {
       console.error("Error creating/updating completed booking from queue session:", saveErr);
+      // Keep the entry in place so the background worker can retry a failed write.
+      if (autoCompleteAt) throw saveErr;
       if (saveErr.code === 11000) {
         try {
           await mongoose.connection.collection("bookings").dropIndex("businessId_1_userId_1_scheduledAt_1");
@@ -479,7 +494,12 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
   for (const u of queue.users) {
     if (u.status === "serving" && u.bookingId) {
       try {
-        await Booking.findByIdAndUpdate(u.bookingId, { status: "serving" });
+        const startTime = new Date(u.estimatedStartTime || Date.now());
+        await Booking.findByIdAndUpdate(u.bookingId, {
+          status: "serving",
+          startTime,
+          endTime: new Date(startTime.getTime() + Math.max(1, Number(u.serviceTime) || 15) * 60000),
+        });
       } catch {
         // Non-critical
       }
@@ -489,7 +509,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
   if (io) {
     io.to(`business:${businessId}`).emit("bookings:updated");
     // 1. Emit completed for previous head
-    if (previousHead) {
+    if (previousHead && completedBooking?.status === "completed") {
       const uId = previousHead.userId?._id || previousHead.userId;
       io.to(`business:${businessId}`).emit("service:completed", {
         businessId,
@@ -498,6 +518,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
         queue,
       });
       if (uId) {
+        io.to(`user:${uId}`).emit("bookings:updated");
         io.to(`user:${uId}`).emit("service:completed", {
           businessId,
           businessName: business.name,
@@ -520,6 +541,11 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
     // 3. Emit queue updated
     io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue });
     io.to(`business:${businessId}`).emit("queue:update", queue);
+    io.to(`business:${businessId}:admin`).emit("bookings:updated");
+    io.to(`business:${businessId}:admin`).emit("queue:update", queue);
+    for (const user of queue.users) {
+      io.to(`user:${user.userId?._id || user.userId}`).emit("bookings:updated");
+    }
 
     // 4. Notify near users
     queue.users.forEach((u, index) => {

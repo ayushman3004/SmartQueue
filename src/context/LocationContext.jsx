@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import LocationPickerModal from '../components/LocationPickerModal'
+import { useAuth } from './AuthContext'
 
 export const LocationContext = createContext(null)
 
 export function LocationProvider({ children }) {
+  const { user, loading: authLoading } = useAuth()
   const [currentLocation, setCurrentLocation] = useState(() => {
     try {
       const saved = localStorage.getItem('serveq_selected_location')
@@ -14,14 +16,9 @@ export function LocationProvider({ children }) {
     return null
   })
 
-  const [showLocationModal, setShowLocationModal] = useState(() => {
-    try {
-      const saved = localStorage.getItem('serveq_selected_location')
-      return !saved
-    } catch {
-      return false
-    }
-  })
+  const [locationModalRequested, setLocationModalRequested] = useState(false)
+  const showLocationModal = !authLoading && user?.role === 'customer' &&
+    (locationModalRequested || !currentLocation)
 
   const [selectedCity, setSelectedCity] = useState(() => {
     try {
@@ -76,15 +73,15 @@ export function LocationProvider({ children }) {
       console.warn('Failed to save selected location:', err)
     }
 
-    setShowLocationModal(false)
+    setLocationModalRequested(false)
   }, [])
 
   const openLocationModal = useCallback(() => {
-    setShowLocationModal(true)
+    setLocationModalRequested(true)
   }, [])
 
   const closeLocationModal = useCallback(() => {
-    setShowLocationModal(false)
+    setLocationModalRequested(false)
   }, [])
 
   // Synchronize location changes across storage and window events

@@ -5,6 +5,7 @@ import app from "./app.js";
 import connectDB from "./config/db.js";
 import { initSocket } from "./realtime/socket.js";
 import { allowedOrigins, isOriginAllowed } from "./config/cors.js";
+import { startBookingCompletionWorker } from "./src/booking/booking.completion.js";
 
 const PORT = process.env.PORT || 3001;
 
@@ -38,6 +39,8 @@ app.set("io", io);
 initSocket(io);
 
 connectDB().then(() => {
+  const stopBookingCompletion = startBookingCompletionWorker(io);
+  httpServer.on("close", stopBookingCompletion);
   httpServer.listen(PORT, "0.0.0.0", async () => {
     console.log(`\n🚀 Server running on port ${PORT}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || "development"}`);

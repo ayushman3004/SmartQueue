@@ -8,6 +8,7 @@ const queueSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    autoCompletionLeaseUntil: { type: Date, default: null },
     users: [
       {
         userId: {

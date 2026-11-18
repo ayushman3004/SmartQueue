@@ -343,7 +343,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isLoginPage && !isStandalonePage && <Footer />}
+      {!isLoginPage && !isStandalonePage && location.pathname !== '/customers' && <Footer />}
     </div>
   )
 }
