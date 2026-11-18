@@ -43,7 +43,7 @@ export default function LoginPage() {
     title: tab === 'signup' ? 'Create an Account' : 'Sign In',
     description: 'Sign in to serveQ to join queues, track estimated wait times, and manage bookings.',
     robots: 'noindex, follow',
-    canonical: 'https://serveq.tech/login',
+    canonical: 'https://www.serveq.tech/login',
   })
 
   useEffect(() => {

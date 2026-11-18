@@ -8,7 +8,7 @@ export default function TermsPage() {
     title: 'Terms and Conditions',
     description: 'Review the terms and conditions for using serveQ, including virtual queue tokens, appointments, cancellations, and venue management.',
     robots: 'index, follow',
-    canonical: 'https://serveq.tech/terms',
+    canonical: 'https://www.serveq.tech/terms',
   })
 
   const dashboardPath = user?.role === 'owner' ? '/business' : user?.role === 'admin' ? '/admin' : '/customers'

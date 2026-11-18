@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /auth/
 
-Sitemap: https://serveq.tech/sitemap.xml
+Sitemap: https://www.serveq.tech/sitemap.xml

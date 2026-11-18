@@ -27,7 +27,7 @@ export default function BusinessPortalPage() {
     title: 'Business Hub Portal — Virtual Queues & Counter Control',
     description: 'Enterprise virtual queue management for salons, clinics, and service venues. Command customer flow and eliminate physical waiting lines.',
     robots: 'index, follow',
-    canonical: 'https://serveq.tech/business',
+    canonical: 'https://www.serveq.tech/business',
   })
 
   // Responsive desktop detection for smooth coordinate slide

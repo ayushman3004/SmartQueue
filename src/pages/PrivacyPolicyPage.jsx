@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
     title: 'Privacy Policy — serveQ',
     description: 'Learn how serveQ collects, uses, stores, processes, and protects your personal information, venue data, and payment details.',
     robots: 'index, follow',
-    canonical: 'https://serveq.tech/privacy',
+    canonical: 'https://www.serveq.tech/privacy',
   })
 
   const dashboardPath = user?.role === 'owner' ? '/business' : user?.role === 'admin' ? '/admin' : '/customers'
@@ -447,8 +447,8 @@ export default function PrivacyPolicyPage() {
             <p className="flex items-center gap-2">
               <Globe className="w-4 h-4 text-emerald-700" />
               <strong>Website:</strong>{' '}
-              <a href="https://serveq.tech" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:text-emerald-800 font-semibold underline">
-                https://serveq.tech
+              <a href="https://www.serveq.tech" target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:text-emerald-800 font-semibold underline">
+                https://www.serveq.tech
               </a>
             </p>
             <p className="flex items-center gap-2">

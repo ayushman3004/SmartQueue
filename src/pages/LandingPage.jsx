@@ -97,7 +97,7 @@ export default function LandingPage() {
     title: 'Live Virtual Queue Management & Online Waiting',
     description: 'Join virtual queues on your phone, track real-time counter updates, and walk straight in when your turn arrives at salons, clinics, and service venues.',
     robots: 'index, follow',
-    canonical: 'https://serveq.tech',
+    canonical: 'https://www.serveq.tech',
   })
 
   useEffect(() => {

@@ -101,17 +101,6 @@
   "trailingSlash": false,
   "redirects": [
     {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "www.serveq.tech"
-        }
-      ],
-      "destination": "https://serveq.tech/:path*",
-      "permanent": true
-    },
-    {
       "source": "/help",
       "destination": "/support",
       "permanent": true
@@ -130,6 +119,21 @@
       "source": "/wallet",
       "destination": "/profile",
       "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/:path*",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
     }
   ]
 }

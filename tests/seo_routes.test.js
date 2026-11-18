@@ -1,12 +1,42 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { publicPages, guidePages, canonicalUrl, escapeHtml } from '../src/seo/publicPages.js'
+import { publicPages, guidePages, canonicalUrl, escapeHtml, SITE_URL } from '../src/seo/publicPages.js'
 import { routeHtml } from '../src/seo/routeHtml.js'
 import { safeReturnTo } from '../src/utils/authRedirect.js'
 
 const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8')
 const config = JSON.parse(read('vercel.json'))
+
+test('host routing agrees with the production www domain without redirecting static assets', () => {
+  assert.equal(SITE_URL, 'https://www.serveq.tech')
+  // The Vercel domain setting already sends the apex to www. An opposing
+  // repository rule creates a loop, including for CSS, scripts and favicons.
+  assert.ok(config.redirects.every(rule => !rule.has?.some(condition => condition.type === 'host')))
+  assert.ok(config.redirects.every(rule => rule.destination.startsWith('/') && !rule.destination.startsWith('//')))
+  for (const pathname of ['/assets/index.js', '/assets/index.css', '/favicon.svg', '/favicon.ico', '/favicon-32x32.png']) {
+    assert.ok(!config.redirects.some(rule => [pathname, '/:path*', '/(.*)'].includes(rule.source)), pathname)
+  }
+  const cors = config.headers.find(rule => rule.source === '/assets/:path*')
+  assert.ok(cors.headers.some(header => header.key === 'Access-Control-Allow-Origin' && header.value === '*'))
+  assert.ok(config.headers.every(rule => rule.source.startsWith('/assets/')), 'public asset headers must not affect authenticated APIs')
+  for (const page of ['LandingPage', 'BusinessPortalPage', 'LoginPage', 'PrivacyPolicyPage', 'TermsPage']) {
+    assert.ok(!read(`src/pages/${page}.jsx`).includes("canonical: 'https://serveq.tech"), page)
+  }
+})
+
+test('entry assets and icons bypass the old permanent-redirect cache', () => {
+  const html = routeHtml('<script type="module" src="/assets/index-old.js"></script><link rel="stylesheet" href="/assets/index-old.css">', publicPages[0])
+  assert.ok(html.includes('src="/assets/index-old.js?v=host-fix-1"'))
+  assert.ok(html.includes('href="/assets/index-old.css?v=host-fix-1"'))
+  assert.equal(routeHtml(html, publicPages[0]), html, 'asset query must not be appended twice')
+  const icons = [...read('index.html').matchAll(/href="(\/(?:favicon[^"/]*|apple-touch-icon\.png)[^"]*)"/g)]
+  assert.ok(icons.length >= 8)
+  for (const [, url] of icons) {
+    assert.ok(url.includes('?v=host-fix-1'), url)
+    assert.ok(fs.existsSync(new URL(`../public${url.split('?')[0]}`, import.meta.url)), url)
+  }
+})
 
 test('every public page has a distinct canonical and belongs to the sitemap', () => {
   const sitemap = read('public/sitemap.xml')

@@ -11,6 +11,9 @@ export function routeHtml(html, page, indexable = true) {
   }
   let result = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(title)}</title>`)
     .replace(/<link rel="canonical"[^>]*\/>/, `<link rel="canonical" href="${escapeHtml(url)}" />`)
+    // Old 308 host redirects can remain in browser caches after deployment.
+    // Keep entry URLs relative and give them fresh cache keys on both hosts.
+    .replace(/\b(src|href)="(\/assets\/[^"?]+)"/g, '$1="$2?v=host-fix-1"')
   for (const [name, value] of Object.entries(replacements)) {
     const pattern = new RegExp(`(<meta (?:name|property)="${name}"\\s+content=")[^"]*("\\s*\\/?>)`)
     result = result.replace(pattern, (_, before, after) => `${before}${escapeHtml(value)}${after}`)

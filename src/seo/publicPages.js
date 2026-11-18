@@ -1,4 +1,4 @@
-export const SITE_URL = 'https://serveq.tech'
+export const SITE_URL = 'https://www.serveq.tech'
 
 // Shared by the router, build output and sitemap so discovery cannot drift.
 export const publicPages = [
