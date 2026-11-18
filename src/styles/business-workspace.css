@@ -36,3 +36,40 @@
 
 .business-page .customer-tab > header { background: #fbfefbef; border-color: var(--business-line); }
 .business-page .customer-tab aside nav > button[aria-current="page"] { background: var(--business-soft); color: var(--business-ink); border-color: var(--business-line); }
+/* Registration follows the same light sage surfaces as the customer dashboard. */
+.business-setup-progress { display: flex; justify-content: center; list-style: none; gap: 18px; margin: 0; padding: 0; }
+.business-setup-progress li { display: flex; align-items: center; gap: 7px; color: #7b877f; font-size: 10px; }
+.business-setup-progress li > span:first-child { display: grid; place-items: center; width: 24px; height: 28px; border: 1px solid #c1d5c7; background: #f8faf5; border-radius: 14px 14px 5px 5px; font-size: 10px; }
+.business-setup-progress li[aria-current='step'] { color: #315b45; font-weight: 700; }
+.business-setup-progress li[aria-current='step'] > span:first-child, .business-setup-progress li[data-complete='true'] > span:first-child { background: #315b45; color: #fff; border-color: #315b45; }
+.business-pricing-intro { text-align: center; max-width: 650px; margin-inline: auto; }
+.business-pricing-intro h1 { font-size: clamp(30px, 4vw, 44px); letter-spacing: -.05em; line-height: 1.15; }
+.business-pricing .business-plan-card { background: #eef5ee; padding: 32px; border-radius: 24px 56px 20px 20px; box-shadow: none; }
+.business-pricing .business-plan-card:nth-child(2) { background: #f3e9e1; }
+.business-pricing .business-plan-price { font-size: 44px; font-variant-numeric: tabular-nums; }
+.business-pricing .business-plan-card ul { border-top: 1px solid var(--business-line); padding-top: 22px; }
+.business-otp-gate { overflow-y: auto; padding-block: 24px; }
+.business-otp-gate > .business-surface { margin-block: auto; border-radius: 28px 60px 24px 24px; box-shadow: 0 10px 40px #315b4510; }
+.business-gate-logo { display: inline-flex; justify-content: center; margin-bottom: 2px; }.business-gate-logo img { height: 28px; width: auto; }
+.business-otp-gate .business-verify-icon { border-radius: 36px 36px 12px 12px; background: #e6f0e8; border-color: #c1d5c7; color: #315b45; box-shadow: none; }
+.business-otp-gate .business-verify-icon svg { color: #315b45; }
+.business-otp-gate .business-otp-box { background: #eef5ee; border: 1px solid #c1d5c7; }
+.business-otp-gate .business-otp-box button[class*='bg-amber-600'], .business-otp-gate .business-otp-box button[type='submit'] { background: #315b45; text-transform: none; letter-spacing: 0; font-weight: 650; }
+.business-otp-gate .business-otp-box :is(label, button[class*='text-amber-800']) { color: #315b45; }
+.business-otp-gate input { width: min(100%, 280px); padding-block: 15px; font-weight: 600; font-size: 25px; letter-spacing: .35em; border: 1px solid #c1d5c7; box-shadow: none; }
+.business-otp-gate input:focus { outline: 2px solid #315b45; outline-offset: 3px; box-shadow: none; }
+.business-otp-gate h2 { font-size: 28px; line-height: 1.2; }
+.business-otp-gate [class*='bg-amber-100'] { background: #f3e9e1; color: #765546; border-color: #dfcbbd; text-transform: none; letter-spacing: 0; }
+.business-onboarding { background: #edf6ef; backdrop-filter: none; }
+.business-onboarding > .business-surface { border-radius: 24px; box-shadow: 0 12px 48px #315b4510; background: #fffffc; }
+.business-onboarding-header { background: #fbfefb; border-color: #c1d5c7; }
+.business-onboarding-steps { background: #eef5ee; border-color: #c1d5c7; }
+.business-onboarding-steps button > div:first-child { border-radius: 20px 20px 7px 7px; box-shadow: none; }
+.business-onboarding-steps button[aria-current='step'] > div:first-child { background: #315b45; border-color: #315b45; color: #fff; --tw-ring-color: #d9e8dc; }
+.business-onboarding-steps button:not([aria-current='step']) > div[class*='bg-teal-600'] { background: #b7d5c2; color: #315b45; --tw-ring-color: #eef5ee; }
+.business-onboarding input:not([type='checkbox']):not([type='radio']), .business-onboarding select, .business-onboarding textarea { background-color: #f8faf6; border-color: #c1d5c7; }
+.business-onboarding button[class*='bg-gradient-to-r'][class*='from-teal-600'] { background: #315b45; box-shadow: none; }
+.verification-dialog { background: #fffffc; border-color: #c1d5c7; border-radius: 28px 52px 22px 22px; }
+.verification-dialog > .absolute[class*='blur-3xl'] { display: none; }
+.verification-dialog button[type='submit'] { background: #315b45; color: #fff; }
+@media (max-width: 639px) { .business-setup-progress { gap: 10px; }.business-setup-progress li { font-size: 9px; gap: 5px; }.business-pricing .business-plan-card { padding: 24px; }.business-otp-gate { align-items: flex-start; }.business-onboarding-header { grid-template-columns: 1fr; gap: 12px; }.business-onboarding-header > div { justify-content: center; text-align: center; }.business-otp-gate .business-setup-progress { gap: 8px; } }

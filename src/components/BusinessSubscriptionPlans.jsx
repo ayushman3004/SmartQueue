@@ -29,13 +29,13 @@ export default function BusinessSubscriptionPlans({ onSuccess, onBusyChange }) {
         const downgrade = active && user.subscription.plan === 'PRO' && plan.id === 'BASIC'
         return <section key={plan.id} className="business-plan-card">
           <div className="flex justify-between items-start gap-3"><h2>{plan.name}</h2><span className="business-plan-badge">{current ? 'Current plan' : plan.id === 'PRO' ? 'More room to grow' : 'The essentials'}</span></div>
-          <p className="business-plan-price">₹{plan.price.toLocaleString('en-IN')} <span>/ 30 days</span></p>
+          <p className="business-plan-price">₹{plan.price.toLocaleString('en-IN')} <span>/ month</span></p>
           <p className="text-sm leading-relaxed text-zinc-600">{plan.tagline}</p>
           <ul className="my-6 space-y-3">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm leading-relaxed"><Check size={16} className="mt-1 shrink-0" /><span>{feature}</span></li>)}</ul>
           <button type="button" disabled={checkout.busy || Boolean(checkout.pending) || downgrade} onClick={() => checkout.subscribe(plan)} className="business-primary mt-auto w-full">{downgrade ? 'Available after Pro expires' : current ? 'Renew for 30 days' : active ? 'Upgrade to Pro' : `Choose ${plan.name}`}</button>
         </section>
       })}</div>
-      <p className="text-xs text-zinc-500 leading-relaxed">One-time payment for 30 days. No automatic renewal. A Pro upgrade starts a new 30-day period at full price; unused Basic time is not credited.</p>
+      <p className="text-xs text-zinc-500 leading-relaxed">Each month covers 30 days. One-time payment for each period. No automatic renewal. A Pro upgrade starts a new 30-day period at full price; unused Basic time is not credited.</p>
     </>}
     {checkout.busy && <p role="status" className="text-sm font-semibold">{checkout.stage}</p>}
     {checkout.error && <p role="alert" className="text-sm text-rose-700">{checkout.error}</p>}

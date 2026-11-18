@@ -37,7 +37,7 @@ export default function WebsiteTour({ manualTrigger, onTourClose }) {
         title: 'Navigation & Portals',
         badge: 'Main Navigation',
         description:
-          'Use the header navigation to explore how virtual queuing works, browse verified venues, or switch to the Hub Owner Portal if you operate a venue.',
+          'Use the header navigation to explore how virtual queuing works, learn how serveQ helps with waiting, or switch to the Hub Owner Portal if you operate a venue.',
         selector: isMobile ? '#tour-mobile-nav-btn' : '#tour-header-nav',
         fallbackPlacement: 'bottom',
       },
@@ -47,7 +47,7 @@ export default function WebsiteTour({ manualTrigger, onTourClose }) {
         badge: 'Core Feature',
         description:
           'Monitor your live token number, see who is currently being served at the counter, and watch your estimated turnaround time sync in real-time via WebSockets.',
-        selector: '#features',
+        selector: '#how-it-works',
         fallbackPlacement: 'bottom',
       },
       {

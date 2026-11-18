@@ -1,92 +1,17 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowRight, Check, Clock, ClipboardList, Users } from 'lucide-react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useSeo } from '../utils/useSeo'
 import WebsiteTour from '../components/WebsiteTour'
 import './LandingPage.css'
+import HowServeQWorks from '../components/HowServeQWorks'
+import LandingTrust from '../components/LandingTrust'
 
-const VENUES = [
-  {
-    title: 'Salons & Hair Studios',
-    desc: 'Seamless walk-in booking and stylist turnaround without idle waiting.',
-    image: '/hubs/salon.png',
-    badge: 'Salon'
-  },
-  {
-    title: 'Medical Clinics & Doctors',
-    desc: 'Stress-free waiting rooms for patients with live doctor desk calling.',
-    image: '/hubs/clinic.png',
-    badge: 'Clinic'
-  },
-  {
-    title: 'Wellness & Grooming Lounges',
-    desc: 'Predictable scheduling and transparent queues for premium personal care.',
-    image: '/hubs/salon.png',
-    badge: 'Wellness'
-  },
-  {
-    title: 'Diagnostic & Care Centers',
-    desc: 'Orderly token-based routing for consultations and medical checkups.',
-    image: '/hubs/clinic.png',
-    badge: 'Healthcare'
-  }
-]
-
-const FEATURES = [
-  {
-    icon: (
-      <svg className="w-5 h-5 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    ),
-    title: 'Zero-Latency Sync',
-    desc: 'Sub-10ms WebSocket connection keeps token numbers updating in real-time across all devices.'
-  },
-  {
-    icon: (
-      <svg className="w-5 h-5 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-      </svg>
-    ),
-    title: 'Predictive Wait Times',
-    desc: 'Smart turnaround forecasting estimates remaining wait times based on counter velocity.'
-  },
-  {
-    icon: (
-      <svg className="w-5 h-5 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-      </svg>
-    ),
-    title: 'Integrated Payments',
-    desc: 'Reserve priority slots instantly with automatic escrow refunds if your schedule changes.'
-  },
-  {
-    icon: (
-      <svg className="w-5 h-5 text-teal-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-      </svg>
-    ),
-    title: 'Business Command Suite',
-    desc: 'Manage customer flow, call tokens with one tap, and analyze venue traffic analytics.'
-  }
-]
-
-const STEPS = [
-  {
-    step: '01',
-    title: 'Join Virtually',
-    desc: 'Find any nearby venue or scan the on-site QR code right from your smartphone.'
-  },
-  {
-    step: '02',
-    title: 'Wait Anywhere',
-    desc: 'Grab coffee or relax nearby. Your live queue position and estimated wait time sync in real-time.'
-  },
-  {
-    step: '03',
-    title: 'Walk Straight In',
-    desc: 'Receive an instant notification when your counter or table is ready. No crowded lines.'
-  }
+const WAITING_PROBLEMS = [
+  { title: '“How much longer will it take?”', problem: 'You arrive without knowing how many people are ahead. A quick visit becomes an uncertain wait.', solutionTitle: 'Know where you stand.', solution: 'Check the live queue and estimated wait on your phone. See your progress as staff serve customers.', Icon: Clock },
+  { title: 'Your day stops in the waiting room.', problem: 'You stay nearby just to protect your place, with little time for anything else.', solutionTitle: 'Keep your place. Keep your freedom.', solution: 'Join a clinic or salon queue online and wait somewhere comfortable. Stay close enough to return when called.', Icon: Users },
+  { title: 'Staff spend time managing the line.', problem: 'Handwritten lists and repeated “am I next?” questions make it harder to focus on the service.', solutionTitle: 'One clear queue for everyone.', solution: 'Staff view waiting customers, call the next token, and mark visits complete from one dashboard. Customers follow their own queue status.', Icon: ClipboardList },
 ]
 
 export default function LandingPage() {
@@ -122,8 +47,8 @@ export default function LandingPage() {
 
           <nav id="tour-header-nav" className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-600">
             <a href="#how-it-works" className="hover:text-zinc-950 transition-colors">How It Works</a>
-            <a href="#venues" className="hover:text-zinc-950 transition-colors">Venues</a>
-            <a href="#features" className="hover:text-zinc-950 transition-colors">Features</a>
+            <a href="#problem-solution" className="hover:text-zinc-950 transition-colors">Why serveQ</a>
+            <a href="#security" className="hover:text-zinc-950 transition-colors">Trust</a>
             <button
               type="button"
               onClick={() => setTourTrigger((c) => c + 1)}
@@ -190,19 +115,13 @@ export default function LandingPage() {
                 How It Works
               </a>
               <a
-                href="#venues"
+                href="#problem-solution"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-colors"
               >
-                Venues
+                Why serveQ
               </a>
-              <a
-                href="#features"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-colors"
-              >
-                Features
-              </a>
+              <a href="#security" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-colors">Security & Trust</a>
               <div className="pt-2 border-t border-zinc-100 flex flex-col gap-2">
                 <button
                   type="button"
@@ -242,120 +161,23 @@ export default function LandingPage() {
         </h1>
       </section>
 
-      <section id="how-it-works" className="py-20 bg-white border-y border-zinc-200/80">
+      <section id="problem-solution" className="waiting-comparison" aria-labelledby="waiting-comparison-title">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto space-y-3 mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-teal-600">Simple Process</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-              How ServeQ Works
-            </h2>
-            <p className="text-sm sm:text-base text-zinc-600">
-              Three effortless steps to never wait in a crowded physical lobby again.
-            </p>
+          <header className="waiting-comparison-heading"><p>THE PROBLEM & THE SOLUTION</p><h2 id="waiting-comparison-title">Waiting shouldn’t take over your day.</h2><p>Less uncertainty for customers. A more organized day for the people serving them.</p></header>
+          <div className="waiting-comparison-columns" aria-hidden="true"><span>The problem</span><span>The serveQ solution</span></div>
+          <div className="waiting-comparison-rows">
+            {WAITING_PROBLEMS.map(({ title, problem, solutionTitle, solution, Icon: _Icon }) => <article key={title} className="waiting-comparison-row">
+              <div className="waiting-problem"><span className="waiting-mobile-label">The problem</span><span className="waiting-comparison-icon" aria-hidden="true"><_Icon size={21} strokeWidth={1.5} /></span><div><h3>{title}</h3><p>{problem}</p></div></div>
+              <span className="waiting-comparison-arrow" aria-hidden="true"><ArrowRight size={18} /></span>
+              <div className="waiting-solution"><span className="waiting-mobile-label">The serveQ solution</span><span className="waiting-comparison-icon" aria-hidden="true"><Check size={21} strokeWidth={1.5} /></span><div><h3>{solutionTitle}</h3><p>{solution}</p></div></div>
+            </article>)}
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {STEPS.map((s) => (
-              <div key={s.step} className="landing-step bg-zinc-50 rounded-2xl p-7 border border-zinc-200/70 space-y-3 text-left hover:border-zinc-300 transition-colors">
-                <span className="text-xs font-black text-teal-600 bg-teal-50 px-2.5 py-1 rounded-md border border-teal-200/60">
-                  {s.step}
-                </span>
-                <h3 className="text-lg font-bold text-zinc-950 pt-1">{s.title}</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed">{s.desc}</p>
-              </div>
-            ))}
-          </div>
+          <div className="waiting-comparison-bottom"><p>Wait estimates can change as services progress. Keep checking your queue before heading back.</p><Link to="/customers">Try a better way to wait <ArrowRight size={16} /></Link></div>
         </div>
       </section>
 
-      {/* ── Venues Supported ── */}
-      <section id="venues" className="py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12 text-left">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-teal-600">High-Volume Hubs</span>
-              <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight mt-1">
-                Built For Every Venue
-              </h2>
-            </div>
-            <Link
-              to="/business"
-              className="text-xs font-bold text-teal-700 hover:text-teal-800 transition-colors"
-            >
-              Set up your venue →
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {VENUES.map((v) => (
-              <div
-                key={v.title}
-                className="landing-venue bg-white rounded-2xl border border-zinc-200/80 overflow-hidden shadow-xs hover:shadow-md hover:border-zinc-300 transition-all text-left flex flex-col"
-              >
-                <div className="landing-venue-image h-44 overflow-hidden bg-zinc-100 relative">
-                  <img
-                    src={v.image}
-                    alt={v.title}
-                    loading="lazy"
-                    decoding="async"
-                    width="400"
-                    height="176"
-                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                  />
-                  <span className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-wider bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full text-zinc-900 border border-zinc-200/70">
-                    {v.badge}
-                  </span>
-                </div>
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-2">
-                  <div>
-                    <h3 className="text-base font-bold text-zinc-950">{v.title}</h3>
-                    <p className="text-xs text-zinc-600 mt-1 leading-relaxed">{v.desc}</p>
-                  </div>
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/customers')}
-                      className="text-xs font-bold text-teal-600 hover:text-teal-700 transition-colors"
-                    >
-                      View Live Queues →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Core Features ── */}
-      <section id="features" className="py-20 bg-white border-y border-zinc-200/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto space-y-3 mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-teal-600">Platform Infrastructure</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-              Engineered For Reliability
-            </h2>
-            <p className="text-sm sm:text-base text-zinc-600">
-              High-performance queuing technology built to keep venues and customers in perfect sync.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="landing-feature bg-zinc-50 rounded-2xl p-6 border border-zinc-200/70 space-y-3 text-left hover:border-zinc-300 transition-all"
-              >
-                <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200/80 flex items-center justify-center text-lg shadow-xs">
-                  {f.icon}
-                </div>
-                <h3 className="text-base font-bold text-zinc-950">{f.title}</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <HowServeQWorks />
+      <LandingTrust />
 
       {/* ── Call To Action Banner ── */}
       <section className="py-16 sm:py-20">

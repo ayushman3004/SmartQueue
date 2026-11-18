@@ -1,75 +1,20 @@
+import { ArrowRight, Mail, MessageCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { guidePages } from '../seo/publicPages'
+import './Footer.css'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
-
-  return (
-    <footer className="bg-white border-t border-zinc-200/80 text-zinc-600 font-sans mt-auto selection:bg-emerald-500/20 selection:text-emerald-900 z-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
-          {/* Brand & Tagline */}
-          <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 text-center sm:text-left">
-            <Link to="/" className="inline-flex items-center group text-decoration-none">
-              <img
-                src="/serveq-logo.png"
-                alt="serveQ"
-                className="h-6 w-auto object-contain transition-transform group-hover:scale-105"
-              />
-            </Link>
-            <span className="hidden sm:inline text-zinc-300">•</span>
-            <p className="text-xs text-zinc-500 font-medium">
-              Virtual queueing &amp; counter appointments
-            </p>
-            <span className="hidden sm:inline text-zinc-300">•</span>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EAF7EE] text-[#114227] text-[11px] font-bold border border-[#BDE8CB]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Operational</span>
-            </div>
-          </div>
-
-          {/* Public guides also provide crawlable discovery links. */}
-          <nav aria-label="Guides" className="flex flex-wrap justify-center gap-4 text-xs font-semibold">
-            {guidePages.map(page => <Link key={page.path} to={page.path}>{page.title}</Link>)}
-          </nav>
-          {/* Quick Links */}
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs font-semibold text-zinc-600">
-            <Link to="/customers" className="hover:text-zinc-950 transition-colors">
-              Customer Portal
-            </Link>
-            <Link to="/business" className="hover:text-zinc-950 transition-colors">
-              Business Console
-            </Link>
-            <Link to="/subscription" className="hover:text-zinc-950 transition-colors">
-              Subscription
-            </Link>
-            <Link to="/support" className="hover:text-zinc-950 transition-colors">
-              Support
-            </Link>
-            <Link to="/privacy" className="hover:text-zinc-950 transition-colors">
-              Privacy
-            </Link>
-            <Link to="/terms" className="hover:text-zinc-950 transition-colors">
-              Terms
-            </Link>
-          </div>
-        </div>
-
-        {/* Bottom Compact Sub-bar */}
-        <div className="mt-4 pt-3.5 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-zinc-400">
-          <p>© {currentYear} ServeQ Technologies. All rights reserved.</p>
-          <div className="flex items-center gap-3">
-            <a
-              href="mailto:support@serveq.tech"
-              className="text-zinc-500 hover:text-zinc-900 transition-colors font-medium"
-            >
-              support@serveq.tech
-            </a>
-            <span>•</span>
-            <span>Made for waitless living</span>
-          </div>
-        </div>
+  return <footer className="site-footer">
+    <div className="site-footer-body">
+      <div className="site-footer-brand"><Link to="/" aria-label="serveQ home"><img src="/serveq-logo.png" alt="serveQ" width="220" height="76" /></Link><p>A little less waiting.<br />A little more living.</p></div>
+      <div className="site-footer-columns">
+        <section className="site-footer-mobile" aria-labelledby="footer-mobile-title"><h2 id="footer-mobile-title">Take your place, on your phone.</h2><Link to="/customers" className="site-footer-qr" aria-label="Open serveQ customer portal"><img src="/serveq-qr.png" alt="Scan to open the serveQ customer portal on your phone" width="156" height="156" loading="lazy" /></Link><p>Scan to find a clinic or salon.<br />No app download needed.</p><Link to="/customers" className="site-footer-inline">Get started <ArrowRight size={16} /></Link></section>
+        <nav aria-labelledby="footer-explore-title"><h2 id="footer-explore-title">Explore serveQ</h2><ul><li><Link to="/customers">Find a clinic or salon</Link></li><li><Link to="/business">For businesses</Link></li><li><Link to="/subscription">Business plans</Link></li><li><Link to="/login">Sign in</Link></li><li><Link to="/profile">My account</Link></li></ul></nav>
+        <nav aria-labelledby="footer-guides-title"><h2 id="footer-guides-title">Good to know</h2><ul>{guidePages.map((page) => <li key={page.path}><Link to={page.path}>{({ '/how-it-works': 'How serveQ works', '/virtual-queue': 'Understanding virtual queues', '/for-clinics': 'serveQ for clinics', '/for-salons': 'serveQ for salons' })[page.path] || page.title}</Link></li>)}<li><Link to="/privacy">Privacy policy</Link></li><li><Link to="/terms">Terms & conditions</Link></li></ul></nav>
+        <section className="site-footer-contact" aria-labelledby="footer-contact-title"><h2 id="footer-contact-title">Let’s talk</h2><p>Questions about your visit<br />or running your business?</p><a href="mailto:support@serveq.tech" className="site-footer-email">support@serveq.tech</a><Link to="/support" className="site-footer-help">Get help <ArrowRight size={16} /></Link><div className="site-footer-contact-icons"><a href="mailto:support@serveq.tech" aria-label="Email serveQ support"><Mail size={21} strokeWidth={1.5} /></a><Link to="/support" aria-label="Open help and support"><MessageCircle size={21} strokeWidth={1.5} /></Link></div></section>
       </div>
-    </footer>
-  )
+      <div className="site-footer-bottom"><p>© {currentYear} ServeQ Technologies. All rights reserved.</p><span>Made for waitless living.</span><button type="button" onClick={() => { window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }) }}>Back to top ↑</button></div>
+    </div>
+  </footer>
 }

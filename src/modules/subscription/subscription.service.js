@@ -7,44 +7,8 @@ import {
   getRazorpayClient,
 } from "../payment/razorpay.service.js";
 
-export const SUBSCRIPTION_PLANS = {
-  BASIC: {
-    id: "BASIC",
-    name: "Basic Plan",
-    price: 999,
-    amountInPaise: 99900,
-    interval: "monthly",
-    durationDays: 30,
-    tagline: "Essential virtual queue & appointment management for small venues.",
-    features: [
-      "Standard Virtual Live Queue & Slot Scheduling",
-      "Up to 3 Active Staff / Service Providers",
-      "Counter Payments with UPI QR & Cash Tracking",
-      "Automated SMS & Web Wait-Time Notifications",
-      "Standard Daily Venue Traffic & Volume Analytics",
-      "Community & Email Support",
-    ],
-  },
-  PRO: {
-    id: "PRO",
-    name: "Pro Plan",
-    price: 1999,
-    amountInPaise: 199900,
-    interval: "monthly",
-    durationDays: 30,
-    tagline: "Advanced capabilities, direct online settlements, and AI intelligence for high-traffic venues.",
-    badge: "Most Popular",
-    features: [
-      "Unlimited Staff Members & Multi-Room Queues",
-      "Razorpay Direct Online Payment & Instant Settlements",
-      "AI Predictive Peak-Hour & Revenue Analytics",
-      "Express VIP Queue Passes & Priority Routing",
-      "Custom Automated SMS & WhatsApp Status Alerts",
-      "Multi-Service Dynamic Service Sequencing",
-      "Dedicated 24/7 Account Manager & Phone Support",
-    ],
-  },
-};
+import { SUBSCRIPTION_PLANS } from "../../shared/subscriptionPlans.js";
+export { SUBSCRIPTION_PLANS };
 
 /**
  * Creates a Razorpay order specifically for ServeQ platform subscription
@@ -60,7 +24,7 @@ export const createSubscriptionOrder = async (userId, planId) => {
   const normalizedPlanId = String(planId || "").toUpperCase();
   const plan = SUBSCRIPTION_PLANS[normalizedPlanId];
   if (!plan) {
-    throw new ApiError(400, "Invalid plan selected. Choose either BASIC (₹999) or PRO (₹1,999).");
+    throw new ApiError(400, "Invalid plan selected. Choose either BASIC (₹799) or PRO (₹1,499).");
   }
 
   if (user.subscription?.plan === "PRO" && user.subscription.status === "ACTIVE" &&
@@ -116,7 +80,7 @@ export const verifySubscriptionPayment = async (
     throw new ApiError(400, "Invalid Razorpay payment signature.");
   }
   let purchase = await SubscriptionOrder.findOne({ orderId: razorpayOrderId, owner: user._id });
-  if (!purchase || purchase.plan !== selectedPlan.id || purchase.amount !== selectedPlan.amountInPaise) {
+  if (!purchase || purchase.plan !== selectedPlan.id) {
     throw new ApiError(400, "Payment order does not match this account or plan.");
   }
   if (purchase.paymentId && purchase.paymentId !== razorpayPaymentId) throw new ApiError(400, "Order already verified with another payment.");
@@ -143,7 +107,7 @@ export const verifySubscriptionPayment = async (
   // An old callback cannot replace a newer purchased plan.
   if (!user.subscription?.activatedAt || new Date(user.subscription.activatedAt) <= new Date(purchase.activatedAt)) {
     user.subscription = {
-      plan: selectedPlan.id, status: "ACTIVE", amount: selectedPlan.price,
+      plan: selectedPlan.id, status: "ACTIVE", amount: purchase.amount / 100,
       activatedAt: purchase.activatedAt, expiresAt: purchase.expiresAt,
       razorpayOrderId, razorpayPaymentId,
     };

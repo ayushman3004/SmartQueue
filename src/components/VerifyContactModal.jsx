@@ -184,7 +184,7 @@ export default function VerifyContactModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-md bg-white border border-zinc-200/80 rounded-3xl shadow-2xl p-7 md:p-8 z-10 overflow-hidden"
+          className="business-page verification-dialog relative w-full max-w-md bg-white border border-zinc-200/80 rounded-3xl shadow-2xl p-7 md:p-8 z-10 overflow-hidden"
         >
           {/* Subtle Ambient Glow */}
           <div className="absolute -top-16 -right-16 w-44 h-44 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -232,8 +232,8 @@ export default function VerifyContactModal({
             </div>
             <p className="text-[11px] text-slate-500 font-medium leading-relaxed border-t border-slate-200/60 pt-2 mt-2">
               {isEmail
-                ? 'A 6-digit verification code has been dispatched to this email address via Nodemailer.'
-                : 'An SMS with a 6-digit OTP code has been dispatched directly to your mobile phone via Firebase.'}
+                ? 'We sent a six-digit code to your email address. Enter it below to verify.'
+                : 'We sent a six-digit code to your phone by SMS. Enter it below to verify.'}
             </p>
           </div>
 

@@ -1,0 +1,25 @@
+.business-email-screen { position: fixed; inset: 0; z-index: 100; overflow-y: auto; display: flex; flex-direction: column; color: #153c2b; padding: 24px 32px; }
+.business-email-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; width: 100%; max-width: 1200px; margin-inline: auto; }
+.business-email-header img { width: 112px; height: auto; }.business-email-header button { color: #617168; font-size: 12px; padding: 10px; cursor: pointer; }
+.business-email-main { width: 100%; max-width: 460px; margin: auto; padding-block: 32px 12px; }
+.business-email-main > .business-setup-progress { margin-bottom: 24px; }
+.business-email-card { background: #fffffc; border: 1px solid #c1d5c7; border-radius: 26px 56px 24px 24px; padding: 32px; text-align: center; box-shadow: 0 6px 0 #dbe9df80; }
+.business-email-emblem { width: 58px; height: 66px; display: grid; place-items: center; background: #e6f0e8; border: 1px solid #c1d5c7; border-radius: 32px 32px 9px 9px; color: #315b45; margin: 0 auto 24px; }
+.business-email-card .business-email-eyebrow { font-size: 9px; font-weight: 750; letter-spacing: .18em; color: #765546; margin-bottom: 12px; }
+.business-email-card h1 { font-size: clamp(26px, 3vw, 32px); line-height: 1.2; letter-spacing: -.045em; font-weight: 650; color: #153c2b; text-wrap: balance; }
+.business-email-intro { font-size: 13px; line-height: 1.85; color: #617168; margin-top: 14px; }
+.business-email-address { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: #f2f6ef; border-radius: 10px; margin-top: 18px; font-size: 12px; color: #315b45; }
+.business-email-address svg { flex-shrink: 0; }.business-email-address span { overflow-wrap: anywhere; }
+.business-email-send { margin-top: 22px; }.business-email-send > p { font-size: 10px; line-height: 1.8; margin-top: 12px; color: #7b877f; }
+.business-email-card .business-email-primary { display: flex; align-items: center; justify-content: center; gap: 12px; background: #315b45; color: #fffffc; border-radius: 12px; width: 100%; padding: 14px 16px; font-size: 12px; font-weight: 650; cursor: pointer; }
+.business-email-primary:disabled { opacity: .5; cursor: default; }
+.business-email-form { margin-top: 22px; }.business-email-form label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 10px; text-align: left; color: #315b45; }
+.business-email-form input { width: 100%; border: 1px solid #c1d5c7; border-radius: 12px; background: #f8faf5; padding: 14px 10px; text-align: center; font-size: 28px; font-weight: 600; letter-spacing: .35em; text-indent: .35em; font-variant-numeric: tabular-nums; color: #153c2b; }
+.business-email-form input::placeholder { color: #a7b7a9; }.business-email-form > p { margin: 10px 0 18px; font-size: 10px; color: #617168; }
+.business-email-resend { font-size: 11px; min-height: 20px; margin-top: 14px; color: #617168; }.business-email-resend button { text-decoration: underline; text-underline-offset: 3px; cursor: pointer; color: #315b45; padding: 3px; }
+.business-email-next { border-top: 1px solid #e1e9df; padding-top: 18px; margin-top: 24px; }.business-email-next > span { font-size: 8px; letter-spacing: .14em; color: #7b877f; }.business-email-next > p { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 10px; color: #617168; margin-top: 6px; }
+.business-email-links { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; font-size: 11px; color: #617168; }.business-email-links a { text-underline-offset: 3px; }
+.business-email-footnote { text-align: center; font-size: 10px; color: #7b877f; margin-top: 24px; }
+.business-email-screen :is(a, button, input):focus-visible { outline: 2px solid #315b45; outline-offset: 4px; }
+@media (hover: hover) and (pointer: fine) { .business-email-primary:not(:disabled):hover { background: #254a36; }.business-email-links a:hover { text-decoration: underline; } }
+@media (max-width: 560px) { .business-email-screen { padding: 20px 16px; }.business-email-main { padding-top: 28px; }.business-email-card { padding: 28px 22px; }.business-email-main .business-setup-progress { gap: 10px; }.business-email-header img { width: 100px; } }

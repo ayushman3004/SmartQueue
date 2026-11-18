@@ -127,7 +127,8 @@ export default function App() {
     location.pathname === '/unauthorized' ||
     location.pathname === '/401' ||
     location.pathname === '/403'
-  const isStandalonePage = isNotFoundPage || isUnauthorizedPage
+  const isAdminSignIn = location.pathname === '/admin' && user?.role !== 'admin'
+  const isStandalonePage = isNotFoundPage || isUnauthorizedPage || isAdminSignIn
   const isLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
 
   if (authLoading) {
@@ -296,7 +297,7 @@ export default function App() {
           />
           <Route
             path="/admin"
-            element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>}
+            element={<AdminDashboard />}
           />
           <Route path="/support" element={<HelpSupportPage />} />
           <Route path="/help" element={<AliasRedirect to="/support" />} />

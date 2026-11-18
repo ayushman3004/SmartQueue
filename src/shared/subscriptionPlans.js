@@ -1,0 +1,38 @@
+export const SUBSCRIPTION_PLANS = {
+  BASIC: {
+    id: "BASIC",
+    name: "Basic Plan",
+    price: 799,
+    amountInPaise: 79900,
+    interval: "monthly",
+    durationDays: 30,
+    tagline: "Essential virtual queue & appointment management for small venues.",
+    features: [
+      "Standard Virtual Live Queue & Slot Scheduling",
+      "Up to 3 Active Staff / Service Providers",
+      "Counter Payments with UPI QR & Cash Tracking",
+      "Automated SMS & Web Wait-Time Notifications",
+      "Standard Daily Venue Traffic & Volume Analytics",
+      "Community & Email Support",
+    ],
+  },
+  PRO: {
+    id: "PRO",
+    name: "Pro Plan",
+    price: 1499,
+    amountInPaise: 149900,
+    interval: "monthly",
+    durationDays: 30,
+    tagline: "Advanced capabilities, direct online settlements, and AI intelligence for high-traffic venues.",
+    badge: "Most Popular",
+    features: [
+      "Unlimited Staff Members & Multi-Room Queues",
+      "Razorpay Direct Online Payment & Instant Settlements",
+      "AI Predictive Peak-Hour & Revenue Analytics",
+      "Express VIP Queue Passes & Priority Routing",
+      "Custom Automated SMS & WhatsApp Status Alerts",
+      "Multi-Service Dynamic Service Sequencing",
+      "Dedicated 24/7 Account Manager & Phone Support",
+    ],
+  },
+};

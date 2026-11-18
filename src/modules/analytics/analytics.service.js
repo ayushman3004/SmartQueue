@@ -289,7 +289,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
       requiredPlan: "PRO",
       currentPlan: ownerPlan,
       message:
-        "AI Operational Insights and Predictive Rush Forecasting are exclusive to ServeQ Pro Plan subscribers. Upgrade from Basic to Pro (₹1,999/mo) to unlock real-time AI analytics, VIP regular analysis, and automated staff optimization.",
+        "AI Operational Insights and Predictive Rush Forecasting are exclusive to ServeQ Pro Plan subscribers. Upgrade from Basic to Pro (₹1,499/mo) to unlock real-time AI analytics, VIP regular analysis, and automated staff optimization.",
     };
   }
 

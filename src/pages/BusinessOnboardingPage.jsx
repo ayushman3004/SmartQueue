@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { SUBSCRIPTION_PLANS } from '../shared/subscriptionPlans'
+import BusinessEmailVerification from '../components/BusinessEmailVerification'
 import { hasActiveSubscription } from '../utils/subscription'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom'
@@ -15,7 +17,6 @@ import { CATEGORY_METADATA, SERVICE_PRESETS, STAFF_PRESETS, ALLOWED_CATEGORIES }
 import { useSeo } from '../utils/useSeo'
 import { sendEmailOtp, verifyEmailOtp } from '../api/auth.api'
 import {
-  ShieldAlert,
   Mail,
   Check,
   Loader2,
@@ -68,45 +69,6 @@ const STEPS = [
   { id: 5, title: 'Preferences', subtitle: 'Booking & Queues' },
   { id: 6, title: 'Payments', subtitle: 'Settlement & Modes' },
   { id: 7, title: 'Review & Launch', subtitle: 'Pre-flight & Go Live' },
-]
-
-const ONBOARDING_PLANS = [
-  {
-    id: 'BASIC',
-    name: 'Basic Plan',
-    price: 999,
-    displayPrice: '₹999',
-    period: '/ month',
-    tagline: 'Essential virtual queue and scheduling foundation for standard venues.',
-    badge: 'Starter',
-    features: [
-      'Standard Virtual Queue & Priority Counter Passes',
-      'Appointment Booking & Slot Calendar',
-      'Up to 3 Active Staff / Service Practitioners',
-      'Counter Payments with Cash & UPI QR Tracking',
-      'Automated SMS & Web Wait-Time Tracking',
-      'Standard Footfall & Revenue Analytics',
-    ],
-  },
-  {
-    id: 'PRO',
-    name: 'Pro Plan',
-    price: 1999,
-    displayPrice: '₹1,999',
-    period: '/ month',
-    tagline: 'Advanced automation, instant online payments, and AI intelligence for high-traffic venues.',
-    badge: 'Recommended',
-    popular: true,
-    features: [
-      'Everything in Basic Plan, plus:',
-      'Unlimited Staff Members & Practitioners',
-      'Direct Online Razorpay Payments & Settlements',
-      'AI Peak-Hour & Wait-Time Predictive Analytics',
-      'Express VIP Queue Passes & Priority Slot Routing',
-      'Multi-Service Sequencing & Combined Booking',
-      'Dedicated 24/7 Priority Support & Venue Manager',
-    ],
-  },
 ]
 
 export default function BusinessOnboardingPage() {
@@ -819,7 +781,7 @@ export default function BusinessOnboardingPage() {
     if (!business?._id) return
 
     if (!hasActiveSubscription(user?.subscription) && !hasActiveSubscription(business?.subscription)) {
-      toast.error('An active ServeQ subscription (Basic ₹999 or Pro ₹1,999) is required to launch your business.', {
+      toast.error('An active ServeQ subscription (Basic ₹799 or Pro ₹1,499) is required to launch your business.', {
         duration: 5000,
       })
       setSubscriptionModalOpen(true)
@@ -850,146 +812,15 @@ export default function BusinessOnboardingPage() {
     }
   }
 
-  // Block onboarding if email is unverified
+  // Verify email before continuing to plan selection.
   if (!isEmailVerified) {
-    return (
-      <div className="business-page fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-4 selection:bg-emerald-500/20 selection:text-emerald-900">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="business-surface w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-zinc-200 text-center space-y-6 text-zinc-900"
-        >
-          {/* Header Icon */}
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mx-auto shadow-sm">
-            <ShieldAlert className="w-8 h-8 text-amber-700" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200 inline-block">
-              Email Verification Required
-            </span>
-            <h2 className="text-2xl font-black text-zinc-950 tracking-tight">
-              Verify Email to Onboard Your Hub
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-600 font-medium leading-relaxed max-w-md mx-auto">
-              To publish and operate business venues on ServeQ, business owners must verify their registered email (<span className="text-zinc-900 font-bold">{user?.email}</span>) with an OTP.
-            </p>
-          </div>
-
-          {/* OTP Box */}
-          <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-left space-y-4">
-            {!emailOtpSent ? (
-              <div className="text-center space-y-3">
-                <p className="text-xs text-zinc-600 font-medium">
-                  Click below to receive a 6-digit one-time passcode on <span className="font-bold text-zinc-900">{user?.email}</span>.
-                </p>
-                <button
-                  type="button"
-                  disabled={sendingEmailOtp}
-                  onClick={handleSendEmailOtp}
-                  className="w-full py-3 px-5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {sendingEmailOtp ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Sending Passcode...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="w-4 h-4" />
-                      <span>Send 6-Digit OTP</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleVerifyEmailOtp} className="space-y-4">
-                <div className="space-y-1.5 text-center">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
-                    Enter Verification Passcode
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    autoFocus
-                    placeholder="• • • • • •"
-                    value={emailOtp}
-                    onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
-                    className="w-48 mx-auto px-4 py-2.5 text-center text-xl font-black tracking-widest bg-white border-2 border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-zinc-900 shadow-2xs block"
-                  />
-                  <p className="text-[11px] text-zinc-500 font-medium mt-1">
-                    Passcode delivered to <strong className="text-zinc-800">{user?.email}</strong>
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={verifyingEmailOtp || emailOtp.length < 6}
-                  className="w-full py-3 px-5 rounded-xl bg-zinc-950 hover:bg-zinc-800 disabled:opacity-40 text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {verifyingEmailOtp ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Verify & Unlock Studio</span>
-                    </>
-                  )}
-                </button>
-
-                <div className="flex items-center justify-center gap-2 text-xs pt-1">
-                  {otpCooldown > 0 ? (
-                    <span className="text-zinc-500 font-semibold text-[11px] flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-600" />
-                      Resend code in {otpCooldown}s
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={sendingEmailOtp}
-                      onClick={handleSendEmailOtp}
-                      className="text-amber-800 hover:text-amber-950 font-bold underline text-xs cursor-pointer flex items-center gap-1"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Resend Passcode</span>
-                    </button>
-                  )}
-                </div>
-              </form>
-            )}
-          </div>
-
-          {/* Navigation alternatives */}
-          <div className="flex items-center justify-center gap-4 text-xs font-bold pt-2 border-t border-zinc-100">
-            <button
-              type="button"
-              onClick={() => navigate('/profile')}
-              className="text-zinc-600 hover:text-zinc-950 underline cursor-pointer"
-            >
-              Profile Settings
-            </button>
-            <span className="text-zinc-300">•</span>
-            <button
-              type="button"
-              onClick={() => navigate('/business')}
-              className="text-zinc-600 hover:text-zinc-950 underline cursor-pointer"
-            >
-              Return to Hub Console
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    )
+    return <BusinessEmailVerification email={user?.email} sent={emailOtpSent} code={emailOtp} onCodeChange={setEmailOtp} onSend={handleSendEmailOtp} onVerify={handleVerifyEmailOtp} sending={sendingEmailOtp} verifying={verifyingEmailOtp} cooldown={otpCooldown} onSignOut={handleSignOut} />
   }
 
   // Block onboarding until subscription is active on /subscription
   if (!isSubscribed) {
     return (
-      <div className="business-page fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-4 selection:bg-emerald-500/20 selection:text-emerald-900">
+      <div className="business-page business-onboarding fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-4 selection:bg-emerald-500/20 selection:text-emerald-900">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1043,7 +874,7 @@ export default function BusinessOnboardingPage() {
   const completedSet = new Set(business?.onboarding?.completedSteps || [])
 
   return (
-    <div className="business-page fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-2 sm:p-4 md:p-6 overflow-hidden selection:bg-teal-500/20 selection:text-teal-900">
+    <div className="business-page business-onboarding fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/75 backdrop-blur-md p-2 sm:p-4 md:p-6 overflow-hidden selection:bg-teal-500/20 selection:text-teal-900">
       <motion.div
         initial={{ opacity: 0, scale: 0.97, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1051,7 +882,7 @@ export default function BusinessOnboardingPage() {
         className="business-surface w-full h-full max-w-6xl max-h-[96vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-zinc-200/90 relative text-left"
       >
         {/* Modal Top Header */}
-        <div className="flex-shrink-0 bg-white border-b border-zinc-200/80 px-6 py-4 grid grid-cols-3 items-center">
+        <div className="business-onboarding-header flex-shrink-0 bg-white border-b border-zinc-200/80 px-6 py-4 grid grid-cols-3 items-center">
           {/* Left: Step indicator */}
           <div className="text-left">
             <span className="text-xs text-zinc-500 font-medium">
@@ -1092,7 +923,7 @@ export default function BusinessOnboardingPage() {
         </div>
 
         {/* Modal Progress Stepper Bar: Line & Circle Stepper */}
-        <div className="flex-shrink-0 bg-white border-b border-zinc-200/80 px-6 sm:px-12 py-5 overflow-x-auto">
+        <div className="business-onboarding-steps flex-shrink-0 bg-white border-b border-zinc-200/80 px-6 sm:px-12 py-5 overflow-x-auto">
           <div className="flex items-start justify-between min-w-[760px]">
             {STEPS.map((s, index) => {
               const isCompleted = completedSet.has(s.id)
@@ -1105,6 +936,7 @@ export default function BusinessOnboardingPage() {
                   {/* Step Item with Circle and Label */}
                   <button
                     type="button"
+                    aria-current={isCurrent ? 'step' : undefined}
                     disabled={!isAccessible}
                     onClick={() => setCurrentStep(s.id)}
                     className={`flex flex-col items-center group relative z-10 focus:outline-none transition-all ${isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
@@ -2342,7 +2174,7 @@ export default function BusinessOnboardingPage() {
                   )}
                 </div>
 
-                {/* Two Plans: Basic (₹999) & Pro (₹1,999) */}
+                {/* Two Plans: Basic (₹799) & Pro (₹1,499) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                   {/* Basic Plan */}
                   <div className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between ${user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'BASIC'
@@ -2354,7 +2186,7 @@ export default function BusinessOnboardingPage() {
                         <span className="text-[10px] font-black uppercase tracking-wider bg-zinc-200 text-zinc-700 px-2.5 py-0.5 rounded-full">
                           Starter Plan
                         </span>
-                        <span className="text-xl font-black text-zinc-950">₹999 <span className="text-xs font-normal text-zinc-500">/ mo</span></span>
+                        <span className="text-xl font-black text-zinc-950">₹{SUBSCRIPTION_PLANS.BASIC.price.toLocaleString('en-IN')} <span className="text-xs font-normal text-zinc-500">/ mo</span></span>
                       </div>
                       <div>
                         <h5 className="font-black text-base text-zinc-900">Basic Plan</h5>
@@ -2378,7 +2210,7 @@ export default function BusinessOnboardingPage() {
                           onClick={() => setSubscriptionModalOpen(true)}
                           className="w-full py-2.5 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                         >
-                          Pay ₹999 via Razorpay
+                          Pay ₹{SUBSCRIPTION_PLANS.BASIC.price.toLocaleString('en-IN')} via Razorpay
                         </button>
                       )}
                     </div>
@@ -2397,7 +2229,7 @@ export default function BusinessOnboardingPage() {
                         <span className="text-[10px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-full">
                           Growth & AI Tier
                         </span>
-                        <span className="text-xl font-black text-zinc-950">₹1,999 <span className="text-xs font-normal text-zinc-500">/ mo</span></span>
+                        <span className="text-xl font-black text-zinc-950">₹{SUBSCRIPTION_PLANS.PRO.price.toLocaleString('en-IN')} <span className="text-xs font-normal text-zinc-500">/ mo</span></span>
                       </div>
                       <div>
                         <h5 className="font-black text-base text-zinc-900">Pro Plan</h5>
@@ -2421,7 +2253,7 @@ export default function BusinessOnboardingPage() {
                           onClick={() => setSubscriptionModalOpen(true)}
                           className="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                         >
-                          Pay ₹1,999 via Razorpay
+                          Pay ₹{SUBSCRIPTION_PLANS.PRO.price.toLocaleString('en-IN')} via Razorpay
                         </button>
                       )}
                     </div>

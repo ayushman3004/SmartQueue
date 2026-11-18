@@ -1,0 +1,70 @@
+.journey-heading { text-align: center; margin-bottom: 24px; }
+.journey-eyebrow { font-size: 10px; font-weight: 750; letter-spacing: .16em; color: var(--landing-accent); margin-bottom: 10px; }
+.journey-tabs { display: flex; width: fit-content; max-width: 100%; margin: 0 auto 32px; gap: 4px; padding: 5px; border-radius: 12px; background: #153c2b; }
+.journey-tabs > button { display: flex; align-items: center; gap: 10px; white-space: nowrap; padding: 12px 22px; border-radius: 8px; font-size: 13px; font-weight: 650; color: #e6f0e8; cursor: pointer; }
+.journey-tabs > button > span { font-size: 10px; opacity: .7; }
+.journey-tabs > button[aria-selected='true'] { background: #f3e9e1; color: #153c2b; }
+.journey-tabs > button:focus-visible { outline: 2px solid #b7d5c2; outline-offset: -2px; }
+.journey-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 40px; padding: 42px; background: #f3e9e1; border-radius: 24px; }
+.journey-panel[hidden] { display: none; }
+.journey-panel[data-step='track'] { background: #e6f0e8; }
+.journey-panel[data-step='arrive'] { background: #e8eee7; }
+.journey-copy { padding: 8px 0 8px 6px; }
+.landing-page .journey-copy h3 { font-family: Impact, 'Arial Narrow', 'Helvetica Neue', sans-serif; font-size: clamp(32px, 3.6vw, 54px); font-weight: 900; text-transform: uppercase; letter-spacing: -.025em; line-height: 1.06; }
+.journey-copy h3 > span { display: block; }
+.journey-copy .journey-summary { font-size: 17px; line-height: 1.6; margin-top: 22px; color: #315b45; }
+.journey-description { font-size: 13px; line-height: 1.9; margin-top: 18px; max-width: 430px; }
+.journey-action { display: inline-flex; align-items: center; justify-content: center; gap: 16px; background: #153c2b; color: #fffffc; padding: 13px 20px; border-radius: 24px; margin-top: 24px; font-size: 12px; font-weight: 650; }
+.journey-copy .journey-note { font-size: 10px; line-height: 1.8; margin-top: 20px; max-width: 390px; color: #617168; }
+.journey-visual { padding: 10px 0 0 10px; }
+.journey-ticket-example { margin: 0; width: 100%; max-width: 410px; margin-inline: auto; }
+.journey-demo { background: #fffffc; border: 1px solid #b7cdbd; border-radius: 20px; overflow: hidden; box-shadow: 8px 10px 0 #315b4512; }
+.journey-ticket-header { background: #153c2b; padding: 20px 24px; color: #f7f7ef; }
+.journey-demo-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.journey-demo-top > span:first-child { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; letter-spacing: -.03em; }
+.journey-demo-example { border: 1px solid #6b8c77; padding: 4px 8px; border-radius: 6px; font-size: 9px; color: #c7dbcb; }
+.journey-demo-venue { display: flex; justify-content: space-between; align-items: center; margin-top: 26px; gap: 14px; }
+.journey-demo-venue strong { font-size: 18px; font-weight: 600; letter-spacing: -.025em; }
+.journey-demo-venue p { display: flex; align-items: center; gap: 5px; font-size: 10px; margin-top: 6px; }
+.landing-page .journey-demo-venue p { color: #c7dbcb; }
+.journey-ticket-seal { display: grid; place-items: center; border: 1px solid #6b8c77; border-radius: 50%; width: 42px; height: 42px; color: #dfc8bb; flex-shrink: 0; transform: rotate(-16deg); }
+.journey-ticket-main { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 20px; padding: 26px 24px 24px; }
+.journey-token > span { display: block; font-size: 9px; letter-spacing: .16em; font-weight: 650; color: #617168; }
+.journey-token > strong { display: block; font-size: clamp(54px, 6vw, 86px); font-weight: 650; letter-spacing: -.075em; line-height: 1.15; color: #153c2b; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.journey-token > strong > span { font-size: .5em; color: #7b9482; vertical-align: .12em; margin-right: 2px; }
+.journey-ticket-status { color: #315b45; border-left: 1px solid #dce6dc; padding-left: 18px; }
+.journey-ticket-status > svg { margin-bottom: 10px; }
+.journey-ticket-status > strong { display: block; font-size: 14px; font-weight: 650; letter-spacing: -.025em; }
+.journey-ticket-status p { font-size: 10px; line-height: 1.7; margin-top: 5px; }
+.journey-ticket-details { border-top: 1px dashed #b7cdbd; padding: 20px 24px 18px; background: #f8faf5; }
+.journey-ticket-progress { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0; margin: 0 0 22px; list-style: none; gap: 8px; }
+.journey-ticket-progress li { display: flex; flex-direction: column; gap: 7px; font-size: 8px; color: #76887a; border-top: 2px solid #dce6dc; padding-top: 10px; }
+.journey-ticket-progress li > span:first-child { display: grid; place-items: center; width: 18px; height: 18px; background: #e8eee5; border-radius: 50%; font-size: 8px; }
+.journey-ticket-progress li[data-complete='true'] { border-color: #315b45; color: #315b45; }
+.journey-ticket-progress li[data-complete='true'] > span:first-child { background: #315b45; color: #fff; }
+.journey-ticket-progress li[aria-current='step'] { font-weight: 700; }
+.journey-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-variant-numeric: tabular-nums; }
+.journey-stats dt { display: flex; align-items: center; gap: 6px; font-size: 9px; color: #617168; }
+.journey-stats dd { font-size: 25px; font-weight: 650; margin-top: 5px; color: #153c2b; letter-spacing: -.045em; }
+.journey-stats dd > span { font-size: 11px; font-weight: 400; letter-spacing: 0; }
+.journey-ready { background: #e6f0e8; border-left: 3px solid #315b45; padding: 12px 14px; }
+.journey-ready > span { display: block; font-size: 8px; letter-spacing: .13em; color: #617168; }
+.journey-ready > strong { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 650; color: #153c2b; margin-top: 5px; }
+.journey-demo-message { display: flex; align-items: center; gap: 8px; margin-top: 16px; color: #617168; }
+.journey-demo-message svg { flex-shrink: 0; }
+.journey-demo-message p { font-size: 9px; line-height: 1.7; }
+.journey-demo-caption { text-align: center; font-size: 9px; line-height: 1.7; margin-top: 16px; color: #617168; }
+@media (hover: hover) and (pointer: fine) { .journey-tabs > button:not([aria-selected='true']):hover { background: #315b45; } .journey-action:hover { background: #315b45; } }
+@media (max-width: 900px) { .journey-panel { padding: 28px; gap: 24px; }.journey-visual { padding: 6px 0 0; } }
+@media (max-width: 639px) { .journey-tabs { width: 100%; gap: 2px; margin-bottom: 24px; }.journey-tabs > button { flex: 1; justify-content: center; gap: 5px; font-size: 10px; padding: 11px 5px; }.journey-tabs > button > span { display: none; }.journey-panel { grid-template-columns: 1fr; padding: 24px; gap: 26px; }.landing-page .journey-copy h3 { font-size: clamp(32px, 8vw, 44px); }.journey-copy { padding: 0; }.journey-summary { margin-top: 16px; }.journey-action { margin-top: 18px; }.journey-visual { padding: 0; } }
+
+@media (max-width: 380px) { .journey-ticket-header, .journey-ticket-details { padding-inline: 16px; } .journey-ticket-main { padding-inline: 16px; gap: 12px; }.journey-ticket-status { padding-left: 12px; }.journey-demo-venue strong { font-size: 16px; } }
+.journey-audiences { display: flex; width: fit-content; margin: 0 auto 22px; padding: 5px; background: #e6f0e8; border: 1px solid #c1d5c7; border-radius: 14px; gap: 4px; }
+.journey-audiences button { padding: 12px 24px; border-radius: 9px; font-size: 13px; font-weight: 650; color: #315b45; cursor: pointer; }
+.journey-audiences button[aria-selected='true'] { background: #153c2b; color: #fffffc; }
+.journey-business-demo { padding: 24px; }
+.journey-business-label { font-size: 9px; font-weight: 650; letter-spacing: .13em; margin-bottom: 18px; }
+.journey-business-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; border-bottom: 1px solid #e6f0e8; color: #315b45; font-size: 12px; }
+.journey-business-row > svg { flex-shrink: 0; }.journey-business-row > svg + span { flex: 1; }.journey-business-row p { font-size: 10px; margin-top: 5px; }
+.journey-business-hint { margin-top: 18px; font-size: 10px; line-height: 1.8; }
+@media (max-width: 639px) { .journey-audiences { width: 100%; }.journey-audiences button { flex: 1; padding: 12px; font-size: 12px; } }
