@@ -58,11 +58,11 @@ export default function CustomerSidebar({
     : [
         ...(selectedCategory === 'clinic' ? [{ id: 'clinics', label: 'Clinics', icon: Stethoscope, route: dashboardRoute, count: clinicsCount }] : []),
         ...(selectedCategory === 'salon' ? [{ id: 'salons', label: 'Salons', icon: Scissors, route: dashboardRoute, count: salonsCount }] : []),
-        { id: 'switch-service', label: 'Switch service', icon: Building2, route: '/customers?choose=1', count: null },
         { id: 'my-queues', label: 'My Queues', icon: Ticket, route: '/queue', count: myActiveQueuesCount },
         { id: 'appointments', label: 'Appointments', icon: Calendar, route: '/booking', count: myBookingsCount },
         { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
         { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
+        { id: 'switch-service', label: 'Switch service', icon: Building2, route: '/customers?choose=1', count: null },
       ]
 
   const navItems = serviceNavItems.map(item => ({ ...item, route: customerServicePath(item.route, selectedCategory) }))
