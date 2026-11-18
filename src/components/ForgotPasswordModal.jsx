@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 import { forgotPasswordSendOtp, forgotPasswordVerifyOtp, forgotPasswordReset } from '../api/auth.api'
 import { isValidEmail, validatePasswordStrength } from '../utils/validators'
 
-export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = '' }) {
+export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = '', className = '' }) {
   // Steps: 'email' (1) -> 'otp' (2) -> 'password' (3) -> 'success' (4)
   const [step, setStep] = useState('email')
   const [email, setEmail] = useState('')
@@ -131,7 +131,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${className}`}>
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
