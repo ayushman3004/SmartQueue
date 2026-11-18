@@ -10,12 +10,7 @@
   min-height: 100dvh;
   position: relative;
 }
-.legal-header { position: sticky; top: 0; z-index: 40; background: #fbfefbf2; backdrop-filter: blur(12px); border-bottom: 1px solid var(--legal-line); }
-.legal-header-inner { max-width: 1200px; margin-inline: auto; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.legal-brand img { width: 110px; height: auto; display: block; }
-.legal-header nav { display: flex; align-items: center; gap: 24px; }
-.legal-header a { color: var(--legal-ink); font-size: 13px; font-weight: 600; text-decoration: none; }
-.legal-header .legal-header-action { background: var(--legal-accent); color: #fff; padding: 12px 20px; border-radius: 14px; }
+
 .legal-page a { transition: color 160ms ease, background-color 160ms ease; }
 .legal-page a:focus-visible { outline: 2px solid var(--legal-accent); outline-offset: 4px; }
 .legal-document { width: 100%; max-width: 864px; margin-inline: auto; padding: 64px 32px 56px; }
@@ -46,13 +41,10 @@
 .legal-help p { color: var(--legal-muted); margin-bottom: 10px; }
 .legal-help a { color: var(--legal-accent); font-weight: 600; display: inline-flex; gap: 20px; align-items: center; text-decoration: none; }
 @media (hover: hover) and (pointer: fine) {
-  .legal-header a:hover, .legal-tabs a:hover, .legal-help a:hover, .legal-link:hover { color: #765546; }
-  .legal-header .legal-header-action:hover { background: #254a36; color: #fff; }
+  .legal-tabs a:hover, .legal-help a:hover, .legal-link:hover { color: #765546; }
 }
 @media (max-width: 639px) {
-  .legal-header-inner { padding: 12px 20px; }
-  .legal-header nav { gap: 16px; }
-  .legal-brand img { width: 94px; }
+
   .legal-document { padding: 28px 20px 40px; }
   .legal-hero { padding: 26px 22px; border-radius: 22px 48px 22px 22px; }
   .legal-tabs { gap: 20px; margin: 20px 0 28px; }

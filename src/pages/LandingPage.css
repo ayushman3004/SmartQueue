@@ -8,7 +8,6 @@
   --landing-clay-ink: #765546;
 }
 .landing-page { color: var(--landing-ink); }
-.landing-page > header { background: #fbfefbeF; border-color: var(--landing-line); }
 .landing-page :is(h1, h2, h3) { color: var(--landing-ink); font-weight: 650; letter-spacing: -.04em; text-wrap: balance; }
 .landing-page p { color: #617168; }
 .landing-page :is(button, a) { touch-action: manipulation; }

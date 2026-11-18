@@ -1,26 +1,11 @@
 import { Link, NavLink } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import PublicNavbar from './PublicNavbar'
 import '../styles/legal-pages.css'
 
 export default function LegalPageLayout({ title, label, updated, children }) {
-  const { user } = useAuth()
-  const dashboardPath = user?.role === 'owner' ? '/hub/dashboard' : user?.role === 'admin' ? '/admin' : '/customers'
-
   return (
     <div className="legal-page">
-      <header className="legal-header">
-        <div className="legal-header-inner">
-          <Link to="/" aria-label="serveQ home" className="legal-brand">
-            <img src="/serveq-logo.png" alt="serveQ" width="110" height="38" />
-          </Link>
-          <nav aria-label="Main navigation">
-            <Link to="/">Home</Link>
-            <Link className="legal-header-action" to={user ? dashboardPath : '/login'}>
-              {user ? 'Dashboard' : 'Sign in'}
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicNavbar />
       <div className="legal-document">
         <div className="legal-hero">
           <p className="legal-eyebrow">{label}</p>

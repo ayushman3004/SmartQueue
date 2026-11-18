@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect } from 'react'
 import { ArrowRight, Check, Clock, ClipboardList, Users } from 'lucide-react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useSeo } from '../utils/useSeo'
-import WebsiteTour from '../components/WebsiteTour'
+import PublicNavbar from '../components/PublicNavbar'
 import './LandingPage.css'
 import HowServeQWorks from '../components/HowServeQWorks'
 import LandingTrust from '../components/LandingTrust'
@@ -16,9 +15,6 @@ const WAITING_PROBLEMS = [
 
 export default function LandingPage() {
   const navigate = useNavigate()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [tourTrigger, setTourTrigger] = useState(0)
-
   useSeo({
     title: 'Live Virtual Queue Management & Online Waiting',
     description: 'Join virtual queues on your phone, track real-time counter updates, and walk straight in when your turn arrives at salons, clinics, and service venues.',
@@ -27,131 +23,13 @@ export default function LandingPage() {
   })
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setMobileMenuOpen(false)
-    }
-    if (mobileMenuOpen) {
-      window.addEventListener('keydown', handleKeyDown)
-      return () => window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [mobileMenuOpen])
+    const target = window.location.hash.slice(1)
+    if (target && target !== 'take-tour') document.getElementById(target)?.scrollIntoView()
+  }, [])
 
   return (
     <div className="landing-page min-h-screen app-background-glow text-zinc-900 selection:bg-emerald-500/20 selection:text-emerald-900 relative">
-      {/* ── Top Navigation Bar ── */}
-      <header className="sticky top-0 z-50 bg-[#fafaf9]/85 backdrop-blur-md border-b border-zinc-200/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 no-underline group" aria-label="serveQ Homepage">
-            <img src="/serveq-logo.png" alt="serveQ Logo" className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105" />
-          </Link>
-
-          <nav id="tour-header-nav" className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-600">
-            <a href="#how-it-works" className="hover:text-zinc-950 transition-colors">How It Works</a>
-            <a href="#problem-solution" className="hover:text-zinc-950 transition-colors">Why serveQ</a>
-            <a href="#security" className="hover:text-zinc-950 transition-colors">Trust</a>
-            <button
-              type="button"
-              onClick={() => setTourTrigger((c) => c + 1)}
-              className="hover:text-teal-700 transition-colors flex items-center gap-1 text-teal-800 bg-teal-50 hover:bg-teal-100/80 px-2.5 py-1 rounded-full border border-teal-200/70 font-bold cursor-pointer"
-            >
-              <span>✨ Take Tour</span>
-            </button>
-          </nav>
-
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            <Link
-              to="/business"
-              className="hidden sm:inline-flex text-xs font-bold text-zinc-700 hover:text-zinc-950 px-3 py-2 rounded-lg hover:bg-zinc-100 transition-colors"
-            >
-              For Business
-            </Link>
-            <Link
-              to="/login"
-              className="hidden min-[420px]:inline-flex text-xs font-bold text-zinc-800 hover:text-zinc-950 px-2.5 sm:px-3.5 py-2 rounded-lg hover:bg-zinc-100 transition-colors"
-            >
-              Sign In
-            </Link>
-            <button
-              onClick={() => navigate('/login')}
-              id="tour-join-queue-btn"
-              className="text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm hover:shadow transition-all active:scale-95"
-            >
-              Get Started
-            </button>
-
-            {/* Mobile Hamburger Toggle Button */}
-            <button
-              id="tour-mobile-nav-btn"
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden relative w-9 h-9 rounded-full bg-white text-zinc-800 border border-zinc-200/80 flex items-center justify-center active:scale-95 ml-1 cursor-pointer"
-              aria-label="Toggle navigation menu"
-              aria-expanded={mobileMenuOpen}
-            >
-              <div className="w-4 h-3.5 flex flex-col justify-between items-center">
-                <span className={`w-full h-0.5 bg-zinc-800 rounded-full transition-transform duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-[6px]' : ''}`} />
-                <span className={`w-full h-0.5 bg-zinc-800 rounded-full transition-opacity duration-200 ${mobileMenuOpen ? 'opacity-0' : 'opacity-100'}`} />
-                <span className={`w-full h-0.5 bg-zinc-800 rounded-full transition-transform duration-300 ${mobileMenuOpen ? '-rotate-45 -translate-y-[6px]' : ''}`} />
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Responsive Mobile Navigation Drawer */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="md:hidden border-t border-zinc-200/80 bg-white/95 backdrop-blur-md px-4 py-4 space-y-2 shadow-lg"
-            >
-              <a
-                href="#how-it-works"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-colors"
-              >
-                How It Works
-              </a>
-              <a
-                href="#problem-solution"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-colors"
-              >
-                Why serveQ
-              </a>
-              <a href="#security" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-colors">Security & Trust</a>
-              <div className="pt-2 border-t border-zinc-100 flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false)
-                    setTourTrigger((c) => c + 1)
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200/60 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>✨ Take 5-Step Tour</span>
-                </button>
-                <Link
-                  to="/business"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200/60"
-                >
-                  For Business (Hub Owner Portal)
-                </Link>
-                <Link
-                  to="/customers"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-xs font-bold text-zinc-800 hover:bg-zinc-100"
-                >
-                  Join a Virtual Queue
-                </Link>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
+      <PublicNavbar />
 
       {/* Full-screen statement; navigation stays in the header. */}
       <section className="landing-hero" aria-labelledby="landing-headline">
@@ -215,8 +93,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 5-Step Interactive Website Tour */}
-      <WebsiteTour manualTrigger={tourTrigger} />
     </div>
   )
 }

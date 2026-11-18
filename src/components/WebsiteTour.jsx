@@ -15,7 +15,7 @@ export default function WebsiteTour({ manualTrigger, onTourClose }) {
   const [targetRect, setTargetRect] = useState(null)
   const [showPrompt, setShowPrompt] = useState(false)
   const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+    typeof window !== 'undefined' ? window.innerWidth < 1100 : false
   )
 
   const tooltipRef = useRef(null)
@@ -74,7 +74,7 @@ export default function WebsiteTour({ manualTrigger, onTourClose }) {
 
   // Track viewport changes
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    const handleResize = () => setIsMobile(window.innerWidth < 1100)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])

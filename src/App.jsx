@@ -22,6 +22,7 @@ import HubLoginPage, { HubHome, OwnerPasswordPage } from './pages/HubLoginPage'
 import BusinessOnboardingPage from './pages/BusinessOnboardingPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsPage from './pages/TermsPage'
+import AboutPage from './pages/AboutPage'
 import HelpSupportPage from './pages/HelpSupportPage'
 import SubscriptionPage from './pages/SubscriptionPage'
 import Footer from './components/Footer'
@@ -129,7 +130,7 @@ export default function App() {
     '/hub/login', '/hub/activate', '/hub/dashboard', '/hub/change-password', '/business/apply', '/admin/login', '/admin/dashboard', '/admin/applications',
     '/business', '/business/onboarding', '/business/onboarding/:businessId',
     '/business/:businessId', '/business/:businessId/manage', '/subscription',
-    '/wallet', '/profile', '/admin', '/support', '/help', '/privacy', '/terms',
+    '/wallet', '/profile', '/admin', '/support', '/help', '/privacy', '/terms', '/about',
     '/unauthorized', '/401', '/403', '/coming-soon', ...guidePages.map(page => page.path),
   ].some(pattern => matchPath({ path: pattern, end: true }, location.pathname))
 
@@ -140,7 +141,7 @@ export default function App() {
     location.pathname === '/403'
   const isAdminSignIn = location.pathname.startsWith('/admin') && user?.role !== 'admin'
   const isStandalonePage = isNotFoundPage || isUnauthorizedPage || isAdminSignIn
-  const isLegalPage = location.pathname === '/privacy' || location.pathname === '/terms'
+  const hasPublicPageHeader = ['/privacy', '/terms', '/about'].includes(location.pathname)
 
   if (authLoading) {
     return <LoadingScreen />
@@ -176,15 +177,15 @@ export default function App() {
           },
         }}
       />
-      {user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !isLegalPage && <Navbar />}
-      {user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !isLegalPage && (
+      {user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !hasPublicPageHeader && <Navbar />}
+      {user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !hasPublicPageHeader && (
         <>
           <BackButton />
         </>
       )}
       {user && !isOnboarding && !isStandalonePage && <AIDesistant />}
       {user?.role === 'owner' && user.ownerAccess?.mustChangePassword && ['ACTIVE','PASSWORD_REQUIRED'].includes(user.ownerAccess.status) && <aside className="owner-password-banner" role="status">Change your temporary password by {new Date(user.ownerAccess.passwordChangeDeadline).toLocaleString()}. <a href="/hub/change-password">Change password</a></aside>}
-      <main className={user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !isLegalPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
+      <main className={user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !hasPublicPageHeader ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
         <Routes>
           {guidePages.map(page => <Route key={page.path} path={page.path} element={<PublicGuidePage page={page} />} />)}
           <Route path="/business/apply" element={<BusinessApplicationPage />} />
@@ -323,6 +324,7 @@ export default function App() {
           <Route path="/help" element={<AliasRedirect to="/support" />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route path="/401" element={<UnauthorizedPage />} />
           <Route path="/403" element={<UnauthorizedPage />} />

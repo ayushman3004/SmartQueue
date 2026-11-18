@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, Users, Clock3, ArrowUpRight, Check } from "lucide-react";
+import { CalendarDays, Users, Clock3, ArrowUpRight, ArrowLeft, Check } from "lucide-react";
 import BusinessApplicationPage from "./BusinessApplicationPage";
 import { useSeo } from "../utils/useSeo";
 import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
@@ -15,10 +15,13 @@ export default function BusinessMarketingPage() {
   return (
     <div className="admission business-marketing">
       <header className="admission-nav">
-        <Link to="/">
+        <Link to="/" aria-label="serveQ home">
           <img src="/serveq-logo.png" alt="serveQ" width="130" />
         </Link>
         <nav>
+          <Link to="/" className="business-back-home"><ArrowLeft size={16} aria-hidden="true" /> Back to home</Link>
+          <a href="#pricing">Pricing</a>
+          <a href="#facilities">Facilities</a>
           <Link to="/hub/login">Owner login</Link>
           <a href="#apply" className="admission-primary">
             Apply to join →
@@ -36,10 +39,33 @@ export default function BusinessMarketingPage() {
           Give customers their time back. Manage your walk-ins, appointments and
           team from one place, while people follow their turn on their phone.
         </p>
-        <a href="#apply" className="admission-primary">
-          Apply to join ServeQ <ArrowUpRight size={18} />
-        </a>
+        <div className="business-hero-actions">
+          <a href="#apply" className="admission-primary">
+            Apply to join ServeQ <ArrowUpRight size={18} aria-hidden="true" />
+          </a>
+          <a href="#pricing" className="business-pricing-link">View pricing & features <ArrowUpRight size={17} aria-hidden="true" /></a>
+        </div>
+        <p className="business-starting-price">Plans from ₹{SUBSCRIPTION_PLANS.BASIC.price.toLocaleString("en-IN")} per {SUBSCRIPTION_PLANS.BASIC.durationDays} days. Applying is free.</p>
         <span>Personally reviewed. Set up with care.</span>
+      </section>
+      <section id="pricing" className="admission-section business-public-pricing" aria-labelledby="business-pricing-title">
+        <div className="business-pricing-heading">
+          <div><p className="admission-eyebrow">Plans & charges</p><h2 id="business-pricing-title">A clear plan for your business.</h2></div>
+          <p>Compare the included facilities before you apply. Choose and pay for your plan after your business is approved and your owner account is activated.</p>
+        </div>
+        <div className="business-public-plans">
+          {plans.map((plan) => (
+            <article key={plan.id} className={`business-public-plan${plan.id === "PRO" ? " business-public-plan-pro" : ""}`} aria-labelledby={`public-plan-${plan.id}`}>
+              <div className="business-public-plan-heading"><h3 id={`public-plan-${plan.id}`}>{plan.name}</h3><span>{plan.id === "PRO" ? "More room to grow" : "The essentials"}</span></div>
+              <p className="business-public-plan-price">₹{plan.price.toLocaleString("en-IN")} <span>/ {plan.durationDays} days</span></p>
+              <p className="business-public-plan-tagline">{plan.tagline}</p>
+              <p className="business-plan-includes">Included facilities</p>
+              <ul>{plan.features.map((feature) => <li key={feature}><Check size={17} aria-hidden="true" /><span>{feature}</span></li>)}</ul>
+              <a href="#apply" className="admission-primary" aria-label={`Apply to join serveQ with the ${plan.name}`}>Apply to join <ArrowUpRight size={17} aria-hidden="true" /></a>
+            </article>
+          ))}
+        </div>
+        <div className="business-pricing-terms"><p>Each payment covers 30 days. One-time payment for each period, with no automatic renewal. A Pro upgrade starts a new 30-day period at full price; unused Basic time is not credited.</p><Link to="/terms">Read the terms <ArrowUpRight size={15} aria-hidden="true" /></Link></div>
       </section>
       <section className="admission-section">
         <p className="admission-eyebrow">Make room for better service</p>
@@ -70,7 +96,7 @@ export default function BusinessMarketingPage() {
           ))}
         </div>
       </section>
-      <section className="admission-section admission-clay">
+      <section id="facilities" className="admission-section admission-clay">
         <p className="admission-eyebrow">Your team, connected</p>
         <h2>One place to run the day.</h2>
         <div className="admission-grid">
@@ -145,12 +171,6 @@ export default function BusinessMarketingPage() {
             </article>
           ))}
         </div>
-        <p>
-          After approval, choose{" "}
-          {plans.map((p) => `${p.name}: ₹${p.price}/month`).join(" or ")}. Each
-          payment covers 30 days; no automatic renewal. Review full terms before
-          payment.
-        </p>
       </section>
       <section className="admission-section admission-faq">
         <p className="admission-eyebrow">Before you apply</p>

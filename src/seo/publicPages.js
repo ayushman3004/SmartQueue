@@ -7,6 +7,7 @@ export const publicPages = [
   { path: '/support', title: 'Help & Support — ServeQ', description: 'Get in touch with the ServeQ support team for help with your queues, appointments, and business account.' },
   { path: '/privacy', title: 'Privacy Policy — serveQ', description: 'Learn how serveQ collects, uses, stores, processes, and protects your personal information, venue data, and payment details.' },
   { path: '/terms', title: 'Terms and Conditions', description: 'Review the terms and conditions for using serveQ, including virtual queue tokens, appointments, cancellations, and venue management.' },
+  { path: '/about', title: 'About Us — Our Story & Founders', description: 'Meet Ayushman and Ritika, the founder and cofounder of serveQ, and discover why we are building a better way to wait at clinics and salons.' },
   {
     path: '/how-it-works', title: 'How serveQ Works', description: 'Learn how to find a venue, join a virtual queue, follow your turn, and book an available appointment with serveQ.',
     sections: [

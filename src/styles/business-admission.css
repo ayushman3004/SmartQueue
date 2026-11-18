@@ -181,6 +181,46 @@
   color: #6c7c70;
   font-size: 13px;
 }
+.business-marketing .admission-nav nav { flex-wrap: wrap; justify-content: flex-end; gap: 20px; font-size: 13px; }
+.business-marketing .business-back-home { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--admission-line); border-radius: 12px; }
+.business-marketing :is(#pricing, #facilities, #apply) { scroll-margin-top: 24px; }
+.business-hero-actions { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 24px; }
+.business-pricing-link { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 600; }
+.business-marketing-hero > .business-starting-price { font-size: 13px; margin: 24px auto 0; }
+.business-pricing-heading { display: grid; grid-template-columns: 1.1fr 1fr; align-items: end; gap: 48px; margin-bottom: 32px; }
+.business-pricing-heading h2 { margin: 16px 0 0; }
+.business-pricing-heading > p { font-size: 14px; max-width: 450px; }
+.business-public-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.business-public-plan { display: flex; flex-direction: column; padding: 32px; background: #fffffc; border: 1px solid var(--admission-line); border-radius: 24px; }
+.business-public-plan-pro { background: #e7f0e8; border-radius: 24px 56px 24px 24px; }
+.business-public-plan-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.business-public-plan-heading h3 { font-size: 22px; font-weight: 650; letter-spacing: -.03em; }
+.business-public-plan-heading > span { font-size: 10px; padding: 6px 10px; border: 1px solid var(--admission-line); border-radius: 8px; color: #315b45; }
+.admission .business-public-plan-price { font-size: clamp(36px, 4vw, 52px); font-weight: 650; letter-spacing: -.05em; color: var(--admission-ink); margin-top: 24px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.business-public-plan-price > span { font-size: 13px; font-weight: 500; letter-spacing: 0; color: #63766a; white-space: nowrap; }
+.business-public-plan-tagline { font-size: 13px; margin-top: 16px; min-height: 66px; }
+.admission .business-plan-includes { color: #315b45; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding-top: 24px; border-top: 1px solid var(--admission-line); margin-top: 20px; }
+.business-public-plan ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 16px; margin: 20px 0 32px; }
+.business-public-plan li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.7; }
+.business-public-plan li svg { flex-shrink: 0; margin-top: 3px; color: #315b45; }
+.business-public-plan > .admission-primary { margin-top: auto; font-size: 13px; }
+.business-pricing-terms { display: flex; align-items: flex-start; justify-content: space-between; gap: 32px; margin-top: 24px; }
+.business-pricing-terms > p { max-width: 760px; font-size: 12px; }
+.business-pricing-terms > a { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; font-size: 12px; font-weight: 600; min-height: 44px; }
+@media (hover: hover) and (pointer: fine) {
+  .business-back-home:hover { background: #e7f0e8; }
+  .business-pricing-link:hover, .business-pricing-terms > a:hover { text-decoration: underline; text-underline-offset: 4px; }
+}
+@media (max-width: 700px) {
+  .business-marketing .admission-nav { flex-wrap: wrap; }
+  .business-marketing .admission-nav nav { width: 100%; justify-content: flex-start; gap: 12px 18px; }
+  .business-marketing .admission-nav nav > a { min-height: 44px; display: inline-flex; align-items: center; }
+  .business-pricing-heading, .business-public-plans { grid-template-columns: 1fr; gap: 24px; }
+  .business-public-plan { padding: 24px; }
+  .business-public-plan-tagline { min-height: 0; }
+  .business-pricing-terms { flex-direction: column; gap: 8px; }
+  .business-hero-actions { gap: 12px; }
+}
 .admission-section {
   max-width: 1220px;
   margin: auto;
