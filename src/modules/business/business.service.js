@@ -1,3 +1,4 @@
+import { normalizeServiceCategory, serviceCategories } from '../../utils/customerService.js';
 import mongoose from "mongoose";
 import Business from "./business.model.js";
 import Booking from "../../booking/booking.model.js";
@@ -83,11 +84,8 @@ export const getAllBusinesses = async (filters = {}) => {
   }
 
   if (filters.category && filters.category !== "all") {
-    if (filters.category === "clinic" || filters.category === "healthcare") {
-      match.category = { $in: ["clinic", "healthcare"] };
-    } else {
-      match.category = filters.category;
-    }
+    const service = normalizeServiceCategory(filters.category);
+    match.category = service ? { $in: serviceCategories[service] } : filters.category;
   }
 
   const hasCoords =

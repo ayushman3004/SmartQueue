@@ -34,6 +34,7 @@ import CustomerSidebar from '../components/CustomerSidebar'
 import CustomerSearchTools from '../components/CustomerSearchTools'
 import CustomerServiceChoice from '../components/CustomerServiceChoice'
 import './CustomerDashboardPage.css'
+import { filterServiceVenues, filterServiceBookings } from '../utils/customerService'
 import NoServiceState from '../components/NoServiceState'
 import { BusinessGridSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
@@ -71,8 +72,8 @@ export default function CustomerDashboardPage() {
   })
 
   // State
-  const [businesses, setBusinesses] = useState([])
-  const [myBookings, setMyBookings] = useState([])
+  const [discoveredBusinesses, setBusinesses] = useState([])
+  const [allMyBookings, setMyBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [joiningBizId, setJoiningBizId] = useState(null)
   const [leavingBizId, setLeavingBizId] = useState(null)
@@ -87,6 +88,8 @@ export default function CustomerDashboardPage() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [categoryFilter])
+  const businesses = useMemo(() => categoryFilter === 'all' ? discoveredBusinesses : filterServiceVenues(discoveredBusinesses, categoryFilter), [discoveredBusinesses, categoryFilter])
+  const myBookings = useMemo(() => categoryFilter === 'all' ? allMyBookings : filterServiceBookings(allMyBookings, businesses, categoryFilter), [allMyBookings, businesses, categoryFilter])
   const activeNavTab = categoryFilter === 'clinic' ? 'clinics' : categoryFilter === 'salon' ? 'salons' : 'dashboard'
   const selectCategory = (category) => {
     sessionStorage.setItem(`customer-service:${user?._id || user?.id}`, category)

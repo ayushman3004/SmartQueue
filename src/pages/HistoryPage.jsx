@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   MapPin,
   Search,
@@ -38,12 +38,14 @@ import { submitReview, updateReview } from '../api/review.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
+import { useCustomerService } from '../hooks/useCustomerService'
+import { filterServiceVenues, filterServiceBookings } from '../utils/customerService'
 import { buildHistoryRecords } from '../utils/historyRecords'
 
 export default function HistoryPage() {
   const { user, logOut } = useAuth()
   const { socket } = useSocket()
-  const navigate = useNavigate()
+  const { serviceCategory, navigate } = useCustomerService()
 
   useSeo({
     title: 'Service History & Appointments | serveQ',
@@ -51,12 +53,14 @@ export default function HistoryPage() {
   })
 
   // Data states
-  const [businesses, setBusinesses] = useState([])
-  const [myBookings, setMyBookings] = useState([])
+  const [discoveredBusinesses, setBusinesses] = useState([])
+  const [allMyBookings, setMyBookings] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Filters & Controls
-  const [categoryFilter] = useState('all') // 'all' | 'clinic' | 'salon'
+  const categoryFilter = serviceCategory || 'all'
+  const businesses = useMemo(() => serviceCategory ? filterServiceVenues(discoveredBusinesses, serviceCategory) : discoveredBusinesses, [discoveredBusinesses, serviceCategory])
+  const myBookings = useMemo(() => serviceCategory ? filterServiceBookings(allMyBookings, businesses, serviceCategory) : allMyBookings, [allMyBookings, businesses, serviceCategory])
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'live_queue' | 'appointment' | 'completed' | 'upcoming'
   const [sortOrder, setSortOrder] = useState('newest') // 'newest' | 'oldest'
   const [viewMode, setViewMode] = useState('cards') // 'cards' | 'table'
@@ -359,9 +363,10 @@ export default function HistoryPage() {
       <div className="flex-1 flex w-full">
         {/* LEFT SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
         <CustomerSidebar
+          serviceCategory={serviceCategory}
           activeNavTab="history"
-          clinicsCount={businesses.filter((b) => b.category === 'clinic').length}
-          salonsCount={businesses.filter((b) => b.category === 'salon' || b.category === 'barbershop').length}
+          clinicsCount={filterServiceVenues(businesses, 'clinic').length}
+          salonsCount={filterServiceVenues(businesses, 'salon').length}
           myActiveQueuesCount={myActiveQueues.length}
           myBookingsCount={
             myBookings.filter(

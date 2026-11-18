@@ -13,6 +13,7 @@ import {
   Building2,
   LogOut,
 } from 'lucide-react'
+import { customerServicePath } from '../utils/customerService'
 import { useAuth } from '../context/AuthContext'
 
 export default function CustomerSidebar({
@@ -38,7 +39,7 @@ export default function CustomerSidebar({
   const isOwner = user?.role === 'owner'
   const isAdmin = user?.role === 'admin'
 
-  const navItems = isOwner
+  const serviceNavItems = isOwner
     ? [
         { id: 'dashboard', label: 'Hub Console', icon: Building2, route: '/business', count: null },
         { id: 'my-queues', label: 'Live Queues', icon: Ticket, route: '/queue', count: myActiveQueuesCount },
@@ -63,6 +64,8 @@ export default function CustomerSidebar({
         { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
         { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
       ]
+
+  const navItems = serviceNavItems.map(item => ({ ...item, route: customerServicePath(item.route, selectedCategory) }))
 
   const get3DIconTheme = (id) => {
     switch (id) {

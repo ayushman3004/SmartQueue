@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Navigate, Link } from 'react-router-dom'
 import {
   Bell,
   ChevronDown,
@@ -49,6 +49,8 @@ import { submitReview, updateReview } from '../api/review.api'
 import { STAFF_PRESETS } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
+import { useCustomerService } from '../hooks/useCustomerService'
+import { filterServiceVenues, filterServiceBookings, matchesCustomerService } from '../utils/customerService'
 import { useDebounce } from '../hooks/useDebounce'
 import { getBookingDateRange, getBookingDateError, getBusinessDate } from '../utils/bookingDates'
 
@@ -59,14 +61,19 @@ export default function BookingPage() {
   const { businessId: paramBizId } = useParams()
   const { user, logOut } = useAuth()
   const { socket } = useSocket()
-  const navigate = useNavigate()
+  const { serviceCategory, resolvingService, navigate } = useCustomerService(paramBizId)
 
   // Data states
-  const [businesses, setBusinesses] = useState([])
+  const [discoveredBusinesses, setBusinesses] = useState([])
+  const businesses = useMemo(() => filterServiceVenues(discoveredBusinesses, serviceCategory), [discoveredBusinesses, serviceCategory])
   const [selectedBizId, setSelectedBizId] = useState(paramBizId || null)
-  const [business, setBusiness] = useState(null)
+  const [loadedBusiness, setBusiness] = useState(null)
+  const business = matchesCustomerService(loadedBusiness, serviceCategory) && String(loadedBusiness?._id) === String(selectedBizId) ? loadedBusiness : null
+  const bookingRequest = useRef(0)
+  const loadedVenueId = useRef(null)
   const [slots, setSlots] = useState([])
-  const [myBookings, setMyBookings] = useState([])
+  const [allMyBookings, setMyBookings] = useState([])
+  const myBookings = useMemo(() => filterServiceBookings(allMyBookings, businesses, serviceCategory), [allMyBookings, businesses, serviceCategory])
   const [meta, setMeta] = useState({ avgServiceTime: 10, aiBuffer: 0, ratePerMinute: 20 })
   const [loading, setLoading] = useState(true)
 
@@ -119,7 +126,9 @@ export default function BookingPage() {
 
   // Load businesses matching location (to support /booking without param and venue switcher)
   useEffect(() => {
-    const params = { includeAll: false }
+    if (!serviceCategory) return
+    let current = true
+    const params = { includeAll: false, category: serviceCategory }
     const activeCoords =
       currentLocation?.lat && currentLocation?.lng
         ? { lat: currentLocation.lat, lng: currentLocation.lng }
@@ -136,14 +145,17 @@ export default function BookingPage() {
 
     getAllBusinesses(params)
       .then((res) => {
-        const bizList = res.data?.data?.businesses || []
+        if (!current) return
+        const bizList = filterServiceVenues(res.data?.data?.businesses || [], serviceCategory)
         setBusinesses(bizList)
+        if (!paramBizId && !bizList.length) setLoading(false)
         if (!paramBizId && bizList.length > 0) {
           setSelectedBizId((prev) => (bizList.some((b) => b._id === prev) ? prev : bizList[0]._id))
         }
       })
       .catch(() => {})
-  }, [currentLocation, userCoords, paramBizId])
+    return () => { current = false }
+  }, [currentLocation, userCoords, paramBizId, serviceCategory])
 
   // Sync selectedBizId with paramBizId if URL changes
   useEffect(() => {
@@ -154,14 +166,32 @@ export default function BookingPage() {
 
   // Fetch business details, available slots, and bookings
   const fetchData = useCallback(async () => {
-    if (!selectedBizId) return
+    if (!selectedBizId || !serviceCategory) return
+    const request = ++bookingRequest.current
     try {
       setLoading(true)
       setIsSubscriptionInactive(false)
 
       const bRes = await getBusiness(selectedBizId)
+      if (request !== bookingRequest.current) return
       const biz = bRes.data.data.business
+      if (!matchesCustomerService(biz, serviceCategory)) {
+        setBusiness(null)
+        setSlots([])
+        setSelectedBizId(null)
+        navigate('/booking', { replace: true })
+        return
+      }
       setBusiness(biz)
+      if (loadedVenueId.current !== selectedBizId) {
+        loadedVenueId.current = selectedBizId
+        setSelectedServices(biz.services?.slice(0, 1) || [])
+        setSelectedStaff('any')
+        setSelectedSlot(null)
+        setCouponCode('')
+        setAppliedCoupon(null)
+        setPaymentModalOpen(false)
+      }
 
       const { minDate, maxDate } = getBookingDateRange(biz)
       if (!selectedDate || selectedDate < minDate || selectedDate > maxDate) {
@@ -170,11 +200,6 @@ export default function BookingPage() {
         setPaymentModalOpen(false)
         setSelectedDate(minDate)
         return
-      }
-
-      // Default select first service if none selected or if switching venue
-      if (biz.services?.length > 0 && selectedServices.length === 0) {
-        setSelectedServices([biz.services[0]])
       }
 
       // If business subscription is inactive, do not fetch slots or allow booking
@@ -189,7 +214,7 @@ export default function BookingPage() {
         (biz.bookingSettings?.enableAppointments === false
           ? Promise.resolve({ data: { data: { slots: [] } } })
           : getAvailableSlots(selectedBizId, selectedDate)).catch((sErr) => {
-          if (sErr.response?.status === 403 && sErr.response?.data?.message?.includes('subscription')) {
+          if (request === bookingRequest.current && sErr.response?.status === 403 && sErr.response?.data?.message?.includes('subscription')) {
             setIsSubscriptionInactive(true)
           }
           return { data: { data: { slots: [] } } }
@@ -197,6 +222,7 @@ export default function BookingPage() {
         getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
       ])
 
+      if (request !== bookingRequest.current) return
       setSlots(sRes.data.data.slots || [])
       setMeta({
         avgServiceTime: sRes.data.data.avgServiceTime || 15,
@@ -212,6 +238,7 @@ export default function BookingPage() {
         )
       )
     } catch (err) {
+      if (request !== bookingRequest.current) return
       console.error('Failed to load booking data', err)
       if (err.response?.status === 403 && err.response?.data?.message?.includes('subscription')) {
         setIsSubscriptionInactive(true)
@@ -219,12 +246,13 @@ export default function BookingPage() {
         toast.error('Unable to fetch appointment slots')
       }
     } finally {
-      setLoading(false)
+      if (request === bookingRequest.current) setLoading(false)
     }
-  }, [selectedBizId, selectedDate, selectedServices.length])
+  }, [selectedBizId, selectedDate, serviceCategory, navigate])
 
   useEffect(() => {
     fetchData()
+    return () => { bookingRequest.current += 1 }
   }, [fetchData])
 
   // Real-time socket updates
@@ -411,8 +439,8 @@ export default function BookingPage() {
     })
   }
 
-  const isClinic = business?.category === 'clinic' || business?.category === 'healthcare'
-  const isSalon = business?.category === 'salon' || business?.category === 'barbershop'
+  const isClinic = serviceCategory === 'clinic'
+  const isSalon = serviceCategory === 'salon'
   const staffRoleLabel = isClinic ? 'Doctor / Specialist' : 'Barber / Stylist'
 
   // Available staff
@@ -429,6 +457,8 @@ export default function BookingPage() {
   const totalServicePrice = selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0)
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0
   const finalPrice = Math.max(0, totalServicePrice - discountAmount)
+
+  if (!serviceCategory && !resolvingService) return <Navigate to="/customers?choose=1" replace />
 
   return (
     <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
@@ -454,7 +484,7 @@ export default function BookingPage() {
           onChangeLocation={openLocationModal}
           search={search}
           onSearchChange={setSearch}
-          placeholder="Search venues for an appointment..."
+          placeholder={isSalon ? 'Search salons...' : 'Search clinics...'}
         />
 
         {/* Right: Notifications, Profile Avatar */}
@@ -523,9 +553,10 @@ export default function BookingPage() {
       <div className="flex-1 flex w-full">
         {/* CUSTOMER SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
         <CustomerSidebar
+          serviceCategory={serviceCategory}
           activeNavTab="appointments"
-          clinicsCount={businesses.filter((b) => b.category === 'clinic').length}
-          salonsCount={businesses.filter((b) => b.category === 'salon' || b.category === 'barbershop').length}
+          clinicsCount={filterServiceVenues(businesses, 'clinic').length}
+          salonsCount={filterServiceVenues(businesses, 'salon').length}
           myActiveQueuesCount={businesses.filter((b) => (b.activeQueue || []).some((u) => (u.userId?._id || u.userId)?.toString() === user?._id?.toString())).length}
           myBookingsCount={myBookings.filter(
             (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
@@ -586,7 +617,7 @@ export default function BookingPage() {
                         isSelected ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500'
                       }`}
                     >
-                      {b.category === 'clinic' ? 'Clinic' : 'Salon'}
+                      {isClinic ? 'Clinic' : 'Salon'}
                     </span>
                   </button>
                 )

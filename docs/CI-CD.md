@@ -360,6 +360,16 @@ OAuth/payment verification, or the deployment checks already described above.
 
 ## Platform references
 
+The frontend smoke failure in [run 44320083098](https://github.com/ayushman3004/SmartQueue/actions/runs/44320083098)
+was a real routing defect: Nginx returned `/help`'s absolute Location with port 80
+instead of the externally mapped port 8080. `absolute_redirect off` now returns
+relative redirects, preserving the public host, HTTPS scheme and mapped port.
+The exact dropped-port case is retained in `tests/frontend_http.test.js`; the
+container's HTTP assertions and deployment gate remain enabled. Local verification
+reproduced the original failure and passed the fixed configuration against official
+Nginx 1.30.6 behind a proxy using a different public port. Docker itself still
+needs to run in GitHub Actions.
+
 - [Render deploy hooks: exact commit refs, deployment IDs and queued responses](https://render.com/docs/deploy-hooks)
 - [Render retrieve-deploy API](https://api-docs.render.com/reference/retrieve-deploy)
 - [Render retrieve-service API](https://api-docs.render.com/reference/retrieve-service)

@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Navigate, Link } from 'react-router-dom'
 import {
   Bell,
   ChevronDown,
@@ -42,6 +42,8 @@ import { getAllBusinesses } from '../api/business.api'
 import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
+import { useCustomerService } from '../hooks/useCustomerService'
+import { filterServiceVenues, filterServiceBookings } from '../utils/customerService'
 import { useDebounce } from '../hooks/useDebounce'
 
 const DEFAULT_SALON_IMAGE = '/hubs/salon.png'
@@ -51,7 +53,7 @@ export default function QueuePage() {
   const { businessId: paramBizId } = useParams()
   const { user, logOut } = useAuth()
   const { socket } = useSocket()
-  const navigate = useNavigate()
+  const { serviceCategory, resolvingService, navigate } = useCustomerService(paramBizId)
 
   useSeo({
     title: 'Live Queue Pass & Status | serveQ',
@@ -60,10 +62,13 @@ export default function QueuePage() {
   })
 
   // Data states
-  const [businesses, setBusinesses] = useState([])
-  const [myBookings, setMyBookings] = useState([])
+  const [discoveredBusinesses, setBusinesses] = useState([])
+  const [allMyBookings, setMyBookings] = useState([])
+  const businesses = useMemo(() => filterServiceVenues(discoveredBusinesses, serviceCategory), [discoveredBusinesses, serviceCategory])
+  const myBookings = useMemo(() => filterServiceBookings(allMyBookings, businesses, serviceCategory), [allMyBookings, businesses, serviceCategory])
   const [selectedBizId, setSelectedBizId] = useState(paramBizId || null)
   const [loading, setLoading] = useState(true)
+  const queueRequest = useRef(0)
   const [leavingQueue, setLeavingQueue] = useState(false)
   const [joiningQueue, setJoiningQueue] = useState(false)
   const [selectedService, setSelectedService] = useState(null)
@@ -103,9 +108,11 @@ export default function QueuePage() {
 
   // Fetch initial data
   const fetchData = useCallback(async () => {
+    if (!serviceCategory) return
+    const request = ++queueRequest.current
     try {
       setLoading(true)
-      const params = { includeAll: false }
+      const params = { includeAll: false, category: serviceCategory }
       const activeCoords =
         currentLocation?.lat && currentLocation?.lng
           ? { lat: currentLocation.lat, lng: currentLocation.lng }
@@ -125,22 +132,25 @@ export default function QueuePage() {
         getMyBookings().catch(() => ({ data: { data: { bookings: [] } } })),
       ])
 
-      const bizList = allRes.data?.data?.businesses || []
+      if (request !== queueRequest.current) return
+      const bizList = filterServiceVenues(allRes.data?.data?.businesses || [], serviceCategory)
       setBusinesses(bizList)
       setMyBookings(myBkRes.data?.data?.bookings || [])
       if (!paramBizId && bizList.length > 0 && !selectedBizId) {
         setSelectedBizId(bizList[0]._id)
       }
     } catch (err) {
+      if (request !== queueRequest.current) return
       console.error('Failed to load queue data:', err)
       toast.error('Unable to fetch live queues')
     } finally {
-      setLoading(false)
+      if (request === queueRequest.current) setLoading(false)
     }
-  }, [currentLocation, userCoords, paramBizId, selectedBizId])
+  }, [currentLocation, userCoords, paramBizId, selectedBizId, serviceCategory])
 
   useEffect(() => {
     fetchData()
+    return () => { queueRequest.current += 1 }
   }, [fetchData])
 
   // Join socket rooms for live queue broadcasts
@@ -306,26 +316,26 @@ export default function QueuePage() {
     if (myQueueItem?.assignedStaff?.name) {
       return {
         name: myQueueItem.assignedStaff.name,
-        role: myQueueItem.assignedStaff.role || (activeBusiness?.category === 'clinic' ? 'Doctor / Specialist' : 'Barber / Stylist'),
+        role: myQueueItem.assignedStaff.role || (serviceCategory === 'clinic' ? 'Doctor / Specialist' : 'Barber / Stylist'),
       }
     }
     if (servingUser?.assignedStaff?.name) {
       return {
         name: servingUser.assignedStaff.name,
-        role: servingUser.assignedStaff.role || (activeBusiness?.category === 'clinic' ? 'Doctor / Specialist' : 'Barber / Stylist'),
+        role: servingUser.assignedStaff.role || (serviceCategory === 'clinic' ? 'Doctor / Specialist' : 'Barber / Stylist'),
       }
     }
     if (activeBusiness?.staff?.length > 0) {
       return {
         name: activeBusiness.staff[0].name,
-        role: activeBusiness.staff[0].role || (activeBusiness?.category === 'clinic' ? 'General Physician' : 'On-Duty Stylist'),
+        role: activeBusiness.staff[0].role || (serviceCategory === 'clinic' ? 'General Physician' : 'On-Duty Stylist'),
       }
     }
     return {
-      name: activeBusiness?.category === 'clinic' ? 'Dr. On-Duty' : 'On-Duty Stylist',
-      role: activeBusiness?.category === 'clinic' ? 'Physician' : 'Barber / Stylist',
+      name: serviceCategory === 'clinic' ? 'Dr. On-Duty' : 'On-Duty Stylist',
+      role: serviceCategory === 'clinic' ? 'Physician' : 'Barber / Stylist',
     }
-  }, [myQueueItem, servingUser, activeBusiness])
+  }, [myQueueItem, servingUser, activeBusiness, serviceCategory])
 
   // Calculated Times for Current Slot & Stepper
   const timeMetrics = useMemo(() => {
@@ -359,8 +369,8 @@ export default function QueuePage() {
     if (myQueueItem?.services?.length > 0) return myQueueItem.services[0].name
     if (servingUser?.serviceType) return servingUser.serviceType
     if (activeBusiness?.services?.length > 0) return activeBusiness.services[0].name
-    return activeBusiness?.category === 'clinic' ? 'Consultation & Checkup' : 'Haircut & Styling'
-  }, [myQueueItem, servingUser, activeBusiness])
+    return serviceCategory === 'clinic' ? 'Consultation & Checkup' : 'Haircut & Styling'
+  }, [myQueueItem, servingUser, activeBusiness, serviceCategory])
 
   const serviceDuration = myQueueItem?.serviceTime || activeBusiness?.averageServiceTime || 30
 
@@ -459,8 +469,10 @@ export default function QueuePage() {
     }
   }
 
-  const categoryLabel = activeBusiness?.category === 'clinic' ? 'Clinic Hub' : 'Salon Hub'
-  const isSalon = activeBusiness?.category === 'salon' || activeBusiness?.category === 'barbershop'
+  const categoryLabel = serviceCategory === 'clinic' ? 'Clinic Hub' : 'Salon Hub'
+  const isSalon = serviceCategory === 'salon'
+
+  if (!serviceCategory && !resolvingService) return <Navigate to="/customers?choose=1" replace />
 
   return (
     <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
@@ -486,7 +498,7 @@ export default function QueuePage() {
           onChangeLocation={openLocationModal}
           search={search}
           onSearchChange={setSearch}
-          placeholder="Search venues..."
+          placeholder={serviceCategory === 'salon' ? 'Search salons...' : 'Search clinics...'}
         />
 
         {/* Right: Notifications, Profile Avatar */}
@@ -555,9 +567,10 @@ export default function QueuePage() {
       <div className="flex-1 flex w-full">
         {/* CUSTOMER SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
         <CustomerSidebar
+          serviceCategory={serviceCategory}
           activeNavTab="my-queues"
-          clinicsCount={businesses.filter((b) => b.category === 'clinic').length}
-          salonsCount={businesses.filter((b) => b.category === 'salon' || b.category === 'barbershop').length}
+          clinicsCount={filterServiceVenues(businesses, 'clinic').length}
+          salonsCount={filterServiceVenues(businesses, 'salon').length}
           myActiveQueuesCount={businesses.filter((b) => (b.activeQueue || []).some((u) => (u.userId?._id || u.userId)?.toString() === user?._id?.toString())).length}
           myBookingsCount={myBookings.filter(
             (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'

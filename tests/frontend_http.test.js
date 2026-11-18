@@ -31,3 +31,9 @@ test('frontend smoke check rejects soft 404s and redirect query loss', async () 
   await assert.rejects(checkFrontend('http://localhost:8080', fixture(url => url.pathname.startsWith('/__ci_') ? new Response('Not found') : null)), /HTTP 404/);
   await assert.rejects(checkFrontend('http://localhost:8080', fixture(url => url.pathname === '/help' ? new Response(null, { status: 301, headers: { location: '/support' } }) : null)), /redirect lost/);
 });
+
+test('frontend smoke check catches the Nginx mapped-port regression while allowing relative redirects', async () => {
+  await checkFrontend('http://localhost:8080', fixture());
+  await assert.rejects(checkFrontend('http://localhost:8080', fixture(url => url.pathname === '/help'
+    ? new Response(null, { status: 301, headers: { location: 'http://localhost/support?ci=1' } }) : null)), /redirect lost/);
+});
