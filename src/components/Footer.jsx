@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { guidePages } from '../seo/publicPages'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -27,6 +28,10 @@ export default function Footer() {
             </div>
           </div>
 
+          {/* Public guides also provide crawlable discovery links. */}
+          <nav aria-label="Guides" className="flex flex-wrap justify-center gap-4 text-xs font-semibold">
+            {guidePages.map(page => <Link key={page.path} to={page.path}>{page.title}</Link>)}
+          </nav>
           {/* Quick Links */}
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs font-semibold text-zinc-600">
             <Link to="/customers" className="hover:text-zinc-950 transition-colors">

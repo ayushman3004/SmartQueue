@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signup, signin } from '../api/auth.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { isValidEmail, validatePasswordStrength } from '../utils/validators'
 import { useDebounce } from '../hooks/useDebounce'
+import { safeReturnTo } from '../utils/authRedirect'
 import ForgotPasswordModal from '../components/ForgotPasswordModal'
 
 // Fluid Apple-style spring curve
@@ -36,11 +37,12 @@ export default function LoginPage() {
   const isPasswordValid = hasMinLength && hasUppercase && hasNumber && hasSpecial
   const { logIn } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   useSeo({
     title: tab === 'signup' ? 'Create an Account' : 'Sign In',
     description: 'Sign in to serveQ to join queues, track estimated wait times, and manage bookings.',
-    robots: 'index, follow',
+    robots: 'noindex, follow',
     canonical: 'https://serveq.tech/login',
   })
 
@@ -94,7 +96,7 @@ export default function LoginPage() {
       toast.success(tab === 'signin' ? 'Welcome back! Logged in successfully.' : 'Welcome to serveQ! Account created.', {
         style: { borderRadius: '14px', background: '#ffffff', color: '#09090b', border: '1px solid #e4e4e7' }
       })
-      navigate(user?.role === 'admin' ? '/admin' : '/customers')
+      navigate(safeReturnTo(searchParams.get('returnTo'), user?.role === 'admin' ? '/admin' : '/customers'), { replace: true })
     } catch (err) {
       const msg = err.response?.data?.message || 'Unable to sign in. Please check your details.'
       if (
@@ -116,7 +118,7 @@ export default function LoginPage() {
       toast.error('Please click the checkbox to accept our Privacy Policy to continue.')
       return
     }
-    localStorage.removeItem('auth_redirect')
+    localStorage.setItem('auth_redirect', safeReturnTo(searchParams.get('returnTo')))
     const apiUrl = import.meta.env.VITE_API_URL || ''
     window.location.href = `${apiUrl}/api/auth/google?role=customer`
   }

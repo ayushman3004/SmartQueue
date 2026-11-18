@@ -1,9 +1,8 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, matchPath, useLocation } from 'react-router-dom'
 import { Toaster, toast } from 'react-hot-toast'
 import { useAuth } from './context/AuthContext'
 import { useSocket } from './context/SocketContext'
-import { getAllBusinesses } from './api/business.api'
 import Navbar from './components/Navbar'
 import BackButton from './components/BackButton'
 import AIDesistant from './components/AIDesistant'
@@ -29,52 +28,21 @@ import AmbientBackground from './components/AmbientBackground'
 import NotFoundPage from './pages/NotFoundPage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
 import { AppLoadingSkeleton } from './components/Skeleton'
+import PublicGuidePage from './pages/PublicGuidePage'
+import { guidePages } from './seo/publicPages'
 
 const LoadingScreen = () => <AppLoadingSkeleton />
 
-const QueueRedirect = () => {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  useEffect(() => {
-    getAllBusinesses({ includeAll: false })
-      .then((res) => {
-        const bizList = res.data?.data?.businesses || []
-        if (bizList.length > 0) {
-          const myIdStr = user?._id?.toString()
-          const activeBiz = bizList.find((b) =>
-            (b.activeQueue || []).some((u) => (u.userId?._id || u.userId)?.toString() === myIdStr)
-          )
-          navigate(`/queue/${(activeBiz || bizList[0])._id}`, { replace: true })
-        } else {
-          navigate('/customers', { replace: true })
-        }
-      })
-      .catch(() => navigate('/customers', { replace: true }))
-  }, [user, navigate])
-  return <LoadingScreen />
-}
-
-const BookingRedirect = () => {
-  const navigate = useNavigate()
-  useEffect(() => {
-    getAllBusinesses({ includeAll: false })
-      .then((res) => {
-        const bizList = res.data?.data?.businesses || []
-        if (bizList.length > 0) {
-          navigate(`/booking/${bizList[0]._id}`, { replace: true })
-        } else {
-          navigate('/customers', { replace: true })
-        }
-      })
-      .catch(() => navigate('/customers', { replace: true }))
-  }, [navigate])
-  return <LoadingScreen />
+const AliasRedirect = ({ to }) => {
+  const { search, hash } = useLocation()
+  return <Navigate to={`${to}${search}${hash}`} replace />
 }
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`} replace />
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/401" replace />
   }
@@ -142,27 +110,14 @@ export default function App() {
 
 
 
-  const isKnownRoute =
-    location.pathname === '/' ||
-    location.pathname === '/login' ||
-    location.pathname === '/auth/callback' ||
-    location.pathname === '/customers' ||
-    location.pathname === '/customer' ||
-    location.pathname === '/history' ||
-    location.pathname.startsWith('/queue') ||
-    location.pathname.startsWith('/booking') ||
-    location.pathname.startsWith('/business') ||
-    location.pathname === '/subscription' ||
-    location.pathname === '/wallet' ||
-    location.pathname === '/profile' ||
-    location.pathname === '/admin' ||
-    location.pathname === '/support' ||
-    location.pathname === '/help' ||
-    location.pathname === '/privacy' ||
-    location.pathname === '/terms' ||
-    location.pathname === '/unauthorized' ||
-    location.pathname === '/401' ||
-    location.pathname === '/403'
+  const isKnownRoute = [
+    '/', '/login', '/auth/callback', '/customers', '/customer', '/history',
+    '/queue', '/queue/:businessId', '/booking', '/booking/:businessId',
+    '/business', '/business/onboarding', '/business/onboarding/:businessId',
+    '/business/:businessId', '/business/:businessId/manage', '/subscription',
+    '/wallet', '/profile', '/admin', '/support', '/help', '/privacy', '/terms',
+    '/unauthorized', '/401', '/403', '/coming-soon', ...guidePages.map(page => page.path),
+  ].some(pattern => matchPath({ path: pattern, end: true }, location.pathname))
 
   const isNotFoundPage = !isKnownRoute || location.pathname === '/404'
   const isUnauthorizedPage =
@@ -215,6 +170,7 @@ export default function App() {
       {user && !isOnboarding && !isStandalonePage && <AIDesistant />}
       <main className={user && !isOnboarding && !isCustomerDashboard && !isStandalonePage && !isLegalPage ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
         <Routes>
+          {guidePages.map(page => <Route key={page.path} path={page.path} element={<PublicGuidePage page={page} />} />)}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
@@ -229,7 +185,7 @@ export default function App() {
               )
             }
           />
-          <Route path="/coming-soon" element={<Navigate to="/" replace />} />
+          <Route path="/coming-soon" element={<AliasRedirect to="/" />} />
           <Route
             path="/customers"
             element={
@@ -238,7 +194,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/customer" element={<Navigate to="/customers" replace />} />
+          <Route path="/customer" element={<AliasRedirect to="/customers" />} />
           <Route
             path="/history"
             element={
@@ -325,7 +281,7 @@ export default function App() {
           />
           <Route
             path="/wallet"
-            element={<Navigate to="/profile" replace />}
+            element={<AliasRedirect to="/profile" />}
           />
           <Route
             path="/profile"
@@ -337,10 +293,10 @@ export default function App() {
           />
           <Route
             path="/admin"
-            element={<AdminDashboard />}
+            element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>}
           />
           <Route path="/support" element={<HelpSupportPage />} />
-          <Route path="/help" element={<Navigate to="/support" replace />} />
+          <Route path="/help" element={<AliasRedirect to="/support" />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />

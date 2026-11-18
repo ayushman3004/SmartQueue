@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMe } from '../api/auth.api'
+import { safeReturnTo } from '../utils/authRedirect'
 import { Skeleton } from '../components/Skeleton'
 
 export default function AuthCallback() {
@@ -11,7 +12,7 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const token = params.get('token')
-    if (!token) { navigate('/login'); return }
+    if (!token) { navigate('/login', { replace: true }); return }
     localStorage.setItem('token', token)
     getMe()
       .then(res => {
@@ -20,17 +21,18 @@ export default function AuthCallback() {
         const redirect = localStorage.getItem('auth_redirect')
         localStorage.removeItem('auth_redirect')
         if (redirect) {
-          navigate(redirect)
+          navigate(safeReturnTo(redirect, loggedUser?.role === 'owner' ? '/business' : '/customers'), { replace: true })
         } else if (loggedUser?.role === 'owner') {
-          navigate('/business')
+          navigate('/business', { replace: true })
         } else {
-          navigate('/customers')
+          navigate('/customers', { replace: true })
         }
       })
       .catch(() => {
         const redirect = localStorage.getItem('auth_redirect')
         localStorage.removeItem('auth_redirect')
-        navigate(redirect === '/business' ? '/business' : '/login')
+        localStorage.removeItem('token')
+        navigate(redirect === '/business' ? '/business' : '/login', { replace: true })
       })
   }, [logIn, navigate, params])
 

@@ -1,4 +1,6 @@
 import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { canonicalUrl, publicPages, SITE_URL } from '../seo/publicPages'
 
 /**
  * Lightweight, zero-dependency SEO hook for updating page metadata,
@@ -7,11 +9,14 @@ import { useEffect } from 'react'
 export function useSeo({
   title,
   description,
-  robots = 'index, follow',
+  robots,
   canonical,
   ogImage = '/logo.png',
   ogType = 'website',
 }) {
+  const { pathname } = useLocation()
+  const pageUrl = canonical || canonicalUrl(pathname)
+  const indexing = robots || (publicPages.some(page => page.path === pathname) ? 'index, follow' : 'noindex, follow')
   useEffect(() => {
     // 1. Update Document Title
     const brand = 'serveQ'
@@ -36,7 +41,7 @@ export function useSeo({
       metaRobots.name = 'robots'
       document.head.appendChild(metaRobots)
     }
-    metaRobots.content = robots
+    metaRobots.content = indexing
 
     // 4. Update Open Graph Tags
     const setOgTag = (property, content) => {
@@ -53,17 +58,27 @@ export function useSeo({
     setOgTag('og:title', fullTitle)
     setOgTag('og:description', metaDesc.content)
     setOgTag('og:type', ogType)
-    setOgTag('og:image', ogImage)
+    setOgTag('og:image', new URL(ogImage, SITE_URL).href)
+    setOgTag('og:url', pageUrl)
+    for (const [name, content] of Object.entries({ 'twitter:title': fullTitle, 'twitter:description': metaDesc.content, 'twitter:image': new URL(ogImage, SITE_URL).href })) {
+      let tag = document.querySelector(`meta[name="${name}"]`)
+      if (!tag) {
+        tag = document.createElement('meta')
+        tag.name = name
+        document.head.appendChild(tag)
+      }
+      tag.content = content
+    }
 
     // 5. Update Canonical Link
-    if (canonical) {
+    if (pageUrl) {
       let linkCanonical = document.querySelector('link[rel="canonical"]')
       if (!linkCanonical) {
         linkCanonical = document.createElement('link')
         linkCanonical.rel = 'canonical'
         document.head.appendChild(linkCanonical)
       }
-      linkCanonical.href = canonical
+      linkCanonical.href = pageUrl
     }
-  }, [title, description, robots, canonical, ogImage, ogType])
+  }, [title, description, indexing, pageUrl, ogImage, ogType])
 }

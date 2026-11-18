@@ -1,11 +1,135 @@
 {
   "rewrites": [
-    { "source": "/health", "destination": "https://api.serveq.tech/health" },
-    { "source": "/health/(.*)", "destination": "https://api.serveq.tech/health/$1" },
-    { "source": "/healthz", "destination": "https://api.serveq.tech/healthz" },
-    { "source": "/live", "destination": "https://api.serveq.tech/live" },
-    { "source": "/ready", "destination": "https://api.serveq.tech/ready" },
-    { "source": "/api/(.*)", "destination": "https://api.serveq.tech/api/$1" },
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/health",
+      "destination": "https://api.serveq.tech/health"
+    },
+    {
+      "source": "/health/(.*)",
+      "destination": "https://api.serveq.tech/health/$1"
+    },
+    {
+      "source": "/healthz",
+      "destination": "https://api.serveq.tech/healthz"
+    },
+    {
+      "source": "/live",
+      "destination": "https://api.serveq.tech/live"
+    },
+    {
+      "source": "/ready",
+      "destination": "https://api.serveq.tech/ready"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "https://api.serveq.tech/api/$1"
+    },
+    {
+      "source": "/login",
+      "destination": "/app"
+    },
+    {
+      "source": "/auth/callback",
+      "destination": "/app"
+    },
+    {
+      "source": "/customers",
+      "destination": "/app"
+    },
+    {
+      "source": "/history",
+      "destination": "/app"
+    },
+    {
+      "source": "/queue",
+      "destination": "/app"
+    },
+    {
+      "source": "/queue/:businessId",
+      "destination": "/app"
+    },
+    {
+      "source": "/booking",
+      "destination": "/app"
+    },
+    {
+      "source": "/booking/:businessId",
+      "destination": "/app"
+    },
+    {
+      "source": "/business/onboarding",
+      "destination": "/app"
+    },
+    {
+      "source": "/business/onboarding/:businessId",
+      "destination": "/app"
+    },
+    {
+      "source": "/business/:businessId",
+      "destination": "/app"
+    },
+    {
+      "source": "/business/:businessId/manage",
+      "destination": "/app"
+    },
+    {
+      "source": "/subscription",
+      "destination": "/app"
+    },
+    {
+      "source": "/profile",
+      "destination": "/app"
+    },
+    {
+      "source": "/admin",
+      "destination": "/app"
+    },
+    {
+      "source": "/401",
+      "destination": "/app"
+    },
+    {
+      "source": "/403",
+      "destination": "/app"
+    },
+    {
+      "source": "/unauthorized",
+      "destination": "/app"
+    }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.serveq.tech"
+        }
+      ],
+      "destination": "https://serveq.tech/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/help",
+      "destination": "/support",
+      "permanent": true
+    },
+    {
+      "source": "/customer",
+      "destination": "/customers",
+      "permanent": true
+    },
+    {
+      "source": "/coming-soon",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/wallet",
+      "destination": "/profile",
+      "permanent": true
+    }
   ]
 }
