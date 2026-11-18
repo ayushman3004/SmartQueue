@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { readRazorpayCredentials, classifyRazorpayOrderError } from "../payment/razorpay.config.js";
 import SubscriptionOrder from "./subscription-order.model.js";
 import User from "../auth/auth.model.js";
 import Business from "../business/business.model.js";
@@ -32,7 +33,7 @@ export const createSubscriptionOrder = async (userId, planId) => {
     throw new ApiError(409, "Your Pro plan is active. Choose Basic after it expires.");
   }
   const razorpay = getRazorpayClient();
-  const keyId = process.env.RAZORPAY_KEY_ID || "";
+  const { keyId } = readRazorpayCredentials();
   const receipt = `sub_${userId.toString().slice(-10)}_${Date.now()}`.slice(-40);
 
   if (!razorpay || !keyId) {
@@ -44,8 +45,10 @@ export const createSubscriptionOrder = async (userId, planId) => {
       amount: plan.amountInPaise, currency: "INR", receipt,
       notes: { type: "SERVEQ_BUSINESS_SUBSCRIPTION", plan: plan.id, userId: user._id.toString() },
     });
-  } catch {
-    throw new ApiError(502, "Unable to create payment order. Please try again later.");
+  } catch (error) {
+    const diagnostic = classifyRazorpayOrderError(error);
+    console.error("[subscription-order]", { ...diagnostic, message: undefined, plan: plan.id });
+    throw new ApiError(diagnostic.kind === "GATEWAY_RATE_LIMITED" ? 503 : 502, diagnostic.message);
   }
   await SubscriptionOrder.create({ orderId: order.id, owner: user._id, plan: plan.id, amount: plan.amountInPaise });
   return { order, keyId, plan };
@@ -72,7 +75,7 @@ export const verifySubscriptionPayment = async (
   }
 
   if (!["owner", "admin"].includes(user.role)) throw new ApiError(403, "Only business owners can subscribe");
-  const secret = process.env.RAZORPAY_KEY_SECRET;
+  const { secret } = readRazorpayCredentials();
   if (!secret) throw new ApiError(503, "Subscription payments are unavailable. Please contact support.");
   const expected = crypto.createHmac("sha256", secret).update(`${razorpayOrderId}|${razorpayPaymentId}`).digest("hex");
   if (typeof razorpaySignature !== "string" || !/^[a-f0-9]{64}$/i.test(razorpaySignature) ||

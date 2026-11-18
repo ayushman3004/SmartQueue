@@ -39,7 +39,7 @@ test("Subscription Flow - Plan Specifications & Pricing", async (t) => {
 test("Subscription checkout creates real orders, binds payments, and retries without extending twice", async (t) => {
   const savedEnv = { NODE_ENV: process.env.NODE_ENV, RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET };
   process.env.NODE_ENV = "production";
-  process.env.RAZORPAY_KEY_ID = "rzp_test_subscription_unit";
+  process.env.RAZORPAY_KEY_ID = "rzp_test_subscriptionunit";
   process.env.RAZORPAY_KEY_SECRET = "subscription-unit-secret";
   const client = getRazorpayClient();
   const originals = { user: User.findById, update: Business.updateMany, create: SubscriptionOrder.create, find: SubscriptionOrder.findOne, activate: SubscriptionOrder.findOneAndUpdate, order: client.orders.create, payment: client.payments.fetch };
@@ -114,6 +114,15 @@ test("Subscription checkout creates real orders, binds payments, and retries wit
   await t.test("payment provider failure never returns a mock order", async () => {
     client.orders.create = async () => { throw new Error("provider down"); };
     await assert.rejects(() => createSubscriptionOrder(user._id, "PRO"), /Unable to create/);
+  });
+  await t.test("reports provider authentication failures without revealing credentials", async () => {
+    client.orders.create = async () => { throw { statusCode: 401, error: { code: "BAD_REQUEST_ERROR", description: "Authentication failed" } }; };
+    await assert.rejects(() => createSubscriptionOrder(user._id, "PRO"), (error) => {
+      assert.equal(error.statusCode, 502);
+      assert.match(error.message, /authentication failed/i);
+      assert.ok(!error.message.includes(process.env.RAZORPAY_KEY_SECRET));
+      return true;
+    });
   });
   await t.test("rejects customer access and checkout without configured credentials", async () => {
     user.role = "customer";

@@ -4,46 +4,29 @@ import Booking from "../../booking/booking.model.js";
 import Business from "../business/business.model.js";
 import ApiError from "../../../utils/ApiError.js";
 
-import dotenv from "dotenv";
+import { readRazorpayCredentials } from "./razorpay.config.js";
 
-// Razorpay client singleton
+// Recreate the SDK when either half of the configured pair changes.
 let currentKeyId = null;
+let currentSecret = null;
 let razorpayClient = null;
 
 export const getRazorpayClient = () => {
-  if (process.env.NODE_ENV !== "production") {
-    dotenv.config({ override: true });
+  const { keyId, secret, configured } = readRazorpayCredentials();
+  if (!configured) return null;
+  if (!razorpayClient || currentKeyId !== keyId || currentSecret !== secret) {
+    currentKeyId = keyId;
+    currentSecret = secret;
+    razorpayClient = new Razorpay({ key_id: keyId, key_secret: secret });
   }
-
-  const key_id = process.env.RAZORPAY_KEY_ID;
-  const key_secret = process.env.RAZORPAY_KEY_SECRET;
-
-  if (!key_id || !key_secret) {
-    return null;
-  }
-
-  if (!razorpayClient || currentKeyId !== key_id) {
-    currentKeyId = key_id;
-    razorpayClient = new Razorpay({
-      key_id,
-      key_secret,
-    });
-  }
-
   return razorpayClient;
 };
 
-export const isRazorpayConfigured = () => {
-  return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
-};
+export const isRazorpayConfigured = () => readRazorpayCredentials().configured;
 
 export const getPublicPaymentConfig = () => {
-  return {
-    keyId: process.env.RAZORPAY_KEY_ID || "",
-    isConfigured: isRazorpayConfigured(),
-    currency: "INR",
-    isTestMode: !process.env.RAZORPAY_KEY_ID?.startsWith("rzp_live_"),
-  };
+  const { keyId, configured } = readRazorpayCredentials();
+  return { keyId: configured ? keyId : "", isConfigured: configured, currency: "INR", isTestMode: !keyId.startsWith("rzp_live_") };
 };
 
 /**
@@ -65,7 +48,7 @@ export const verifyPaymentSignature = ({
     return true;
   }
 
-  const secret = secretOverride || process.env.RAZORPAY_KEY_SECRET;
+  const secret = secretOverride || readRazorpayCredentials().secret;
   if (!secret) {
     if (razorpayPaymentId?.startsWith("pay_")) {
       return true;
