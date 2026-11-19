@@ -4,6 +4,7 @@ import {
   createOrderHandler,
   verifyPaymentHandler,
   getCurrentSubscriptionHandler,
+  redeemCouponHandler,
 } from "./subscription.controller.js";
 import { protect, allowRoles } from "../../../middleware/auth.middleware.js";
 
@@ -14,6 +15,7 @@ router.get("/plans", getPlansHandler);
 
 // Authenticated Business Owner endpoints
 router.get("/current", protect, getCurrentSubscriptionHandler);
+router.post("/redeem-coupon", protect, allowRoles("owner"), redeemCouponHandler);
 router.post("/create-order", protect, allowRoles("owner", "admin"), createOrderHandler);
 router.post("/verify", protect, allowRoles("owner", "admin"), verifyPaymentHandler);
 

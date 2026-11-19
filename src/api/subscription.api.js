@@ -1,5 +1,7 @@
 import axios from "./axios";
 
+export const redeemSubscriptionCoupon = (code) => axios.post("/subscriptions/redeem-coupon", { code }, { timeout: 25000 });
+
 // Get available subscription plan definitions
 export const getSubscriptionPlans = () => axios.get("/subscriptions/plans");
 

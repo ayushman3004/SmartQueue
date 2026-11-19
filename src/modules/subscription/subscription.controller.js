@@ -5,6 +5,15 @@ import {
   SUBSCRIPTION_PLANS,
 } from "./subscription.service.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
+import { redeemBusinessSubscriptionCoupon } from "./subscription-coupon.service.js";
+
+export const redeemCouponHandler = async (req, res, next) => {
+  try {
+    const result = await redeemBusinessSubscriptionCoupon(req.user._id, req.body.code);
+    res.set("Cache-Control", "no-store");
+    res.json(new ApiResponse(200, result, "Your free Pro month is active."));
+  } catch (error) { next(error); }
+};
 
 export const getPlansHandler = async (req, res, next) => {
   try {

@@ -242,6 +242,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
         ownerPlan = "PRO";
       } else if (
         ownerUser &&
+        (!ownerUser.subscription?.businessId || String(ownerUser.subscription.businessId) === String(business._id)) &&
         ownerUser.subscription?.status === "ACTIVE" &&
         ownerUser.subscription?.plan === "PRO" &&
         (!ownerUser.subscription.expiresAt || new Date(ownerUser.subscription.expiresAt) > new Date())
@@ -249,7 +250,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
         isProPlan = true;
         ownerPlan = "PRO";
       } else {
-        ownerPlan = ownerUser?.subscription?.plan || business.subscription?.plan || "BASIC";
+        ownerPlan = (!ownerUser?.subscription?.businessId || String(ownerUser.subscription.businessId) === String(business._id) ? ownerUser?.subscription?.plan : null) || business.subscription?.plan || "BASIC";
       }
     } catch {
       ownerPlan = business.subscription?.plan || "BASIC";

@@ -11,6 +11,8 @@ router.get("/stats", adminController.getStats);
 router.get("/businesses", adminController.getAllBusinesses);
 router.get("/users", adminController.getAllUsers);
 router.get("/business/:id", adminController.getBusinessDetail);
+router.get("/business/:id/subscription-coupon", adminController.getFreeSubscriptionCoupon);
+router.post("/business/:id/subscription-coupon", adminController.issueFreeSubscriptionCoupon);
 router.patch("/business/:id/moderate", adminController.moderateBusiness);
 router.patch("/business/:id/toggle", adminController.toggleBusinessStatus);
 router.delete("/business/:id", adminController.deleteBusiness);

@@ -75,6 +75,7 @@ const userSchema = new mongoose.Schema(
       mustChangePassword: { type: Boolean, default: false }, passwordChangeDeadline: Date, passwordChangedAt: Date,
     },
     subscription: {
+      businessId: { type: mongoose.Schema.Types.ObjectId, ref: "Business", default: null },
       plan: {
         type: String,
         enum: ["NONE", "BASIC", "PRO"],

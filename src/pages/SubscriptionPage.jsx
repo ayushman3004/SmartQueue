@@ -16,10 +16,15 @@ export default function SubscriptionPage() {
     if (user?.role !== 'admin' && !user?.isEmailVerified && user?.authProvider !== 'google') navigate('/business/onboarding', { replace: true })
   }, [user, navigate])
   useSeo({ title: 'My Subscription', description: 'Manage your serveQ business plan and subscription.', robots: 'noindex, nofollow' })
-  const continueToBusiness = async () => {
+  const continueToBusiness = async (result) => {
     try {
       const { data } = await getMyBusinesses()
       const businesses = data.data?.businesses || []
+      const preferred = result?.businessId && businesses.find(business => business._id === result.businessId)
+      if (preferred) {
+        navigate(preferred.onboarding?.status === 'COMPLETED' ? `/business/${preferred._id}` : `/business/onboarding/${preferred._id}`)
+        return
+      }
       const completed = businesses.find((business) => business.onboarding?.status === 'COMPLETED')
       const draft = businesses.find((business) => business.onboarding?.status === 'IN_PROGRESS')
       navigate(completed ? `/business/${completed._id}` : draft ? `/business/onboarding/${draft._id}` : '/business/onboarding')
@@ -30,7 +35,7 @@ export default function SubscriptionPage() {
     <main className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
       <BusinessSetupProgress current={2} />
       <div className="business-pricing-intro space-y-3"><p className="business-eyebrow">YOUR BUSINESS, AT ITS BEST</p><h1 className="text-3xl sm:text-4xl">A little less waiting.<br />More room to grow.</h1><p className="text-sm text-zinc-600">Choose your plan, complete payment, then continue setting up your venue.</p></div>
-      <BusinessSubscriptionPlans onSuccess={async () => { toast.success('Subscription activated.'); await continueToBusiness() }} />
+      <BusinessSubscriptionPlans onSuccess={async (result) => { toast.success('Subscription activated.'); await continueToBusiness(result) }} />
       {hasActiveSubscription(user?.subscription) && <button type="button" onClick={continueToBusiness} className="text-sm font-semibold underline">Continue to my business</button>}
     </main>
   </div>

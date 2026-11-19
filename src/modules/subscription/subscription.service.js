@@ -183,6 +183,7 @@ export const isBusinessSubscriptionActive = async (business) => {
       if (owner && owner.role === "admin") return true;
       if (
         owner &&
+        (!owner.subscription?.businessId || String(owner.subscription.businessId) === String(business._id)) &&
         owner.subscription &&
         owner.subscription.status === "ACTIVE" &&
         owner.subscription.plan &&

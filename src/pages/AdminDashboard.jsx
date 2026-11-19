@@ -1,4 +1,5 @@
 import AdminBusinessApplications from '../components/AdminBusinessApplications'
+import AdminFreeSubscriptionCoupon from '../components/AdminFreeSubscriptionCoupon'
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
@@ -1534,6 +1535,8 @@ export default function AdminDashboard() {
                       Email: <span className="font-semibold text-zinc-800">{selectedBusinessDetail.business?.owner?.email || 'N/A'}</span>
                     </p>
                   </div>
+
+                  <AdminFreeSubscriptionCoupon key={selectedBusinessDetail.business._id} business={selectedBusinessDetail.business} />
 
                   {/* Live Queue Entries */}
                   <div className="space-y-2">

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { getBusinessSubscriptionCoupon, issueBusinessSubscriptionCoupon } from "../subscription/subscription-coupon.service.js";
 import User from "../auth/auth.model.js";
 import Business from "../business/business.model.js";
 import Booking from "../../booking/booking.model.js";
@@ -13,6 +14,17 @@ import {
   getOnlineUserIds,
   getOnlineHubIds,
 } from "../../../realtime/socket.js";
+
+export const getFreeSubscriptionCoupon = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json(new ApiResponse(200, { coupon: await getBusinessSubscriptionCoupon(req.params.id) }));
+});
+
+export const issueFreeSubscriptionCoupon = asyncHandler(async (req, res) => {
+  const result = await issueBusinessSubscriptionCoupon(req.params.id, req.user._id);
+  res.set("Cache-Control", "no-store");
+  res.json(new ApiResponse(200, result, result.emailSent ? "Free Pro coupon emailed to the business." : "Coupon saved, but email delivery failed. Retry sending this coupon."));
+});
 
 export const getStats = asyncHandler(async (_req, res) => {
   const [userCount, businessCount, bookingCount, completedBookings, prelaunchCount] = await Promise.all([
