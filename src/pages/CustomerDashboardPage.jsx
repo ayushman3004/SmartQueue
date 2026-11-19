@@ -32,6 +32,7 @@ import {
 import { calculateDistanceKm, formatDistance } from '../utils/geoUtils'
 import CustomerSidebar from '../components/CustomerSidebar'
 import CustomerSearchTools from '../components/CustomerSearchTools'
+import VenueSortDropdown from '../components/VenueSortDropdown'
 import CustomerServiceChoice from '../components/CustomerServiceChoice'
 import './CustomerDashboardPage.css'
 import { filterServiceVenues, filterServiceBookings } from '../utils/customerService'
@@ -1208,7 +1209,6 @@ export default function CustomerDashboardPage() {
               <p className="customer-welcome-eyebrow">{categoryFilter === 'salon' ? 'A LITTLE SELF-CARE' : 'GOOD CARE STARTS HERE'}</p>
               <h1 id="customer-welcome-title">{categoryFilter === 'salon' ? 'Good hair. Great day.' : 'Feel better, sooner.'}</h1>
               <p>{categoryFilter === 'salon' ? 'A fresh cut or a little me-time. Find your spot, pick a service and leave the waiting behind.' : 'Your next visit, with a little less waiting. Find a doctor nearby and make time for feeling better.'}</p>
-              <a href="#services-section">{categoryFilter === 'salon' ? 'Find your salon' : 'Find your clinic'} <ArrowRight size={17} /></a>
             </div>
             <div className="customer-welcome-art" aria-hidden="true">
               <Sparkle className="customer-art-spark customer-art-spark-one" size={26} strokeWidth={1.4} />
@@ -1242,15 +1242,7 @@ export default function CustomerDashboardPage() {
                     : 'Join live queues or book appointments at verified clinics, salons & services near you.'}
                 </p>
               </div>
-              <button
-                onClick={() =>
-                  setSortBy((prev) => (prev === 'nearest' ? 'wait_time' : prev === 'wait_time' ? 'rating' : 'nearest'))
-                }
-                className="customer-sort-button shrink-0 px-3.5 py-2 rounded-xl bg-white border border-zinc-200/90 text-xs font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-1.5 transition-colors shadow-xs"
-              >
-                <span>Sort by: {sortBy === 'nearest' ? 'Nearest' : sortBy === 'wait_time' ? 'Shortest Wait' : 'Top Rated'}</span>
-                <ChevronDown className="w-3 h-3 text-zinc-400" />
-              </button>
+              <VenueSortDropdown value={sortBy} onChange={setSortBy} />
             </div>
 
             {loading ? (
