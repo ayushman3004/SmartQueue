@@ -86,7 +86,7 @@ export const handleWebhook = asyncHandler(async (req, res) => {
   catch { throw new ApiError(400, "Invalid webhook JSON"); }
 
   const io = req.app.get("io");
-  const result = await processWebhookEvent(event, io);
+  const result = await processWebhookEvent(event, io, req.headers["x-razorpay-event-id"]);
 
   res.status(200).json({ status: "ok", result });
 });

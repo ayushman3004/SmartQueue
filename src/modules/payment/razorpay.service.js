@@ -3,6 +3,7 @@ import Razorpay from "razorpay";
 import Booking from "../../booking/booking.model.js";
 import Business from "../business/business.model.js";
 import ApiError from "../../../utils/ApiError.js";
+import { processSubscriptionWebhook } from "../subscription/subscription.fulfillment.js";
 
 import { readRazorpayCredentials, classifyRazorpayOrderError } from "./razorpay.config.js";
 
@@ -266,7 +267,7 @@ const applyWebhookEvent = async (event, io, eventId) => {
   const booking = eventType === "refund.processed"
     ? (refund?.payment_id ? await Booking.findOne({ razorpayPaymentId: refund.payment_id }) : null)
     : (orderId ? await Booking.findOne({ razorpayOrderId: orderId }) : null);
-  if (!booking) return { status: "no_matching_booking", orderId };
+  if (!booking) return await processSubscriptionWebhook(event) || { status: "no_matching_booking", orderId };
 
   const expectedAmount = bookingPaymentAmount(booking);
   const currency = booking.currency || "INR";
@@ -316,10 +317,12 @@ const applyWebhookEvent = async (event, io, eventId) => {
   return { status: "processed", eventType, bookingId: booking._id };
 };
 
-export const processWebhookEvent = async (event, io = null) => {
+export const processWebhookEvent = async (event, io = null, providerEventId = null) => {
   if (!event || typeof event.event !== "string") throw new ApiError(400, "Invalid webhook event payload");
   // Timestamps are not unique event IDs; distinct captures can share a second.
-  const eventId = crypto.createHash("sha256").update(JSON.stringify(event)).digest("hex");
+  const eventId = typeof providerEventId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(providerEventId)
+    ? `razorpay:${providerEventId}`
+    : crypto.createHash("sha256").update(JSON.stringify(event)).digest("hex");
   if (processedWebhookEvents.has(eventId)) return { status: "ignored_duplicate", eventId };
   if (inFlightWebhookEvents.has(eventId)) return inFlightWebhookEvents.get(eventId);
   const work = applyWebhookEvent(event, io, eventId);
