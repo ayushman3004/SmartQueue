@@ -4,7 +4,7 @@ import Booking from "../../booking/booking.model.js";
 import Business from "../business/business.model.js";
 import ApiError from "../../../utils/ApiError.js";
 
-import { readRazorpayCredentials } from "./razorpay.config.js";
+import { readRazorpayCredentials, classifyRazorpayOrderError } from "./razorpay.config.js";
 
 // Recreate the SDK when either half of the configured pair changes.
 let currentKeyId = null;
@@ -38,65 +38,57 @@ export const verifyPaymentSignature = ({
   razorpaySignature,
   secretOverride = null,
 }) => {
-  // Allow fallback / mock test orders to verify cleanly
-  if (
-    razorpayOrderId?.startsWith("order_mock_") ||
-    razorpayPaymentId?.startsWith("pay_mock_") ||
-    razorpaySignature === "mock_signature_verified" ||
-    razorpaySignature === "sig_verified"
-  ) {
-    return true;
-  }
-
-  const secret = secretOverride || readRazorpayCredentials().secret;
-  if (!secret) {
-    if (razorpayPaymentId?.startsWith("pay_")) {
-      return true;
-    }
-    throw new ApiError(500, "Razorpay secret key is not configured on server");
-  }
-
-  const generatedSignature = crypto
-    .createHmac("sha256", secret)
-    .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-    .digest("hex");
-
-  const generatedBuf = Buffer.from(generatedSignature);
-  const signatureBuf = Buffer.from(razorpaySignature || "");
-
-  if (generatedBuf.length !== signatureBuf.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(generatedBuf, signatureBuf);
+  const secret = secretOverride ?? (readRazorpayCredentials().configured ? readRazorpayCredentials().secret : null);
+  if (typeof secret !== "string" || !secret) throw new ApiError(503, "Payment verification is not configured");
+  if (typeof razorpayOrderId !== "string" || typeof razorpayPaymentId !== "string" ||
+      !/^order_[A-Za-z0-9_]+$/.test(razorpayOrderId) || !/^pay_[A-Za-z0-9_]+$/.test(razorpayPaymentId) ||
+      razorpayOrderId.startsWith("order_mock_") || razorpayPaymentId.startsWith("pay_mock_") ||
+      typeof razorpaySignature !== "string" || !/^[a-f0-9]{64}$/i.test(razorpaySignature)) return false;
+  const expected = crypto.createHmac("sha256", secret).update(`${razorpayOrderId}|${razorpayPaymentId}`).digest();
+  return crypto.timingSafeEqual(expected, Buffer.from(razorpaySignature, "hex"));
 };
 
-/**
- * Verifies Razorpay webhook signature using raw payload buffer
- */
+/** Verify the exact bytes received from Razorpay, never reconstructed JSON. */
 export const verifyWebhookSignature = (rawBody, signature, secretOverride = null) => {
-  const secret = secretOverride || process.env.RAZORPAY_WEBHOOK_SECRET;
-  if (!secret) {
-    throw new ApiError(500, "Razorpay webhook secret is not configured");
+  const secret = secretOverride ?? process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (typeof secret !== "string" || !secret.trim() || /placeholder|your[_-]|xxxxx/i.test(secret)) {
+    throw new ApiError(503, "Razorpay webhook verification is not configured");
   }
+  if (!Buffer.isBuffer(rawBody) || !rawBody.length || typeof signature !== "string" || !/^[a-f0-9]{64}$/i.test(signature)) return false;
+  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest();
+  return crypto.timingSafeEqual(expected, Buffer.from(signature, "hex"));
+};
 
-  if (!rawBody || !signature) {
+export const bookingPaymentAmount = booking => {
+  const amount = booking.razorpayOrderAmount || Math.round(Number(booking.amount || booking.paidAmount) * 100);
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new ApiError(400, "Invalid booking payment amount");
+  return amount;
+};
+
+export const confirmRazorpayPaymentForBooking = async (booking, { razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
+  if (!booking.razorpayOrderId || booking.razorpayOrderId !== razorpayOrderId) throw new ApiError(400, "Payment order does not match this booking");
+  if (!verifyPaymentSignature({ razorpayOrderId: booking.razorpayOrderId, razorpayPaymentId, razorpaySignature })) throw new ApiError(400, "Invalid payment signature");
+  if (["cancelled", "refunded"].includes(booking.status) || ["refunded", "partially_refunded"].includes(booking.paymentStatus)) throw new ApiError(409, "This booking cannot be confirmed by payment");
+  const client = getRazorpayClient();
+  if (!client) throw new ApiError(503, "Payment verification is unavailable");
+  let payment;
+  try { payment = await client.payments.fetch(razorpayPaymentId); }
+  catch { throw new ApiError(502, "Unable to confirm payment. Retry verification without paying again."); }
+  if (payment.id !== razorpayPaymentId || payment.order_id !== booking.razorpayOrderId || payment.amount !== bookingPaymentAmount(booking) ||
+      payment.currency !== (booking.currency || "INR") || payment.status !== "captured") throw new ApiError(409, "Payment is not yet confirmed for this booking");
+  if (booking.paymentStatus === "paid") {
+    if (booking.razorpayPaymentId && booking.razorpayPaymentId !== razorpayPaymentId) throw new ApiError(409, "Booking was paid with another payment");
     return false;
   }
-
-  const expectedSignature = crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("hex");
-
-  const expectedBuf = Buffer.from(expectedSignature);
-  const signatureBuf = Buffer.from(signature);
-
-  if (expectedBuf.length !== signatureBuf.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(expectedBuf, signatureBuf);
+  booking.paymentStatus = "paid";
+  if (booking.status === "pending_payment" || booking.status === "scheduled") booking.status = "confirmed";
+  booking.paymentMethod = "online";
+  booking.razorpayPaymentId = payment.id;
+  booking.razorpaySignature = razorpaySignature;
+  booking.paidAt = new Date();
+  booking.paidAmount = payment.amount / 100;
+  await booking.save();
+  return true;
 };
 
 /**
@@ -147,24 +139,10 @@ export const createRazorpayOrderForBooking = async (bookingId, userId) => {
 
   const rzp = getRazorpayClient();
 
-  // If Razorpay credentials are not yet configured on server, generate verifiable mock order
-  if (!rzp) {
-    const mockOrderId = `order_mock_${crypto.randomBytes(8).toString("hex")}`;
-    booking.razorpayOrderId = mockOrderId;
-    booking.paymentMethod = "online";
-    booking.paymentStatus = "pending";
-    await booking.save();
-
-    return {
-      id: mockOrderId,
-      amount: amountInPaise,
-      currency: "INR",
-      keyId: "rzp_test_mock_key",
-      isMock: true,
-      businessName: business.name,
-      notes: { bookingId: booking._id.toString() },
-    };
-  }
+  if (!rzp) throw new ApiError(503, "Online payments are not configured. Use Pay at Counter or contact support.");
+  if (typeof linkedAccountId !== "string" || !/^acc_[A-Za-z0-9]+$/.test(linkedAccountId)) throw new ApiError(409, "The linked payment account requires provider verification.");
+  if (["cancelled", "refunded"].includes(booking.status) || ["refunded", "partially_refunded"].includes(booking.paymentStatus)) throw new ApiError(409, "This booking cannot accept another payment");
+  if (!Number.isSafeInteger(amountInPaise) || amountInPaise <= 0) throw new ApiError(400, "Invalid payable amount");
 
   // Create order with Razorpay Route transfers directly to connected account
   const orderOptions = {
@@ -198,8 +176,10 @@ export const createRazorpayOrderForBooking = async (bookingId, userId) => {
 
   try {
     const order = await rzp.orders.create(orderOptions);
+    if (!order || typeof order.id !== "string" || !/^order_[A-Za-z0-9]+$/.test(order.id) || order.amount !== amountInPaise || order.currency !== "INR") throw new ApiError(502, "Invalid provider order response");
 
     booking.razorpayOrderId = order.id;
+    booking.razorpayOrderAmount = amountInPaise;
     booking.paymentMethod = "online";
     booking.paymentStatus = "pending";
     booking.amount = amountInRupees;
@@ -209,20 +189,14 @@ export const createRazorpayOrderForBooking = async (bookingId, userId) => {
       id: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: readRazorpayCredentials().keyId,
       businessName: business.name,
       notes: order.notes,
     };
   } catch (err) {
-    console.error("Razorpay order creation error:", err);
-    // If Route capability is not yet enabled on the main Razorpay account, report clear diagnostic
-    if (err.error?.description?.includes("transfers") || err.error?.code === "BAD_REQUEST_ERROR") {
-      throw new ApiError(
-        400,
-        `Razorpay Route error: ${err.error?.description || "Linked account transfers not enabled for platform account."}`
-      );
-    }
-    throw new ApiError(500, err.error?.description || "Failed to create payment order with Razorpay");
+    const diagnostic = classifyRazorpayOrderError(err);
+    console.error("[booking-payment-order]", { kind: diagnostic.kind, providerStatus: diagnostic.providerStatus });
+    throw new ApiError(502, "Razorpay could not create the payment order. Please retry later.");
   }
 };
 
@@ -235,206 +209,129 @@ export const connectRazorpayRouteAccount = async (businessId, ownerUser, payload
 
   const legalBusinessName = payload.legalBusinessName || business.name;
   const businessType = payload.businessType || "individual";
+  if (payload.accountId != null && typeof payload.accountId !== "string") throw new ApiError(400, "Invalid linked account ID");
   const providedAccountId = payload.accountId?.trim();
 
-  // If the owner has provided an existing approved Razorpay Account ID (acc_...)
-  if (providedAccountId && providedAccountId.startsWith("acc_")) {
-    business.paymentConfiguration.providerAccountReference = providedAccountId;
-    business.paymentConfiguration.legalBusinessName = legalBusinessName;
-    business.paymentConfiguration.businessType = businessType;
-    business.paymentConfiguration.onlinePaymentStatus = "ACTIVE";
-    business.paymentConfiguration.lastVerificationUpdate = new Date();
-    await business.save();
-
-    return {
-      status: "ACTIVE",
-      accountId: providedAccountId,
-      message: "Razorpay linked account associated successfully",
-    };
-  }
-
   const rzp = getRazorpayClient();
-
-  if (!rzp) {
-    // Test mode / Mock fallback
-    const mockAccountId = `acc_mock_${crypto.randomBytes(6).toString("hex")}`;
-    business.paymentConfiguration.providerAccountReference = mockAccountId;
+  if (!rzp) throw new ApiError(503, "Payment account connection is not configured");
+  if (providedAccountId) {
+    if (!/^acc_[A-Za-z0-9]+$/.test(providedAccountId)) throw new ApiError(400, "Invalid linked account ID");
+    let account;
+    try { account = await rzp.accounts.fetch(providedAccountId); }
+    catch { throw new ApiError(502, "Unable to verify the linked account with Razorpay"); }
+    if (!account || account.id !== providedAccountId) throw new ApiError(400, "Linked account could not be verified");
+    if (account.notes?.businessId && String(account.notes.businessId) !== String(business._id)) throw new ApiError(403, "Linked account belongs to another business");
+    business.paymentConfiguration.providerAccountReference = account.id;
     business.paymentConfiguration.legalBusinessName = legalBusinessName;
     business.paymentConfiguration.businessType = businessType;
-    business.paymentConfiguration.onlinePaymentStatus = "ACTIVE";
+    business.paymentConfiguration.onlinePaymentStatus = ["activated", "active"].includes(account.status) ? "ACTIVE" : "PENDING_VERIFICATION";
     business.paymentConfiguration.lastVerificationUpdate = new Date();
     await business.save();
-
-    return {
-      status: "ACTIVE",
-      accountId: mockAccountId,
-      isMock: true,
-      message: "Test mode linked account connected",
-    };
+    return { status: business.paymentConfiguration.onlinePaymentStatus, accountId: account.id };
   }
 
-  // Attempt standard Razorpay Accounts API call (Route Linked Account)
+  const phone = business.phone || ownerUser.phone;
+  if (!phone) throw new ApiError(400, "A real contact phone is required for payment account onboarding");
+  let account;
   try {
-    // Razorpay V2 Accounts API
-    const accountPayload = {
-      type: "route",
-      name: legalBusinessName,
-      email: business.email || ownerUser.email,
-      phone: business.phone || ownerUser.phone || "9999999999",
-      legal_business_name: legalBusinessName,
-      business_type: businessType,
-      contact_name: ownerUser.name,
-      notes: {
-        businessId: business._id.toString(),
-        platform: "serveQ",
-      },
-    };
-
-    // Use official razorpay instance or direct HTTP request to /v2/accounts
-    let account = null;
-    try {
-      account = await rzp.accounts.create(accountPayload);
-    } catch (routeErr) {
-      console.warn("Direct Razorpay accounts.create error:", routeErr?.message || routeErr);
-      // If accounts API requires partner OAuth or hosted onboarding link
-      business.paymentConfiguration.onlinePaymentStatus = "PENDING_VERIFICATION";
-      business.paymentConfiguration.legalBusinessName = legalBusinessName;
-      business.paymentConfiguration.businessType = businessType;
-      business.paymentConfiguration.accountRequirements = [
-        "Razorpay Route linked account activation required on platform dashboard.",
-      ];
-      await business.save();
-
-      return {
-        status: "PENDING_VERIFICATION",
-        accountId: business.paymentConfiguration.providerAccountReference || "",
-        message: "Account connection initiated. Razorpay Route approval pending on platform account.",
-      };
-    }
-
-    if (account && account.id) {
-      business.paymentConfiguration.providerAccountReference = account.id;
-      business.paymentConfiguration.legalBusinessName = legalBusinessName;
-      business.paymentConfiguration.businessType = businessType;
-      business.paymentConfiguration.onlinePaymentStatus =
-        account.status === "activated" || account.status === "active" ? "ACTIVE" : "PENDING_VERIFICATION";
-      business.paymentConfiguration.lastVerificationUpdate = new Date();
-      await business.save();
-
-      return {
-        status: business.paymentConfiguration.onlinePaymentStatus,
-        accountId: account.id,
-        account,
-      };
-    }
-  } catch (err) {
-    console.error("connectRazorpayRouteAccount error:", err);
-    business.paymentConfiguration.onlinePaymentStatus = "PENDING_VERIFICATION";
-    await business.save();
-
-    return {
-      status: "PENDING_VERIFICATION",
-      message: err.message || "Route onboarding pending provider approval",
-    };
+    account = await rzp.accounts.create({
+      type: "route", name: legalBusinessName, email: business.email || ownerUser.email,
+      phone, legal_business_name: legalBusinessName, business_type: businessType,
+      contact_name: ownerUser.name, notes: { businessId: String(business._id), platform: "serveQ" },
+    });
+  } catch {
+    throw new ApiError(502, "Razorpay could not create the linked account. Check its configuration before retrying.");
   }
-
-  return {
-    status: business.paymentConfiguration.onlinePaymentStatus,
-    accountId: business.paymentConfiguration.providerAccountReference,
-  };
+  if (!account || typeof account.id !== "string" || !/^acc_[A-Za-z0-9]+$/.test(account.id)) throw new ApiError(502, "Razorpay did not return a valid linked account");
+  business.paymentConfiguration.providerAccountReference = account.id;
+  business.paymentConfiguration.legalBusinessName = legalBusinessName;
+  business.paymentConfiguration.businessType = businessType;
+  business.paymentConfiguration.onlinePaymentStatus = ["activated", "active"].includes(account.status) ? "ACTIVE" : "PENDING_VERIFICATION";
+  business.paymentConfiguration.lastVerificationUpdate = new Date();
+  await business.save();
+  return { status: business.paymentConfiguration.onlinePaymentStatus, accountId: account.id };
 };
 
-// In-memory set to ensure idempotent webhook event handling
+// Coalesce concurrent retries; only remember events after successful processing.
 const processedWebhookEvents = new Set();
+const inFlightWebhookEvents = new Map();
 
-/**
- * Idempotently handles verified Razorpay webhook events
- */
-export const processWebhookEvent = async (event, io = null) => {
-  if (!event || !event.event) {
-    throw new ApiError(400, "Invalid webhook event payload");
-  }
-
-  const eventId = event.id || event.created_at || JSON.stringify(event.payload);
-  if (processedWebhookEvents.has(eventId)) {
-    return { status: "ignored_duplicate", eventId };
-  }
-
-  // Cap the set size to prevent memory leaks
-  if (processedWebhookEvents.size > 5000) {
-    processedWebhookEvents.clear();
-  }
-  processedWebhookEvents.add(eventId);
-
+const applyWebhookEvent = async (event, io, eventId) => {
   const eventType = event.event;
-  const paymentEntity = event.payload?.payment?.entity;
-  const orderEntity = event.payload?.order?.entity;
+  if (!["payment.captured", "order.paid", "payment.failed", "refund.processed"].includes(eventType)) return { status: "ignored_event", eventId };
+  const payment = event.payload?.payment?.entity;
+  const order = event.payload?.order?.entity;
+  const refund = event.payload?.refund?.entity;
+  const orderId = payment?.order_id || order?.id;
+  const booking = eventType === "refund.processed"
+    ? (refund?.payment_id ? await Booking.findOne({ razorpayPaymentId: refund.payment_id }) : null)
+    : (orderId ? await Booking.findOne({ razorpayOrderId: orderId }) : null);
+  if (!booking) return { status: "no_matching_booking", orderId };
 
-  const orderId = paymentEntity?.order_id || orderEntity?.id;
-  const bookingId = paymentEntity?.notes?.bookingId || orderEntity?.notes?.bookingId;
-
-  let booking = null;
-  if (bookingId) {
-    booking = await Booking.findById(bookingId);
-  } else if (orderId) {
-    booking = await Booking.findOne({ razorpayOrderId: orderId });
+  const expectedAmount = bookingPaymentAmount(booking);
+  const currency = booking.currency || "INR";
+  if (eventType !== "refund.processed") {
+    if (!booking.razorpayOrderId || booking.razorpayOrderId !== orderId || orderId.startsWith("order_mock_")) throw new ApiError(400, "Webhook order does not match booking");
+    const notedBooking = payment?.notes?.bookingId || order?.notes?.bookingId;
+    if (notedBooking && String(notedBooking) !== String(booking._id)) throw new ApiError(400, "Webhook booking reference does not match order");
   }
 
-  if (!booking) {
-    return { status: "no_matching_booking", orderId };
-  }
-
-  switch (eventType) {
-    case "payment.captured":
-    case "order.paid": {
-      if (booking.paymentStatus !== "paid") {
-        booking.paymentStatus = "paid";
-        booking.status = "confirmed";
-        booking.paidAmount = paymentEntity?.amount ? paymentEntity.amount / 100 : booking.amount;
-        booking.razorpayPaymentId = paymentEntity?.id || booking.razorpayPaymentId;
-        booking.paidAt = new Date();
-        await booking.save();
-
-        if (io) {
-          io.to(`business:${booking.businessId}`).emit("bookings:updated");
-          io.to(`user:${booking.userId}`).emit("booking:confirmed", { booking });
-        }
-      }
-      break;
+  if (eventType === "payment.captured" || eventType === "order.paid") {
+    if (eventType === "payment.captured") {
+      if (!payment || typeof payment.id !== "string" || !payment.id.startsWith("pay_") || payment.id.startsWith("pay_mock_") || payment.status !== "captured" || payment.amount !== expectedAmount || payment.currency !== currency) throw new ApiError(400, "Webhook payment does not match booking amount or capture status");
+    } else if (!order || order.status !== "paid" || order.amount !== expectedAmount || order.amount_paid !== expectedAmount || order.currency !== currency) {
+      throw new ApiError(400, "Webhook order is not fully paid for this booking");
     }
-
-    case "payment.failed": {
-      if (booking.paymentStatus !== "paid") {
-        booking.paymentStatus = "failed";
-        booking.paymentFailureReason = paymentEntity?.error_description || "Payment failed at gateway";
-        await booking.save();
-
-        if (io) {
-          io.to(`user:${booking.userId}`).emit("payment:failed", {
-            bookingId: booking._id,
-            reason: booking.paymentFailureReason,
-          });
-        }
-      }
-      break;
-    }
-
-    case "refund.processed": {
-      booking.paymentStatus = "refunded";
-      booking.status = "refunded";
-      booking.refundedAt = new Date();
-      booking.refundReference = event.payload?.refund?.entity?.id || "";
+    if (["cancelled", "refunded"].includes(booking.status) || ["refunded", "partially_refunded"].includes(booking.paymentStatus)) return { status: "ignored_terminal_booking", eventId };
+    if (booking.paymentStatus === "paid" && payment?.id && booking.razorpayPaymentId && booking.razorpayPaymentId !== payment.id) throw new ApiError(409, "Booking was paid with another payment");
+    if (booking.paymentStatus !== "paid" || (payment?.id && !booking.razorpayPaymentId)) {
+      booking.paymentStatus = "paid";
+      if (["pending_payment", "scheduled"].includes(booking.status)) booking.status = "confirmed";
+      booking.paidAmount = expectedAmount / 100;
+      booking.paymentMethod = "online";
+      if (payment?.id) booking.razorpayPaymentId = payment.id;
+      booking.paidAt = new Date();
       await booking.save();
-
-      if (io) {
-        io.to(`business:${booking.businessId}`).emit("bookings:updated");
-      }
-      break;
+      io?.to(`business:${booking.businessId}`).emit("bookings:updated");
+      io?.to(`user:${booking.userId}`).emit("booking:confirmed", { booking });
     }
-
-    default:
-      break;
+  } else if (eventType === "payment.failed") {
+    if (!["paid", "refunded", "partially_refunded"].includes(booking.paymentStatus)) {
+      booking.paymentStatus = "failed";
+      booking.paymentFailureReason = payment?.error_description || "Payment failed at gateway";
+      await booking.save();
+      io?.to(`user:${booking.userId}`).emit("payment:failed", { bookingId: booking._id, reason: booking.paymentFailureReason });
+    }
+  } else if (eventType === "refund.processed") {
+    if (typeof refund.id !== "string" || !/^rfnd_[A-Za-z0-9]+$/.test(refund.id) || refund.payment_id !== booking.razorpayPaymentId || refund.status !== "processed" || refund.currency !== currency || !Number.isSafeInteger(refund.amount) || refund.amount <= 0 || refund.amount > expectedAmount) throw new ApiError(400, "Webhook refund does not match the paid booking");
+    if (booking.refundReference !== refund.id && booking.paymentStatus !== "refunded") {
+      booking.paymentStatus = refund.amount === expectedAmount ? "refunded" : "partially_refunded";
+      if (booking.paymentStatus === "refunded") booking.status = "refunded";
+      booking.refundedAt = new Date();
+      booking.refundReference = refund.id;
+      await booking.save();
+      io?.to(`business:${booking.businessId}`).emit("bookings:updated");
+    }
   }
-
   return { status: "processed", eventType, bookingId: booking._id };
+};
+
+export const processWebhookEvent = async (event, io = null) => {
+  if (!event || typeof event.event !== "string") throw new ApiError(400, "Invalid webhook event payload");
+  // Timestamps are not unique event IDs; distinct captures can share a second.
+  const eventId = crypto.createHash("sha256").update(JSON.stringify(event)).digest("hex");
+  if (processedWebhookEvents.has(eventId)) return { status: "ignored_duplicate", eventId };
+  if (inFlightWebhookEvents.has(eventId)) return inFlightWebhookEvents.get(eventId);
+  const work = applyWebhookEvent(event, io, eventId);
+  inFlightWebhookEvents.set(eventId, work);
+  try {
+    const result = await work;
+    if (result.status !== "no_matching_booking") {
+      if (processedWebhookEvents.size > 5000) processedWebhookEvents.clear();
+      processedWebhookEvents.add(eventId);
+    }
+    return result;
+  } finally {
+    inFlightWebhookEvents.delete(eventId);
+  }
 };

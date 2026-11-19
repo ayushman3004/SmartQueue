@@ -120,6 +120,10 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    razorpayOrderAmount: {
+      type: Number, // Expected amount in paise for the current order.
+      default: 0,
+    },
     razorpayPaymentId: {
       type: String,
       default: "",

@@ -72,7 +72,7 @@ test("Customer Payment Flow - Razorpay Signature Verification Security", async (
 
 test("Customer Payment Flow - Razorpay Webhook Signature Verification", async (t) => {
   const webhookSecret = "webhook_secret_key_54321";
-  const rawBody = JSON.stringify({
+  const rawBody = Buffer.from(JSON.stringify({
     event: "payment.captured",
     payload: {
       payment: {
@@ -84,7 +84,7 @@ test("Customer Payment Flow - Razorpay Webhook Signature Verification", async (t
         },
       },
     },
-  });
+  }));
 
   const validWebhookSig = crypto
     .createHmac("sha256", webhookSecret)
@@ -97,7 +97,7 @@ test("Customer Payment Flow - Razorpay Webhook Signature Verification", async (t
   });
 
   await t.test("Modified webhook payload fails verification", () => {
-    const tamperedBody = rawBody.replace("50000", "10000");
+    const tamperedBody = Buffer.from(rawBody.toString().replace("50000", "10000"));
     const verified = verifyWebhookSignature(tamperedBody, validWebhookSig, webhookSecret);
     assert.equal(verified, false);
   });

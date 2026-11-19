@@ -1,4 +1,9 @@
 import crypto from "crypto";
+import ApiError from "../../../utils/ApiError.js";
+
+const requireTestMode = () => {
+  if (process.env.NODE_ENV !== "test") throw new ApiError(503, "Mock payments are available only in automated tests");
+};
 
 /**
  * Base Payment Provider Interface
@@ -28,16 +33,18 @@ export class PaymentProvider {
 
 /**
  * Clearly Labeled Mock Payment Provider (Test Mode)
- * Used when production payment gateway keys (e.g. Razorpay/Stripe) are not configured.
+ * Explicit automated-test fixture; never a missing-credentials fallback.
  */
 export class MockPaymentProvider extends PaymentProvider {
   constructor() {
     super();
+    requireTestMode();
     this.name = "MockPaymentProvider (Test Mode)";
     this.isMock = true;
   }
 
   async createPaymentOrder({ amount, currency = "INR", customerId, description, metadata = {} }) {
+    requireTestMode();
     if (!amount || amount <= 0 || !Number.isFinite(amount)) {
       throw new Error("Payment amount must be a positive finite number");
     }
@@ -58,6 +65,7 @@ export class MockPaymentProvider extends PaymentProvider {
   }
 
   async verifyPayment({ orderId, paymentId, amount }) {
+    requireTestMode();
     if (!orderId) {
       throw new Error("orderId is required for payment verification");
     }
@@ -80,6 +88,7 @@ export class MockPaymentProvider extends PaymentProvider {
   }
 
   async processRefund({ paymentId, amount, reason = "Customer cancellation" }) {
+    requireTestMode();
     if (!paymentId) throw new Error("paymentId is required for refund");
     if (!amount || amount <= 0 || !Number.isFinite(amount)) {
       throw new Error("Refund amount must be a positive finite number");
@@ -103,6 +112,7 @@ export class MockPaymentProvider extends PaymentProvider {
 let activeProvider = null;
 
 export const getPaymentProvider = () => {
+  requireTestMode();
   if (!activeProvider) {
     activeProvider = new MockPaymentProvider();
   }

@@ -5,8 +5,9 @@ import Booking from "../../booking/booking.model.js";
 import Business from "../business/business.model.js";
 import {
   getPublicPaymentConfig,
+  isRazorpayConfigured,
   createRazorpayOrderForBooking,
-  verifyPaymentSignature,
+  confirmRazorpayPaymentForBooking,
   verifyWebhookSignature,
   connectRazorpayRouteAccount,
   processWebhookEvent,
@@ -52,32 +53,10 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Not authorized to verify payment for this booking");
   }
 
-  // Cryptographically verify signature
-  const isSignatureValid = verifyPaymentSignature({
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature,
-  });
-
-  if (!isSignatureValid) {
-    booking.paymentStatus = "failed";
-    booking.paymentFailureReason = "Signature mismatch";
-    await booking.save();
-    throw new ApiError(400, "Payment verification failed: Invalid signature");
-  }
-
-  // Update booking as confirmed and paid
-  booking.paymentStatus = "paid";
-  booking.status = "confirmed";
-  booking.paymentMethod = "online";
-  booking.razorpayPaymentId = razorpayPaymentId;
-  booking.razorpaySignature = razorpaySignature;
-  booking.paidAt = new Date();
-  booking.paidAmount = booking.amount || booking.paidAmount;
-  await booking.save();
+  const changed = await confirmRazorpayPaymentForBooking(booking, { razorpayOrderId, razorpayPaymentId, razorpaySignature });
 
   const io = req.app.get("io");
-  if (io) {
+  if (io && changed) {
     io.to(`business:${booking.businessId._id || booking.businessId}`).emit("bookings:updated");
     io.to(`user:${booking.userId}`).emit("booking:confirmed", { booking });
   }
@@ -101,18 +80,13 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 export const handleWebhook = asyncHandler(async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
 
-  // If webhook secret is set, verify signature
-  if (process.env.RAZORPAY_WEBHOOK_SECRET) {
-    const rawBody = req.rawBody || JSON.stringify(req.body);
-    const isValid = verifyWebhookSignature(rawBody, signature);
-    if (!isValid) {
-      console.warn("🚫 Invalid Razorpay webhook signature");
-      throw new ApiError(400, "Invalid webhook signature");
-    }
-  }
+  if (!verifyWebhookSignature(req.rawBody, signature)) throw new ApiError(400, "Invalid webhook signature or missing raw payload");
+  let event;
+  try { event = JSON.parse(req.rawBody.toString("utf8")); }
+  catch { throw new ApiError(400, "Invalid webhook JSON"); }
 
   const io = req.app.get("io");
-  const result = await processWebhookEvent(req.body, io);
+  const result = await processWebhookEvent(event, io);
 
   res.status(200).json({ status: "ok", result });
 });
@@ -150,6 +124,8 @@ export const getBusinessPaymentStatus = asyncHandler(async (req, res) => {
       {
         paymentConfiguration: business.paymentConfiguration,
         isOnlineEligible:
+          isRazorpayConfigured() &&
+          /^acc_[A-Za-z0-9]+$/.test(business.paymentConfiguration?.providerAccountReference || "") &&
           business.paymentConfiguration?.onlinePaymentStatus === "ACTIVE" &&
           ["ONLINE", "BOTH"].includes(business.paymentConfiguration?.paymentMode),
       },
@@ -176,16 +152,12 @@ export const updatePaymentModes = asyncHandler(async (req, res) => {
   }
 
   if (paymentMode && ["PAY_AT_BUSINESS", "ONLINE", "BOTH"].includes(paymentMode)) {
-    // If setting to ONLINE or BOTH, verify that online status is ACTIVE or PENDING
-    if (
-      ["ONLINE", "BOTH"].includes(paymentMode) &&
-      business.paymentConfiguration?.onlinePaymentStatus !== "ACTIVE"
-    ) {
-      // In development/test mode allow setting, but warn
-      business.paymentConfiguration.paymentMode = paymentMode;
-    } else {
-      business.paymentConfiguration.paymentMode = paymentMode;
+    if (["ONLINE", "BOTH"].includes(paymentMode) &&
+        (!isRazorpayConfigured() || business.paymentConfiguration?.onlinePaymentStatus !== "ACTIVE" ||
+         !/^acc_[A-Za-z0-9]+$/.test(business.paymentConfiguration?.providerAccountReference || ""))) {
+      throw new ApiError(409, "Online payments require a configured and verified payment account");
     }
+    business.paymentConfiguration.paymentMode = paymentMode;
   }
 
   if (upiId !== undefined) {

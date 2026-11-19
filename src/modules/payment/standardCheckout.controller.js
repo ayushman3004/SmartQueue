@@ -1,5 +1,4 @@
-import crypto from "crypto";
-import { getRazorpayClient } from "./razorpay.service.js";
+import { getRazorpayClient, verifyPaymentSignature } from "./razorpay.service.js";
 
 /**
  * Standard Razorpay Checkout - Create Order
@@ -13,7 +12,7 @@ export const createStandardOrder = async (req, res) => {
     const { amount, currency = "INR", receipt } = req.body;
 
     const numAmount = Number(amount);
-    if (!numAmount || isNaN(numAmount) || numAmount < 100) {
+    if (!Number.isSafeInteger(numAmount) || numAmount < 100) {
       return res.status(400).json({
         error: "Validation Error",
         message: "Amount is required and must be at least 100 paise (₹1).",
@@ -22,8 +21,8 @@ export const createStandardOrder = async (req, res) => {
 
     const razorpay = getRazorpayClient();
     if (!razorpay) {
-      return res.status(401).json({
-        error: "Authentication Error",
+      return res.status(503).json({
+        error: "Payment Unavailable",
         message: "Razorpay credentials are not configured or invalid on the server.",
       });
     }
@@ -46,11 +45,11 @@ export const createStandardOrder = async (req, res) => {
       status: order.status,
     });
   } catch (err) {
-    console.error("Razorpay create-order error:", err);
+    console.error("Razorpay create-order error:", { statusCode: err.statusCode });
     const statusCode = err.statusCode || (err.error?.code === "BAD_REQUEST_ERROR" ? 400 : 500);
     return res.status(statusCode).json({
       error: err.error?.code || "Razorpay API Error",
-      message: err.error?.description || err.message || "Failed to create Razorpay order",
+      message: "Unable to create a payment order. Please retry later.",
     });
   }
 };
@@ -83,24 +82,7 @@ export const verifyStandardPayment = async (req, res) => {
       });
     }
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
-    if (!secret) {
-      return res.status(500).json({
-        success: false,
-        message: "Razorpay Key Secret is not configured on the server.",
-      });
-    }
-
-    const generatedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(`${effectiveOrderId}|${effectivePaymentId}`)
-      .digest("hex");
-
-    const genBuf = Buffer.from(generatedSignature);
-    const sigBuf = Buffer.from(effectiveSignature);
-
-    const isMatch =
-      genBuf.length === sigBuf.length && crypto.timingSafeEqual(genBuf, sigBuf);
+    const isMatch = verifyPaymentSignature({ razorpayOrderId: effectiveOrderId, razorpayPaymentId: effectivePaymentId, razorpaySignature: effectiveSignature });
 
     if (!isMatch) {
       return res.status(400).json({
@@ -109,6 +91,16 @@ export const verifyStandardPayment = async (req, res) => {
       });
     }
 
+    const client = getRazorpayClient();
+    if (!client) return res.status(503).json({ success: false, message: "Payment verification is unavailable" });
+    let payment;
+    let order;
+    try { [payment, order] = await Promise.all([client.payments.fetch(effectivePaymentId), client.orders.fetch(effectiveOrderId)]); }
+    catch { return res.status(502).json({ success: false, message: "Unable to confirm payment. Retry verification without paying again." }); }
+    if (payment.id !== effectivePaymentId || payment.order_id !== effectiveOrderId || order.id !== effectiveOrderId ||
+        payment.status !== "captured" || order.status !== "paid" || payment.amount !== order.amount || payment.currency !== order.currency) {
+      return res.status(409).json({ success: false, message: "Payment has not been captured for this order" });
+    }
     return res.status(200).json({
       success: true,
       message: "Payment verified successfully",
@@ -116,8 +108,8 @@ export const verifyStandardPayment = async (req, res) => {
       payment_id: effectivePaymentId,
     });
   } catch (err) {
-    console.error("Razorpay verify-payment error:", err);
-    return res.status(500).json({
+    console.error("Razorpay verify-payment error:", { statusCode: err.statusCode });
+    return res.status(err.statusCode || 500).json({
       success: false,
       message: err.message || "Internal server error during payment verification",
     });
