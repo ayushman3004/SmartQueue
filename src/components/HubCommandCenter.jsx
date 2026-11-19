@@ -8,11 +8,10 @@ import { toast } from 'react-hot-toast'
 import RegisterHubModal from './RegisterHubModal'
 import ManageServicesModal from './ManageServicesModal'
 import { HubCommandCenterSkeleton } from './Skeleton'
+import './HubCommandCenter.css'
 import {
   Building2,
-  Users,
   Radio,
-  Clock,
   Sparkles,
   Plus,
   Search,
@@ -20,17 +19,13 @@ import {
   X,
   ChevronRight,
   ChevronDown,
-  ExternalLink,
   Store,
   HelpCircle,
   LogOut,
   User,
-  CheckCircle2,
   Layers,
   ArrowRight,
-  SlidersHorizontal,
   Lock,
-  Compass,
   AlertTriangle,
   Crown,
 } from 'lucide-react'
@@ -140,7 +135,7 @@ export default function HubCommandCenter() {
       <div className="space-y-6">
 
         {/* Section 1: Command Filters & Views */}
-        <div className="space-y-1">
+        <nav className="hub-filters space-y-1" aria-label="Hub views">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1">
             Command Views
           </p>
@@ -178,6 +173,7 @@ export default function HubCommandCenter() {
               <button
                 key={item.id}
                 type="button"
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => {
                   setActiveFilter(item.id)
                   if (isMobile) setMobileSidebarOpen(false)
@@ -210,7 +206,7 @@ export default function HubCommandCenter() {
               </button>
             )
           })}
-        </div>
+        </nav>
 
         {/* Section 2: Direct Hub Quick-Access (List user's venues) */}
         {myBusinesses.length > 0 && (
@@ -372,7 +368,7 @@ export default function HubCommandCenter() {
   )
 
   return (
-    <div className="min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-hidden">
+    <div className="hub-dashboard app-background-glow flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP STICKY HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
@@ -412,6 +408,8 @@ export default function HubCommandCenter() {
                   setShowUserMenu((prev) => !prev)
                 }
               }}
+              aria-label="Open account menu"
+              aria-expanded={showUserMenu}
               className="flex items-center gap-1.5 p-1 pl-1.5 pr-2 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer"
             >
               <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-700 text-white flex items-center justify-center font-bold text-xs border border-zinc-200">
@@ -480,7 +478,7 @@ export default function HubCommandCenter() {
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
         {/* Desktop Left Sidebar */}
-        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 h-[calc(100vh-61px)] h-[calc(100dvh-61px)] min-h-[calc(100vh-61px)] bg-white/70 backdrop-blur-md sticky top-[61px] self-start overflow-y-auto">
+        <aside className="hub-sidebar shrink-0 hidden lg:flex flex-col justify-between px-4 border-r backdrop-blur-md sticky self-start overflow-y-auto">
           {renderSidebarContent(false)}
         </aside>
 
@@ -500,7 +498,10 @@ export default function HubCommandCenter() {
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className="fixed inset-y-0 left-0 w-72 bg-white z-50 p-5 flex flex-col justify-between shadow-2xl lg:hidden overflow-y-auto"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Hub navigation"
+                className="hub-mobile-sidebar fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 p-4 flex flex-col justify-between shadow-2xl lg:hidden overflow-y-auto"
               >
                 <div className="flex items-center justify-between pb-4 border-b border-zinc-100 mb-2">
                   <div className="flex items-center gap-2">
@@ -512,6 +513,7 @@ export default function HubCommandCenter() {
                   <button
                     type="button"
                     onClick={() => setMobileSidebarOpen(false)}
+                    aria-label="Close navigation menu"
                     className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100"
                   >
                     <X className="w-5 h-5" />
@@ -524,39 +526,38 @@ export default function HubCommandCenter() {
         </AnimatePresence>
 
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto w-full">
+        <main className="hub-canvas flex-1 min-w-0">
           {/* Top Title Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/80 pb-6 text-left">
-            <div className="space-y-1">
-              <h1 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
+          <section className="hub-welcome" aria-labelledby="hub-welcome-title">
+            <div className="hub-welcome-copy">
+              <p className="hub-eyebrow">YOUR BUSINESS AT A GLANCE</p>
+              <h1 id="hub-welcome-title">
                 Hub Command Center
               </h1>
-              <p className="text-xs sm:text-sm text-zinc-500 font-medium">
-                Signed in as <span className="text-zinc-900 font-bold">{user?.name}</span> ({user?.email}) &bull; Hub Owner
-              </p>
+              <p>Welcome back{user?.name ? `, ${user.name}` : ''}. Manage your venues, services, and live queues in one place.</p>
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleRegisterHubClick}
-                className="px-5 py-2.5 rounded-full bg-[#114227] hover:bg-[#0D361F] text-white font-black text-xs uppercase tracking-wider shadow-sm hover:shadow transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
+                className="hub-primary"
               >
                 <Plus className="w-4 h-4" />
-                <span>Register New Hub</span>
+                <span>Register new hub</span>
               </button>
             </div>
-          </div>
+          </section>
 
           {/* Email Verification Required Banner if unverified */}
           {!isEmailVerified && (
-            <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-transparent border-2 border-amber-300 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left shadow-2xs">
+            <div className="hub-notice hub-notice-verification">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0">
+                <div className="hub-notice-icon">
                   <AlertTriangle className="w-6 h-6 text-amber-700" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  <span className="hub-status">
                     Verification Required
                   </span>
                   <h3 className="text-base font-black text-zinc-950 mt-1">
@@ -570,7 +571,7 @@ export default function HubCommandCenter() {
               <button
                 type="button"
                 onClick={() => navigate('/profile')}
-                className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+                className="hub-primary"
               >
                 <span>Verify Email (OTP)</span>
                 <span>→</span>
@@ -581,13 +582,13 @@ export default function HubCommandCenter() {
 
           {/* In-Progress Onboarding Notification Banner */}
           {myBusinesses.some((b) => b.onboarding?.status === 'IN_PROGRESS') && (
-            <div className="bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-transparent border border-amber-300/80 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left shadow-2xs">
+            <div className="hub-notice">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-sm shrink-0">
-                  SETUP
+                <div className="hub-notice-icon">
+                  <Layers size={23} strokeWidth={1.5} aria-hidden="true" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  <span className="hub-status">
                     Setup In Progress
                   </span>
                   <h3 className="text-base font-black text-zinc-950 mt-1">
@@ -604,39 +605,39 @@ export default function HubCommandCenter() {
                   const inProgress = myBusinesses.find((b) => b.onboarding?.status === 'IN_PROGRESS')
                   navigate(`/business/onboarding${inProgress ? `/${inProgress._id}` : ''}`)
                 }}
-                className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all self-start sm:self-auto flex items-center gap-1.5 cursor-pointer"
+                className="hub-primary"
               >
-                <span>Resume Onboarding Setup</span>
+                <span>Resume setup</span>
                 <span>→</span>
               </button>
             </div>
           )}
 
           {/* Quick Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-            <div className="bg-white border border-zinc-200/80 rounded-2xl p-5 space-y-2 shadow-xs">
+          <div className="hub-stats">
+            <div className="hub-stat business-surface">
               <div className="flex items-center justify-between text-zinc-500 text-xs font-bold uppercase tracking-wider">
                 <span>Active Hubs</span>
               </div>
-              <div className="text-3xl font-black text-zinc-950">{myBusinesses.length}</div>
+              <div className="hub-stat-value">{myBusinesses.length}</div>
               <p className="text-[11px] text-zinc-500 font-medium">Registered venue locations</p>
             </div>
 
-            <div className="bg-white border border-zinc-200/80 rounded-2xl p-5 space-y-2 shadow-xs">
+            <div className="hub-stat business-surface">
               <div className="flex items-center justify-between text-zinc-500 text-xs font-bold uppercase tracking-wider">
                 <span>Live Open Status</span>
               </div>
-              <div className="text-3xl font-black text-[#16A34A]">
+              <div className="hub-stat-value">
                 {openCount} / {myBusinesses.length}
               </div>
               <p className="text-[11px] text-zinc-500 font-medium">Currently accepting queue entries</p>
             </div>
 
-            <div className="bg-white border border-zinc-200/80 rounded-2xl p-5 space-y-2 shadow-xs">
+            <div className="hub-stat business-surface">
               <div className="flex items-center justify-between text-zinc-500 text-xs font-bold uppercase tracking-wider">
                 <span>Catalog Services</span>
               </div>
-              <div className="text-3xl font-black text-indigo-600">
+              <div className="hub-stat-value">
                 {totalServices}
               </div>
               <p className="text-[11px] text-zinc-500 font-medium">Configured offerings & pricing</p>
@@ -644,11 +645,11 @@ export default function HubCommandCenter() {
           </div>
 
           {/* Hubs Listing Header + Search */}
-          <div className="space-y-4 text-left">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <section className="hub-listing space-y-4 text-left" aria-labelledby="hub-listing-title" aria-busy={fetchingHubs}>
+            <div className="hub-listing-toolbar">
               <div className="flex items-center gap-3">
-                <h2 className="text-xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-                  <span>Your Operational Hubs</span>
+                <h2 id="hub-listing-title" className="flex items-center gap-2">
+                  <span>Your operational hubs</span>
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#EAF7EE] text-[#114227] font-extrabold border border-[#BDE8CB]">
                     {filteredHubs.length}
                   </span>
@@ -656,14 +657,15 @@ export default function HubCommandCenter() {
               </div>
 
               {/* Search Bar */}
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <div className="hub-search">
+                <Search size={18} aria-hidden="true" />
                 <input
-                  type="text"
-                  placeholder="Search your hubs..."
+                  type="search"
+                  aria-label="Search your hubs"
+                  placeholder="Search your hubs…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-zinc-200 rounded-full focus:outline-none focus:border-[#114227] text-zinc-800 placeholder:text-zinc-400"
+                  className="hub-search-input"
                 />
               </div>
             </div>
@@ -671,9 +673,9 @@ export default function HubCommandCenter() {
 
 
             {fetchingHubs ? (
-              <HubCommandCenterSkeleton count={3} />
+              <HubCommandCenterSkeleton count={3} className="hub-venue-grid hub-loading" />
             ) : filteredHubs.length === 0 ? (
-              <div className="bg-white border border-dashed border-zinc-300 rounded-3xl p-10 sm:p-14 text-center space-y-4 shadow-xs">
+              <div className="hub-empty business-surface p-8 sm:p-12 text-center space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center font-black text-emerald-800 text-sm mx-auto shadow-xs">
                   <Building2 className="w-7 h-7 text-emerald-700" />
                 </div>
@@ -699,39 +701,36 @@ export default function HubCommandCenter() {
                   <button
                     type="button"
                     onClick={() => navigate('/business/onboarding')}
-                    className="px-6 py-3 rounded-full bg-[#114227] hover:bg-[#0D361F] text-white text-xs font-black uppercase tracking-wider shadow-sm hover:shadow active:scale-95 transition-all inline-flex items-center gap-2 cursor-pointer"
+                    className="hub-primary mx-auto"
                   >
                     <span>+ Start Guided Business Onboarding</span>
                   </button>
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="hub-venue-grid">
                 {filteredHubs.map((b) => {
                   const isInProgress = b.onboarding?.status === 'IN_PROGRESS'
 
                   return (
                     <div
                       key={b._id}
-                      className="bg-white border border-zinc-200/80 hover:border-zinc-300 rounded-3xl p-6 flex flex-col justify-between transition-all group shadow-xs hover:shadow-md text-left"
+                      className="hub-venue-card business-surface flex flex-col justify-between group text-left"
                     >
                       <div className="space-y-4">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-center font-black text-[#114227] text-sm shadow-xs">
+                          <div className="hub-venue-avatar">
                             {b.name?.[0] || 'H'}
                           </div>
                           {isInProgress ? (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border bg-amber-50 text-amber-700 border-amber-200">
-                              STEP {b.onboarding?.currentStep || 1} IN PROGRESS
+                            <span className="hub-status hub-status-setup">
+                              Step {b.onboarding?.currentStep || 1} in progress
                             </span>
                           ) : (
                             <span
-                              className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${b.isOpen
-                                  ? 'bg-[#EAF7EE] text-[#16A34A] border-[#CDEBD4]'
-                                  : 'bg-rose-50 text-rose-700 border-rose-200'
-                                }`}
+                              className={`hub-status ${b.isOpen ? 'hub-status-live' : 'hub-status-closed'}`}
                             >
-                              {b.isOpen ? 'LIVE QUEUE' : 'CLOSED'}
+                              {b.isOpen ? 'Live queue' : 'Closed'}
                             </span>
                           )}
                         </div>
@@ -756,18 +755,18 @@ export default function HubCommandCenter() {
                           <button
                             type="button"
                             onClick={() => navigate(`/business/onboarding/${b._id}`)}
-                            className="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs uppercase tracking-wider shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                            className="hub-primary w-full"
                           >
-                            <span>Resume Onboarding Wizard</span>
+                            <span>Resume setup</span>
                             <span>→</span>
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => navigate(`/business/${b._id}/manage`)}
-                            className="w-full py-3 px-4 rounded-xl bg-[#114227] hover:bg-[#0D361F] text-white font-black text-xs uppercase tracking-wider shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                            className="hub-primary w-full"
                           >
-                            <span>Launch Operations Console</span>
+                            <span>Open venue console</span>
                             <span>→</span>
                           </button>
                         )}
@@ -776,14 +775,14 @@ export default function HubCommandCenter() {
                           <button
                             type="button"
                             onClick={() => setManageServicesBiz(b)}
-                            className="py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 text-zinc-800 font-bold text-[11px] uppercase tracking-wider transition-colors cursor-pointer"
+                            className="hub-secondary"
                           >
                             Services ({b.services?.length || 0})
                           </button>
                           <button
                             type="button"
                             onClick={() => navigate(`/queue/${b._id}`)}
-                            className="py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 text-zinc-800 font-bold text-[11px] uppercase tracking-wider transition-colors cursor-pointer"
+                            className="hub-secondary"
                           >
                             Queue View
                           </button>
@@ -794,7 +793,7 @@ export default function HubCommandCenter() {
                 })}
               </div>
             )}
-          </div>
+          </section>
         </main>
       </div>
 

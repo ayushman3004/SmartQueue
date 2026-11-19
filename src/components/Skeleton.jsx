@@ -64,9 +64,9 @@ export function BusinessGridSkeleton({ count = 6 }) {
 /**
  * Skeleton for Hub Command Center (Owner Portal)
  */
-export function HubCommandCenterSkeleton({ count = 3 }) {
+export function HubCommandCenterSkeleton({ count = 3, className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5' }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div className={className}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="bg-white rounded-3xl border border-zinc-200 p-6 shadow-xs space-y-5">
           <div className="flex items-start justify-between">
