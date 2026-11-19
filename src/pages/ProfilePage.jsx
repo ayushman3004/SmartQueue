@@ -346,16 +346,12 @@ export default function ProfilePage() {
                   {user?.email}
                 </p>
 
-                <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-zinc-500 font-medium">
-                  {user?.location && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                      {user.location}
-                    </span>
-                  )}
-                  <span className="text-zinc-300">•</span>
-                  <span className="text-zinc-400">Node ID: {user?._id?.slice(-8) || 'N/A'}</span>
-                </div>
+                {user?.location && (
+                  <div className="flex items-center gap-1 pt-1 text-[11px] text-zinc-500 font-medium">
+                    <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                    {user.location}
+                  </div>
+                )}
               </div>
             </div>
 

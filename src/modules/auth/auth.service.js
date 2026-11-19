@@ -57,25 +57,8 @@ export const login = async ({ email, password, requiredRole, activationCredentia
     throw new ApiError(400, "Invalid email format. Please provide a valid email address (e.g. name@example.com)");
   }
 
-  const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD;
-
-  let user = await User.findOne({ email: normEmail }).select("+password");
-
-  // Bootstrap or upgrade superadmin if logging in as admin or using admin email
-  if (adminEmail && adminPassword && password === adminPassword && normEmail === adminEmail) {
-    if (!user) {
-      const hashed = await hashPassword(adminPassword);
-      user = await User.create({
-        name: "ServeQ Administrator",
-        email: adminEmail,
-        password: hashed,
-        role: "admin",
-      });
-    } else if (user.role !== "admin") {
-      throw new ApiError(403, "The administrator email belongs to another account. Configure a separate administrator identity.");
-    }
-  }
+  // Sign-in only authenticates existing accounts; it never provisions roles.
+  const user = await User.findOne({ email: normEmail }).select("+password");
 
   if (!user) throw new ApiError(401, "Invalid credentials");
 

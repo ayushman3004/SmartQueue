@@ -148,7 +148,7 @@ Before enabling deployment, inspect the **new service** in Render and confirm:
 | `SERVER_URL=https://api.serveq.tech` | Ensures Google callback uses the custom API domain instead of a Render subdomain. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Keep existing Google credentials; authorized Google redirect URI must be `https://api.serveq.tech/api/auth/google/callback`. |
 | Existing integration credentials | Preserve `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, OpenRouter keys/model settings, Resend/SMTP/Gmail settings, and optional Twilio settings as used by the application. |
-| Existing admin settings | The application has fallback admin credentials in `auth.service.js`; ensure strong `ADMIN_EMAIL`/`ADMIN_PASSWORD` configuration and review existing admin accounts separately. No auth logic was changed in this task. |
+| Administrator accounts | Sign-in authenticates existing database accounts only. There are no default administrator credentials or environment-based account bootstrap. Remove obsolete `ADMIN_EMAIL` / `ADMIN_PASSWORD` settings and review any previously bootstrapped accounts separately. |
 
 The script does not read or log Render environment values. Dashboard verification
 of those values is still necessary. Existing OAuth/cookie/CORS logic is preserved.

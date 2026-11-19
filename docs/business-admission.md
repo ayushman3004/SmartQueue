@@ -65,7 +65,7 @@ Required existing environment:
 - `CLIENT_URL`: production frontend origin, e.g. `https://www.serveq.tech`, used for activation/login/security links and allowed cookie-write origin.
 - `CORS_ADDITIONAL_ORIGINS`: optional comma-separated extra trusted frontend origins. Arbitrary Vercel/Render subdomains are no longer automatically trusted.
 - `RESEND_API_KEY` and a verified `EMAIL_SECURITY_FROM`, **or** the existing SMTP configuration (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`; existing EMAIL/GMAIL aliases remain supported). `EMAIL_SUPPORT` supplies reply-to.
-- `ADMIN_EMAIL`, `ADMIN_PASSWORD`: optional explicit admin bootstrap configuration. Hardcoded fallback administrator credentials were removed. Existing database admins can still log in without bootstrap configuration. A non-admin identity is never promoted merely by entering the admin email; configured bootstrap credentials must match.
+- Administrator accounts must already exist in the database with an explicitly assigned admin role and their own password hash. Sign-in never creates accounts or changes roles, and `ADMIN_EMAIL` / `ADMIN_PASSWORD` are not used for authentication or provisioning. Remove obsolete bootstrap variables from deployment configuration. Existing admins continue to authenticate using their stored credentials; review any accounts created by the former bootstrap separately.
 - Existing Razorpay, Google and other integration variables are unchanged. No invitation-specific secret or third-party dependency is added.
 
 ## Operational notes and security tradeoffs
