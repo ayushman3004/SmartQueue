@@ -78,6 +78,10 @@ test("socket authentication and business isolation", async (t) => {
         errors = [];
       socket.on = (event, fn) => handlers.set(event, fn);
       socket.join = (room) => rooms.push(room);
+      socket.leave = (room) => {
+        const index = rooms.indexOf(room);
+        if (index !== -1) rooms.splice(index, 1);
+      };
       socket.emit = (_event, data) => errors.push(data);
       connect(socket);
       t.mock.method(Booking, "findById", async () => ({

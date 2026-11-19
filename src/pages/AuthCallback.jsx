@@ -1,23 +1,23 @@
 import { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getMe } from '../api/auth.api'
+import api from '../api/axios'
+import { restoreOAuthSession } from '../utils/browserSession'
 import { safeReturnTo } from '../utils/authRedirect'
 import { Skeleton } from '../components/Skeleton'
 
 export default function AuthCallback() {
-  const [params] = useSearchParams()
   const { logIn } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    const token = params.get('token')
-    if (!token) { navigate('/login', { replace: true }); return }
-    localStorage.setItem('token', token)
-    getMe()
-      .then(res => {
-        const loggedUser = res.data.data.user
-        logIn(loggedUser, token)
+    // Remove any legacy query token without trusting or storing it.
+    window.history.replaceState(window.history.state, '', '/auth/callback')
+    let cancelled = false
+    restoreOAuthSession(api, localStorage)
+      .then(loggedUser => {
+        if (cancelled) return
+        logIn(loggedUser)
         const redirect = localStorage.getItem('auth_redirect')
         localStorage.removeItem('auth_redirect')
         if (redirect) {
@@ -29,12 +29,14 @@ export default function AuthCallback() {
         }
       })
       .catch(() => {
+        if (cancelled) return
         const redirect = localStorage.getItem('auth_redirect')
         localStorage.removeItem('auth_redirect')
         localStorage.removeItem('token')
         navigate(redirect === '/business' ? '/business' : '/login', { replace: true })
       })
-  }, [logIn, navigate, params])
+    return () => { cancelled = true }
+  }, [logIn, navigate])
 
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-[#F7FCF9]">

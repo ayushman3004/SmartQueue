@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import { toast } from "react-hot-toast";
 import { getMe } from "../api/auth.api.js";
 import api from "../api/axios.js";
+import { clearBrowserBearer, logoutBrowserSession } from "../utils/browserSession.js";
 import {
   INACTIVITY_TIMEOUT_MS,
   ACTIVITY_THROTTLE_MS,
@@ -13,16 +14,21 @@ export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem("token")));
+  const [loading, setLoading] = useState(() => window.location.pathname !== "/auth/callback");
   const lastActivityRef = useRef(0);
   const timerRef = useRef(null);
 
-  const logOut = useCallback((reason) => {
-    localStorage.removeItem("token");
+  const logOut = useCallback(async (reason) => {
+    const cleared = logoutBrowserSession(api, localStorage);
     localStorage.removeItem(LAST_ACTIVE_KEY);
     delete api.defaults.headers.common["Authorization"];
     Object.keys(sessionStorage).filter((key) => key.startsWith('customer-service:')).forEach((key) => sessionStorage.removeItem(key));
     setUser(null);
+    if (!await cleared) {
+      toast.error("Could not clear your server session. Reconnect and sign out again.");
+      return;
+    }
+    localStorage.setItem("serveq_logout_at", String(Date.now()));
     if (reason === "inactivity") {
       toast("You have been logged out due to 10 minutes of inactivity.", {
         icon: "⏱️",
@@ -35,12 +41,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    if (window.location.pathname === "/auth/callback") return;
     const token = localStorage.getItem("token");
-    if (!token) {
-      // Loading is already initialized from token presence on the first render.
-      return;
-    }
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    if (token) api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     getMe()
       .then((res) => {
         setUser(res.data.data.user);
@@ -54,20 +57,22 @@ export const AuthProvider = ({ children }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  const storeToken = (token) => {
+  const storeToken = useCallback((token) => {
     if (token) {
       localStorage.setItem("token", token);
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      clearBrowserBearer(api, localStorage);
     }
-  };
+  }, []);
 
-  const logIn = (userData, token) => {
+  const logIn = useCallback((userData, token) => {
     sessionStorage.removeItem(`customer-service:${userData?._id || userData?.id}`);
     storeToken(token);
     setUser(userData);
     setLoading(false);
     localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
-  };
+  }, [storeToken]);
 
   // 10-Minute Inactivity Auto-Logout Tracker
   useEffect(() => {
@@ -136,8 +141,9 @@ export const AuthProvider = ({ children }) => {
             timerRef.current = setTimeout(checkInactivity, INACTIVITY_TIMEOUT_MS - idleTime);
           }
         }
-      } else if (e.key === "token" && !e.newValue) {
+      } else if ((e.key === "token" && !e.newValue) || e.key === "serveq_logout_at") {
         // User logged out in another tab
+        clearBrowserBearer(api, localStorage);
         setUser(null);
       }
     };

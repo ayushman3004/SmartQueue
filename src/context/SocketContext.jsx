@@ -7,6 +7,7 @@ import {
   useCallback,
 } from "react";
 import socket from "../lib/socket";
+import { waitForBrowserLogout } from "../utils/browserSession.js";
 import { toast } from "react-hot-toast";
 
 const SocketContext = createContext(null);
@@ -19,7 +20,11 @@ export const SocketProvider = ({ children, setUser, user }) => {
     userRef.current = user;
     socket.auth = { token: localStorage.getItem("token") };
     socket.disconnect();
-    if (user?.ownerAccess?.status !== "INVITED" && user?.ownerAccess?.status !== "EXPIRED" && user?.ownerAccess?.status !== "PASSWORD_REQUIRED") socket.connect();
+    let cancelled = false;
+    waitForBrowserLogout().then(cleared => {
+      if (cleared && !cancelled && user?.ownerAccess?.status !== "INVITED" && user?.ownerAccess?.status !== "EXPIRED" && user?.ownerAccess?.status !== "PASSWORD_REQUIRED") socket.connect();
+    });
+    return () => { cancelled = true; };
   }, [user]);
 
   useEffect(() => {

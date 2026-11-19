@@ -20,7 +20,13 @@ import {
 } from "./auth.controller.js";
 import { protect } from "../../../middleware/auth.middleware.js";
 
+import { beginOAuth, validateOAuthState, oauthClientUrl, oauthResponseHeaders } from "./oauth-security.js";
+
 const router = Router();
+router.use((_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 
 // Local auth
 router.post("/signup", signup);
@@ -49,33 +55,33 @@ router.post("/forgot-password/reset-password", forgotPasswordReset);
 
 // Google OAuth
 router.get("/google", (req, res, next) => {
+  oauthResponseHeaders(res);
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(503).json({
       error: "Google OAuth is not configured on this server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
     });
   }
-  const role = req.query.role === "owner" ? "owner" : "customer";
+  const state = beginOAuth(req, res);
   passport.authenticate("google", {
     scope: ["profile", "email"],
-    state: role,
+    state,
     session: false,
   })(req, res, next);
 });
 
 router.get("/google/callback", (req, res, next) => {
-  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+  oauthResponseHeaders(res);
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.redirect(`${clientUrl}/login?error=oauth_not_configured`);
+    return res.redirect(oauthClientUrl("/login?error=oauth_not_configured"));
   }
 
-  passport.authenticate("google", { session: false }, (err, user) => {
-    const role = req.query?.state === "owner" ? "owner" : "customer";
-    const failureUrl = role === "owner" ? `${clientUrl}/hub/login` : `${clientUrl}/login`;
+  if (!validateOAuthState(req, res)) return res.redirect(oauthClientUrl("/login?error=oauth_state_invalid"));
+  const failureUrl = oauthClientUrl(req.oauthRole === "owner" ? "/hub/login" : "/login");
 
+  passport.authenticate("google", { session: false }, (err, user) => {
     if (err) {
       const code = err.statusCode === 403 ? "customer_account_forbidden" : "oauth_error";
-      const message = encodeURIComponent(err.message || "Authentication failed");
-      return res.redirect(`${failureUrl}?error=${code}&message=${message}`);
+      return res.redirect(`${failureUrl}?error=${code}`);
     }
 
     if (!user) {

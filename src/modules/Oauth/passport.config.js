@@ -21,7 +21,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       },
       async (req, _accessToken, _refreshToken, profile, done) => {
         try {
-          const role = req.query?.state === "owner" ? "owner" : "customer";
+          const role = req.oauthRole === "owner" ? "owner" : "customer";
           const user = await findOrCreateGoogleUser({
             googleId: profile.id,
             email: profile.emails?.[0]?.value,

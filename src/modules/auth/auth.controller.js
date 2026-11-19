@@ -2,10 +2,11 @@ import * as authService from "./auth.service.js";
 import * as forgotPasswordService from "./forgotPassword.service.js";
 import * as verificationService from "./verification.service.js";
 import User from "./auth.model.js";
+import { oauthClientUrl, oauthResponseHeaders } from "./oauth-security.js";
 import { verifyFirebasePhone as verifyPhoneProof } from "./phone-verification.service.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
-import { generateToken, setTokenCookie } from "../auth.utils.js";
+import { generateToken, setTokenCookie, clearTokenCookie } from "../auth.utils.js";
 
 export const signup = asyncHandler(async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -30,8 +31,8 @@ export const googleCallback = asyncHandler(async (req, res) => {
   // User attached by Passport
   const token = generateToken(req.user);
   setTokenCookie(res, token, req);
-  // Redirect to frontend with token in query (client stores it)
-  res.redirect(`${process.env.CLIENT_URL}/auth/callback?token=${token}`);
+  oauthResponseHeaders(res);
+  res.redirect(oauthClientUrl("/auth/callback"));
 });
 
 export const getMe = asyncHandler(async (req, res) => {
@@ -44,14 +45,9 @@ export const updateMe = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { user }, "Profile updated successfully"));
 });
 
-export const logout = asyncHandler(async (_req, res) => {
-  const isProduction = process.env.NODE_ENV === "production";
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
-    path: "/",
-  });
+export const logout = asyncHandler(async (req, res) => {
+  clearTokenCookie(res, req);
+  res.set("Cache-Control", "no-store");
   res.json(new ApiResponse(200, {}, "Logged out successfully"));
 });
 

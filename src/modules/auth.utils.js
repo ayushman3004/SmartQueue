@@ -17,27 +17,17 @@ export const generateToken = (user) => {
   );
 };
 
-/**
- * Set JWT as an HTTP-only cookie.
- * 
- * Production (cross-domain Vercel→Render) requirements:
- *   - secure: true   (HTTPS only)
- *   - sameSite: "none" (allow cross-origin cookie sending)
- *   - trust proxy must be set on Express app
- * 
- * Development:
- *   - secure: false
- *   - sameSite: "lax" (same-origin is fine for localhost)
- */
-export const setTokenCookie = (res, token, req = null) => {
-  const isHttps = req ? Boolean(req.secure || req.headers?.["x-forwarded-proto"] === "https") : false;
-  const isProductionSecure = process.env.NODE_ENV === "production" && isHttps;
+// Production security must not depend on forwarded headers or proxy detection.
+export const tokenCookieOptions = (req = null) => {
+  const sameSite = (process.env.AUTH_COOKIE_SAME_SITE || "lax").toLowerCase();
+  if (!["lax", "strict", "none"].includes(sameSite)) throw new Error("Invalid AUTH_COOKIE_SAME_SITE configuration");
+  return { httpOnly: true, secure: process.env.NODE_ENV === "production" || Boolean(req?.secure) || sameSite === "none", sameSite, path: "/" };
+};
 
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: isProductionSecure,
-    sameSite: isProductionSecure ? "none" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: "/",
-  });
+export const setTokenCookie = (res, token, req = null) => {
+  res.cookie("token", token, { ...tokenCookieOptions(req), maxAge: 7 * 24 * 60 * 60 * 1000 });
+};
+
+export const clearTokenCookie = (res, req = null) => {
+  res.clearCookie("token", tokenCookieOptions(req));
 };

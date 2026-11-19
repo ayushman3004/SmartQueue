@@ -16,6 +16,8 @@ app.set("allowedOrigins", allowedOrigins);
 app.set("isOriginAllowed", isOriginAllowed);
 
 const io = new Server(httpServer, {
+  // CORS alone does not restrict WebSocket handshakes carrying session cookies.
+  allowRequest: (req, callback) => callback(null, isOriginAllowed(req.headers.origin)),
   cors: {
     origin: (origin, callback) => {
       if (isOriginAllowed(origin)) {
