@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { activateSubscriptionPurchase } from "./subscription.fulfillment.js";
 import { readRazorpayCredentials, classifyRazorpayOrderError } from "../payment/razorpay.config.js";
 import SubscriptionOrder from "./subscription-order.model.js";
 import User from "../auth/auth.model.js";
@@ -82,7 +83,7 @@ export const verifySubscriptionPayment = async (
       !crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(razorpaySignature, "hex"))) {
     throw new ApiError(400, "Invalid Razorpay payment signature.");
   }
-  let purchase = await SubscriptionOrder.findOne({ orderId: razorpayOrderId, owner: user._id });
+  const purchase = await SubscriptionOrder.findOne({ orderId: razorpayOrderId, owner: user._id });
   if (!purchase || purchase.plan !== selectedPlan.id) {
     throw new ApiError(400, "Payment order does not match this account or plan.");
   }
@@ -95,43 +96,7 @@ export const verifySubscriptionPayment = async (
   if (payment.order_id !== purchase.orderId || payment.amount !== purchase.amount || payment.currency !== "INR" || payment.status !== "captured") {
     throw new ApiError(409, "Payment is not yet confirmed. Retry verification without paying again.");
   }
-  // Store the entitlement dates once. Retried callbacks must never add another month.
-  if (!purchase.activatedAt) {
-    const activatedAt = new Date();
-    const renewalBase = user.subscription?.plan === selectedPlan.id && user.subscription?.status === "ACTIVE"
-      ? Math.max(Date.now(), new Date(user.subscription.expiresAt || 0).getTime()) : Date.now();
-    const updated = await SubscriptionOrder.findOneAndUpdate(
-      { _id: purchase._id, activatedAt: null },
-      { $set: { paymentId: razorpayPaymentId, activatedAt, expiresAt: new Date(renewalBase + selectedPlan.durationDays * 86400000) } },
-      { new: true }
-    );
-    purchase = updated || await SubscriptionOrder.findById(purchase._id);
-  }
-  // An old callback cannot replace a newer purchased plan.
-  if (!user.subscription?.activatedAt || new Date(user.subscription.activatedAt) <= new Date(purchase.activatedAt)) {
-    user.subscription = {
-      plan: selectedPlan.id, status: "ACTIVE", amount: purchase.amount / 100,
-      activatedAt: purchase.activatedAt, expiresAt: purchase.expiresAt,
-      razorpayOrderId, razorpayPaymentId,
-    };
-    await user.save();
-  }
-  await Business.updateMany({ owner: user._id }, { $set: {
-    "subscription.plan": user.subscription.plan, "subscription.status": user.subscription.status,
-    "subscription.amount": user.subscription.amount, "subscription.expiresAt": user.subscription.expiresAt,
-  } });
-
-  return {
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      subscription: user.subscription,
-    },
-    subscription: user.subscription,
-    planDetails: selectedPlan,
-  };
+  return activateSubscriptionPurchase(user, purchase, selectedPlan, razorpayPaymentId);
 };
 
 /**

@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import express from 'express';
 import Booking from '../src/booking/booking.model.js';
 import Business from '../src/modules/business/business.model.js';
+import SubscriptionOrder from '../src/modules/subscription/subscription-order.model.js';
 import { MockPaymentProvider, getPaymentProvider } from '../src/modules/payment/payment.provider.js';
 import { handleWebhook } from '../src/modules/payment/payment.controller.js';
 import { getRazorpayClient, verifyPaymentSignature, verifyWebhookSignature, confirmRazorpayPaymentForBooking, createRazorpayOrderForBooking, connectRazorpayRouteAccount, processWebhookEvent } from '../src/modules/payment/razorpay.service.js';
@@ -14,6 +15,7 @@ const booking = (extra = {}) => ({ _id: 'bookingSecurity', userId: 'customer', b
 const captured = (id, extra = {}) => ({ event: 'payment.captured', created_at: 123, payload: { payment: { entity: { id: `pay_${id}`, order_id: `order_${id}`, amount: 12500, currency: 'INR', status: 'captured', ...extra } } } });
 
 test('production payment security regressions', async t => {
+  t.mock.method(SubscriptionOrder, 'findOne', async () => null);
   const names = ['NODE_ENV', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'];
   const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
   t.after(() => { for (const name of names) { if (previous[name] === undefined) delete process.env[name]; else process.env[name] = previous[name]; } });

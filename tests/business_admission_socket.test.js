@@ -7,6 +7,11 @@ import Booking from "../src/booking/booking.model.js";
 import { initSocket } from "../realtime/socket.js";
 
 test("socket authentication and business isolation", async (t) => {
+  const previousSecret = process.env.JWT_SECRET;
+  t.after(() => {
+    if (previousSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = previousSecret;
+  });
   process.env.JWT_SECRET = "socket-admission-test";
   t.mock.method(globalThis, "setInterval", () => ({ unref() {} }));
   let authenticate, connect;
@@ -78,10 +83,11 @@ test("socket authentication and business isolation", async (t) => {
         errors = [];
       socket.on = (event, fn) => handlers.set(event, fn);
       socket.join = (room) => rooms.push(room);
-      socket.leave = (room) => {
+      socket.leave = t.mock.fn(async (room) => {
         const index = rooms.indexOf(room);
         if (index !== -1) rooms.splice(index, 1);
-      };
+      });
+      socket.disconnect = t.mock.fn();
       socket.emit = (_event, data) => errors.push(data);
       connect(socket);
       t.mock.method(Booking, "findById", async () => ({
@@ -92,9 +98,12 @@ test("socket authentication and business isolation", async (t) => {
       await handlers.get("join:booking")({ bookingId: "222222222222222222222222" });
       assert.equal(rooms.includes("booking:222222222222222222222222"), false);
       assert.match(errors.at(-1).message, /Access denied/);
+      assert.equal(socket.leave.mock.calls.at(-1).arguments[0], "booking:222222222222222222222222");
+      assert.equal(socket.disconnect.mock.callCount(), 0);
       t.mock.method(Business, "findOne", async () => ({ _id: "own-hub" }));
       await handlers.get("join:booking")({ bookingId: "333333333333333333333333" });
       assert.equal(rooms.includes("booking:333333333333333333333333"), true);
+      assert.equal(socket.disconnect.mock.callCount(), 0);
     },
   );
 });
