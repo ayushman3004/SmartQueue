@@ -6,6 +6,9 @@ import './Footer.css'
 export default function Footer() {
   const currentYear = new Date().getFullYear()
   return <footer className="site-footer">
+    <svg className="site-footer-wave" viewBox="0 0 1440 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <path d="M0 40C140 112 280 108 440 34C540-12 620-12 720 34C930 138 1160 200 1440 94V160H0Z" />
+    </svg>
     <div className="site-footer-body">
       <div className="site-footer-brand"><Link to="/" aria-label="serveQ home"><img src="/serveq-logo.png" alt="serveQ" width="220" height="76" /></Link><p>A little less waiting.<br />A little more living.</p></div>
       <div className="site-footer-columns">
