@@ -100,53 +100,13 @@ test("Profile Contact Verification Flow - Phone & Email OTP (nodemailer-otp & No
     assert.equal(res.user.isEmailVerified, true);
   });
 
-  await t.test("Generates and stores phone OTP", async () => {
-    let upsertedPhoneData = null;
-    Otp.findOne = async () => null; // No cooldown
-    User.findById = async () => mockUser;
-    Otp.findOneAndUpdate = async (query, update) => {
-      upsertedPhoneData = { query, update };
-      return { ...query, ...update };
-    };
-
-    const res = await verificationService.sendPhoneVerificationOtp({
-      phone: "+919876543210",
-      userId: mockUser._id,
-    });
-
-    assert.equal(res.success, true);
-    assert.ok(upsertedPhoneData);
-    assert.equal(upsertedPhoneData.query.phoneNumber, "+919876543210");
-    assert.equal(upsertedPhoneData.query.purpose, "phone_verification");
-    assert.equal(upsertedPhoneData.update.otp.length, 6);
-  });
-
-  await t.test("Successfully verifies phone OTP and marks isPhoneVerified", async () => {
-    const userDoc = { ...mockUser, isPhoneVerified: false, save: async function () { return this; } };
-    User.findById = async () => userDoc;
-
-    const otpDoc = {
-      _id: "otp456",
-      phoneNumber: "+919876543210",
-      otp: "654321",
-      attempts: 0,
-      expiresAt: new Date(Date.now() + 60000),
-      save: async function () { return this; },
-    };
-    Otp.findOne = async () => otpDoc;
-    let deleted = false;
-    Otp.deleteOne = async () => { deleted = true; };
-
-    const res = await verificationService.verifyPhoneVerificationOtp({
-      phone: "+919876543210",
-      otp: "654321",
-      userId: mockUser._id,
-    });
-
-    assert.equal(res.success, true);
-    assert.equal(userDoc.phone, "+919876543210");
-    assert.equal(userDoc.isPhoneVerified, true);
-    assert.equal(deleted, true);
-    assert.equal(res.user.isPhoneVerified, true);
+  await t.test("Legacy email-delivered codes cannot verify phone ownership", async () => {
+    let writes = 0;
+    Otp.findOneAndUpdate = async () => { writes++; };
+    User.findById = async () => { writes++; return mockUser; };
+    await assert.rejects(verificationService.sendPhoneVerificationOtp({ phone: mockUser.phone, userId: mockUser._id }), { statusCode: 410 });
+    await assert.rejects(verificationService.verifyPhoneVerificationOtp({ phone: mockUser.phone, otp: "654321", userId: mockUser._id }), { statusCode: 410 });
+    assert.equal(writes, 0);
+    assert.equal(mockUser.isPhoneVerified, false);
   });
 });

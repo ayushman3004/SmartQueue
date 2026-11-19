@@ -134,7 +134,7 @@ export default function VerifyContactModal({
       } else {
         // Verify Phone OTP via Firebase Phone Auth
         const firebaseUser = await verifyFirebasePhoneOtp(cleanOtp, confirmationResult)
-        const idToken = await firebaseUser.getIdToken()
+        const idToken = await firebaseUser.getIdToken(true)
 
         // Sync verified phone to serveQ backend
         const res = await confirmFirebasePhone(targetValue.trim(), idToken)
@@ -158,7 +158,7 @@ export default function VerifyContactModal({
       }
       onClose()
     } catch (err) {
-      const msg = err.message || err.response?.data?.message || 'Invalid or expired verification code'
+      const msg = err.response?.data?.message || err.message || 'Invalid or expired verification code'
       toast.error(msg)
     } finally {
       setLoading(false)

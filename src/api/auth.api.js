@@ -10,9 +10,7 @@ export const forgotPasswordSendOtp = (email) => api.post("/auth/forgot-password/
 export const forgotPasswordVerifyOtp = (email, otp) => api.post("/auth/forgot-password/verify-otp", { email, otp });
 export const forgotPasswordReset = (data) => api.post("/auth/forgot-password/reset-password", data);
 
-// Profile Contact Verification API (Phone & Email OTP via Nodemailer & nodemailer-otp)
-export const sendPhoneOtp = (phone) => api.post("/auth/phone/send-otp", { phone });
-export const verifyPhoneOtp = (phone, otp) => api.post("/auth/phone/verify-otp", { phone, otp });
+// Phone verification requires a Firebase SMS proof; email uses backend OTPs.
 export const confirmFirebasePhone = (phone, idToken) => api.post("/auth/phone/verify-firebase", { phone, idToken });
 export const sendEmailOtp = (email) => api.post("/auth/email/send-otp", { email });
 export const verifyEmailOtp = (email, otp) => api.post("/auth/email/verify-otp", { email, otp });

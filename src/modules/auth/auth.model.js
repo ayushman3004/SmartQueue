@@ -49,6 +49,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    phoneVerification: {
+      provider: { type: String, enum: ["firebase"] },
+      phone: String,
+      verifiedAt: Date,
+    },
     isEmailVerified: {
       type: Boolean,
       default: false,

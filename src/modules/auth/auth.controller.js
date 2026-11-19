@@ -2,6 +2,7 @@ import * as authService from "./auth.service.js";
 import * as forgotPasswordService from "./forgotPassword.service.js";
 import * as verificationService from "./verification.service.js";
 import User from "./auth.model.js";
+import { verifyFirebasePhone as verifyPhoneProof } from "./phone-verification.service.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
 import { generateToken, setTokenCookie } from "../auth.utils.js";
@@ -132,21 +133,8 @@ export const verifyEmailVerificationOtp = asyncHandler(async (req, res) => {
 });
 
 export const verifyFirebasePhone = asyncHandler(async (req, res) => {
-  const phone = req.body.phone || req.user.phone;
-  if (!phone) {
-    return res.status(400).json(new ApiResponse(400, null, "Phone number is required"));
-  }
-  const user = await User.findById(req.user._id);
-  if (!user) {
-    return res.status(404).json(new ApiResponse(404, null, "User account not found"));
-  }
-  user.phone = phone.trim();
-  user.isPhoneVerified = true;
-  await user.save();
-
-  res.status(200).json(
-    new ApiResponse(200, { user: authService.sanitize(user) }, "Phone number verified successfully via Firebase!")
-  );
+  const result = await verifyPhoneProof({ userId: req.user._id, phone: req.body.phone, idToken: req.body.idToken });
+  res.status(200).json(new ApiResponse(200, result, "Phone number verified successfully."));
 });
 
 

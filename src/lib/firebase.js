@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { normalizePhoneNumber } from '../utils/phoneNumbers';
 import {
   getAuth,
   RecaptchaVerifier,
@@ -65,11 +66,8 @@ export const sendFirebasePhoneOtp = async (phoneNumber, containerId = "recaptcha
   }
 
   // Ensure E.164 international format (e.g. +91 7888746047)
-  let cleanNumber = phoneNumber.trim().replace(/[\s\-()]/g, "");
-  if (!cleanNumber.startsWith("+")) {
-    // Default to +91 if Indian 10-digit number
-    cleanNumber = cleanNumber.length === 10 ? `+91${cleanNumber}` : `+${cleanNumber}`;
-  }
+  const cleanNumber = normalizePhoneNumber(phoneNumber);
+  if (!cleanNumber) throw new Error('Enter a valid phone number with its country code.');
 
   const verifier = setupRecaptcha(containerId);
   const confirmationResult = await signInWithPhoneNumber(auth, cleanNumber, verifier);

@@ -1,3 +1,4 @@
+import { hasVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import { ownerState, assertOwnerLogin, publicOwnerAccess } from "../business-application/owner-lifecycle.js";
 import { validateInvitation } from "../business-application/business-application.service.js";
 import User from "./auth.model.js";
@@ -127,6 +128,10 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, ro
       );
     }
     if (user.role === "owner" && user.ownerAccess?.applicationId && ownerState(user) !== "ACTIVE") throw new ApiError(403, "Complete your invitation using password login and email OTP.");
+    if (normalizedEmail === user.email && ["google", "both"].includes(user.authProvider) && !user.isEmailVerified) {
+      user.isEmailVerified = true;
+      await user.save();
+    }
     return user;
   }
 
@@ -146,6 +151,7 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, ro
       if (user.authProvider === "local") {
         user.authProvider = "both";
       }
+      user.isEmailVerified = true;
       if (!user.avatar && avatar) user.avatar = avatar;
       await user.save();
       return user;
@@ -162,6 +168,7 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, ro
     avatar,
     role: selectedRole,
     authProvider: "google",
+    isEmailVerified: true,
   });
 };
 
@@ -174,42 +181,42 @@ export const getProfile = async (userId) => {
 
 // ─── Update Profile ──────────────────────────────────────────
 export const updateProfile = async (userId, data) => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new ApiError(400, "Invalid profile payload.");
+
+  // Copy only own, explicitly editable fields. Never mutate or assign the request body.
+  const changes = {};
+  for (const key of ["name", "email", "avatar", "phone", "bio", "location"]) {
+    if (!Object.hasOwn(data, key)) continue;
+    if (typeof data[key] !== "string") throw new ApiError(400, "Invalid profile field.");
+    changes[key] = data[key];
+  }
+  if (changes.name !== undefined) {
+    changes.name = changes.name.trim();
+    if (!changes.name) throw new ApiError(400, "Name is required.");
+  }
+  if (changes.email !== undefined) {
+    changes.email = changes.email.toLowerCase().trim();
+    if (!EMAIL_REGEX.test(changes.email)) throw new ApiError(400, "Invalid email.");
+  }
+  if (changes.phone !== undefined) {
+    changes.phone = normalizePhoneNumber(changes.phone, { allowEmpty: true });
+    if (changes.phone === null) throw new ApiError(400, "Invalid phone number. Include its country code.");
+  }
+
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, "User not found");
+  if (changes.email !== undefined && changes.email !== user.email) {
+    if (user.ownerAccess?.applicationId) throw new ApiError(403, "Contact ServeQ to change an approved business login email.");
+    const existing = await User.findOne({ email: changes.email });
+    if (existing && String(existing._id) !== String(user._id)) throw new ApiError(400, "Email is already taken by another account");
+  }
 
-  // Prevent role updates
-  delete data.role;
-  delete data.walletBalance;
-  delete data._id;
-
-  if (data.email !== undefined && typeof data.email !== "string") throw new ApiError(400, "Invalid email.");
-  if (data.phone !== undefined && typeof data.phone !== "string") throw new ApiError(400, "Invalid phone.");
-
-  // If phone changed, reset verification
-  if (data.phone !== undefined && data.phone !== user.phone) {
+  if (changes.email !== undefined && changes.email !== user.email) user.isEmailVerified = false;
+  if (changes.phone !== undefined && (!changes.phone || changes.phone !== normalizePhoneNumber(user.phone || "", { allowEmpty: true }))) {
     user.isPhoneVerified = false;
+    user.phoneVerification = undefined;
   }
-
-  if (user.ownerAccess?.applicationId && data.email && data.email.toLowerCase().trim() !== user.email) throw new ApiError(403, "Contact ServeQ to change an approved business login email.");
-
-  // If email is explicitly provided and changed
-  if (data.email && data.email.toLowerCase().trim() !== user.email) {
-    const normalizedEmail = data.email.toLowerCase().trim();
-    const existing = await User.findOne({ email: normalizedEmail });
-    if (existing && existing._id.toString() !== user._id.toString()) {
-      throw new ApiError(400, "Email is already taken by another account");
-    }
-    user.email = normalizedEmail;
-    user.isEmailVerified = false;
-  }
-  delete data.email;
-
-  for (const key of ["name", "avatar", "phone", "bio", "location"]) {
-    if (data[key] !== undefined) {
-      if (typeof data[key] !== "string") throw new ApiError(400, "Invalid profile field.");
-      user[key] = data[key];
-    }
-  }
+  for (const key of Object.keys(changes)) user[key] = changes[key];
   await user.save();
   return sanitize(user);
 };
@@ -224,8 +231,8 @@ export const sanitize = (user) => ({
   walletBalance: user.walletBalance ?? 0,
   authProvider: user.authProvider,
   phone: user.phone || "",
-  isPhoneVerified: Boolean(user.isPhoneVerified),
-  isEmailVerified: Boolean(user.isEmailVerified || user.authProvider === "google"),
+  isPhoneVerified: hasVerifiedPhone(user),
+  isEmailVerified: Boolean(user.isEmailVerified),
   bio: user.bio || "",
   location: user.location || "",
   ownerAccess: publicOwnerAccess(user),

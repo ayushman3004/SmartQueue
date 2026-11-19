@@ -1,3 +1,4 @@
+import { normalizePhoneNumber } from '../utils/phoneNumbers'
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
@@ -110,7 +111,7 @@ export default function ProfilePage() {
     user?.isEmailVerified && form.email?.toLowerCase().trim() === user?.email?.toLowerCase().trim()
   )
   const isPhoneVerified = Boolean(
-    user?.isPhoneVerified && form.phone && form.phone?.trim() === user?.phone?.trim()
+    user?.isPhoneVerified && form.phone && normalizePhoneNumber(form.phone) === normalizePhoneNumber(user.phone)
   )
 
   const role = user?.role || 'customer'
