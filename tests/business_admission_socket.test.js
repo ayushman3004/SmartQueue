@@ -19,14 +19,14 @@ test("socket authentication and business isolation", async (t) => {
     },
   };
   initSocket(io);
-  let current = { _id: "owner-1", role: "owner", tokenVersion: 0 };
+  let current = { _id: "111111111111111111111111", role: "owner", tokenVersion: 0 };
   t.mock.method(User, "findById", async () => current);
   const socket = {
     id: "socket-admission",
     handshake: {
       auth: {
         token: jwt.sign(
-          { id: "owner-1", tokenVersion: 0 },
+          { id: "111111111111111111111111", tokenVersion: 0 },
           process.env.JWT_SECRET,
         ),
       },
@@ -56,7 +56,7 @@ test("socket authentication and business isolation", async (t) => {
   await t.test(
     "stale tokens are rejected using current database version",
     async () => {
-      current = { _id: "owner-1", role: "owner", tokenVersion: 1 };
+      current = { _id: "111111111111111111111111", role: "owner", tokenVersion: 1 };
       let error;
       await authenticate(socket, (value) => {
         error = value;
@@ -67,7 +67,7 @@ test("socket authentication and business isolation", async (t) => {
   await t.test(
     "active owner cannot join a foreign booking private room",
     async () => {
-      current = { _id: "owner-1", role: "owner", tokenVersion: 0 };
+      current = { _id: "111111111111111111111111", role: "owner", tokenVersion: 0 };
       let error;
       await authenticate(socket, (value) => {
         error = value;
@@ -85,12 +85,12 @@ test("socket authentication and business isolation", async (t) => {
         businessId: "foreign-hub",
       }));
       t.mock.method(Business, "findOne", async () => null);
-      await handlers.get("join:booking")({ bookingId: "foreign-booking" });
-      assert.equal(rooms.includes("booking:foreign-booking"), false);
+      await handlers.get("join:booking")({ bookingId: "222222222222222222222222" });
+      assert.equal(rooms.includes("booking:222222222222222222222222"), false);
       assert.match(errors.at(-1).message, /Access denied/);
       t.mock.method(Business, "findOne", async () => ({ _id: "own-hub" }));
-      await handlers.get("join:booking")({ bookingId: "own-booking" });
-      assert.equal(rooms.includes("booking:own-booking"), true);
+      await handlers.get("join:booking")({ bookingId: "333333333333333333333333" });
+      assert.equal(rooms.includes("booking:333333333333333333333333"), true);
     },
   );
 });

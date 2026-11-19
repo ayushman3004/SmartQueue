@@ -80,175 +80,158 @@ const untrackSocket = (socketId) => {
   socketSubscriptions.delete(socketId);
 };
 
-/**
- * Socket.IO authentication and authorization initialization
- */
-export const initSocket = (io) => {
-  // ─── Socket Authentication Middleware ─────────────────────────
+// Never interpolate arbitrary client strings into room names.
+const roomId = value => typeof value === "string" && /^[a-f0-9]{24}$/i.test(value) ? value.toLowerCase() : null;
+const payloadId = (payload, field) => payload && typeof payload === "object" && !Array.isArray(payload) ? roomId(payload[field]) : null;
+const refId = value => String(value?._id || value);
+
+const refreshSession = async socket => {
+  if (!socket.authToken) throw new Error("Authentication required");
+  const decoded = jwt.verify(socket.authToken, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+  const id = roomId(decoded.id);
+  if (!id || decoded.purpose === "activation") throw new Error("Invalid session");
+  const user = await User.findById(id);
+  if (!user || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0) || ownerState(user) !== "ACTIVE") throw new Error("Account activation or password change required.");
+  socket.user = { _id: id, id, role: user.role };
+  return user;
+};
+
+const mayJoinPrivateRoom = async (socket, type, id) => {
+  const user = socket.user;
+  if (!user) return false;
+  if (type === "user") return id === user.id;
+  if (type === "admin") {
+    const business = await Business.findById(id);
+    return Boolean(business && (user.role === "admin" || (user.role === "owner" && business.approvalStatus === "approved" && refId(business.owner) === user.id)));
+  }
+  const booking = await Booking.findById(id);
+  if (!booking) return false;
+  if (user.role === "admin" || refId(booking.userId) === user.id) return true;
+  if (user.role !== "owner") return false;
+  return Boolean(await Business.findOne({ _id: booking.businessId?._id || booking.businessId, owner: user.id, approvalStatus: "approved" }));
+};
+
+/** Socket rooms are server-owned; private subscriptions require a live session. */
+export const initSocket = io => {
+  const connections = new Set();
+  const grants = new Map();
+  const deny = (socket, message) => socket.emit("error", { message });
+  const roomName = (type, id) => type === "admin" ? `business:${id}:admin` : `${type}:${id}`;
+  const removeGrant = async (socket, room) => {
+    const grant = grants.get(socket.id)?.get(room);
+    await socket.leave(room);
+    grants.get(socket.id)?.delete(room);
+    if (grant?.type === "admin") {
+      socketSubscriptions.get(socket.id)?.hubIds.delete(grant.id);
+      const hubs = onlineHubs.get(grant.id);
+      hubs?.delete(socket.id);
+      if (!hubs?.size) onlineHubs.delete(grant.id);
+    }
+  };
+
   io.use(async (socket, next) => {
+    socket.user = null;
     try {
+      const headers = socket.handshake.headers || {};
       let token = socket.handshake.auth?.token;
-
-      if (!token && socket.handshake.headers?.authorization) {
-        const parts = socket.handshake.headers.authorization.split(" ");
-        if (parts.length === 2 && parts[0] === "Bearer") {
-          token = parts[1];
-        }
+      if (!token && typeof headers.authorization === "string") token = headers.authorization.replace(/^Bearer /, "");
+      if (!token && typeof headers.cookie === "string") {
+        const cookie = headers.cookie.split(";").map(c => c.trim()).find(c => c.startsWith("token="));
+        if (cookie) token = decodeURIComponent(cookie.slice(6));
       }
-
-      if (!token && socket.handshake.headers?.cookie) {
-        const cookieMatch = socket.handshake.headers.cookie
-          .split(";")
-          .map((c) => c.trim())
-          .find((c) => c.startsWith("token="));
-        if (cookieMatch) {
-          token = cookieMatch.split("=")[1];
-        }
+      // Guests use public rooms; supplied invalid credentials fail closed.
+      if (token != null && token !== "") {
+        if (typeof token !== "string") throw new Error("Invalid session");
+        socket.authToken = token;
+        await refreshSession(socket);
       }
-
-      if (token) {
-        try {
-          const decoded = jwt.verify(token, process.env.JWT_SECRET);
-          const user = await User.findById(decoded.id);
-          if (!user || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0) || decoded.purpose === "activation" || ownerState(user) !== "ACTIVE") return next(new Error("Account activation or password change required."));
-          if (user.ownerAccess?.mustChangePassword) {
-            const timer = setTimeout(() => socket.disconnect(true), Math.max(1, new Date(user.ownerAccess.passwordChangeDeadline).getTime() - Date.now()));
-            timer.unref?.(); socket.on("disconnect", () => clearTimeout(timer));
-          }
-          socket.user = {
-            _id: decoded.id,
-            id: decoded.id,
-            role: user.role,
-          };
-        } catch (err) {
-          console.warn(`⚠️ Socket authentication token invalid: ${err.message}`);
-          socket.user = null;
-        }
-      } else {
-        socket.user = null; // Guest connection
-      }
-
       next();
-    } catch (err) {
-      next(err);
+    } catch {
+      socket.authToken = null;
+      next(new Error("Account activation or password change required. Sign in with a valid session."));
     }
   });
 
-  // 🕒 Auto-cleanup for active rooms every 30 seconds
-  setInterval(async () => {
-    const rooms = Array.from(io.sockets.adapter.rooms.keys())
-      .filter((r) => r.startsWith("business:") && !r.endsWith(":admin"));
-
-    for (const room of rooms) {
-      const businessId = room.split(":")[1];
+  // Revalidate idle subscriptions after session, role or ownership changes.
+  const maintenance = setInterval(async () => {
+    for (const socket of connections) {
       try {
-        await getQueue(businessId, io);
+        if (socket.authToken) await refreshSession(socket);
+        for (const [room, grant] of grants.get(socket.id) || []) {
+          if (!await mayJoinPrivateRoom(socket, grant.type, grant.id)) await removeGrant(socket, room);
+        }
       } catch {
-        // Silently continue if business not active
+        untrackSocket(socket.id);
+        socket.disconnect(true);
       }
+    }
+    const rooms = Array.from(io.sockets.adapter.rooms.keys()).filter(r => /^business:[a-f0-9]{24}$/.test(r));
+    for (const room of rooms) {
+      try { await getQueue(room.slice(9), io); } catch { /* Business may no longer be active. */ }
     }
   }, 30000);
+  maintenance.unref?.();
+  io.httpServer?.once("close", () => clearInterval(maintenance));
 
-  io.on("connection", (socket) => {
+  io.on("connection", socket => {
+    connections.add(socket);
+    grants.set(socket.id, new Map());
     socketSubscriptions.set(socket.id, { userIds: new Set(), hubIds: new Set() });
-
-    // Automatically mark user online if connected with valid token
-    if (socket.user?._id || socket.user?.id) {
-      const uid = socket.user._id || socket.user.id;
-      trackUserSocket(uid, socket.id);
+    if (socket.user) {
+      const id = socket.user.id;
+      socket.join(`user:${id}`);
+      grants.get(socket.id).set(`user:${id}`, { type: "user", id });
+      trackUserSocket(id, socket.id);
     }
-
-    // Join a public business-specific room to receive queue updates
-    socket.on("join:room", ({ businessId }) => {
-      if (businessId) {
-        socket.join(`business:${businessId}`);
-      }
+    socket.on("join:room", payload => {
+      const id = payloadId(payload, "businessId");
+      if (!id) return deny(socket, "Invalid business ID");
+      socket.join(`business:${id}`);
     });
-
-    // Special administrative room for owners (includes customer names and details)
-    socket.on("join:admin", async ({ businessId }) => {
-      if (!businessId) return;
-
-      if (!socket.user) {
-        socket.emit("error", { message: "Authentication required to join admin room" });
-        return;
-      }
-
+    const privateJoin = (event, field, type) => socket.on(event, async payload => {
+      const id = payloadId(payload, field);
+      if (!id) return deny(socket, "Invalid room ID");
       try {
-        if (socket.user.role === "admin") {
-          socket.join(`business:${businessId}:admin`);
-          trackHubSocket(businessId, socket.id);
+        await refreshSession(socket);
+        if (!await mayJoinPrivateRoom(socket, type, id)) {
+          await removeGrant(socket, roomName(type, id));
+          return deny(socket, "Access denied to this private room.");
+        }
+        // A lookup can finish after the socket has disconnected.
+        if (!connections.has(socket)) return;
+        const room = roomName(type, id);
+        await socket.join(room);
+        if (!connections.has(socket)) {
+          await socket.leave(room);
           return;
         }
-
-        const business = await Business.findById(businessId);
-        if (business && business.approvalStatus === "approved" && business.owner.toString() === socket.user.id.toString()) {
-          socket.join(`business:${businessId}:admin`);
-          trackHubSocket(businessId, socket.id);
-        } else {
-          socket.emit("error", { message: "Unauthorized: not the owner of this business" });
-        }
+        grants.get(socket.id)?.set(room, { type, id });
+        if (type === "admin") trackHubSocket(id, socket.id);
       } catch {
-        socket.emit("error", { message: "Authorization check failed" });
-      }
-    });
-
-    // Private room for targeted user notifications & wallet updates
-    socket.on("join:user", ({ userId }) => {
-      if (!userId) return;
-
-      // Allow users to join their private updates
-      if (!socket.user || (socket.user.id.toString() !== userId.toString() && socket.user.role !== "admin")) {
-        socket.emit("error", { message: "Access denied to foreign user notifications" });
-        return;
-      }
-
-      socket.join(`user:${userId}`);
-      trackUserSocket(userId, socket.id);
-    });
-
-    // Booking-specific chat room
-    socket.on("join:booking", async ({ bookingId }) => {
-      if (!bookingId || !socket.user) return;
-      try {
-        const booking = await Booking.findById(bookingId);
-        if (!booking) return;
-        let allowed = socket.user.role === "admin" || (booking.userId?._id || booking.userId)?.toString() === socket.user.id.toString();
-        if (!allowed && socket.user.role === "owner") {
-          const businessId = booking.businessId?._id || booking.businessId;
-          allowed = Boolean(await Business.findOne({_id:businessId,owner:socket.user.id,approvalStatus:"approved"}));
+        deny(socket, "Private room authorization failed");
+        if (socket.authToken) {
+          untrackSocket(socket.id);
+          socket.disconnect(true);
         }
-        if (allowed) socket.join(`booking:${bookingId}`);
-        else socket.emit("error", {message:"Access denied to this booking."});
-      } catch {
-        socket.emit("error", {message:"Unable to join this booking."});
       }
     });
-
-    // Leave rooms
-    socket.on("leave:room", ({ businessId, userId, bookingId }) => {
+    privateJoin("join:admin", "businessId", "admin");
+    privateJoin("join:user", "userId", "user");
+    privateJoin("join:booking", "bookingId", "booking");
+    socket.on("leave:room", async payload => {
+      const businessId = payloadId(payload, "businessId");
+      const userId = payloadId(payload, "userId");
+      const bookingId = payloadId(payload, "bookingId");
       if (businessId) {
-        socket.leave(`business:${businessId}`);
-        socket.leave(`business:${businessId}:admin`);
-        const subs = socketSubscriptions.get(socket.id);
-        if (subs) {
-          subs.hubIds.delete(businessId.toString());
-          const hubSet = onlineHubs.get(businessId.toString());
-          if (hubSet) {
-            hubSet.delete(socket.id);
-            if (hubSet.size === 0) onlineHubs.delete(businessId.toString());
-          }
-        }
+        await socket.leave(`business:${businessId}`);
+        await removeGrant(socket, `business:${businessId}:admin`);
       }
-      if (userId) {
-        socket.leave(`user:${userId}`);
-      }
-      if (bookingId) {
-        socket.leave(`booking:${bookingId}`);
-      }
+      if (userId) await removeGrant(socket, `user:${userId}`);
+      if (bookingId) await removeGrant(socket, `booking:${bookingId}`);
     });
-
     socket.on("disconnect", () => {
+      connections.delete(socket);
+      grants.delete(socket.id);
       untrackSocket(socket.id);
     });
   });
