@@ -1,3 +1,4 @@
+import './BusinessDashboard.css'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { hasActiveSubscription } from '../utils/subscription'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -522,8 +523,8 @@ export default function BusinessDashboard() {
   }
 
   const renderSidebarContent = (isMobile = false) => (
-    <div className="flex flex-col justify-between min-h-full h-full space-y-6">
-      <div className="space-y-6">
+    <div className="venue-sidebar-shell">
+      <div className="venue-sidebar-navigation space-y-6">
         {/* Hub Identity Card in Sidebar */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border border-[#BDE8CB] shadow-2xs">
           <div className="flex items-center gap-3">
@@ -557,7 +558,7 @@ export default function BusinessDashboard() {
         </div>
 
         {/* Section 1: Command Operations (Tabs) */}
-        <div className="space-y-1">
+        <nav className="space-y-1" aria-label="Venue operations">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1">
             Operations Console
           </p>
@@ -638,10 +639,10 @@ export default function BusinessDashboard() {
               </button>
             )
           })}
-        </div>
+        </nav>
 
         {/* Section 2: Platform & Route Switchers */}
-        <div className="space-y-1 pt-2 border-t border-zinc-100">
+        <nav className="venue-route-links space-y-1 pt-2 border-t border-zinc-100" aria-label="Navigate and views">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1">
             Navigate & Views
           </p>
@@ -700,50 +701,37 @@ export default function BusinessDashboard() {
             <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
           </button>
 
-          {/* Payment Settings */}
+          {/* Payment settings use a second line so the status never crowds the label. */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('profile')
               if (isMobile) setMobileSidebarOpen(false)
             }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
+            className="venue-nav-with-status"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-teal shrink-0">
-                <CreditCard className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">Payment Settings</span>
-            </div>
-            <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
-              Pay at Counter
-            </span>
+            <span className="venue-nav-icon icon-3d icon-3d-teal"><CreditCard className="w-3.5 h-3.5" /></span>
+            <span className="venue-nav-label">Payment Settings</span>
+            <span className="venue-nav-status">Pay at Counter</span>
           </button>
 
-          {/* My Subscription (Redirect to /subscription) */}
           <button
             type="button"
             onClick={() => {
               navigate('/subscription')
               if (isMobile) setMobileSidebarOpen(false)
             }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-[#114227] hover:bg-[#EAF7EE]/80 transition-colors cursor-pointer"
+            className="venue-nav-with-status"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-amber shrink-0">
-                <Crown className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">My Subscription</span>
-            </div>
-            <span className="text-[10px] font-bold text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#BDE8CB]">
-              {user?.subscription?.status === 'ACTIVE' ? user.subscription.plan : 'Manage'}
-            </span>
+            <span className="venue-nav-icon icon-3d icon-3d-amber"><Crown className="w-3.5 h-3.5" /></span>
+            <span className="venue-nav-label">My Subscription</span>
+            <span className="venue-nav-status">{user?.subscription?.status === 'ACTIVE' ? user.subscription.plan : 'Manage'}</span>
           </button>
-        </div>
+        </nav>
       </div>
 
       {/* Bottom Sidebar: User snapshot, Help & Logout */}
-      <div className="pt-4 border-t border-zinc-100 space-y-1">
+      <div className="venue-sidebar-account space-y-1">
         {/* User Card */}
         <button
           type="button"
@@ -791,7 +779,7 @@ export default function BusinessDashboard() {
   )
 
   return (
-    <div className="business-page min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
+    <div className="business-page venue-console app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
       {/* ── TOP STICKY HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-[#f7fcf9]/90 backdrop-blur-md border-b border-[#BDE8CB]/70 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
@@ -930,7 +918,7 @@ export default function BusinessDashboard() {
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
         {/* Desktop Left Sidebar */}
-        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-[#BDE8CB]/70 h-[calc(100vh-61px)] h-[calc(100dvh-61px)] min-h-[calc(100vh-61px)] bg-[#f7fcf9]/80 backdrop-blur-md sticky top-[61px] self-start overflow-y-auto">
+        <aside className="venue-sidebar shrink-0 hidden lg:flex flex-col px-4 border-r border-[#BDE8CB]/70 bg-[#f7fcf9]/80 backdrop-blur-md sticky self-start">
           {renderSidebarContent(false)}
         </aside>
 
@@ -950,9 +938,9 @@ export default function BusinessDashboard() {
                 animate={{ x: 0 }}
                 exit={{ x: -280 }}
                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                className="relative w-72 max-w-[85vw] bg-white h-full z-10 shadow-2xl p-4 flex flex-col justify-between overflow-y-auto"
+                className="venue-mobile-sidebar relative w-72 max-w-[85vw] bg-white z-10 shadow-2xl p-4 flex flex-col"
               >
-                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 mb-3">
+                <div className="shrink-0 flex items-center justify-between pb-3 border-b border-zinc-100 mb-3">
                   <div className="flex items-center gap-2">
                     <img src="/serveq-logo.png" alt="serveQ" className="h-6 w-auto" />
                     <span className="text-[10px] font-black uppercase text-[#114227] bg-[#EAF7EE] px-2 py-0.5 rounded-full">
@@ -962,6 +950,7 @@ export default function BusinessDashboard() {
                   <button
                     type="button"
                     onClick={() => setMobileSidebarOpen(false)}
+                    aria-label="Close navigation menu"
                     className="p-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-600 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
@@ -1148,10 +1137,10 @@ export default function BusinessDashboard() {
 
               {/* Queue Table */}
               <div className="business-surface lg:col-span-12 bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">
-                <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
+                <div className="venue-roster-header">
                   <div>
-                    <h3 className="text-sm font-black text-zinc-950 uppercase tracking-wider">Queue Roster</h3>
-                    <p className="text-xs text-slate-400">Total waiting customers: {users.filter(u => u.status === 'waiting').length}</p>
+                    <h3>Queue roster</h3>
+                    <p>Total waiting customers: {users.filter(u => u.status === 'waiting').length}</p>
                   </div>
                   <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
                     Live Synced
@@ -1159,8 +1148,10 @@ export default function BusinessDashboard() {
                 </div>
 
                 {users.length === 0 ? (
-                  <div className="p-16 text-center text-slate-400">
-                    The queue is empty. Customers joining online will appear here in real-time.
+                  <div className="venue-queue-empty">
+                    <span className="venue-empty-icon" aria-hidden="true"><Ticket size={24} strokeWidth={1.5} /></span>
+                    <h4>No one is waiting</h4>
+                    <p>Customers joining online will appear here in real time.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">

@@ -66,6 +66,9 @@ export default function App() {
   const location = useLocation()
   const isHubPage = location.pathname.startsWith('/hub')
   const isOnboarding = location.pathname.startsWith('/business/onboarding')
+  const isVenueDashboard = !isOnboarding && location.pathname !== '/business/apply' &&
+    ['/business/:businessId', '/business/:businessId/manage'].some(path =>
+      matchPath({ path, end: true }, location.pathname))
   const isCustomerWorkspace = Boolean(user && !['owner', 'admin'].includes(user.role) &&
     (/^\/(customers|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
   const isBusinessWorkspace = Boolean(user && ['owner', 'admin'].includes(user.role) &&
@@ -332,7 +335,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isHubPage && !isLoginPage && !isStandalonePage && !isCustomerWorkspace && location.pathname !== '/customers' && <Footer />}
+      {!isHubPage && !isVenueDashboard && !isLoginPage && !isStandalonePage && !isCustomerWorkspace && location.pathname !== '/customers' && <Footer />}
     </div>
   )
 }
