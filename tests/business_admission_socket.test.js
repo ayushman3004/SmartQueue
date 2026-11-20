@@ -24,7 +24,7 @@ test("socket authentication and business isolation", async (t) => {
     },
   };
   initSocket(io);
-  let current = { _id: "111111111111111111111111", role: "owner", tokenVersion: 0 };
+  let current = { _id: "111111111111111111111111", role: "owner", businessCategories: ["salon"], tokenVersion: 0 };
   t.mock.method(User, "findById", async () => current);
   const socket = {
     id: "socket-admission",
@@ -72,7 +72,7 @@ test("socket authentication and business isolation", async (t) => {
   await t.test(
     "active owner cannot join a foreign booking private room",
     async () => {
-      current = { _id: "111111111111111111111111", role: "owner", tokenVersion: 0 };
+      current = { _id: "111111111111111111111111", role: "owner", businessCategories: ["salon"], tokenVersion: 0 };
       let error;
       await authenticate(socket, (value) => {
         error = value;
@@ -100,7 +100,7 @@ test("socket authentication and business isolation", async (t) => {
       assert.match(errors.at(-1).message, /Access denied/);
       assert.equal(socket.leave.mock.calls.at(-1).arguments[0], "booking:222222222222222222222222");
       assert.equal(socket.disconnect.mock.callCount(), 0);
-      t.mock.method(Business, "findOne", async () => ({ _id: "own-hub" }));
+      t.mock.method(Business, "findOne", async () => ({ _id: "own-hub", category: "salon" }));
       await handlers.get("join:booking")({ bookingId: "333333333333333333333333" });
       assert.equal(rooms.includes("booking:333333333333333333333333"), true);
       assert.equal(socket.disconnect.mock.callCount(), 0);

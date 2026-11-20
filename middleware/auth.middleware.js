@@ -1,4 +1,6 @@
 import { ownerState } from "../src/modules/business-application/owner-lifecycle.js";
+import { canAccessOwnerCategory } from "../src/utils/ownerCategory.js";
+import Booking from "../src/booking/booking.model.js";
 import Business from "../src/modules/business/business.model.js";
 import jwt from "jsonwebtoken";
 import ApiError from "../utils/ApiError.js";
@@ -87,10 +89,16 @@ export const allowRoles = (...roles) =>
     if (!roles.includes(req.user.role)) {
       throw new ApiError(403, "Access denied: insufficient permissions");
     }
-    const businessId = req.params?.businessId || (req.originalUrl?.startsWith("/api/businesses/") ? req.params?.id : null);
+    let businessId = req.params?.businessId || (req.originalUrl?.startsWith("/api/businesses/") ? req.params?.id : null);
+    if (req.user.role === "owner" && !businessId && req.params?.id && req.originalUrl?.startsWith("/api/bookings/")) {
+      const booking = await Booking.findById(req.params.id);
+      if (!booking) throw new ApiError(404, "Booking not found.");
+      businessId = booking.businessId?._id || booking.businessId;
+    }
     if (req.user.role === "owner" && businessId) {
       const hub = await Business.findOne({_id:businessId,owner:req.user._id,approvalStatus:"approved"});
       if (!hub) throw new ApiError(403, "Business not found, not approved, or not owned by this account.");
+      if (!canAccessOwnerCategory(req.user, hub)) throw new ApiError(403, "This category is not enabled for your account. Ask the admin for access.");
     }
     next();
   });

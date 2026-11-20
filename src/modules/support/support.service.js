@@ -25,10 +25,10 @@ export const createSupportMessage = async ({
 
   if (userRole === "owner" && userId) {
     try {
-      const biz = await Business.findOne({ ownerId: userId }).select("businessName");
+      const biz = await Business.findOne({ owner: userId }).select("name");
       if (biz) {
         businessId = biz._id;
-        businessName = biz.businessName;
+        businessName = biz.name;
       }
     } catch (bizErr) {
       console.warn("⚠️ Error fetching business details for support ticket:", bizErr.message);

@@ -6,8 +6,26 @@ import ApiError from "../../../utils/ApiError.js";
 import Review from "../review/review.model.js";
 import { isBusinessSubscriptionActive } from "../subscription/subscription.service.js";
 
-export const createBusiness = async (ownerId, data) => {
-  const payload = { ...data, owner: ownerId };
+export const isCategoryLocked = (business) => Boolean(business.categorySelectedAt || business.onboarding?.status === "COMPLETED" || business.onboarding?.completedSteps?.includes(1));
+
+export const selectBusinessCategory = async (id, ownerId, category) => {
+  if (!["clinic", "salon"].includes(category)) throw new ApiError(400, "Choose clinic or salon");
+  const business = await Business.findOne({ _id: id, owner: ownerId });
+  if (!business) throw new ApiError(404, "Business not found");
+  if (!await isBusinessSubscriptionActive(business)) throw new ApiError(403, "Complete payment before choosing your business category");
+  if (isCategoryLocked(business)) throw new ApiError(403, "Ask the admin to change your business category");
+  const selected = await Business.findOneAndUpdate(
+    { _id: id, owner: ownerId, categorySelectedAt: null },
+    { $set: { category, categorySelectedAt: new Date() } },
+    { new: true, runValidators: true }
+  );
+  if (!selected) throw new ApiError(409, "Category already selected. Refresh to continue.");
+  return selected;
+};
+
+export const createBusiness = async (ownerId, data, userRole = null) => {
+  if (userRole !== "admin" && await Business.exists({ owner: ownerId })) throw new ApiError(403, "Ask the admin to add another clinic or salon to your business.");
+  const payload = { ...data, owner: ownerId, categorySelectedAt: null };
   if (Array.isArray(payload.services) && payload.services.length > 0) {
     payload.services = payload.services
       .map(s => ({
@@ -351,11 +369,15 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
   const { owner: _owner, _id: _idField, __v: _version, createdAt: _createdAt, updatedAt: _updatedAt, ...safeData } = data;
 
   if (userRole !== "admin") {
+    delete safeData.categorySelectedAt;
+    if (safeData.category && safeData.category !== b.category) throw new ApiError(403, "Ask the admin to change your business category.");
     delete safeData.isActive;
     delete safeData.approvalStatus;
     delete safeData.subscription;
     delete safeData.onboarding;
   }
+
+  if (userRole === "admin" && safeData.category) safeData.categorySelectedAt = new Date();
 
   // Validate averageServiceTime if provided
   if (safeData.averageServiceTime != null) {
@@ -466,6 +488,7 @@ export const initOnboarding = async (ownerId, data = {}) => {
     }
   }
 
+  if (await Business.exists({ owner: ownerId })) throw new ApiError(403, "Ask the admin to add another clinic or salon to your business.");
   const defaultCategory = data.category || "salon";
   const isClinic = defaultCategory === "clinic" || defaultCategory === "healthcare";
 
@@ -571,6 +594,7 @@ export const initOnboarding = async (ownerId, data = {}) => {
 export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
   const b = await Business.findOne({ _id: id, owner: ownerId });
   if (!b) throw new ApiError(404, "Business not found or unauthorized");
+  if (!isCategoryLocked(b)) throw new ApiError(403, "Choose clinic or salon before continuing setup.");
 
   const step = Number(stepNumber);
   if (![1, 2, 3, 4, 5, 6].includes(step)) {
@@ -601,7 +625,7 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
         if (!allowed.includes(stepData.category)) {
           throw new ApiError(400, `Category must be one of: ${allowed.join(", ")}`);
         }
-        b.category = stepData.category;
+        if (stepData.category !== b.category) throw new ApiError(403, "Choose your category through the business gate. Later changes require the admin.");
       }
 
       if (stepData.description !== undefined) {
@@ -832,6 +856,7 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
 export const launchBusiness = async (id, ownerId, io = null) => {
   const b = await Business.findOne({ _id: id, owner: ownerId });
   if (!b) throw new ApiError(404, "Business not found or unauthorized");
+  if (!isCategoryLocked(b)) throw new ApiError(403, "Choose clinic or salon before continuing setup.");
 
   if (b.onboarding?.status === "COMPLETED") {
     return b; // Idempotent

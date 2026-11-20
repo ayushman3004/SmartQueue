@@ -1,3 +1,4 @@
+import { generateInvitationCredentials } from "./invitation-credentials.js";
 import { isValidEmail } from "../../utils/validators.js";
 import crypto from "node:crypto";
 import mongoose from "mongoose";
@@ -204,8 +205,7 @@ export const reviewApplication = async (
   if (!["approve", "reissue"].includes(action))
     throw new ApiError(400, "Invalid review action.");
   // Transactions are required: never provision a partially approved owner on standalone MongoDB.
-  const password = `Sq!${crypto.randomBytes(24).toString("base64url")}9aA`;
-  const credential = crypto.randomBytes(32).toString("base64url");
+  const { password, credential } = generateInvitationCredentials();
   const passwordHash = await hashPassword(password);
   const generation = crypto.randomUUID();
   const expiresAt = new Date(now.getTime() + INVITATION_MS);
@@ -354,7 +354,7 @@ export const validateInvitation = async (
   if (
     ownerState(user, now) !== "INVITED" ||
     typeof credential !== "string" ||
-    credential.length > 128
+    !/^[0-9]{6}$/.test(credential)
   )
     throw new ApiError(
       403,

@@ -274,14 +274,18 @@ export default function HubLoginPage() {
           </label>
           {activation && (
             <label>
-              Single-use activation code
+              Single-use activation code (6 digits)
               <input
                 name="activationCredential"
                 autoFocus={activationRequested}
                 type="password"
                 autoComplete="off"
                 required
-                maxLength="128"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                minLength={6}
+                maxLength={6}
+                title="Enter the six-digit activation code from your invitation email"
               />
             </label>
           )}

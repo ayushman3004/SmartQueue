@@ -22,8 +22,8 @@ test('private Socket.IO rooms enforce authorization on actual connections', asyn
   const previous = process.env.JWT_SECRET;
   process.env.JWT_SECRET = 'private-socket-regression-secret';
   t.after(() => { if (previous === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = previous; });
-  const users = new Map([customer, other, owner, admin].map(id => [id, { _id: id, role: id === owner ? 'owner' : id === admin ? 'admin' : 'user', tokenVersion: 0 }]));
-  const businesses = new Map([[venue, { _id: venue, owner, approvalStatus: 'approved' }], [foreignVenue, { _id: foreignVenue, owner: other, approvalStatus: 'approved' }]]);
+  const users = new Map([customer, other, owner, admin].map(id => [id, { _id: id, role: id === owner ? 'owner' : id === admin ? 'admin' : 'user', tokenVersion: 0, businessCategories: ['salon'] }]));
+  const businesses = new Map([[venue, { _id: venue, owner, category: 'salon', approvalStatus: 'approved' }], [foreignVenue, { _id: foreignVenue, owner: other, approvalStatus: 'approved' }]]);
   t.mock.method(User, 'findById', async id => users.get(String(id)));
   t.mock.method(Business, 'findById', async id => businesses.get(String(id)));
   t.mock.method(Business, 'findOne', async query => {

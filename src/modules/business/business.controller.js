@@ -1,3 +1,4 @@
+import { canAccessOwnerCategory } from "../../utils/ownerCategory.js";
 import BusinessApplication from "../business-application/business-application.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import * as businessService from "./business.service.js";
@@ -6,7 +7,7 @@ import ApiResponse from "../../../utils/ApiResponse.js";
 
 export const create = asyncHandler(async (req, res) => {
   if (req.user.ownerAccess?.applicationId) throw new ApiError(403, "Apply for approval before adding another business.");
-  const business = await businessService.createBusiness(req.user._id, req.body);
+  const business = await businessService.createBusiness(req.user._id, req.body, req.user.role);
   const io = req.app.get("io");
   if (io) {
     io.emit("service:created", { businessId: business._id, business });
@@ -35,7 +36,8 @@ export const getOne = asyncHandler(async (req, res) => {
 });
 
 export const getMine = asyncHandler(async (req, res) => {
-  const businesses = await businessService.getMyBusinesses(req.user._id);
+  const ownedBusinesses = await businessService.getMyBusinesses(req.user._id);
+  const businesses = ownedBusinesses.filter(business => canAccessOwnerCategory(req.user, business));
   res.json(new ApiResponse(200, { businesses }));
 });
 
@@ -61,6 +63,11 @@ export const toggle = asyncHandler(async (req, res) => {
 
 export const getOnboardingDraft = asyncHandler(async (req, res) => {
   const business = await businessService.getOnboardingDraft(req.user._id, req.query.businessId);
+  if (business && !canAccessOwnerCategory(req.user, business)) throw new ApiError(403, "Ask the admin to enable this venue category.");
+  if (business && !businessService.isCategoryLocked(business)) {
+    business.categorySelectedAt = new Date();
+    await business.save();
+  }
   res.json(new ApiResponse(200, { business }));
 });
 
@@ -72,7 +79,12 @@ export const initOnboarding = asyncHandler(async (req, res) => {
     if (!application?.linkedHubId) throw new ApiError(403, "An approved business is required to start onboarding.");
     business = await businessService.getOnboardingDraft(req.user._id, application.linkedHubId);
   } else {
-    business = await businessService.initOnboarding(req.user._id, req.body);
+    business = await businessService.initOnboarding(req.user._id, { ...req.body, category: req.user.businessCategories?.[0] || req.body.category });
+  }
+  if (!canAccessOwnerCategory(req.user, business)) throw new ApiError(403, "Ask the admin to enable this venue category.");
+  if (!businessService.isCategoryLocked(business)) {
+    business.categorySelectedAt = new Date();
+    await business.save();
   }
   res.status(201).json(new ApiResponse(201, { business }, "Onboarding session initialized"));
 });
@@ -94,3 +106,9 @@ export const launchBusiness = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { business }, "Your business is ready on ServeQ!"));
 });
 
+
+export const selectCategory = asyncHandler(async (req, res) => {
+  if (!canAccessOwnerCategory(req.user, { category: req.body.category })) throw new ApiError(403, "Ask the admin to enable this category.");
+  const business = await businessService.selectBusinessCategory(req.params.id, req.user._id, req.body.category);
+  res.json(new ApiResponse(200, { business }, "Business category selected"));
+});

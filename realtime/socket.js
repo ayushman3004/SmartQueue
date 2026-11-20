@@ -1,3 +1,4 @@
+import { canAccessOwnerCategory } from "../src/utils/ownerCategory.js";
 import Booking from "../src/booking/booking.model.js";
 import User from "../src/modules/auth/auth.model.js";
 import { ownerState } from "../src/modules/business-application/owner-lifecycle.js";
@@ -92,7 +93,7 @@ const refreshSession = async socket => {
   if (!id || decoded.purpose === "activation") throw new Error("Invalid session");
   const user = await User.findById(id);
   if (!user || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0) || ownerState(user) !== "ACTIVE") throw new Error("Account activation or password change required.");
-  socket.user = { _id: id, id, role: user.role };
+  socket.user = { _id: id, id, role: user.role, businessCategories: user.businessCategories || [] };
   return user;
 };
 
@@ -102,13 +103,14 @@ const mayJoinPrivateRoom = async (socket, type, id) => {
   if (type === "user") return id === user.id;
   if (type === "admin") {
     const business = await Business.findById(id);
-    return Boolean(business && (user.role === "admin" || (user.role === "owner" && business.approvalStatus === "approved" && refId(business.owner) === user.id)));
+    return Boolean(business && (user.role === "admin" || (user.role === "owner" && business.approvalStatus === "approved" && refId(business.owner) === user.id && canAccessOwnerCategory(user, business))));
   }
   const booking = await Booking.findById(id);
   if (!booking) return false;
   if (user.role === "admin" || refId(booking.userId) === user.id) return true;
   if (user.role !== "owner") return false;
-  return Boolean(await Business.findOne({ _id: booking.businessId?._id || booking.businessId, owner: user.id, approvalStatus: "approved" }));
+  const business = await Business.findOne({ _id: booking.businessId?._id || booking.businessId, owner: user.id, approvalStatus: "approved" });
+  return Boolean(business && canAccessOwnerCategory(user, business));
 };
 
 /** Socket rooms are server-owned; private subscriptions require a live session. */

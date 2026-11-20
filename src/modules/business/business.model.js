@@ -16,6 +16,7 @@ const businessSchema = new mongoose.Schema(
       enum: ["salon", "clinic", "healthcare", "other"],
       default: "salon",
     },
+    categorySelectedAt: { type: Date, default: null },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

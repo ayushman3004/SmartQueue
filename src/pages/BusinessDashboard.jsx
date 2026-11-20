@@ -1830,6 +1830,7 @@ export default function BusinessDashboard() {
                   <div>
                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Category</label>
                     <select
+                      disabled={user?.role !== 'admin'}
                       value={profileForm.category}
                       onChange={(e) => setProfileForm(p => ({ ...p, category: e.target.value }))}
                       className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
@@ -1838,6 +1839,7 @@ export default function BusinessDashboard() {
                         <option key={cat} value={cat}>{CATEGORY_METADATA[cat]?.label || cat.toUpperCase()}</option>
                       ))}
                     </select>
+                    <a href="/support" className="mt-2 block text-xs font-semibold text-teal-700 underline">Ask the admin to change category or add a clinic or salon</a>
                   </div>
 
                   <div>

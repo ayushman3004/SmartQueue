@@ -8,12 +8,13 @@ import { toast } from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import {
   getOnboardingDraft,
+  selectBusinessCategory,
   initOnboarding,
   saveOnboardingStep,
   launchBusiness,
   getMyBusinesses,
 } from '../api/business.api'
-import { CATEGORY_METADATA, SERVICE_PRESETS, STAFF_PRESETS, ALLOWED_CATEGORIES } from '../utils/servicePresets'
+import { CATEGORY_METADATA, SERVICE_PRESETS, STAFF_PRESETS } from '../utils/servicePresets'
 import { useSeo } from '../utils/useSeo'
 import { sendEmailOtp, verifyEmailOtp } from '../api/auth.api'
 import {
@@ -460,18 +461,7 @@ export default function BusinessOnboardingPage() {
     reader.readAsDataURL(file)
   }
 
-  // Handle Category Switch with preset assistance
-  const handleCategorySwitch = (newCat) => {
-    setStep1((prev) => ({ ...prev, category: newCat }))
-    if (services.length === 0) {
-      const presets = SERVICE_PRESETS[newCat] || []
-      setServices(presets.map((p) => ({ ...p, isAvailable: true, description: '' })))
-    }
-    if (staff.length === 0) {
-      const staffPreset = STAFF_PRESETS[newCat]?.defaults || []
-      setStaff(staffPreset.map((s) => ({ ...s, isAvailable: true })))
-    }
-  }
+
 
   // Step 2 Schedule Toggle
   const toggleDaySchedule = (dayIndex) => {
@@ -871,6 +861,31 @@ export default function BusinessOnboardingPage() {
     return <OnboardingStudioSkeleton />
   }
 
+  const categoryLocked = business?.categorySelectedAt || business?.onboarding?.status === 'COMPLETED' || business?.onboarding?.completedSteps?.includes(1)
+  if (business && !categoryLocked) {
+    return <div className="business-page min-h-screen flex items-center justify-center p-6">
+      <main className="w-full max-w-xl space-y-6 rounded-3xl border border-zinc-200 bg-white p-6 sm:p-10">
+        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Payment complete · Choose your business</p>
+        <h1 className="text-3xl font-bold">What do you run?</h1>
+        <p className="text-sm text-zinc-600">Choose clinic or salon to continue setup. Once selected, changes and additional venues require admin approval.</p>
+        <div className="grid grid-cols-2 gap-4">
+          {['clinic', 'salon'].map(category => <button key={category} type="button" disabled={saving}
+            className="rounded-2xl border border-teal-200 bg-teal-50 p-6 text-lg font-bold capitalize text-teal-900 disabled:opacity-50"
+            onClick={async () => {
+              setSaving(true)
+              try {
+                const response = await selectBusinessCategory(business._id, category)
+                populateFromBusiness(response.data.data.business)
+              } catch (error) {
+                toast.error(error.response?.data?.message || 'Could not save your business category. Please retry.')
+              } finally { setSaving(false) }
+            }}>{category}</button>)}
+        </div>
+        <Link to="/support" className="block text-sm font-semibold text-teal-700 underline">Ask the admin for help</Link>
+      </main>
+    </div>
+  }
+
   const completedSet = new Set(business?.onboarding?.completedSteps || [])
 
   return (
@@ -1018,30 +1033,10 @@ export default function BusinessOnboardingPage() {
                 </p>
               </div>
 
-              {/* Category Selector */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-700 block">
-                  Select Business Category *
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {ALLOWED_CATEGORIES.map((cat) => {
-                    const meta = CATEGORY_METADATA[cat] || {}
-                    const isSelected = step1.category === cat
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => handleCategorySwitch(cat)}
-                        className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 ${isSelected
-                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
-                            : 'bg-zinc-50 border-zinc-200 text-zinc-800 hover:bg-zinc-100'
-                          }`}
-                      >
-                        <span className="text-xs font-bold uppercase tracking-wider">{meta.label || cat}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+              <div className="space-y-2 rounded-2xl border border-zinc-200 p-4">
+                <p className="text-sm font-bold capitalize">{step1.category} business</p>
+                <p className="text-xs text-zinc-500">Your business category is saved. Ask the admin to change it or add another clinic or salon.</p>
+                <Link to="/support" className="text-sm font-semibold text-teal-700 underline">Request a change or another venue</Link>
               </div>
 
               {/* Form Inputs */}

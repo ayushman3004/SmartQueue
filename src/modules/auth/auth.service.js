@@ -235,6 +235,7 @@ export const sanitize = (user) => ({
   isEmailVerified: Boolean(user.isEmailVerified),
   bio: user.bio || "",
   location: user.location || "",
+  businessCategories: user.businessCategories || [],
   ownerAccess: publicOwnerAccess(user),
   subscription: user.subscription || { plan: "NONE", status: "INACTIVE", amount: 0 },
 });

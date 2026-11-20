@@ -302,6 +302,8 @@ test("application and owner activation lifecycle", async (t) => {
         creds = invitation(s);
       assert.equal(s.application.status, "APPROVED");
       assert.equal(s.user.role, "owner");
+      assert.equal(creds.password.length, 8);
+      assert.match(creds.credential, /^[0-9]{6}$/);
       assert.equal(s.user.ownerAccess.status, "INVITED");
       assert.equal(s.hub.owner, uid);
       assert.equal(s.hub.onboarding.status, "IN_PROGRESS");
@@ -852,6 +854,8 @@ test("application and owner activation lifecycle", async (t) => {
     async (t) => {
       const store = await approved(t);
       store.hub.onboarding.status = "COMPLETED";
+      store.hub.category = "clinic";
+      store.user.businessCategories = ["clinic"];
       t.mock.method(Application, "findOne", () => query(store.application));
       let result;
       let failure;

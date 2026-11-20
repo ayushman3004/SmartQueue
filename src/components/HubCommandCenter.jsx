@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getMyBusinesses } from '../api/business.api'
+import { getAccessibleBusinesses as getMyBusinesses } from '../api/business.api'
 import { toast } from 'react-hot-toast'
 import RegisterHubModal from './RegisterHubModal'
 import ManageServicesModal from './ManageServicesModal'
@@ -53,7 +53,7 @@ export default function HubCommandCenter() {
     if (!isEmailVerified) {
       toast.error('Email verification required! Please verify your email before onboarding.')
     }
-    navigate('/business/onboarding')
+    navigate('/support')
   }
 
   const loadHubs = useCallback(async () => {
@@ -312,7 +312,7 @@ export default function HubCommandCenter() {
               <span className="w-7 h-7 rounded-xl icon-3d icon-3d-emerald shrink-0">
                 <Plus className="w-3.5 h-3.5" />
               </span>
-              <span className="truncate">Register New Hub</span>
+              <span className="truncate">Request another venue</span>
             </div>
             <ArrowRight className="w-3.5 h-3.5 text-emerald-600" />
           </button>

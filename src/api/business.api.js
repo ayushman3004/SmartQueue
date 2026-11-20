@@ -20,3 +20,9 @@ export const saveOnboardingStep = (id, step, data) =>
 export const launchBusiness = (id) =>
   api.post(`/businesses/${id}/onboarding/launch`);
 
+
+export const selectBusinessCategory = (id, category) => api.post(`/businesses/${id}/category`, { category });
+
+export const getOwnerCategories = () => api.get('/businesses/owner-category');
+export const chooseOwnerCategory = (category) => api.post('/businesses/owner-category', { category });
+export const getAccessibleBusinesses = () => api.get('/businesses/accessible');

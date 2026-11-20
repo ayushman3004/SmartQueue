@@ -31,6 +31,7 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
     const fakeBiz = new Business({
       _id: businessId,
       name: "Draft Venue",
+      categorySelectedAt: new Date(),
       category: "salon",
       owner: ownerId,
       onboarding: { status: "IN_PROGRESS", currentStep: 1, completedSteps: [] },

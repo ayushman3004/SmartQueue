@@ -1,3 +1,4 @@
+import OwnerCategoryBoundary from './components/OwnerCategoryBoundary'
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, matchPath, useLocation } from 'react-router-dom'
 import { Toaster, toast } from 'react-hot-toast'
@@ -57,6 +58,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     if (!['ACTIVE', 'PASSWORD_REQUIRED'].includes(user.ownerAccess.status)) return <Navigate to="/hub/login" replace />
     if (user.ownerAccess.mustChangePassword && now >= new Date(user.ownerAccess.passwordChangeDeadline).getTime() && location.pathname !== '/hub/change-password') return <Navigate to="/hub/change-password" replace />
   }
+  if (user.role === 'owner' && (location.pathname === '/hub/dashboard' || location.pathname.startsWith('/business/'))) return <OwnerCategoryBoundary>{children}</OwnerCategoryBoundary>
   return children
 }
 

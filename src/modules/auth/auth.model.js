@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema(
       enum: ["customer", "owner", "admin"],
       default: "customer",
     },
+    businessCategories: { type: [String], enum: ["clinic", "salon"], default: [] },
     walletBalance: {
       type: Number,
       default: 0,
