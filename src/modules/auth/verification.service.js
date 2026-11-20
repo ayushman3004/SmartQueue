@@ -11,7 +11,7 @@ import { getMailTransporter } from "../email/email.service.js";
  * Robust Email Sender Helper (without Twilio)
  * Uses Nodemailer and Resend API to deliver OTPs directly to inbox.
  */
-export const sendEmailMessage = async ({ to, subject, html, text }) => {
+export const sendEmailWithReceipt = async ({ to, subject, html, text }) => {
   const from = process.env.EMAIL_SECURITY_FROM || '"ServeQ Security" <security@serveq.tech>';
   const replyTo = process.env.EMAIL_SUPPORT || "support@serveq.tech";
 
@@ -37,8 +37,8 @@ export const sendEmailMessage = async ({ to, subject, html, text }) => {
       });
       const data = await response.json();
       if (response.ok) {
-        console.log(`✅ [Resend API] Delivered to ${to} (ID: ${data.id})`);
-        return true;
+        console.log(`✅ [Resend API] Accepted for ${to} (ID: ${data.id})`);
+        return { accepted: true, resendId: data.id };
       }
       console.warn("[email] Provider rejected delivery", response.status);
     } catch (fetchErr) {
@@ -50,7 +50,7 @@ export const sendEmailMessage = async ({ to, subject, html, text }) => {
   const transporter = getMailTransporter();
   if (transporter) {
     try {
-      await transporter.sendMail({
+      const receipt = await transporter.sendMail({
         from,
         to,
         replyTo,
@@ -58,15 +58,16 @@ export const sendEmailMessage = async ({ to, subject, html, text }) => {
         text,
         html,
       });
-      console.log(`✅ [Nodemailer] Delivered email to ${to}`);
-      return true;
+      return { accepted: Boolean(receipt.accepted?.length) };
     } catch (nmErr) {
       console.warn("[email] SMTP delivery failed", nmErr.code);
     }
   }
 
-  return false;
+  return { accepted: false };
 };
+
+export const sendEmailMessage = async (message) => (await sendEmailWithReceipt(message)).accepted;
 
 /**
  * ─── EMAIL VERIFICATION OTP (using nodemailer-otp & nodemailer) ────

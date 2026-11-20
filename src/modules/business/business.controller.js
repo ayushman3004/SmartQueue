@@ -1,3 +1,11 @@
+const publicBusiness = business => {
+  const value = business.toObject?.() || business;
+  return { ...value, staff: value.staff?.map(member => {
+    const { email: _email, doctorId: _doctorId, ...publicMember } = member.toObject?.() || member;
+    return publicMember;
+  }) };
+};
+
 import { canAccessOwnerCategory } from "../../utils/ownerCategory.js";
 import BusinessApplication from "../business-application/business-application.model.js";
 import ApiError from "../../../utils/ApiError.js";
@@ -10,7 +18,7 @@ export const create = asyncHandler(async (req, res) => {
   const business = await businessService.createBusiness(req.user._id, req.body, req.user.role);
   const io = req.app.get("io");
   if (io) {
-    io.emit("service:created", { businessId: business._id, business });
+    io.emit("service:created", { businessId: business._id, business: publicBusiness(business) });
   }
   res.status(201).json(new ApiResponse(201, { business }, "Business created"));
 });
@@ -27,12 +35,12 @@ export const getAll = asyncHandler(async (req, res) => {
     radius,
     onlyWithinRadius,
   });
-  res.json(new ApiResponse(200, { businesses }));
+  res.json(new ApiResponse(200, { businesses: businesses.map(publicBusiness) }));
 });
 
 export const getOne = asyncHandler(async (req, res) => {
   const business = await businessService.getBusinessById(req.params.id);
-  res.json(new ApiResponse(200, { business }));
+  res.json(new ApiResponse(200, { business: publicBusiness(business) }));
 });
 
 export const getMine = asyncHandler(async (req, res) => {
@@ -50,7 +58,7 @@ export const update = asyncHandler(async (req, res) => {
   );
   const io = req.app.get("io");
   if (io) {
-    io.to(`business:${business._id}`).emit("service:updated", { businessId: business._id, business });
+    io.to(`business:${business._id}`).emit("service:updated", { businessId: business._id, business: publicBusiness(business) });
   }
   res.json(new ApiResponse(200, { business }, "Updated"));
 });

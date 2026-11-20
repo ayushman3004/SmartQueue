@@ -1,3 +1,4 @@
+import { isClinic } from "../src/modules/doctor/doctor-access.js";
 import { canAccessOwnerCategory } from "../src/utils/ownerCategory.js";
 import Booking from "../src/booking/booking.model.js";
 import User from "../src/modules/auth/auth.model.js";
@@ -103,14 +104,14 @@ const mayJoinPrivateRoom = async (socket, type, id) => {
   if (type === "user") return id === user.id;
   if (type === "admin") {
     const business = await Business.findById(id);
-    return Boolean(business && (user.role === "admin" || (user.role === "owner" && business.approvalStatus === "approved" && refId(business.owner) === user.id && canAccessOwnerCategory(user, business))));
+    return Boolean(business && (user.role === "admin" || (!isClinic(business) && user.role === "owner" && business.approvalStatus === "approved" && refId(business.owner) === user.id && canAccessOwnerCategory(user, business))));
   }
   const booking = await Booking.findById(id);
   if (!booking) return false;
   if (user.role === "admin" || refId(booking.userId) === user.id) return true;
   if (user.role !== "owner") return false;
   const business = await Business.findOne({ _id: booking.businessId?._id || booking.businessId, owner: user.id, approvalStatus: "approved" });
-  return Boolean(business && canAccessOwnerCategory(user, business));
+  return Boolean(business && !isClinic(business) && canAccessOwnerCategory(user, business));
 };
 
 /** Socket rooms are server-owned; private subscriptions require a live session. */

@@ -1,4 +1,4 @@
-import { sendEmailMessage } from "../auth/verification.service.js";
+import { sendEmailMessage, sendEmailWithReceipt } from "../auth/verification.service.js";
 const escape = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -11,9 +11,10 @@ const escape = (value) =>
         "'": "&#39;",
       })[c],
   );
-export const sendBusinessNotice = async ({ to, subject, lines, action }) => {
+export const sendBusinessNotice = async ({ to, subject, lines, action, includeReceipt = false }) => {
   const text = lines.join("\n\n");
-  return sendEmailMessage({
+  const send = includeReceipt ? sendEmailWithReceipt : sendEmailMessage;
+  return send({
     to,
     subject,
     text,

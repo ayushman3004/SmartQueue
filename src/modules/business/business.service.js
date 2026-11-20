@@ -360,6 +360,29 @@ export const getMyBusinesses = async (ownerId) => {
   return await Business.find({ owner: ownerId });
 };
 
+function doctorRosterIdentity(business, entry) {
+  const stored = business.staff?.find(member => String(member._id) === String(entry._id));
+  const email = String(entry.email ?? stored?.email ?? "").trim().toLowerCase();
+  const doctorId = String(entry.doctorId ?? stored?.doctorId ?? "").trim();
+  if ((email || doctorId) && (!EMAIL_REGEX.test(email) || !doctorId || doctorId.length > 100)) {
+    throw new ApiError(400, "Enter a valid doctor email and registration ID.");
+  }
+  const identityChanged = stored?.email && stored.doctorId && (stored.email !== email || stored.doctorId !== doctorId);
+  return { ...(stored && !identityChanged ? { _id: stored._id } : {}), email, doctorId };
+}
+
+function validateDoctorRoster(staff) {
+  const emails = new Set();
+  const ids = new Set();
+  for (const member of staff) {
+    if (!member.email) continue;
+    const id = member.doctorId.toLowerCase();
+    if (emails.has(member.email) || ids.has(id)) throw new ApiError(400, "Each doctor needs a unique email and registration ID within this clinic.");
+    emails.add(member.email);
+    ids.add(id);
+  }
+}
+
 export const updateBusiness = async (id, ownerId, data, userRole = null) => {
   const query = userRole === "admin" ? { _id: id } : { _id: id, owner: ownerId };
   const b = await Business.findOne(query);
@@ -404,6 +427,7 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
   if (Array.isArray(safeData.staff)) {
     safeData.staff = safeData.staff
       .map(st => ({
+        ...doctorRosterIdentity(b, st),
         name: String(st.name || '').trim(),
         role: String(st.role || '').trim(),
         specialties: String(st.specialties || '').trim(),
@@ -413,6 +437,7 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
         rating: Math.max(1, Math.min(5, Number(st.rating) || 5.0)),
       }))
       .filter(st => st.name);
+    validateDoctorRoster(safeData.staff);
   }
 
   Object.assign(b, safeData);
@@ -788,6 +813,7 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
       if (Array.isArray(stepData.staff)) {
         b.staff = stepData.staff
           .map((st) => ({
+            ...doctorRosterIdentity(b, st),
             name: String(st.name || "").trim(),
             role: String(st.role || "").trim(),
             specialties: String(st.specialties || "").trim(),
@@ -804,6 +830,7 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
             rating: Math.max(1, Math.min(5, Number(st.rating) || 5.0)),
           }))
           .filter((st) => st.name.length > 0);
+        validateDoctorRoster(b.staff);
       }
       break;
     }
@@ -903,7 +930,7 @@ export const launchBusiness = async (id, ownerId, io = null) => {
   }
 
   if (io) {
-    io.emit("business:created", { businessId: b._id, business: b });
+    io.emit("business:created", { businessId: b._id });
   }
 
   return b;

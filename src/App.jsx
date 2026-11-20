@@ -1,3 +1,4 @@
+import DoctorPage, { DoctorLogin } from './pages/DoctorPage'
 import OwnerCategoryBoundary from './components/OwnerCategoryBoundary'
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, matchPath, useLocation } from 'react-router-dom'
@@ -49,7 +50,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
   if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to={`${allowedRoles?.includes('owner') ? '/hub/login' : '/login'}?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`} replace />
+  if (!user) return <Navigate to={`${allowedRoles?.includes('doctor') ? '/doctor/login' : allowedRoles?.includes('owner') ? '/hub/login' : '/login'}?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`} replace />
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/401" replace />
   }
@@ -135,7 +136,7 @@ export default function App() {
     '/hub/login', '/hub/activate', '/hub/dashboard', '/hub/change-password', '/business/apply', '/admin/login', '/admin/dashboard', '/admin/applications',
     '/business', '/business/onboarding', '/business/onboarding/:businessId',
     '/business/:businessId', '/business/:businessId/manage', '/subscription',
-    '/wallet', '/profile', '/admin', '/support', '/help', '/privacy', '/terms', '/about',
+    '/doctor/login', '/doctor/dashboard', '/wallet', '/profile', '/admin', '/support', '/help', '/privacy', '/terms', '/about',
     '/unauthorized', '/401', '/403', '/coming-soon', ...guidePages.map(page => page.path),
   ].some(pattern => matchPath({ path: pattern, end: true }, location.pathname))
 
@@ -145,7 +146,7 @@ export default function App() {
     location.pathname === '/401' ||
     location.pathname === '/403'
   const isAdminSignIn = location.pathname.startsWith('/admin') && user?.role !== 'admin'
-  const isStandalonePage = isNotFoundPage || isUnauthorizedPage || isAdminSignIn
+  const isStandalonePage = isNotFoundPage || isUnauthorizedPage || isAdminSignIn || location.pathname.startsWith('/doctor/')
   const hasPublicPageHeader = ['/privacy', '/terms', '/about'].includes(location.pathname)
 
   if (authLoading) {
@@ -194,6 +195,8 @@ export default function App() {
         <Routes>
           {guidePages.map(page => <Route key={page.path} path={page.path} element={<PublicGuidePage page={page} />} />)}
           <Route path="/business/apply" element={<BusinessApplicationPage />} />
+          <Route path="/doctor/login" element={<DoctorLogin />} />
+          <Route path="/doctor/dashboard" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorPage /></ProtectedRoute>} />
           <Route path="/hub/login" element={<HubLoginPage />} />
           <Route path="/hub/activate" element={<HubLoginPage />} />
           <Route path="/hub/dashboard" element={<ProtectedRoute allowedRoles={['owner','admin']}><HubHome /></ProtectedRoute>} />

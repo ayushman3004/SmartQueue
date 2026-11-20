@@ -1,3 +1,5 @@
+import DoctorAccessControls from '../components/DoctorAccessControls'
+import { getDoctorAccess } from '../api/doctor.api'
 import './BusinessDashboard.css'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { hasActiveSubscription } from '../utils/subscription'
@@ -118,6 +120,12 @@ export default function BusinessDashboard() {
 
   // Staff Management State (Barbers for salons, Doctors for clinics)
   const [newStaff, setNewStaff] = useState({ name: '', role: '', specialties: '', phone: '' })
+  const [doctors, setDoctors] = useState([])
+  const [editingDoctor, setEditingDoctor] = useState(null)
+  const refreshDoctors = useCallback(async () => {
+    const { data } = await getDoctorAccess(businessId)
+    setDoctors(data.data.doctors)
+  }, [businessId])
   const [savingStaff, setSavingStaff] = useState(false)
   const [loadingAIReview, setLoadingAIReview] = useState(false)
   const [upiVpa, setUpiVpa] = useState('')
@@ -166,6 +174,12 @@ export default function BusinessDashboard() {
   }
 
   const isClinic = business?.category === 'clinic' || business?.category === 'healthcare'
+  const clinicalOwner = isClinic && user?.role === 'owner'
+  const visibleTab = clinicalOwner && ['queue', 'appointments'].includes(activeTab) ? 'staff' : activeTab
+  useEffect(() => {
+    if (clinicalOwner) refreshDoctors().catch(() => toast.error('Could not load doctor access.'))
+  }, [clinicalOwner, refreshDoctors])
+
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -440,9 +454,12 @@ export default function BusinessDashboard() {
     try {
       const res = await updateBusiness(businessId, { staff: updatedStaff })
       setBusiness(res.data.data.business)
+      if (clinicalOwner) await refreshDoctors().catch(() => toast.error("Could not refresh doctor access."))
       toast.success(`${isClinic ? 'Doctor roster' : 'Barber team'} updated successfully!`)
+      return true
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update team')
+      return false
     } finally {
       setSavingStaff(false)
     }
@@ -455,7 +472,11 @@ export default function BusinessDashboard() {
       return
     }
     const defaultRole = isClinic ? 'Doctor / Specialist' : 'Barber / Stylist'
+    const currentStaff = business?.staff || []
+    const existing = currentStaff.find(member => member._id === editingDoctor)
     const member = {
+      ...existing,
+      ...(isClinic ? { email: newStaff.email?.trim() || '', doctorId: newStaff.doctorId?.trim() || '' } : {}),
       name: newStaff.name.trim(),
       role: newStaff.role.trim() || defaultRole,
       specialties: newStaff.specialties.trim(),
@@ -464,9 +485,9 @@ export default function BusinessDashboard() {
       customersServed: 0,
       rating: 5.0,
     }
-    const currentStaff = business?.staff || []
-    const updated = [...currentStaff, member]
-    await handleSaveStaff(updated)
+    const updated = existing ? currentStaff.map(row => row._id === editingDoctor ? member : row) : [...currentStaff, member]
+    if (!await handleSaveStaff(updated)) return
+    setEditingDoctor(null)
     setNewStaff({ name: '', role: '', specialties: '', phone: '' })
   }
 
@@ -481,6 +502,7 @@ export default function BusinessDashboard() {
   }
 
   const handleDeleteStaff = async (index) => {
+    if (isClinic && !window.confirm('Remove this doctor and revoke their clinic access?')) return
     const currentStaff = (business?.staff || []).filter((_, i) => i !== index)
     await handleSaveStaff(currentStaff)
   }
@@ -599,8 +621,8 @@ export default function BusinessDashboard() {
               label: 'Hub Settings',
               icon: Settings,
             },
-          ].map((item) => {
-            const isActive = activeTab === item.id
+          ].filter(item => !clinicalOwner || !['queue', 'appointments'].includes(item.id)).map((item) => {
+            const isActive = visibleTab === item.id
             const IconComponent = item.icon
             return (
               <button
@@ -1017,7 +1039,7 @@ export default function BusinessDashboard() {
 
 
           {/* TAB 1: LIVE QUEUE */}
-          {activeTab === 'queue' && (
+          {visibleTab === 'queue' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Active Serving Card */}
               <div className="lg:col-span-12">
@@ -1278,7 +1300,7 @@ export default function BusinessDashboard() {
           )}
 
           {/* TAB 2: APPOINTMENTS */}
-          {activeTab === 'appointments' && (
+          {visibleTab === 'appointments' && (
             <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
                 <div>
@@ -1622,7 +1644,7 @@ export default function BusinessDashboard() {
           )}
 
           {/* TAB: STAFF ROSTER (BARBERS OR DOCTORS) */}
-          {activeTab === 'staff' && (
+          {visibleTab === 'staff' && (
             <div className="space-y-6 text-left">
               <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
@@ -1640,14 +1662,14 @@ export default function BusinessDashboard() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <button
+                    {!isClinic && <button
                       type="button"
                       onClick={handleLoadStaffPresets}
                       disabled={savingStaff}
                       className="text-xs font-bold text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/80 border border-teal-200 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 disabled:opacity-50"
                     >
                       Load Standard Roster
-                    </button>
+                    </button>}
                   </div>
                 </div>
 
@@ -1736,6 +1758,14 @@ export default function BusinessDashboard() {
                             )
                           })()}
 
+                          {clinicalOwner && <>
+                            <DoctorAccessControls businessId={businessId} staffId={member._id} doctors={doctors} onUpdate={refreshDoctors} />
+                            <button type="button" className="text-xs font-bold text-teal-800 underline" onClick={() => {
+                              const details = doctors.find(doctor => doctor.staffId === member._id)
+                              setEditingDoctor(member._id)
+                              setNewStaff({ ...member, email: details?.email, doctorId: details?.doctorId })
+                            }}>Edit doctor</button>
+                          </>}
                           <div className="flex items-center justify-between pt-3 border-t border-zinc-200/80 text-xs">
                             <div className="flex items-center gap-3 text-zinc-600 font-semibold">
                               <span>Served: <strong className="text-zinc-950">{member.customersServed || 0}</strong></span>
@@ -1796,13 +1826,17 @@ export default function BusinessDashboard() {
                       onChange={(e) => setNewStaff(s => ({ ...s, phone: e.target.value }))}
                       className="px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs bg-white focus:outline-none focus:border-teal-600 font-medium"
                     />
+                    {isClinic && <>
+                      <input required type="email" aria-label="Doctor email" placeholder="Doctor email" value={newStaff.email || ''} onChange={e => setNewStaff(s => ({ ...s, email: e.target.value }))} className="rounded-xl border border-zinc-200 px-3 py-2 text-sm" />
+                      <input required aria-label="Doctor registration ID" placeholder="Doctor registration ID" maxLength={100} value={newStaff.doctorId || ''} onChange={e => setNewStaff(s => ({ ...s, doctorId: e.target.value }))} className="rounded-xl border border-zinc-200 px-3 py-2 text-sm" />
+                    </>}
                   </div>
                   <button
                     type="submit"
                     disabled={savingStaff}
                     className="w-full sm:w-auto px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs disabled:opacity-50"
                   >
-                    {savingStaff ? 'Saving...' : `+ Add ${isClinic ? 'Doctor' : 'Barber'} to Roster`}
+                    {savingStaff ? 'Saving...' : editingDoctor ? 'Save doctor' : `+ Add ${isClinic ? 'Doctor' : 'Barber'} to Roster`}
                   </button>
                 </form>
               </div>
@@ -2035,6 +2069,11 @@ export default function BusinessDashboard() {
           {/* TAB 4: AI ANALYTICS & REVENUE */}
           {activeTab === 'analytics' && (
             <div className="space-y-8 text-left">
+              {isClinic && <div className="business-surface rounded-3xl border border-teal-200 bg-white p-5">
+                <p className="text-sm font-bold text-teal-900">Collected sales</p>
+                <p className="mt-1 text-3xl font-black text-teal-800">₹{Number(analytics?.metrics?.collectedSales || 0).toLocaleString('en-IN')}</p>
+                <p className="mt-1 text-xs text-zinc-600">Payments recorded as paid.</p>
+              </div>}
               {/* Executive Overview Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="business-surface bg-white border border-teal-200 p-5 rounded-3xl shadow-sm bg-gradient-to-br from-teal-50/40 to-white">

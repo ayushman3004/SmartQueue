@@ -134,6 +134,8 @@ const businessSchema = new mongoose.Schema(
           name: { type: String, required: true },
           role: { type: String, default: "" },
           specialties: { type: String, default: "" },
+          email: { type: String, default: "", trim: true, lowercase: true },
+          doctorId: { type: String, default: "", trim: true },
           phone: { type: String, default: "" },
           profileImage: { type: String, default: "" },
           description: { type: String, default: "" },

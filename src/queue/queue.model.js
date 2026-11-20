@@ -42,6 +42,7 @@ const queueSchema = new mongoose.Schema(
           },
         ],
         assignedStaff: {
+          staffId: { type: mongoose.Schema.Types.ObjectId },
           name: { type: String, default: "" },
           role: { type: String, default: "" },
           specialties: { type: String, default: "" },

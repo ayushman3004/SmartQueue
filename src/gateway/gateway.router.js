@@ -1,3 +1,4 @@
+import doctorRoutes from '../modules/doctor/doctor.routes.js';
 import { applicationRoutes, adminApplicationRoutes } from "../modules/business-application/business-application.routes.js";
 import { Router } from "express";
 import authRoutes from "../modules/auth/auth.routes.js";
@@ -83,6 +84,7 @@ export const createGatewayRouter = () => {
   router.use("/auth", authLimiter, authRoutes);
   router.use("/businesses", businessRoutes);
   router.use("/bookings", bookingRoutes);
+  router.use("/doctors", doctorRoutes);
   router.use("/queue", queueRoutes);
   router.use("/payments", paymentRoutes);
   router.use("/reviews", reviewRoutes);

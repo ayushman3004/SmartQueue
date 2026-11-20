@@ -1,3 +1,4 @@
+import { isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
 import Booking from "./booking.model.js";
 import Business from "../modules/business/business.model.js";
@@ -186,7 +187,9 @@ export const createBooking = async ({
 
   // 3. Staff Assignment (Doctor / Barber) with auto-fallback
   const isClinic = business.category === "clinic" || business.category === "healthcare";
-  const staffList = Array.isArray(business.staff) ? business.staff : [];
+  const roster = Array.isArray(business.staff) ? business.staff : [];
+  const registeredDoctors = isClinic ? roster.filter(staff => staff.email && staff.doctorId) : [];
+  const staffList = registeredDoctors.length ? registeredDoctors : roster;
   const staffNameRequested = typeof preferredStaff === "string" ? preferredStaff.trim() : preferredStaff?.name?.trim();
 
   let assignedStaff = null;
@@ -206,7 +209,8 @@ export const createBooking = async ({
       });
       if (!conflict) {
         assignedStaff = {
-          name: candidate.name,
+          staffId: candidate._id,
+        name: candidate.name,
           role: candidate.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
           specialties: candidate.specialties || "",
           autoAssigned: false,
@@ -247,7 +251,8 @@ export const createBooking = async ({
       const chosen = freeDocs.find((d) => d.isGP)?.doc || freeDocs[0]?.doc;
       if (chosen) {
         assignedStaff = {
-          name: chosen.name,
+          staffId: chosen._id,
+        name: chosen.name,
           role: chosen.role || "General Physician",
           specialties: chosen.specialties || "General Medicine & Primary Care",
           autoAssigned: true,
@@ -281,7 +286,8 @@ export const createBooking = async ({
 
       if (chosenBarber) {
         assignedStaff = {
-          name: chosenBarber.name,
+          staffId: chosenBarber._id,
+        name: chosenBarber.name,
           role: chosenBarber.role || "Barber / Stylist",
           specialties: chosenBarber.specialties || "Hair Styling & Grooming",
           autoAssigned: true,
@@ -370,9 +376,10 @@ export const createBooking = async ({
 };
 
 // ─── Extend Booking ───────────────────────────────────────────
-export const extendBooking = async (bookingId, extraMinutes, requesterId, requesterRole, io) => {
+export const extendBooking = async (bookingId, extraMinutes, requesterId, requesterRole, io, doctor = null) => {
   const booking = await Booking.findById(bookingId).populate("userId", "name email");
   if (!booking) throw new ApiError(404, "Booking not found");
+  if (doctor) requireAssigned(booking, doctor);
 
   const business = await Business.findById(booking.businessId);
   if (requesterRole !== "admin" && (!business || business.owner.toString() !== requesterId.toString())) {
@@ -405,6 +412,7 @@ export const extendBooking = async (bookingId, extraMinutes, requesterId, reques
   const affectedUsers = [];
 
   for (const fb of futureBookings) {
+    if (doctor && !isAssignedToDoctor(fb, doctor)) continue;
     fb.startTime = new Date(fb.startTime.getTime() + extraMs);
     fb.endTime = new Date(fb.endTime.getTime() + extraMs);
     fb.delayMinutes += mins;
@@ -473,9 +481,10 @@ export const respondToDelay = async (bookingId, userId, accept, io = null) => {
 };
 
 // ─── Start Service ────────────────────────────────────────────
-export const startService = async (bookingId, requesterId, requesterRole) => {
+export const startService = async (bookingId, requesterId, requesterRole, doctor = null) => {
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new ApiError(404, "Booking not found");
+  if (doctor) requireAssigned(booking, doctor);
 
   const business = await Business.findById(booking.businessId);
   if (requesterRole !== "admin" && (!business || business.owner.toString() !== requesterId.toString())) {
@@ -498,8 +507,11 @@ export const startService = async (bookingId, requesterId, requesterRole) => {
       const queueDoc = await QueueModel.findOne({ businessId: booking.businessId });
       if (queueDoc && Array.isArray(queueDoc.users)) {
         const u = queueDoc.users.find(
-          (user) => (user.bookingId && user.bookingId.toString() === booking._id.toString()) ||
-                    (user.userId && user.userId.toString() === booking.userId.toString() && user.status !== "done")
+          user => {
+            if (doctor && !isAssignedToDoctor(user, doctor)) return false;
+            if (user.bookingId?.toString() === booking._id.toString()) return true;
+            return !doctor && user.userId?.toString() === booking.userId.toString() && user.status !== "done";
+          }
         );
         if (u) {
           u.status = "serving";
@@ -517,9 +529,10 @@ export const startService = async (bookingId, requesterId, requesterRole) => {
 };
 
 // ─── Complete Service ─────────────────────────────────────────
-export const completeService = async (bookingId, requesterId, requesterRole) => {
+export const completeService = async (bookingId, requesterId, requesterRole, doctor = null) => {
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new ApiError(404, "Booking not found");
+  if (doctor) requireAssigned(booking, doctor);
 
   const business = await Business.findById(booking.businessId);
   if (requesterRole !== "admin" && (!business || business.owner.toString() !== requesterId.toString())) {
@@ -793,9 +806,10 @@ export const cancelBooking = async (bookingId, userId, io = null) => {
 /**
  * Record payment collection at counter by authorized business staff
  */
-export const collectCounterPayment = async (bookingId, staffUser, io = null) => {
+export const collectCounterPayment = async (bookingId, staffUser, io = null, doctor = null) => {
   const booking = await Booking.findById(bookingId).populate("businessId");
   if (!booking) throw new ApiError(404, "Booking not found");
+  if (doctor) requireAssigned(booking, doctor);
 
   const business = booking.businessId;
   if (
@@ -805,6 +819,7 @@ export const collectCounterPayment = async (bookingId, staffUser, io = null) => 
     throw new ApiError(403, "Not authorized to collect payment for this business");
   }
 
+  if (doctor && (booking.paymentStatus !== "pending" || !["counter", "PAY_AT_BUSINESS"].includes(booking.paymentMethod))) throw new ApiError(409, "This payment cannot be recorded at the counter.");
   if (booking.paymentStatus === "paid") {
     throw new ApiError(400, "Payment for this booking is already recorded as paid");
   }
@@ -824,9 +839,10 @@ export const collectCounterPayment = async (bookingId, staffUser, io = null) => 
     if (queueDoc && Array.isArray(queueDoc.users)) {
       let queueUpdated = false;
       queueDoc.users.forEach((u) => {
+        if (doctor && !isAssignedToDoctor(u, doctor)) return;
         if (
-          (u.bookingId && u.bookingId.toString() === booking._id.toString()) ||
-          (u.userId && u.userId.toString() === booking.userId.toString())
+          u.bookingId?.toString() === booking._id.toString() ||
+          (!doctor && u.userId?.toString() === booking.userId.toString())
         ) {
           u.paymentStatus = "paid";
           u.paymentMethod = "counter";

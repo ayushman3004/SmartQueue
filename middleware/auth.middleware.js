@@ -1,3 +1,4 @@
+import { doctorContext, isClinic } from "../src/modules/doctor/doctor-access.js";
 import { ownerState } from "../src/modules/business-application/owner-lifecycle.js";
 import { canAccessOwnerCategory } from "../src/utils/ownerCategory.js";
 import Booking from "../src/booking/booking.model.js";
@@ -45,6 +46,11 @@ export const protect = asyncHandler(async (req, _res, next) => {
       const hub = await Business.findOne({owner:user._id,approvalStatus:"approved"});
       if (!hub) throw new ApiError(403, "Business approval is required. Contact ServeQ.");
     }
+  }
+  if (user.role === "doctor") {
+    await doctorContext(user);
+    const path = req.originalUrl.split("?")[0];
+    if (user.doctorAccess?.mustChangePassword && !["/api/auth/me", "/api/doctors/password", "/api/auth/logout"].includes(path)) throw new ApiError(403, "Change your temporary doctor password first.");
   }
   req.user = user;
   next();
@@ -99,6 +105,11 @@ export const allowRoles = (...roles) =>
       const hub = await Business.findOne({_id:businessId,owner:req.user._id,approvalStatus:"approved"});
       if (!hub) throw new ApiError(403, "Business not found, not approved, or not owned by this account.");
       if (!canAccessOwnerCategory(req.user, hub)) throw new ApiError(403, "This category is not enabled for your account. Ask the admin for access.");
+      const path = req.originalUrl?.split("?")[0] || "";
+      if (isClinic(hub) && (/^\/api\/bookings\//.test(path) || /^\/api\/queue\/.+\/(next|extend|collect-payment)$/.test(path))) {
+        throw new ApiError(403, "Open the assigned doctor's dashboard to manage this consultation.");
+      }
+
     }
     next();
   });

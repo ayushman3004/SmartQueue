@@ -1,3 +1,5 @@
+import Prescriptions from '../components/Prescriptions'
+import { usePrescriptions } from '../hooks/usePrescriptions'
 import { normalizePhoneNumber } from '../utils/phoneNumbers'
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -47,6 +49,7 @@ import { prepareAvatar } from '../utils/avatarUpload'
 export default function ProfilePage() {
   const { user, setUser, logOut } = useAuth()
   const navigate = useNavigate()
+  const prescriptions = usePrescriptions(user?.role === 'customer' ? user._id : null)
 
   useSeo({
     title: 'Profile & Account Security — serveQ',
@@ -912,6 +915,7 @@ export default function ProfilePage() {
             <span>Sign Out</span>
           </button>
         </div>
+          {user?.role === 'customer' && <Prescriptions result={prescriptions} />}
         </main>
       </div>
 

@@ -605,6 +605,10 @@ export default function BusinessOnboardingPage() {
       toast.error('Please enter a staff member name')
       return
     }
+    if (['clinic', 'healthcare'].includes(step1.category) && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newStaff.email?.trim() || '') || !newStaff.doctorId?.trim())) {
+      toast.error('Enter the doctor email and registration ID')
+      return
+    }
     const defaultRole = step1.category === 'clinic' ? 'Consultant Doctor' : 'Barber / Stylist'
 
     if (editingStaffIndex !== null) {
@@ -653,8 +657,7 @@ export default function BusinessOnboardingPage() {
   }
 
   const handleLoadStaffPresets = () => {
-    const isClinic = step1.category === 'clinic' || step1.category === 'healthcare'
-    const presets = STAFF_PRESETS[isClinic ? 'clinic' : 'salon']?.defaults || []
+    const presets = STAFF_PRESETS.salon?.defaults || []
     setStaff(presets.map((s) => ({ ...s, isAvailable: true })))
     toast.success(`Loaded recommended staff team!`)
   }
@@ -1558,13 +1561,13 @@ export default function BusinessOnboardingPage() {
                     Configure staff members that can be selected by patrons or auto-assigned during check-in.
                   </p>
                 </div>
-                <button
+                {!["clinic", "healthcare"].includes(step1.category) && <button
                   type="button"
                   onClick={handleLoadStaffPresets}
                   className="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200 px-3.5 py-2 rounded-xl hover:bg-teal-100 transition-all self-start sm:self-auto flex items-center gap-1.5"
                 >
                   Load Recommended Team
-                </button>
+                </button>}
               </div>
 
               {/* Staff List */}
@@ -1574,7 +1577,7 @@ export default function BusinessOnboardingPage() {
                 </h4>
                 {staff.length === 0 ? (
                   <div className="p-8 text-center border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/50 space-y-2">
-                    <p className="text-xs text-zinc-500 font-medium">No team members registered yet. Add staff below or click "Load Recommended Team".</p>
+                    <p className="text-xs text-zinc-500 font-medium">No team members registered yet. Add your staff below.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1590,6 +1593,7 @@ export default function BusinessOnboardingPage() {
                           <div className="min-w-0">
                             <p className="text-sm font-black text-zinc-950 truncate">{st.name}</p>
                             <p className="text-xs text-teal-700 font-semibold truncate">{st.role || 'Practitioner'}</p>
+                            {st.email && <p className="text-xs break-all">{st.email} · {st.doctorId}</p>}
                             {st.specialties && (
                               <p className="text-[10px] text-zinc-500 truncate mt-0.5">
                                 {Array.isArray(st.specialties) ? st.specialties.join(', ') : st.specialties}
@@ -1647,6 +1651,10 @@ export default function BusinessOnboardingPage() {
                     onChange={(e) => setNewStaff({ ...newStaff, specialties: e.target.value })}
                     className="px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs font-semibold bg-white focus:outline-none focus:border-teal-600"
                   />
+                  {['clinic', 'healthcare'].includes(step1.category) && <>
+                    <input type="email" aria-label="Doctor email" placeholder="Doctor email" value={newStaff.email || ''} onChange={e => setNewStaff({ ...newStaff, email: e.target.value })} className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm" />
+                    <input aria-label="Doctor registration ID" placeholder="Doctor registration ID" maxLength={100} value={newStaff.doctorId || ''} onChange={e => setNewStaff({ ...newStaff, doctorId: e.target.value })} className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm" />
+                  </>}
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">

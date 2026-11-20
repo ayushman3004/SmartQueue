@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["customer", "owner", "admin"],
+      enum: ["customer", "owner", "admin", "doctor"],
       default: "customer",
     },
     businessCategories: { type: [String], enum: ["clinic", "salon"], default: [] },
@@ -68,6 +68,15 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
     tokenVersion: { type: Number, default: 0 },
+    doctorAccess: {
+      businessId: { type: mongoose.Schema.Types.ObjectId, ref: "Business" },
+      staffId: mongoose.Schema.Types.ObjectId,
+      doctorId: String,
+      status: { type: String, enum: ["ACTIVE", "REVOKED"] },
+      mustChangePassword: Boolean,
+      invitationDelivery: { type: String, enum: ["SENT", "FAILED", "DELIVERED", "BOUNCED", "DELAYED"] },
+      invitationResendId: String,
+    },
     ownerAccess: {
       applicationId: { type: mongoose.Schema.Types.ObjectId, ref: "BusinessApplication" },
       status: { type: String, enum: ["INVITED", "ACTIVE", "EXPIRED", "SUSPENDED"] },

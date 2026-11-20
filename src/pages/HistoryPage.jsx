@@ -1,3 +1,5 @@
+import Prescriptions from '../components/Prescriptions'
+import { usePrescriptions } from '../hooks/usePrescriptions'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
@@ -44,6 +46,7 @@ import { buildHistoryRecords } from '../utils/historyRecords'
 
 export default function HistoryPage() {
   const { user, logOut } = useAuth()
+  const prescriptions = usePrescriptions(user?.role === 'customer' ? user._id : null)
   const { socket } = useSocket()
   const { serviceCategory, navigate } = useCustomerService()
 
@@ -620,6 +623,7 @@ export default function HistoryPage() {
                         )}
                       </div>
 
+                      <Prescriptions result={prescriptions} bookingId={item._id} compact />
                       {/* Rating Action / Pill */}
                       {isCompleted && (
                         <div>
@@ -735,6 +739,7 @@ export default function HistoryPage() {
                         </td>
 
                         <td className="py-4 px-4 text-right space-x-2">
+                          <Prescriptions result={prescriptions} bookingId={b._id} compact />
                           {isCompleted &&
                             (b.review ? (
                               <button type="button" onClick={(e) => handleOpenReview(b, e)} className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-bold cursor-pointer">

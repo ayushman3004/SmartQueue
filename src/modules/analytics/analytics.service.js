@@ -62,6 +62,9 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     (sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0),
     0
   ) + liveQueueRevenue;
+  const collectedSales = earnedBookings
+    .filter(booking => booking.paymentStatus === "paid")
+    .reduce((sum, booking) => sum + Number(booking.paidAmount || 0), 0);
   const completedRevenue = completedBookings.reduce(
     (sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0),
     0
@@ -315,6 +318,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
       completedBookings: completedBookings.length,
       cancelledBookings: cancelledBookingsCount,
       totalRevenue,
+      collectedSales,
       completedRevenue,
       cancelledRevenue,
       customerCount: uniqueCustomerIds.size,

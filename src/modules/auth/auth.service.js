@@ -67,6 +67,12 @@ export const login = async ({ email, password, requiredRole, activationCredentia
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new ApiError(401, "Invalid credentials");
 
+  if (requiredRole === "doctor" && user.role !== "doctor") throw new ApiError(403, "Use a doctor account to sign in here.");
+  if (user.role === "doctor") {
+    if (requiredRole !== "doctor") throw new ApiError(403, "Sign in at /doctor/login.");
+    const { doctorContext } = await import("../doctor/doctor-access.js");
+    await doctorContext(user);
+  }
   // Role verification checks
   if (requiredRole === "owner" && user.role !== "owner" && user.role !== "admin") {
     throw new ApiError(
@@ -236,6 +242,7 @@ export const sanitize = (user) => ({
   bio: user.bio || "",
   location: user.location || "",
   businessCategories: user.businessCategories || [],
+  doctorAccess: user.role === "doctor" ? { businessId: user.doctorAccess?.businessId, staffId: user.doctorAccess?.staffId, mustChangePassword: user.doctorAccess?.mustChangePassword } : undefined,
   ownerAccess: publicOwnerAccess(user),
   subscription: user.subscription || { plan: "NONE", status: "INACTIVE", amount: 0 },
 });

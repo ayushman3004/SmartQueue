@@ -1,3 +1,4 @@
+import { isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
 import Queue from "./queue.model.js";
 import QueueDS from "./queue.ds.js";
@@ -86,7 +87,9 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   // 2. Staff Assignment (Doctor / Barber) with auto-fallback
   const isClinic = business.category === "clinic" || business.category === "healthcare";
-  const staffList = Array.isArray(business.staff) ? business.staff : [];
+  const roster = Array.isArray(business.staff) ? business.staff : [];
+  const registeredDoctors = isClinic ? roster.filter(staff => staff.email && staff.doctorId) : [];
+  const staffList = registeredDoctors.length ? registeredDoctors : roster;
   const staffNameRequested = typeof userData.preferredStaff === "string"
     ? userData.preferredStaff.trim()
     : userData.preferredStaff?.name?.trim();
@@ -123,6 +126,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
     );
     if (candidate) {
       assignedStaff = {
+        staffId: candidate._id,
         name: candidate.name,
         role: candidate.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
         specialties: candidate.specialties || "",
@@ -161,6 +165,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
       const chosen = staffLoads[0].staff;
       assignedStaff = {
+        staffId: chosen._id,
         name: chosen.name,
         role: chosen.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
         specialties: chosen.specialties || "",
@@ -338,7 +343,7 @@ export const leaveQueue = async (businessId, userId, io = null) => {
 };
 
 // ⏭️ CALL NEXT
-export const callNext = async (businessId, requesterId, requesterRole, io, staffName, targetUserId, autoCompleteAt = null) => {
+export const callNext = async (businessId, requesterId, requesterRole, io, staffName, targetUserId, autoCompleteAt = null, doctor = null) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
@@ -353,6 +358,10 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
   if (targetUserId) {
     const tId = targetUserId.toString();
     previousHead = queue.users.find((u) => (u.userId?._id || u.userId)?.toString() === tId);
+  }
+  if (doctor) {
+    requireAssigned(previousHead, doctor);
+    if (previousHead.status !== "serving") throw new ApiError(409, "This consultation is no longer active.");
   }
   // Background completion must never fall through to a different customer or ignore an extension.
   if (autoCompleteAt) {
@@ -400,6 +409,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
         }).sort({ createdAt: -1 });
       }
 
+      if (doctor && completedBooking) requireAssigned(completedBooking, doctor);
       if (completedBooking) {
         const claimed = await Booking.findOneAndUpdate({
           _id: completedBooking._id,
@@ -434,6 +444,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
           serviceType: previousHead.serviceType || "General Service",
           services: sanitizedServices,
           assignedStaff: previousHead.assignedStaff ? {
+            staffId: previousHead.assignedStaff.staffId,
             name: previousHead.assignedStaff.name || "",
             role: previousHead.assignedStaff.role || "",
             specialties: previousHead.assignedStaff.specialties || "",
@@ -458,6 +469,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
         }
       }
     } catch (saveErr) {
+      if (doctor) throw saveErr;
       console.error("Error creating/updating completed booking from queue session:", saveErr);
       // Keep the entry in place so the background worker can retry a failed write.
       if (autoCompleteAt) throw saveErr;
@@ -529,8 +541,10 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
     }
 
     // 2. Emit started for new head if present
-    if (queue.users.length > 0) {
-      const newServing = queue.users[0];
+    const newServing = doctor
+      ? queue.users.find(row => row.status === "serving" && isAssignedToDoctor(row, doctor))
+      : queue.users[0];
+    if (newServing) {
       io.to(`business:${businessId}`).emit("service:started", {
         businessId,
         userId: newServing.userId,
@@ -583,7 +597,7 @@ export const getQueue = async (businessId, io = null, requesterId = null) => {
   }
 
   const business = await Business.findById(businessId);
-  const isOwner = requesterId && business?.owner?.toString() === requesterId.toString();
+  const isOwner = !["clinic", "healthcare"].includes(business?.category) && requesterId && business?.owner?.toString() === requesterId.toString();
 
   if (isOwner) {
     queue = await Queue.findOne({ businessId }).populate("users.userId", "name email phone");
@@ -628,7 +642,7 @@ export const estimateWaitTime = async (businessId, userId) => {
 };
 
 // ⏱️ EXTEND TIME
-export const extendTime = async (businessId, userId, minutes = 5, requesterId, requesterRole, io = null) => {
+export const extendTime = async (businessId, userId, minutes = 5, requesterId, requesterRole, io = null, doctor = null) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
@@ -643,6 +657,8 @@ export const extendTime = async (businessId, userId, minutes = 5, requesterId, r
   const node = queueDS.map.get(userId.toString());
   if (!node) throw new ApiError(404, "User not found in queue");
 
+  if (doctor) requireAssigned(node, doctor);
+
   node.serviceTime = (node.serviceTime || 10) + Number(minutes);
   queueDS.recalculate();
   queue.users = queueDS.toArray();
@@ -655,7 +671,7 @@ export const extendTime = async (businessId, userId, minutes = 5, requesterId, r
     let reachedTarget = false;
     for (const u of queue.users) {
       const uId = (u.userId?._id || u.userId)?.toString();
-      if (reachedTarget) {
+      if (reachedTarget && (!doctor || isAssignedToDoctor(u, doctor))) {
         io.to(`user:${uId}`).emit("booking:delayed", {
           message: `The queue has been extended by ${minutes} minutes. Thank you for your patience.`,
           delay: minutes,
@@ -714,6 +730,7 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
     const curUserId = current.userId?._id || current.userId;
     if (curUserId?.toString() === userId?.toString()) {
       current.assignedStaff = {
+        staffId: staffMember?._id,
         name: staffMember ? staffMember.name : staffName,
         role: staffMember?.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
         specialties: staffMember?.specialties || "",
@@ -733,6 +750,7 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
     );
     if (u) {
       u.assignedStaff = {
+        staffId: staffMember?._id,
         name: staffMember ? staffMember.name : staffName,
         role: staffMember?.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
         specialties: staffMember?.specialties || "",
@@ -742,6 +760,10 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
   }
 
   await queue.save();
+  const assigned = queue.users.find(entry => String(entry.userId?._id || entry.userId) === String(userId));
+  if (assigned?.bookingId) {
+    await Booking.updateOne({ _id: assigned.bookingId, businessId, userId }, { $set: { assignedStaff: assigned.assignedStaff } });
+  }
 
   const populatedQueue = await Queue.findOne({ businessId }).populate(
     "users.userId",
@@ -759,7 +781,7 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
 /**
  * Accept & mark payment as paid at counter for an active live queue patron
  */
-export const collectQueuePayment = async (businessId, userId, staffUser, io = null) => {
+export const collectQueuePayment = async (businessId, userId, staffUser, io = null, doctor = null) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
@@ -782,6 +804,10 @@ export const collectQueuePayment = async (businessId, userId, staffUser, io = nu
     throw new ApiError(404, "User not found in queue");
   }
 
+  if (doctor) {
+    requireAssigned(queueUser, doctor);
+    if (queueUser.paymentStatus !== "pending" || queueUser.paymentMethod !== "counter") throw new ApiError(409, "This payment cannot be recorded at the counter.");
+  }
   queueUser.paymentStatus = "paid";
   queueUser.paymentMethod = "counter";
 
@@ -797,6 +823,10 @@ export const collectQueuePayment = async (businessId, userId, staffUser, io = nu
     }).sort({ createdAt: -1 });
   }
 
+  if (doctor && booking) {
+    requireAssigned(booking, doctor);
+    if (booking.paymentStatus !== "pending") throw new ApiError(409, "This booking payment has already changed.");
+  }
   if (booking) {
     booking.paymentStatus = "paid";
     booking.paymentMethod = "counter";

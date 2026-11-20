@@ -317,6 +317,7 @@ export default function HubLoginPage() {
         )}
         <div className="admission-login-links">
           <button onClick={() => setForgot(true)}>Forgot password?</button>
+          {!activation && <Link to="/doctor/login">Doctor sign in</Link>}
           <Link
             to={activation ? "/hub/login" : "/hub/activate"}
             onClick={() => {

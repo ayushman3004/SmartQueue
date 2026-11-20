@@ -27,5 +27,7 @@ test('owner category permissions isolate clinic and salon management', async t =
   assert.equal((await authorize(bookingRequest)).statusCode, 403);
   category = 'clinic';
   assert.equal(await authorize(venueRequest), undefined);
-  assert.equal(await authorize(bookingRequest), undefined);
+  assert.match((await authorize(bookingRequest)).message, /assigned doctor/);
+  category = 'salon';
+  assert.equal(await authorize({ ...bookingRequest, user: salonOwner }), undefined);
 });
