@@ -28,9 +28,15 @@ const schema = new mongoose.Schema(
     privacyAcknowledgedAt: Date,
     status: {
       type: String,
-      enum: ["PENDING", "APPROVED", "REJECTED"],
+      enum: ["PENDING", "APPROVED", "REJECTED", "DELETED"],
       default: "PENDING",
       index: true,
+    },
+    deletedAt: Date,
+    acknowledgement: {
+      delivery: { type: String, enum: ["PENDING", "SENT", "FAILED"] },
+      attemptedAt: Date,
+      sentAt: Date,
     },
     submittedAt: {
       type: Date,

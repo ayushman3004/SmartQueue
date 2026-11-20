@@ -77,6 +77,54 @@ export const validateApplication = (input = {}) => {
   }
   return data;
 };
+const deliverApplicationAcknowledgement = async (application) => {
+  const now = new Date();
+  const sent = await sendBusinessNotice({
+    to: application.email,
+    subject: "We received your ServeQ application",
+    lines: [`Thank you, ${application.ownerName}. Our team will review ${application.businessName}. Submitting an application does not create an owner account. We will contact you after review.`],
+  }).catch(() => false);
+  const acknowledgement = { delivery: sent ? "SENT" : "FAILED", attemptedAt: now, ...(sent ? { sentAt: now } : {}) };
+  await Application.updateOne({ _id: application._id }, { $set: { acknowledgement } });
+  return acknowledgement;
+};
+
+export const resendApplicationAcknowledgement = async (id, actor) => {
+  if (actor.role !== "admin") throw new ApiError(403, "Administrator access required.");
+  if (!mongoose.isValidObjectId(id)) throw new ApiError(400, "Invalid application.");
+  const application = await Application.findById(id);
+  if (!application || application.status === "DELETED") throw new ApiError(404, "Application not found.");
+  const acknowledgement = await deliverApplicationAcknowledgement(application);
+  return { ...application.toObject(), acknowledgement };
+};
+
+export const deleteApplication = async (id, actor) => {
+  if (actor.role !== "admin") throw new ApiError(403, "Administrator access required.");
+  if (!mongoose.isValidObjectId(id)) throw new ApiError(400, "Invalid application.");
+  await mongoose.connection.transaction(async session => {
+    const application = await Application.findOneAndUpdate(
+      { _id: id, status: { $ne: "DELETED" } },
+      { $set: { status: "DELETED", deletedAt: new Date() }, $push: { audit: { action: "ACCESS_RESET", at: new Date(), actor: actor._id } } },
+      { session, new: true }
+    );
+    if (!application) throw new ApiError(404, "Application not found or already deleted.");
+    if (application.linkedUserId) {
+      // Retain historical references while releasing the login email for reapplication.
+      const owner = await User.findOneAndUpdate(
+        { _id: application.linkedUserId, role: "owner", "ownerAccess.applicationId": application._id },
+        { $set: { email: `revoked-${application.linkedUserId}@access.serveq.invalid`, "ownerAccess.status": "SUSPENDED", businessCategories: [] }, $inc: { tokenVersion: 1 }, $unset: { "ownerAccess.activationTokenHash": 1 } },
+        { session, new: true }
+      );
+      if (!owner) throw new ApiError(409, "The linked owner has changed. Review the account before resetting access.");
+      await Business.updateMany(
+        { owner: application.linkedUserId },
+        { $set: { isActive: false, isOpen: false } }, { session }
+      );
+    }
+  });
+  return { message: "Access request deleted. The applicant can submit a fresh application using the same email." };
+};
+
 // Generic confirmation prevents email/account enumeration, including duplicate submissions.
 export const submitApplication = async (input) => {
   const data = validateApplication(input);
@@ -85,17 +133,12 @@ export const submitApplication = async (input) => {
       "Thank you. If no application is already under review, our team will review your details and email you with the next steps.",
   };
   try {
-    await Application.create({
+    const application = await Application.create({
       ...data,
       privacyAcknowledgedAt: new Date(),
+      acknowledgement: { delivery: "PENDING" },
     });
-    await sendBusinessNotice({
-      to: data.email,
-      subject: "We received your ServeQ application",
-      lines: [
-        `Thank you, ${data.ownerName}. Our team will review ${data.businessName}. Submitting an application does not create an owner account. We will contact you after review.`,
-      ],
-    }).catch(() => false);
+    await deliverApplicationAcknowledgement(application);
     return confirmation;
   } catch (error) {
     if (error.code === 11000) return confirmation;
@@ -120,7 +163,7 @@ export const listApplications = async ({ status, search = "", page = 1 }) => {
       },
     },
   );
-  const filter = {};
+  const filter = { status: { $ne: "DELETED" } };
   if (["PENDING", "APPROVED", "REJECTED"].includes(status))
     filter.status = status;
   if (status === "EXPIRED") {

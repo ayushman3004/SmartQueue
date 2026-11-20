@@ -68,6 +68,7 @@ test("business admission HTTP boundaries", async (t) => {
     ...data,
     status: "PENDING",
   }));
+  t.mock.method(Application, "updateOne", async () => ({ modifiedCount: 1 }));
   const app = express();
   app.use(express.json(), cookieParser());
   app.use("/api", createGatewayRouter());
@@ -137,7 +138,16 @@ test("business admission HTTP boundaries", async (t) => {
           { authorization, body: {} },
         );
         assert.equal(response.status, authorization ? 403 : 401);
+        for (const [path, method] of [
+          [`/admin/applications/${applicationId}`, "DELETE"],
+          [`/admin/applications/${applicationId}/resend-acknowledgement`, "POST"],
+        ]) {
+          const denied = await request(path, { method, authorization, body: { confirm: "DELETE ACCESS" } });
+          assert.equal(denied.status, authorization ? 403 : 401);
+        }
       }
+      const unconfirmed = await request(`/admin/applications/${applicationId}`, { method: "DELETE", authorization: token("admin"), body: {} });
+      assert.equal(unconfirmed.status, 400);
     },
   );
   await t.test(

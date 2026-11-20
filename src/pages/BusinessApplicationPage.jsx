@@ -56,7 +56,7 @@ export default function BusinessApplicationPage({ embedded = false }) {
           <div role="status" className="admission-notice">
             <h2>Application received</h2>
             <p>{message}</p>
-            <p>You can close this page. There’s no account to sign into yet.</p>
+            <p>For new applications, check your inbox and spam for an acknowledgement email. Submitting again does not send another email while a request already exists. Check spam, or contact <a href="mailto:support@serveq.tech">support@serveq.tech</a> if it hasn’t arrived.</p>
           </div>
         ) : (
           <form onSubmit={submit}>

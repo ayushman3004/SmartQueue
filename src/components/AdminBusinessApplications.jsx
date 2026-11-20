@@ -25,6 +25,7 @@ export default function AdminBusinessApplications() {
     }),
     [selected, setSelected] = useState(null),
     [notes, setNotes] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
@@ -59,7 +60,9 @@ export default function AdminBusinessApplications() {
       );
       setSelected(response.data.data.application);
       setNotice(
-        action === "reject"
+        action === "resend-acknowledgement"
+          ? response.data.data.application.acknowledgement?.delivery === "SENT" ? "Acknowledgement accepted by the email provider. Check inbox and spam." : "Acknowledgement delivery failed. Check the backend email configuration and provider logs, then retry."
+          : action === "reject"
           ? "Application rejected."
           : response.data.data.application.invitation?.delivery === "FAILED"
             ? "Invitation delivery failed. Use Reissue invitation to send fresh credentials."
@@ -73,6 +76,20 @@ export default function AdminBusinessApplications() {
     } finally {
       setBusy(false);
     }
+  }
+  async function removeRequest() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api.delete(`/admin/applications/${selected._id}`, { data: { confirm: deleteConfirmation } });
+      setSelected(null);
+      setDeleteConfirmation("");
+      setNotice("Access request deleted. The applicant can apply again using the same email.");
+      await load();
+    } catch (failure) {
+      setError(failure.response?.data?.message || "Could not delete the access request.");
+    } finally { setBusy(false); }
   }
   return (
     <section className="admission admission-admin">
@@ -135,6 +152,7 @@ export default function AdminBusinessApplications() {
               key={app._id}
               onClick={() => {
                 setSelected(app);
+                setDeleteConfirmation("");
                 setNotes(app.reviewNotes || "");
                 setNotice("");
               }}
@@ -183,6 +201,8 @@ export default function AdminBusinessApplications() {
                 ["Website / social profile", selected.website],
                 ["Comments", selected.comments],
                 ["Status", selected.status],
+                ["Acknowledgement email", selected.acknowledgement?.delivery || "Not recorded"],
+                ["Acknowledgement last attempted", date(selected.acknowledgement?.attemptedAt)],
                 ["Submitted", date(selected.submittedAt)],
                 ["Reviewed", date(selected.reviewedAt)],
                 ["Invitation status", invitationState(selected, now)],
@@ -236,6 +256,18 @@ export default function AdminBusinessApplications() {
                   </p>
                 </>
               )}
+            <div className="admission-login-links">
+              <button disabled={busy} onClick={() => review("resend-acknowledgement")}>Resend acknowledgement email</button>
+            </div>
+            <p className="admission-fine">Sent means accepted by the email provider. It does not confirm arrival in the inbox.</p>
+            <details>
+              <summary>Delete access request / allow reapplication</summary>
+              <p>Deletes this request from the review list and lets the applicant apply again with the same email. If approved, this revokes the old owner login and closes their venues. Historical records are retained. A new application starts fresh.</p>
+              <label>Type DELETE ACCESS to confirm
+                <input value={deleteConfirmation} onChange={event => setDeleteConfirmation(event.target.value)} disabled={busy} autoComplete="off" />
+              </label>
+              <button type="button" disabled={busy || deleteConfirmation !== "DELETE ACCESS"} onClick={removeRequest}>Delete access request</button>
+            </details>
             <h4>Audit history</h4>
             <ul>
               {selected.audit?.map((entry, i) => (
