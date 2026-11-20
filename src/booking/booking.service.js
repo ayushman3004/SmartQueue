@@ -19,17 +19,17 @@ export const getAvailableSlots = async (businessId, date) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
 
-  const dateError = getBookingDateError(date, business);
-  if (dateError) {
-    throw new ApiError(business.bookingSettings?.enableAppointments === false ? 403 : 400, dateError);
-  }
-
   const isSubscribed = await isBusinessSubscriptionActive(business);
   if (!isSubscribed) {
     throw new ApiError(
       403,
       "This venue is currently not accepting appointments because its ServeQ subscription is inactive."
     );
+  }
+
+  const dateError = getBookingDateError(date, business);
+  if (dateError) {
+    throw new ApiError(business.bookingSettings?.enableAppointments === false ? 403 : 400, dateError);
   }
 
   const avgTime = business.averageServiceTime || 10;
