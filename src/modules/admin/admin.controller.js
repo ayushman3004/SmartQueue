@@ -1,3 +1,5 @@
+import { sanitize } from '../auth/auth.service.js';
+import { ensureAdminWorkspace } from './admin-workspace.service.js';
 import mongoose from "mongoose";
 import { getBusinessSubscriptionCoupon, issueBusinessSubscriptionCoupon } from "../subscription/subscription-coupon.service.js";
 import User from "../auth/auth.model.js";
@@ -351,3 +353,8 @@ export const deletePrelaunchCustomer = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, null, "Prelaunch customer record removed"));
 });
 
+
+export const prepareWorkspace = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json(new ApiResponse(200, { ...await ensureAdminWorkspace(req.user), user: sanitize(req.user) }, "Super admin workspace ready."));
+});

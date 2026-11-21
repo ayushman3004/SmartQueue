@@ -54,7 +54,7 @@ test('prescriptions are saved for the assigned patient and readable only by that
   t.mock.method(Booking, 'findById', () => ({ populate: async () => activeVisit }));
   let saved;
   t.mock.method(Prescription, 'create', async data => { saved = { ...data, _id: rxId, createdAt: new Date() }; return saved; });
-  function matches(filter) { return saved && (!filter.patient || filter.patient === saved.patient) && (!filter.doctor || filter.doctor === saved.doctor); }
+  function matches(filter) { return saved && (!filter.$or || filter.$or.some(clause => clause.doctor === saved.doctor || clause.patient === saved.patient)) && (!filter.patient || filter.patient === saved.patient) && (!filter.doctor || filter.doctor === saved.doctor); }
   t.mock.method(Prescription, 'find', filter => ({ sort: () => ({ select: async () => matches(filter) ? [saved] : [] }) }));
   t.mock.method(Prescription, 'findOne', async filter => matches(filter) ? saved : null);
   const app = express();
@@ -86,7 +86,7 @@ test('prescriptions are saved for the assigned patient and readable only by that
   const path = `/prescriptions/${rxId}/pdf`;
   assert.equal((await request('stranger', path)).status, 404);
   assert.equal((await request('owner', path)).status, 403);
-  assert.equal((await request('admin', path)).status, 403);
+  assert.equal((await request('admin', path)).status, 404);
   const pdf = await request(patientId, path);
   assert.equal(pdf.status, 200);
   assert.equal(pdf.headers.get('cache-control'), 'private, no-store');

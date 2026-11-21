@@ -106,7 +106,7 @@ router.post('/password', allowRoles('doctor'), asyncHandler(async (req, res) => 
   setTokenCookie(res, token, req);
   res.json({ data: { user: sanitize(updated), token } });
 }));
-router.get('/dashboard', allowRoles('doctor'), asyncHandler(async (req, res) => {
+router.get('/dashboard', allowRoles('doctor', 'admin'), asyncHandler(async (req, res) => {
   const context = await doctorContext(req.user);
   if (!await isBusinessSubscriptionActive(context.business)) throw new ApiError(403, 'The clinic subscription is inactive. Contact your business owner.');
   const queue = await Queue.findOne({ businessId: context.business._id }).populate('users.userId', 'name email phone');
@@ -123,7 +123,7 @@ router.get('/dashboard', allowRoles('doctor'), asyncHandler(async (req, res) => 
 }));
 const minutes = value => { const number = Number(value); if (!Number.isInteger(number) || number < 1 || number > 120) throw new ApiError(400, 'Extension must be 1-120 minutes.'); return number; };
 const notify = (req, businessId) => { req.app.get('io')?.to(`business:${businessId}`).emit('bookings:updated'); };
-router.post('/queue/:patientId/:action', allowRoles('doctor'), asyncHandler(async (req, res) => {
+router.post('/queue/:patientId/:action', allowRoles('doctor', 'admin'), asyncHandler(async (req, res) => {
   const context = await doctorContext(req.user);
   if (!await isBusinessSubscriptionActive(context.business)) throw new ApiError(403, 'Clinic subscription inactive.');
   const queue = await Queue.findOne({ businessId: context.business._id });
@@ -143,7 +143,7 @@ router.post('/queue/:patientId/:action', allowRoles('doctor'), asyncHandler(asyn
   notify(req, businessId);
   res.json({ message: 'Patient updated.' });
 }));
-router.post('/bookings/:bookingId/:action', allowRoles('doctor'), asyncHandler(async (req, res) => {
+router.post('/bookings/:bookingId/:action', allowRoles('doctor', 'admin'), asyncHandler(async (req, res) => {
   const context = await doctorContext(req.user);
   if (!await isBusinessSubscriptionActive(context.business)) throw new ApiError(403, 'Clinic subscription inactive.');
   const booking = await Booking.findById(validId(req.params.bookingId));
@@ -158,12 +158,12 @@ router.post('/bookings/:bookingId/:action', allowRoles('doctor'), asyncHandler(a
   notify(req, context.business._id);
   res.json({ message: 'Booking updated.' });
 }));
-router.get('/prescriptions', allowRoles('doctor', 'customer'), asyncHandler(async (req, res) => {
+router.get('/prescriptions', allowRoles('doctor', 'customer', 'admin'), asyncHandler(async (req, res) => {
   const filter = prescriptionFilter(req.user);
   if (req.query.booking) filter.booking = validId(req.query.booking);
   res.json({ data: { prescriptions: await Prescription.find(filter).sort({ createdAt: -1 }).select('-__v') } });
 }));
-router.post('/prescriptions', allowRoles('doctor'), asyncHandler(async (req, res) => {
+router.post('/prescriptions', allowRoles('doctor', 'admin'), asyncHandler(async (req, res) => {
   const context = await doctorContext(req.user);
   const booking = await Booking.findById(validId(req.body.bookingId)).populate('userId', 'name');
   requireAssigned(booking, context);
@@ -180,7 +180,7 @@ router.post('/prescriptions', allowRoles('doctor'), asyncHandler(async (req, res
     res.status(201).json({ data: { prescription } });
   } catch (error) { if (error.code === 11000) throw new ApiError(409, 'A prescription is already saved for this consultation.'); throw error; }
 }));
-router.get('/prescriptions/:id/pdf', allowRoles('doctor', 'customer'), asyncHandler(async (req, res) => {
+router.get('/prescriptions/:id/pdf', allowRoles('doctor', 'customer', 'admin'), asyncHandler(async (req, res) => {
   const prescription = await Prescription.findOne({ _id: validId(req.params.id), ...prescriptionFilter(req.user) });
   if (!prescription) throw new ApiError(404, 'Prescription not found.');
   const pdf = await prescriptionPdf(prescription);

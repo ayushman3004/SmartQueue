@@ -1,3 +1,6 @@
+import AdminWorkspaceSwitcher from '../components/AdminWorkspaceSwitcher'
+import '../styles/admin-workspace.css'
+import '../styles/customer-auth.css'
 import AdminBusinessApplications from '../components/AdminBusinessApplications'
 import AdminFreeSubscriptionCoupon from '../components/AdminFreeSubscriptionCoupon'
 import { useState, useEffect, useCallback } from 'react'
@@ -32,7 +35,6 @@ import {
   User,
   CheckCircle2,
   ArrowRight,
-  ShieldAlert,
   ShieldCheck,
   Activity,
   RefreshCw,
@@ -86,87 +88,103 @@ function AdminLoginForm({ onLoginSuccess }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#F8FAF9] font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
-      <div className="w-full max-w-md bg-white border border-zinc-200/90 rounded-3xl p-8 sm:p-10 shadow-xl space-y-6 text-left">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] text-[11px] font-black uppercase tracking-wider">
-            <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
-            Global Control Portal
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 uppercase tracking-tight">
-            Admin <span className="text-[#114227]">Login</span>
-          </h1>
-          <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-            Secure administrative gateway for monitoring live venues, presence, and platform operations.
+    <div className="customer-auth admin-auth">
+      <header className="customer-auth-header">
+        <Link to="/" aria-label="serveQ home">
+          <img src="/serveq-logo.png" alt="serveQ" />
+        </Link>
+        <Link to="/login" className="customer-auth-owner-link">
+          Customer sign in <ArrowRight size={14} aria-hidden="true" />
+        </Link>
+      </header>
+
+      <main className="customer-auth-layout">
+        <section className="customer-auth-intro" aria-labelledby="admin-intro-title">
+          <p className="customer-auth-eyebrow">serveQ administration</p>
+          <h2 id="admin-intro-title">A clear view.<br /><span>Every operation.</span></h2>
+          <p className="customer-auth-intro-copy">
+            Keep hubs, customers, and queues running smoothly from one shared workspace.
           </p>
-        </div>
-
-        {/* Existing Session Alert if non-admin */}
-        {user && user.role !== 'admin' && (
-          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
-            <p className="font-bold flex items-center gap-1.5">
-              Logged in as: {user.name} ({user.role})
-            </p>
-            <p className="text-[11px] text-amber-800">
-              Administrator privileges are required for this area. Enter administrative credentials below to upgrade this session or switch accounts.
-            </p>
-            <button
-              type="button"
-              onClick={logOut}
-              className="text-[11px] font-black underline text-amber-950 hover:text-black cursor-pointer"
-            >
-              Sign out of current account
-            </button>
-          </div>
-        )}
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Admin Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="enter admin email"
-              className="w-full px-4 py-2.5 rounded-2xl border border-zinc-200 focus:outline-none focus:border-[#114227] text-xs font-medium bg-white"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Master Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-2.5 pr-10 rounded-2xl border border-zinc-200 focus:outline-none focus:border-[#114227] text-xs font-medium bg-white"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 transition-colors p-1 cursor-pointer flex items-center justify-center"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+          <div className="customer-auth-preview">
+            <span className="customer-auth-ticket" aria-hidden="true"><Activity size={22} /></span>
+            <div>
+              <p>Your operations, in focus</p>
+              <span>Review applications, monitor live presence, and manage venues.</span>
             </div>
           </div>
+          <div className="customer-auth-benefits">
+            <span><ShieldCheck size={14} aria-hidden="true" />Admin access only</span>
+            <span><Radio size={14} aria-hidden="true" />Live platform activity</span>
+          </div>
+        </section>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-[#114227] hover:bg-[#0D361F] disabled:opacity-50 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition shadow-sm cursor-pointer"
-          >
-            {loading ? 'Authenticating...' : 'Unlock Admin Dashboard →'}
-          </button>
-        </form>
-      </div>
+        <section className="customer-auth-card" aria-labelledby="admin-signin-title">
+          <div className="customer-auth-card-heading">
+            <p className="customer-auth-eyebrow">Operations workspace</p>
+            <h1 id="admin-signin-title">Admin sign in</h1>
+            <p>Use your administrator account to access the console.</p>
+          </div>
+
+          {user && user.role !== 'admin' && (
+            <div className="customer-auth-account-note" role="status">
+              <strong>Signed in as {user.name} ({user.role})</strong>
+              <p>Sign in with an administrator account to continue.</p>
+              <button type="button" onClick={logOut} className="admin-auth-signout">
+                Sign out of current account
+              </button>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="customer-auth-form">
+            <div className="customer-auth-field">
+              <label htmlFor="admin-email">Email address</label>
+              <input
+                id="admin-email"
+                name="email"
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+              />
+            </div>
+            <div className="customer-auth-field">
+              <label htmlFor="admin-password">Password</label>
+              <div className="customer-auth-password">
+                <input
+                  id="admin-password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+            <button type="submit" disabled={loading} className="customer-auth-submit">
+              {loading ? 'Signing in…' : 'Sign in to console'}
+              {!loading && <ArrowRight size={15} aria-hidden="true" />}
+            </button>
+          </form>
+          <p className="customer-auth-switch">Access is limited to authorized serveQ administrators.</p>
+        </section>
+      </main>
+
+      <footer className="customer-auth-footer">
+        <Link to="/"><ArrowRight size={12} className="rotate-180" aria-hidden="true" />Back to serveQ</Link>
+        <nav aria-label="Legal"><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></nav>
+      </footer>
     </div>
   )
 }
@@ -188,7 +206,6 @@ export default function AdminDashboard() {
   const [usersList, setUsersList] = useState([])
   const [prelaunchCustomers, setPrelaunchCustomers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [autoRefresh, setAutoRefresh] = useState(true)
 
   // Layout state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
@@ -255,12 +272,12 @@ export default function AdminDashboard() {
 
   // Periodic Auto-refresh
   useEffect(() => {
-    if (!autoRefresh || !user || user.role !== 'admin') return
+    if (!user || user.role !== 'admin') return
     const interval = setInterval(() => {
       fetchAdminData(true)
     }, 10000)
     return () => clearInterval(interval)
-  }, [autoRefresh, user, fetchAdminData])
+  }, [user, fetchAdminData])
 
   // Real-time socket events sync
   useEffect(() => {
@@ -441,33 +458,6 @@ export default function AdminDashboard() {
   const renderSidebarContent = (isMobile = false) => (
     <div className="flex flex-col justify-between h-full space-y-6 text-left">
       <div className="space-y-6">
-        {/* Admin Identity Card in Sidebar */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-50 via-emerald-50/40 to-white border border-purple-200 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-lg shrink-0 shadow-xs">
-              <ShieldAlert className="w-5 h-5 text-purple-200" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-black text-xs text-zinc-950 truncate leading-tight">
-                Root Admin Hub
-              </h3>
-              <p className="text-[10px] text-purple-700 font-bold truncate uppercase tracking-wider">
-                Superuser Console
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-2.5 border-t border-purple-100 flex items-center justify-between text-[11px]">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-              Network Status
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
-              <span>LIVE TELEMETRY</span>
-            </span>
-          </div>
-        </div>
-
         {/* Section 1: Command Operations Tabs */}
         <div className="space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1">
@@ -501,6 +491,7 @@ export default function AdminDashboard() {
             return (
               <button
                 key={item.id}
+                aria-current={isActive ? 'page' : undefined}
                 type="button"
                 onClick={() => {
                   setActiveTab(item.id)
@@ -534,39 +525,7 @@ export default function AdminDashboard() {
 
         {/* Section 2: Platform Navigation Views */}
         <div className="space-y-1 pt-2 border-t border-zinc-100">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-3 py-1">
-            Navigate & Views
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              navigate('/business')
-              if (isMobile) setMobileSidebarOpen(false)
-            }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <Store className="w-4 h-4 text-zinc-500 shrink-0" />
-              <span className="truncate">Hubs Console</span>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              navigate('/customers')
-              if (isMobile) setMobileSidebarOpen(false)
-            }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <Users className="w-4 h-4 text-zinc-500 shrink-0" />
-              <span className="truncate">Customer Portal</span>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-          </button>
+          <AdminWorkspaceSwitcher onNavigate={() => { if (isMobile) setMobileSidebarOpen(false) }} />
 
           <button
             type="button"
@@ -630,7 +589,7 @@ export default function AdminDashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
+    <div className="admin-workspace min-h-screen bg-[#F8FAF9] text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900">
       {/* ── TOP STICKY HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Menu Toggle + ServeQ Logo */}
@@ -651,43 +610,13 @@ export default function AdminDashboard() {
               className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105"
             />
             <span className="hidden sm:inline-block text-[9px] font-black uppercase tracking-[0.2em] text-purple-800 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-              Admin Portal
+              Super admin
             </span>
           </Link>
         </div>
 
-        {/* Center: Live Telemetry Pill */}
-        <div className="hidden md:flex items-center gap-3 bg-zinc-50/80 border border-zinc-200/70 px-4 py-1.5 rounded-full">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-bold text-xs text-zinc-900">
-            Realtime Telemetry
-          </span>
-          <span className="text-zinc-300">•</span>
-          <span className="text-xs font-semibold text-zinc-600">
-            {onlineHubsCount} Hubs Live
-          </span>
-          <span className="text-zinc-300">•</span>
-          <span className="text-xs font-semibold text-zinc-600">
-            {onlineUsersCount} Patrons Online
-          </span>
-        </div>
-
-        {/* Right Actions: Auto-Sync, Refresh, Profile */}
+        {/* Right Actions: Refresh and Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Auto-Sync Toggle */}
-          <button
-            type="button"
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${autoRefresh
-              ? 'bg-[#EAF7EE] border-[#BDE8CB] text-[#114227]'
-              : 'bg-zinc-50 border-zinc-200 text-zinc-500'
-              }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-[#16A34A] animate-ping' : 'bg-zinc-400'}`} />
-            <span className="hidden sm:inline">Auto-Sync: {autoRefresh ? 'ON' : 'OFF'}</span>
-            <span className="sm:hidden">{autoRefresh ? 'Sync ON' : 'Sync OFF'}</span>
-          </button>
-
           {/* Refresh Button */}
           <button
             type="button"
@@ -824,7 +753,7 @@ export default function AdminDashboard() {
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto w-full text-left">
           {/* Header Title Section */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/80 pb-6">
+          <div className="admin-welcome flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse" />
@@ -836,7 +765,7 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-                Global Admin Hub
+                Super admin dashboard
               </h1>
               <p className="text-xs sm:text-sm text-zinc-500 font-medium">
                 Real-time telemetry, active customer & hub presence, queue monitoring, and venue moderation.
@@ -845,9 +774,11 @@ export default function AdminDashboard() {
           </div>
 
           {/* ── 7 GLOBAL STAT CARDS ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3.5">
+          <div className="admin-stats">
             {/* 1. Prelaunch Signups */}
-            <div
+            <button
+              type="button"
+              aria-pressed={activeTab === 'prelaunch'}
               onClick={() => setActiveTab('prelaunch')}
               className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group col-span-2 sm:col-span-1 shadow-xs ${activeTab === 'prelaunch'
                 ? 'bg-purple-50/70 border-purple-300 ring-2 ring-purple-400/40'
@@ -865,10 +796,12 @@ export default function AdminDashboard() {
               <p className="text-[10px] text-purple-700 font-semibold mt-0.5">
                 {prelaunchCustomers.filter((c) => c.confirmationEmailSent).length} Confirmed
               </p>
-            </div>
+            </button>
 
             {/* 2. Online Customers */}
-            <div
+            <button
+              type="button"
+              aria-pressed={activeTab === 'customers'}
               onClick={() => setActiveTab('customers')}
               className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-xs ${activeTab === 'customers'
                 ? 'bg-emerald-50/70 border-[#BDE8CB] ring-2 ring-[#16A34A]/30'
@@ -882,10 +815,12 @@ export default function AdminDashboard() {
               <p className="text-[10px] font-bold uppercase text-zinc-400">Online Users</p>
               <p className="text-2xl sm:text-3xl font-black text-[#16A34A] mt-0.5">{onlineUsersCount}</p>
               <p className="text-[10px] text-[#114227] font-semibold mt-0.5">Presently Active</p>
-            </div>
+            </button>
 
             {/* 3. Online Hubs */}
-            <div
+            <button
+              type="button"
+              aria-pressed={activeTab === 'hubs'}
               onClick={() => setActiveTab('hubs')}
               className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-xs ${activeTab === 'hubs'
                 ? 'bg-[#EAF7EE] border-[#BDE8CB] ring-2 ring-[#114227]/30'
@@ -899,7 +834,7 @@ export default function AdminDashboard() {
               <p className="text-[10px] font-bold uppercase text-zinc-400">Online Hubs</p>
               <p className="text-2xl sm:text-3xl font-black text-teal-700 mt-0.5">{onlineHubsCount}</p>
               <p className="text-[10px] text-teal-700 font-semibold mt-0.5">Active Venues</p>
-            </div>
+            </button>
 
             {/* 4. Total Hubs */}
             <div className="bg-white border border-zinc-200/80 p-4 rounded-2xl shadow-xs">
@@ -930,51 +865,10 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Directory Navigation Tabs Pills */}
-          <div className="flex border-b border-zinc-200 space-x-2 text-xs font-bold overflow-x-auto pb-2">
-            {[
-              { id: 'applications', label: 'Business Applications', pill: 'Review & invite' },
-              {
-                id: 'hubs',
-                label: 'Hubs & Operations Directory',
-                pill: `${businesses.length} total • ${onlineHubsCount} online`,
-              },
-              {
-                id: 'customers',
-                label: 'Customers & Presence Directory',
-                pill: `${usersList.length} total • ${onlineUsersCount} online`,
-              },
-              {
-                id: 'prelaunch',
-                label: 'Prelaunch Customers List',
-                pill: `${prelaunchCustomers.length} waitlist`,
-              },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-full flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${activeTab === tab.id
-                  ? 'bg-[#114227] text-white shadow-xs'
-                  : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'
-                  }`}
-              >
-                <span>{tab.label}</span>
-                <span
-                  className={`px-2 py-0.5 text-[10px] rounded-full font-black ${activeTab === tab.id
-                    ? 'bg-white/20 text-white'
-                    : 'bg-zinc-100 text-zinc-700'
-                    }`}
-                >
-                  {tab.pill}
-                </span>
-              </button>
-            ))}
-          </div>
-
           {/* ── TAB 1: HUBS & OPERATIONS DIRECTORY ── */}
           {activeTab === 'applications' && <AdminBusinessApplications />}
           {activeTab === 'hubs' && (
-            <div className="bg-white border border-zinc-200/90 rounded-3xl shadow-xs overflow-hidden space-y-6 p-6">
+            <div className="admin-surface bg-white border border-zinc-200/90 rounded-3xl shadow-xs overflow-hidden space-y-6 p-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
                 <div>
                   <h2 className="text-xl font-black text-zinc-950">Registered Hubs & Venues</h2>
@@ -1103,7 +997,7 @@ export default function AdminDashboard() {
 
           {/* ── TAB 2: CUSTOMERS & PRESENCE DIRECTORY ── */}
           {activeTab === 'customers' && (
-            <div className="bg-white border border-zinc-200/90 rounded-3xl shadow-xs overflow-hidden space-y-6 p-6">
+            <div className="admin-surface bg-white border border-zinc-200/90 rounded-3xl shadow-xs overflow-hidden space-y-6 p-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
                 <div>
                   <h2 className="text-xl font-black text-zinc-950">Registered Patrons & Active Presence</h2>
@@ -1221,7 +1115,7 @@ export default function AdminDashboard() {
 
           {/* ── TAB 3: PRELAUNCH CUSTOMERS LIST ── */}
           {activeTab === 'prelaunch' && (
-            <div className="bg-white border border-zinc-200/90 rounded-3xl shadow-xs overflow-hidden space-y-6 p-6">
+            <div className="admin-surface bg-white border border-zinc-200/90 rounded-3xl shadow-xs overflow-hidden space-y-6 p-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1379,7 +1273,7 @@ export default function AdminDashboard() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
+              className="admin-surface w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
             >
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
                 <Trash2 className="w-6 h-6" />
@@ -1426,7 +1320,7 @@ export default function AdminDashboard() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
+              className="admin-surface w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
             >
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
                 <Trash2 className="w-6 h-6" />
@@ -1473,7 +1367,7 @@ export default function AdminDashboard() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-6 text-left my-8"
+              className="admin-surface w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-6 text-left my-8"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
                 <div>

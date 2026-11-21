@@ -1,3 +1,4 @@
+import AdminWorkspaceSwitcher from '../components/AdminWorkspaceSwitcher'
 import DoctorAccessControls from '../components/DoctorAccessControls'
 import { getDoctorAccess } from '../api/doctor.api'
 import './BusinessDashboard.css'
@@ -578,6 +579,8 @@ export default function BusinessDashboard() {
             </span>
           </div>
         </div>
+
+        <AdminWorkspaceSwitcher onNavigate={() => { if (isMobile) setMobileSidebarOpen(false) }} />
 
         {/* Section 1: Command Operations (Tabs) */}
         <nav className="space-y-1" aria-label="Venue operations">

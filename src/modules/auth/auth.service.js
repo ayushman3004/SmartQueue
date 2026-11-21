@@ -1,3 +1,4 @@
+import { effectiveSubscription } from '../../utils/subscription.js';
 import { hasVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import { ownerState, assertOwnerLogin, publicOwnerAccess } from "../business-application/owner-lifecycle.js";
 import { validateInvitation } from "../business-application/business-application.service.js";
@@ -67,7 +68,7 @@ export const login = async ({ email, password, requiredRole, activationCredentia
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new ApiError(401, "Invalid credentials");
 
-  if (requiredRole === "doctor" && user.role !== "doctor") throw new ApiError(403, "Use a doctor account to sign in here.");
+  if (requiredRole === "doctor" && !["doctor", "admin"].includes(user.role)) throw new ApiError(403, "Use a doctor account to sign in here.");
   if (user.role === "doctor") {
     if (requiredRole !== "doctor") throw new ApiError(403, "Sign in at /doctor/login.");
     const { doctorContext } = await import("../doctor/doctor-access.js");
@@ -244,5 +245,5 @@ export const sanitize = (user) => ({
   businessCategories: user.businessCategories || [],
   doctorAccess: user.role === "doctor" ? { businessId: user.doctorAccess?.businessId, staffId: user.doctorAccess?.staffId, mustChangePassword: user.doctorAccess?.mustChangePassword } : undefined,
   ownerAccess: publicOwnerAccess(user),
-  subscription: user.subscription || { plan: "NONE", status: "INACTIVE", amount: 0 },
+  subscription: effectiveSubscription(user),
 });

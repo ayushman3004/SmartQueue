@@ -26,6 +26,7 @@ export const selectBusinessCategory = async (id, ownerId, category) => {
 export const createBusiness = async (ownerId, data, userRole = null) => {
   if (userRole !== "admin" && await Business.exists({ owner: ownerId })) throw new ApiError(403, "Ask the admin to add another clinic or salon to your business.");
   const payload = { ...data, owner: ownerId, categorySelectedAt: null };
+  delete payload.adminTestKind;
   if (Array.isArray(payload.services) && payload.services.length > 0) {
     payload.services = payload.services
       .map(s => ({
@@ -90,7 +91,9 @@ export const calculateHaversineKm = (lat1, lon1, lat2, lon2) => {
 };
 
 export const getAllBusinesses = async (filters = {}) => {
-  const match = {};
+  const match = filters.testOwner
+    ? { $and: [{ $or: [{ adminTestKind: { $exists: false } }, { owner: filters.testOwner }] }] }
+    : { adminTestKind: { $exists: false } };
 
   if (!filters.includeAll) {
     match.isActive = true;
@@ -238,7 +241,9 @@ export const getAllBusinesses = async (filters = {}) => {
     let result = businesses;
     if (filterRadius) {
       // Exclude venues that have no valid coordinates or exceed the maximum search radius
-      result = result.filter((b) => b.distanceKm !== null && b.distanceKm <= maxRadius);
+      result = result.filter((b) =>
+        (b.adminTestKind && filters.testOwner && String(b.owner?._id || b.owner) === String(filters.testOwner)) ||
+        (b.distanceKm !== null && b.distanceKm <= maxRadius));
     }
 
     // Sort nearest first (lowest distanceKm first)
@@ -391,6 +396,7 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
   // Prevent overwriting protected fields
   const { owner: _owner, _id: _idField, __v: _version, createdAt: _createdAt, updatedAt: _updatedAt, ...safeData } = data;
 
+  delete safeData.adminTestKind;
   if (userRole !== "admin") {
     delete safeData.categorySelectedAt;
     if (safeData.category && safeData.category !== b.category) throw new ApiError(403, "Ask the admin to change your business category.");

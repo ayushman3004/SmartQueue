@@ -16,12 +16,12 @@ import {
   saveOnboardingStep,
   launchBusiness,
 } from "./business.controller.js";
-import { protect, allowRoles, requireVerifiedEmail } from "../../../middleware/auth.middleware.js";
+import { protect, allowRoles, requireVerifiedEmail, optionalAuth } from "../../../middleware/auth.middleware.js";
 
 const router = Router();
 
 // Public
-router.get("/", getAll);
+router.get("/", optionalAuth, getAll);
 
 router.get("/owner-category", protect, allowRoles("owner", "admin"), (req, res) => {
   res.json({ success: true, data: { categories: req.user.businessCategories || [] } });
@@ -67,6 +67,6 @@ router.put("/:id", protect, allowRoles("owner", "admin"), update);
 router.patch("/:id/toggle", protect, allowRoles("owner", "admin"), toggle);
 
 // Public — single business (after /mine)
-router.get("/:id", getOne);
+router.get("/:id", optionalAuth, getOne);
 
 export default router;

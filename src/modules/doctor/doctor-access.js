@@ -6,6 +6,12 @@ export const ref = value => String(value?._id || value || '');
 export const isClinic = business => normalizeServiceCategory(business?.category) === 'clinic';
 
 export async function doctorContext(user) {
+  if (user?.role === 'admin') {
+    const business = await Business.findOne({ owner: user._id, adminTestKind: 'clinic', category: 'clinic', approvalStatus: 'approved' });
+    const staff = business?.staff?.find(member => member.email?.toLowerCase() === user.email?.toLowerCase() && member.doctorId);
+    if (!business || !staff) throw new ApiError(403, 'Open the doctor workspace from the super admin switcher to prepare your test clinic.');
+    return { business, staff };
+  }
   if (user?.role !== 'doctor' || user.doctorAccess?.status !== 'ACTIVE') throw new ApiError(403, 'Doctor access is disabled. Contact your business owner.');
   const business = await Business.findById(user.doctorAccess.businessId);
   const staff = business?.staff?.find(member => ref(member._id) === ref(user.doctorAccess.staffId));
@@ -30,6 +36,7 @@ export function requireAssigned(record, context) {
 }
 
 export function prescriptionFilter(user) {
+  if (user.role === 'admin') return { $or: [{ doctor: user._id }, { patient: user._id }] };
   if (user.role === 'doctor') return { doctor: user._id };
   if (user.role === 'customer') return { patient: user._id };
   throw new ApiError(403, 'Prescriptions are private to the doctor and patient.');

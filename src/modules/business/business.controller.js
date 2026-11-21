@@ -1,3 +1,4 @@
+import { assertTestVenueAccess } from '../admin/admin-workspace.service.js';
 const publicBusiness = business => {
   const value = business.toObject?.() || business;
   return { ...value, staff: value.staff?.map(member => {
@@ -26,6 +27,7 @@ export const create = asyncHandler(async (req, res) => {
 export const getAll = asyncHandler(async (req, res) => {
   const { search, category, location, onlyOpen, lat, lng, radius, onlyWithinRadius } = req.query;
   const businesses = await businessService.getAllBusinesses({
+    testOwner: req.user?.role === "admin" ? req.user._id : undefined,
     search,
     category,
     location,
@@ -40,6 +42,7 @@ export const getAll = asyncHandler(async (req, res) => {
 
 export const getOne = asyncHandler(async (req, res) => {
   const business = await businessService.getBusinessById(req.params.id);
+  assertTestVenueAccess(business, req.user?._id);
   res.json(new ApiResponse(200, { business: publicBusiness(business) }));
 });
 

@@ -1,3 +1,4 @@
+import { effectiveSubscription } from '../../utils/subscription.js';
 import crypto from "node:crypto";
 import { activateSubscriptionPurchase } from "./subscription.fulfillment.js";
 import { readRazorpayCredentials, classifyRazorpayOrderError } from "../payment/razorpay.config.js";
@@ -18,6 +19,7 @@ export { SUBSCRIPTION_PLANS };
 export const createSubscriptionOrder = async (userId, planId) => {
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, "User not found");
+  if (user.role === "admin") throw new ApiError(409, "Super admin already includes Pro access. No payment is required.");
 
   if (!["owner", "admin"].includes(user.role)) {
     throw new ApiError(403, "Only registered business owners can subscribe to ServeQ plans");
@@ -106,7 +108,7 @@ export const getCurrentSubscription = async (userId) => {
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, "User not found");
 
-  const sub = user.subscription || { plan: "NONE", status: "INACTIVE", amount: 0 };
+  const sub = effectiveSubscription(user);
   const currentPlan = SUBSCRIPTION_PLANS[sub.plan] || null;
 
   const isExpired = sub.expiresAt && new Date(sub.expiresAt) < new Date();

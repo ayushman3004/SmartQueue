@@ -1,3 +1,4 @@
+import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
 import { isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
 import Booking from "./booking.model.js";
@@ -119,6 +120,7 @@ export const createBooking = async ({
 }, io = null) => {
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
+  assertTestVenueAccess(business, userId);
 
   // Validate that business has an active ServeQ subscription
   const isSubscribed = await isBusinessSubscriptionActive(business);

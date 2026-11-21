@@ -1,3 +1,4 @@
+import AdminWorkspaceSwitcher from '../components/AdminWorkspaceSwitcher'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { signin } from '../api/auth.api'
@@ -16,7 +17,7 @@ export function DoctorLogin() {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  if (user?.role === 'doctor') return <Navigate to="/doctor/dashboard" replace />
+  if (['doctor', 'admin'].includes(user?.role)) return <Navigate to="/doctor/dashboard" replace />
   return <main className="admission w-full max-w-lg mx-auto py-12">
     <img src="/serveq-logo.png" alt="ServeQ" className="h-8 w-auto" />
     <h1>Doctor sign in</h1>
@@ -125,7 +126,9 @@ function DoctorWorkspace() {
     </article>
   }
 
-  return <main className="business-page mx-auto w-full max-w-6xl space-y-5 px-4 py-8 sm:px-8">
+  return <div className={user.role === 'admin' ? 'admin-doctor-layout' : undefined}>
+    {user.role === 'admin' && <aside className="admin-doctor-sidebar"><AdminWorkspaceSwitcher /></aside>}
+    <main className="business-page mx-auto w-full max-w-6xl space-y-5 px-4 py-8 sm:px-8">
     <header className="flex flex-wrap items-center justify-between gap-4">
       <img src="/serveq-logo.png" alt="ServeQ" className="h-8 w-auto" />
       <button type="button" className={button} onClick={() => logOut()}>Sign out</button>
@@ -167,9 +170,10 @@ function DoctorWorkspace() {
       </form>
     </div>}
   </main>
+  </div>
 }
 
 export default function DoctorPage() {
   const { user } = useAuth()
-  return user?.doctorAccess?.mustChangePassword ? <DoctorPassword /> : <DoctorWorkspace />
+  return user?.role === 'doctor' && user?.doctorAccess?.mustChangePassword ? <DoctorPassword /> : <DoctorWorkspace />
 }

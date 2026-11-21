@@ -1,0 +1,84 @@
+/* Admin operations use the same sage surfaces as the customer and business workspaces. */
+.admin-workspace {
+  --admin-ink: #315b45;
+  --admin-text: #153c2b;
+  --admin-soft: #e6f0e8;
+  --admin-line: #c1d5c7;
+  min-height: 100dvh;
+  background: #f7fcf9;
+  color: var(--admin-text);
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+.admin-workspace :is(h1, h2, h3) { color: var(--admin-text); font-weight: 650; letter-spacing: -.035em; text-wrap: balance; }
+.admin-workspace > header { background: #fbfefbef; border-color: var(--admin-line); box-shadow: none; }
+.admin-workspace > .flex-1 > main { width: 100%; max-width: 1440px; padding: 24px 28px 40px; }
+.admin-workspace aside { background: #fbfefb99; border-color: var(--admin-line); padding-top: 24px; min-height: calc(100dvh - 65px); max-height: calc(100dvh - 65px); top: 65px; }
+.admin-workspace aside button { border: 1px solid transparent; border-radius: 14px; font-weight: 600; box-shadow: none; }
+.admin-workspace button[aria-current='page'] { background: var(--admin-soft); border-color: var(--admin-line); color: var(--admin-ink); box-shadow: none; }
+.admin-welcome { background: var(--admin-soft); border: 1px solid var(--admin-line); border-radius: 24px 64px 24px 24px; padding: 28px 32px; }
+.admin-welcome h1 { margin-block: 12px 10px; font-size: clamp(28px, 2.8vw, 38px); letter-spacing: -.055em; line-height: 1.12; }
+.admin-welcome > div > div { flex-wrap: wrap; }
+.admin-welcome > div > p { max-width: 650px; color: #617168; font-size: 13px; font-weight: 400; line-height: 1.65; }
+.admin-welcome > div > div > span:last-child { display: none; }
+.admin-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.admin-stats > :is(div, button) { min-width: 0; grid-column: auto; text-align: left; background: #fffffc; border: 1px solid var(--admin-line); border-radius: 18px; padding: 20px 16px; box-shadow: 0 4px 0 var(--admin-soft); font-variant-numeric: tabular-nums; }
+.admin-stats > button[aria-pressed='true'] { background: var(--admin-soft); border-color: var(--admin-ink); box-shadow: 0 4px 0 var(--admin-line); --tw-ring-shadow: 0 0 #0000; }
+.admin-stats > button > div { position: static; margin-bottom: 10px; }
+.admin-stats > :is(div, button) > p:first-of-type { color: #617168; font-size: 10px; font-weight: 600; }
+.admin-stats > :is(div, button) > p:nth-of-type(2) { color: var(--admin-text); font-weight: 650; letter-spacing: -.04em; overflow-wrap: anywhere; }
+.admin-workspace .admin-surface,
+.admin-workspace .admission-admin,
+.admin-workspace [role='dialog'] { background: #fffffc; border-color: var(--admin-line); border-radius: 24px 24px 18px 18px; box-shadow: 0 4px 0 var(--admin-soft); }
+.admin-workspace :is(input, select, textarea) { background-color: #f8faf6; border-color: var(--admin-line); accent-color: var(--admin-ink); }
+.admin-workspace :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--admin-ink); outline-offset: 3px; }
+.admin-workspace table { font-variant-numeric: tabular-nums; }
+.admin-workspace thead { background: var(--admin-soft); }
+.admin-workspace th { padding: 12px; color: var(--admin-ink); font-weight: 600; white-space: nowrap; }
+.admin-workspace td { padding-inline: 12px; }
+.admin-workspace :is(th, td) { border-color: var(--admin-line); }
+/* Keep warning and destructive states distinct; unify decorative accents. */
+.admin-workspace [class*='text-purple-'],
+.admin-workspace [class*='text-teal-'],
+.admin-workspace [class*='text-[#16A34A]'] { color: var(--admin-ink); }
+.admin-workspace [class*='bg-purple-50'],
+.admin-workspace [class*='bg-purple-100'],
+.admin-workspace [class*='bg-[#EAF7EE]'],
+.admin-workspace [class*='bg-[#EAF5EC]'] { background-color: var(--admin-soft); border-color: var(--admin-line); }
+.admin-workspace [class*='border-purple-'] { border-color: var(--admin-line); }
+.admin-workspace [class*='bg-purple-700'],
+.admin-workspace [class*='bg-[#114227]'] { background-color: var(--admin-ink); color: #fff; box-shadow: none; }
+.admin-workspace [class*='bg-purple-500'],
+.admin-workspace [class*='bg-purple-600'] { background-color: var(--admin-ink); }
+.admin-workspace button[class*='rounded-full'],
+.admin-workspace input[class*='rounded-full'] { border-radius: 12px; }
+@media (min-width: 1500px) { .admin-stats { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+@media (max-width: 767px) {
+  .admin-workspace > .flex-1 > main { padding: 18px 16px 32px; }
+  .admin-welcome { padding: 24px; border-radius: 22px 48px 22px 22px; }
+  .admin-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-workspace .admin-surface { padding: 20px 16px; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .admin-workspace aside button:not([aria-current='page']):hover { background: var(--admin-soft); }
+  .admin-stats > button:hover { border-color: var(--admin-ink); }
+}
+.admin-workspace .admission-admin { border: 1px solid var(--admin-line); padding: 24px; }
+.admin-workspace table { min-width: 880px; }
+.admin-workspace .admin-surface > div:first-child > div { min-width: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .admin-workspace .animate-pulse, .admin-workspace .animate-ping { animation: none; }
+  .admin-workspace button { transition: none; }
+}
+
+/* Admin sign-in shares the customer authentication layout and form components. */
+.admin-auth { font-family: "Plus Jakarta Sans", sans-serif; }
+.admin-auth-signout { color: var(--auth-ink); text-decoration: underline; text-underline-offset: 3px; font-size: 12px; font-weight: 600; }
+
+/* Carry the admin canvas through the transparent area of the footer wave. */
+.page-wrapper.admin-shell { background: #f7fcf9; }
+.admin-shell > .site-footer { background: #f7fcf9; padding-top: 0; }
+.admin-workspace aside {
+  background: transparent;
+  backdrop-filter: none;
+  border-image: linear-gradient(to bottom, var(--admin-line) calc(100% - 100px), transparent) 1;
+}

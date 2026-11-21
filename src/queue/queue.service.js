@@ -1,3 +1,4 @@
+import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
 import { isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
 import Queue from "./queue.model.js";
@@ -18,6 +19,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   const business = await Business.findById(businessId);
   if (!business) throw new ApiError(404, "Business not found");
+  assertTestVenueAccess(business, userData.userId);
   if (!business.isOpen || !business.isActive) {
     throw new ApiError(400, "This business is currently closed or not accepting queue entries");
   }

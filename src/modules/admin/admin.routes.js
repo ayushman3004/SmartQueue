@@ -7,6 +7,8 @@ const router = express.Router();
 router.use(protect);
 router.use(allowRoles("admin"));
 
+router.post("/workspace", adminController.prepareWorkspace);
+
 router.get("/stats", adminController.getStats);
 router.get("/businesses", adminController.getAllBusinesses);
 router.get("/users", adminController.getAllUsers);

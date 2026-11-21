@@ -72,9 +72,9 @@ export default function App() {
   const isVenueDashboard = !isOnboarding && location.pathname !== '/business/apply' &&
     ['/business/:businessId', '/business/:businessId/manage'].some(path =>
       matchPath({ path, end: true }, location.pathname))
-  const isCustomerWorkspace = Boolean(user && !['owner', 'admin'].includes(user.role) &&
+  const isCustomerWorkspace = Boolean(user && user.role !== 'owner' &&
     (/^\/(customers|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
-  const isBusinessWorkspace = Boolean(user && ['owner', 'admin'].includes(user.role) &&
+  const isBusinessWorkspace = Boolean(user && ['owner', 'admin'].includes(user.role) && !isCustomerWorkspace &&
     (/^\/(hub|business|subscription|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
   const requestedService = new URLSearchParams(location.search).get('category')
   const storedService = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
@@ -168,7 +168,7 @@ export default function App() {
     : 'app-background'
 
   return (
-    <div data-service={isCustomerWorkspace ? workspaceService : undefined} className={`page-wrapper ${bgClass} ${isCustomerWorkspace ? 'customer-workspace' : ''} ${location.pathname === '/' ? 'landing-shell' : ''} ${isBusinessWorkspace ? 'business-page' : ''}`}>
+    <div data-service={isCustomerWorkspace ? workspaceService : undefined} className={`page-wrapper ${bgClass} ${isCustomerWorkspace ? 'customer-workspace' : ''} ${location.pathname === '/' ? 'landing-shell' : ''} ${isBusinessWorkspace ? 'business-page' : ''} ${location.pathname.startsWith('/admin') && user?.role === 'admin' ? 'admin-shell' : ''}`}>
       {!isStandalonePage && <AmbientBackground variant={bgVariant} />}
       <Toaster 
         position="top-right"
@@ -196,7 +196,7 @@ export default function App() {
           {guidePages.map(page => <Route key={page.path} path={page.path} element={<PublicGuidePage page={page} />} />)}
           <Route path="/business/apply" element={<BusinessApplicationPage />} />
           <Route path="/doctor/login" element={<DoctorLogin />} />
-          <Route path="/doctor/dashboard" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorPage /></ProtectedRoute>} />
+          <Route path="/doctor/dashboard" element={<ProtectedRoute allowedRoles={['doctor', 'admin']}><DoctorPage /></ProtectedRoute>} />
           <Route path="/hub/login" element={<HubLoginPage />} />
           <Route path="/hub/activate" element={<HubLoginPage />} />
           <Route path="/hub/dashboard" element={<ProtectedRoute allowedRoles={['owner','admin']}><HubHome /></ProtectedRoute>} />

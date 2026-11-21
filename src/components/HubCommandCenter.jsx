@@ -1,3 +1,4 @@
+import AdminWorkspaceSwitcher from './AdminWorkspaceSwitcher'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -133,6 +134,8 @@ export default function HubCommandCenter() {
   const renderSidebarContent = (isMobile = false) => (
     <div className="flex flex-col justify-between min-h-full h-full space-y-6">
       <div className="space-y-6">
+
+        <AdminWorkspaceSwitcher onNavigate={() => { if (isMobile) setMobileSidebarOpen(false) }} />
 
         {/* Section 1: Command Filters & Views */}
         <nav className="hub-filters space-y-1" aria-label="Hub views">

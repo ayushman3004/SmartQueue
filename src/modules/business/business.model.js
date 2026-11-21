@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const businessSchema = new mongoose.Schema(
   {
+    adminTestKind: { type: String, enum: ["clinic", "salon"] },
     name: {
       type: String,
       required: [true, "Business name is required"],
@@ -230,6 +231,10 @@ const businessSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+businessSchema.index({ owner: 1, adminTestKind: 1 }, {
+  unique: true, partialFilterExpression: { adminTestKind: { $type: "string" } },
+});
 
 const Business = mongoose.model("Business", businessSchema);
 export default Business;

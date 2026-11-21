@@ -10,9 +10,9 @@ import { hasActiveSubscription } from "../utils/subscription";
 import "../styles/business-admission.css";
 export function HubHome() {
   const { user } = useAuth();
-  if (!user?.isEmailVerified && user?.authProvider !== "google")
+  if (user?.role !== "admin" && !user?.isEmailVerified && user?.authProvider !== "google")
     return <Navigate to="/business/onboarding" replace />;
-  if (!hasActiveSubscription(user.subscription))
+  if (user?.role !== "admin" && !hasActiveSubscription(user.subscription))
     return <Navigate to="/subscription" replace />;
   return <HubCommandCenter />;
 }

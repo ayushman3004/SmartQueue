@@ -1,7 +1,7 @@
+import AdminWorkspaceSwitcher from './AdminWorkspaceSwitcher'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard,
   Stethoscope,
   Scissors,
   Ticket,
@@ -49,7 +49,6 @@ export default function CustomerSidebar({
       ]
     : isAdmin
     ? [
-        { id: 'dashboard', label: 'Admin Console', icon: LayoutDashboard, route: '/admin', count: null },
         { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: '/customers?category=clinic', count: clinicsCount },
         { id: 'salons', label: 'Salons', icon: Scissors, route: '/customers?category=salon', count: salonsCount },
         { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
@@ -94,6 +93,8 @@ export default function CustomerSidebar({
 
   const renderNavList = (isMobile = false) => (
     <div className="flex flex-col justify-between min-h-full h-full">
+      <div>
+      <AdminWorkspaceSwitcher onNavigate={() => { if (isMobile) onCloseMobile() }} />
       <nav className="space-y-1">
         {navItems.map((item) => {
           const isActive = activeNavTab === item.id
@@ -129,6 +130,7 @@ export default function CustomerSidebar({
           )
         })}
       </nav>
+      </div>
 
       {/* Bottom Sidebar Actions */}
       <div className="pt-4 border-t border-zinc-100 space-y-1">

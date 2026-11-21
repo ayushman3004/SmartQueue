@@ -26,6 +26,10 @@ export default function BusinessSubscriptionPlans({ onSuccess, onBusyChange }) {
   useEffect(() => { load() }, [load])
   useEffect(() => { onBusyChange?.(checkout.busy || couponBusy) }, [checkout.busy, couponBusy, onBusyChange])
   const active = hasActiveSubscription(user?.subscription)
+  if (user?.role === 'admin') return <div className="business-plan-notice">
+    <strong>Super admin · Pro included</strong>
+    <p className="mt-2 text-sm leading-relaxed">All Pro features are available for your administrator account and test venues. No payment or renewal is required.</p>
+  </div>
   return <div className="business-plans space-y-6">
     <div ref={feedback} className="business-checkout-feedback" aria-live="polite">
       {checkout.busy && <p role="status">{checkout.stage}</p>}
