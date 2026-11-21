@@ -18,12 +18,8 @@
     "ci:frontend": "npm run lint && npm test && npm run build && npm run check:build"
   },
   "dependencies": {
-    "@capacitor/core": "^8.5.3",
-    "@radix-ui/react-slot": "^1.3.3",
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -47,7 +43,6 @@
     "react-router-dom": "^7.13.2",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "tailwind-merge": "^3.7.0",
     "twilio": "^5.13.1"
   },
   "devDependencies": {

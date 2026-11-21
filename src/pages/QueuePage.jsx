@@ -601,9 +601,6 @@ export default function QueuePage() {
                   src="/queue-hero-boy-transparent.png"
                   alt="Patron checking queue on phone"
                   className="max-h-full max-w-full object-contain drop-shadow-xl"
-                  onError={(e) => {
-                    e.currentTarget.src = '/queue-hero-boy.png'
-                  }}
                 />
               </div>
             </div>
