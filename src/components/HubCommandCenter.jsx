@@ -4,9 +4,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getAccessibleBusinesses as getMyBusinesses } from '../api/business.api'
+import { getAccessibleBusinesses as getMyBusinesses, initOnboarding } from '../api/business.api'
 import { toast } from 'react-hot-toast'
-import RegisterHubModal from './RegisterHubModal'
 import ManageServicesModal from './ManageServicesModal'
 import { HubCommandCenterSkeleton } from './Skeleton'
 import './HubCommandCenter.css'
@@ -38,7 +37,7 @@ export default function HubCommandCenter() {
 
   const [myBusinesses, setMyBusinesses] = useState([])
   const [fetchingHubs, setFetchingHubs] = useState(true)
-  const [registerHubOpen, setRegisterHubOpen] = useState(false)
+  const [registeringHub, setRegisteringHub] = useState(false)
   const [manageServicesBiz, setManageServicesBiz] = useState(null)
 
   // Layout & Navigation State
@@ -50,11 +49,22 @@ export default function HubCommandCenter() {
   // Email verification check
   const isEmailVerified = Boolean(user?.isEmailVerified || user?.authProvider === 'google')
 
-  const handleRegisterHubClick = () => {
+  const handleRegisterHubClick = async () => {
+    if (registeringHub) return
     if (!isEmailVerified) {
-      toast.error('Email verification required! Please verify your email before onboarding.')
+      toast.error('Please verify your email before registering a hub.')
+      navigate('/business/onboarding')
+      return
     }
-    navigate('/support')
+    setRegisteringHub(true)
+    try {
+      const res = await initOnboarding({ createNew: true })
+      navigate(`/business/onboarding/${res.data.data.business._id}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not start hub registration. Please retry.')
+    } finally {
+      setRegisteringHub(false)
+    }
   }
 
   const loadHubs = useCallback(async () => {
@@ -422,10 +432,10 @@ export default function HubCommandCenter() {
             </button>
 
             {showUserMenu && (
-              <div className="absolute top-full right-0 mt-2 w-52 bg-white border border-zinc-200 rounded-2xl shadow-xl p-1.5 z-50 space-y-1">
-                <div className="px-3 py-2 border-b border-zinc-100">
-                  <p className="text-xs font-bold text-zinc-900 truncate">{user?.name || 'Hub Owner'}</p>
-                  <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
+              <div className="hub-account-menu absolute top-full right-0 mt-2 w-52 bg-white border border-zinc-200 rounded-2xl shadow-xl p-1.5 z-50 space-y-1">
+                <div className="hub-account-menu-heading px-3 py-2 border-b">
+                  <p className="text-xs font-bold text-[#153c2b] truncate">{user?.name || 'Hub Owner'}</p>
+                  <p className="text-[10px] text-[#617168] truncate">{user?.email}</p>
                 </div>
                 <button
                   type="button"
@@ -433,9 +443,9 @@ export default function HubCommandCenter() {
                     navigate('/profile')
                     setShowUserMenu(false)
                   }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-[#315b45] hover:bg-[#e6f0e8] rounded-xl flex items-center gap-2 cursor-pointer"
                 >
-                  <User className="w-3.5 h-3.5 text-zinc-400" />
+                  <User className="w-3.5 h-3.5 text-current" />
                   <span>Account Profile</span>
                 </button>
                 <button
@@ -444,9 +454,9 @@ export default function HubCommandCenter() {
                     navigate('/subscription')
                     setShowUserMenu(false)
                   }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-[#315b45] hover:bg-[#e6f0e8] rounded-xl flex items-center gap-2 cursor-pointer"
                 >
-                  <Crown className="w-3.5 h-3.5 text-amber-500" />
+                  <Crown className="w-3.5 h-3.5 text-current" />
                   <span>My Subscription</span>
                 </button>
                 <button
@@ -455,12 +465,12 @@ export default function HubCommandCenter() {
                     navigate('/customers')
                     setShowUserMenu(false)
                   }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-[#315b45] hover:bg-[#e6f0e8] rounded-xl flex items-center gap-2 cursor-pointer"
                 >
-                  <Store className="w-3.5 h-3.5 text-zinc-400" />
+                  <Store className="w-3.5 h-3.5 text-current" />
                   <span>Customer Portal</span>
                 </button>
-                <div className="border-t border-zinc-100 my-1" />
+                <div className="hub-account-menu-divider border-t my-1" />
                 <button
                   type="button"
                   onClick={() => {
@@ -544,10 +554,11 @@ export default function HubCommandCenter() {
               <button
                 type="button"
                 onClick={handleRegisterHubClick}
+                disabled={registeringHub}
                 className="hub-primary"
               >
                 <Plus className="w-4 h-4" />
-                <span>Register new hub</span>
+                <span>{registeringHub ? 'Starting registration…' : 'Register new hub'}</span>
               </button>
             </div>
           </section>
@@ -801,16 +812,6 @@ export default function HubCommandCenter() {
       </div>
 
       {/* Modals for Hub Registration and Service Management */}
-      <RegisterHubModal
-        isOpen={registerHubOpen}
-        onClose={() => setRegisterHubOpen(false)}
-        onCreated={(newBiz) => {
-          setMyBusinesses((prev) => [newBiz, ...prev])
-          setRegisterHubOpen(false)
-          toast.success(`Hub "${newBiz.name}" deployed successfully!`)
-        }}
-      />
-
       <ManageServicesModal
         isOpen={Boolean(manageServicesBiz)}
         business={manageServicesBiz}

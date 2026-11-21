@@ -23,9 +23,8 @@ export const selectBusinessCategory = async (id, ownerId, category) => {
   return selected;
 };
 
-export const createBusiness = async (ownerId, data, userRole = null) => {
-  if (userRole !== "admin" && await Business.exists({ owner: ownerId })) throw new ApiError(403, "Ask the admin to add another clinic or salon to your business.");
-  const payload = { ...data, owner: ownerId, categorySelectedAt: null };
+export const createBusiness = async (ownerId, data) => {
+  const payload = { ...data, owner: ownerId, categorySelectedAt: new Date() };
   delete payload.adminTestKind;
   if (Array.isArray(payload.services) && payload.services.length > 0) {
     payload.services = payload.services
@@ -519,7 +518,6 @@ export const initOnboarding = async (ownerId, data = {}) => {
     }
   }
 
-  if (await Business.exists({ owner: ownerId })) throw new ApiError(403, "Ask the admin to add another clinic or salon to your business.");
   const defaultCategory = data.category || "salon";
   const isClinic = defaultCategory === "clinic" || defaultCategory === "healthcare";
 

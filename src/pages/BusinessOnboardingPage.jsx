@@ -1038,7 +1038,7 @@ export default function BusinessOnboardingPage() {
 
               <div className="space-y-2 rounded-2xl border border-zinc-200 p-4">
                 <p className="text-sm font-bold capitalize">{step1.category} business</p>
-                <p className="text-xs text-zinc-500">Your business category is saved. Ask the admin to change it or add another clinic or salon.</p>
+                <p className="text-xs text-zinc-500">Your business category is saved. New hubs use an enabled category on your account. Ask the admin to change your business type.</p>
                 <Link to="/support" className="text-sm font-semibold text-teal-700 underline">Request a change or another venue</Link>
               </div>
 

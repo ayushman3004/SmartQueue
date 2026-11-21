@@ -7,6 +7,8 @@
   color: #153c2b;
 }
 .hub-dashboard > header { min-height: 61px; background: #fbfefbe8; border-color: var(--hub-line); box-shadow: none; }
+.hub-dashboard .hub-account-menu { background: #fbfefb; border-color: var(--hub-line); }
+.hub-account-menu-heading, .hub-account-menu-divider { border-color: var(--hub-line); }
 .hub-dashboard :is(h1, h2, h3) { color: #153c2b; font-weight: 650; letter-spacing: -.035em; text-wrap: balance; }
 .hub-dashboard :is(button, a, input):focus-visible { outline: 2px solid var(--hub-ink); outline-offset: 3px; }
 .hub-dashboard .icon-3d { display: inline-flex; align-items: center; justify-content: center; background: var(--hub-soft); color: var(--hub-ink); border: 1px solid var(--hub-line); border-radius: 12px 12px 5px 5px; box-shadow: none; transform: none; }

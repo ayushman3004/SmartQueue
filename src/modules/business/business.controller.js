@@ -7,7 +7,7 @@ const publicBusiness = business => {
   }) };
 };
 
-import { canAccessOwnerCategory } from "../../utils/ownerCategory.js";
+import { canAccessOwnerCategory, resolveOwnerHubCategory } from "../../utils/ownerCategory.js";
 import BusinessApplication from "../business-application/business-application.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import * as businessService from "./business.service.js";
@@ -15,8 +15,9 @@ import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
 
 export const create = asyncHandler(async (req, res) => {
-  if (req.user.ownerAccess?.applicationId) throw new ApiError(403, "Apply for approval before adding another business.");
-  const business = await businessService.createBusiness(req.user._id, req.body, req.user.role);
+  const category = resolveOwnerHubCategory(req.user, req.body.category);
+  if (!category) throw new ApiError(403, "Ask the admin to enable this business category.");
+  const business = await businessService.createBusiness(req.user._id, { ...req.body, category });
   const io = req.app.get("io");
   if (io) {
     io.emit("service:created", { businessId: business._id, business: publicBusiness(business) });
@@ -83,14 +84,15 @@ export const getOnboardingDraft = asyncHandler(async (req, res) => {
 });
 
 export const initOnboarding = asyncHandler(async (req, res) => {
-  if (req.user.ownerAccess?.applicationId && req.body.createNew) throw new ApiError(403, "Apply for approval before adding another business.");
   let business;
-  if (req.user.ownerAccess?.applicationId) {
+  if (req.user.ownerAccess?.applicationId && !req.body.createNew) {
     const application = await BusinessApplication.findOne({_id:req.user.ownerAccess.applicationId,status:"APPROVED"});
     if (!application?.linkedHubId) throw new ApiError(403, "An approved business is required to start onboarding.");
     business = await businessService.getOnboardingDraft(req.user._id, application.linkedHubId);
   } else {
-    business = await businessService.initOnboarding(req.user._id, { ...req.body, category: req.user.businessCategories?.[0] || req.body.category });
+    const category = resolveOwnerHubCategory(req.user, req.body.category);
+    if (!category) throw new ApiError(403, "Ask the admin to enable this business category.");
+    business = await businessService.initOnboarding(req.user._id, { ...req.body, category });
   }
   if (!canAccessOwnerCategory(req.user, business)) throw new ApiError(403, "Ask the admin to enable this venue category.");
   if (!businessService.isCategoryLocked(business)) {

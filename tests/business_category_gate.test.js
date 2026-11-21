@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Business from '../src/modules/business/business.model.js';
-import { isCategoryLocked, selectBusinessCategory, updateBusiness, createBusiness, initOnboarding, saveOnboardingStep } from '../src/modules/business/business.service.js';
+import { isCategoryLocked, selectBusinessCategory, updateBusiness, saveOnboardingStep } from '../src/modules/business/business.service.js';
 
 test('business category gate and admin restrictions', async (t) => {
   const business = {
@@ -28,8 +28,6 @@ test('business category gate and admin restrictions', async (t) => {
   assert.equal(selections, 1);
   await assert.rejects(updateBusiness('venue', 'owner', { category: 'salon' }), /Ask the admin/);
   await assert.rejects(saveOnboardingStep('venue', 'owner', 1, { name: 'Venue', category: 'salon' }), /require the admin/);
-  await assert.rejects(createBusiness('owner', { name: 'Another', category: 'salon' }), /Ask the admin/);
-  await assert.rejects(initOnboarding('owner', { createNew: true }), /Ask the admin/);
   await updateBusiness('venue', 'admin', { category: 'salon' }, 'admin');
   assert.equal(business.category, 'salon');
   assert.equal(isCategoryLocked({ onboarding: { status: 'COMPLETED' } }), true);
