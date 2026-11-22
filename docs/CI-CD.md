@@ -479,6 +479,210 @@ credential. Restore DNS-only service only after rolling back the origin guard.
 Apply any WAF or bot rules separately and exercise OAuth, Razorpay, preflights,
 and both Socket.IO transports before enforcing rules on those paths.
 
+## Cloudflare WAF rules for the API
+
+Apply these rules in the `serveq.tech` zone after the API cutover checks pass.
+The zone plan is unverified. Check the plan in the Cloudflare dashboard before
+choosing the Free or paid configuration. Scope API rules to `api.serveq.tech`,
+including when the browser reaches it via a Vercel rewrite. Review existing zone
+rules and keep their settings recorded for rollback.
+
+| Tier | Available controls used here |
+| --- | --- |
+| Free | Cloudflare Free Managed Ruleset, up to five custom rules, one path-based IP rate rule with a 10-second window and mitigation, and sampled Security Events. Custom-rule Log is unavailable. Leave Bot Fight Mode off for this zone because it cannot exempt API traffic. |
+| Pro | Cloudflare Managed and OWASP Core rulesets, up to 20 custom rules, two IP rate rules with hostname matching and windows up to 60 seconds, and Super Bot Fight Mode with exceptions. Rate-rule match expressions still cannot use the HTTP method. |
+| Business | Adds up to five rate rules, method matching, status-based counting, optional IP with NAT support, regex in custom rules, and Security Events alerts. Custom-rule Log is still unavailable. |
+| Enterprise | Custom-rule Log and request-body fields are available. Bot scores, advanced rate counting and malicious upload detection depend on the relevant add-on or contract. |
+
+[Managed rules availability](https://developers.cloudflare.com/waf/managed-rules/) ·
+[Custom rule limits](https://developers.cloudflare.com/waf/custom-rules/) ·
+[Rate rule fields and limits](https://developers.cloudflare.com/waf/rate-limiting-rules/) ·
+[Bot feature interactions](https://developers.cloudflare.com/waf/feature-interoperability/)
+
+### Managed rules
+
+1. For Free, confirm the **Cloudflare Free Managed Ruleset** in **Security →
+   Settings**, filtered by **Web application exploits**. Use its baseline
+   protections against widely exploited vulnerabilities. Review its existing
+   deployment separately from any new rules. Where action or scope overrides
+   are unavailable, exercise production-equivalent traffic on staging before
+   changing production settings.
+2. For Pro and above, open **Security → Settings → Web application exploits →
+   Cloudflare managed ruleset**. Under **Security rules → Managed rules**,
+   edit its **Execute** rule. Use `http.host eq "api.serveq.tech"` as the scope
+   for a new API-only deployment. If the existing execute rule protects other
+   hosts, preserve its coverage and review changes against those hosts as well.
+   Use **Log** for the new settings where the managed-rule editor offers it.
+   After reviewing events, remove the temporary overrides and use Cloudflare's
+   default actions, with narrow overrides for verified false positives.
+3. Add **OWASP Core** separately if the plan supports it. Start at **PL1**
+   with **OWASP Anomaly Score Threshold → Low (60)** and action **Log** where
+   available. Switch to Block after reviewing false positives. For both managed
+   rulesets, if Log is unavailable, validate the new policy in staging before
+   enabling it on the production hostname. Avoid deploying redundant Free
+   rules across the same traffic already covered by the broader ruleset.
+
+Managed rules cover common SQL injection, XSS, protocol anomalies, and known
+exploit signatures. ServeQ uses MongoDB. Continue validating field types and
+building explicit query filters from allowed fields at the origin. Generic WAF
+signatures cannot reliably identify every NoSQL operator injection or malformed
+business payload. Managed inspection has a plan-dependent body limit, while
+custom request-body expressions require Enterprise. Avoid blanket string filters
+over free text, chat, prescriptions, and webhook payloads.
+
+[Managed rules dashboard](https://developers.cloudflare.com/waf/managed-rules/deploy-zone-dashboard/) ·
+[OWASP Core settings](https://developers.cloudflare.com/waf/managed-rules/reference/owasp-core-ruleset/concepts/) ·
+[Request body field requirements](https://developers.cloudflare.com/ruleset-engine/rules-language/fields/reference/http.request.body.raw/)
+
+### Custom rules
+
+In **Security → Security rules → Create rule → Custom rules**, use **Edit
+expression** for each rule. Save new blocking rules as drafts while testing.
+Use **Log** for a production observation period when the plan supports it.
+
+**ServeQ API scanner paths** · Free and above · **Block after validation**
+
+```text
+(http.host eq "api.serveq.tech" and (
+  lower(http.request.uri.path) in {"/.env" "/.env.local" "/.env.production" "/.git" "/wp-login.php" "/xmlrpc.php"}
+  or starts_with(lower(http.request.uri.path), "/.git/")
+  or starts_with(lower(http.request.uri.path), "/wp-admin/")
+))
+```
+
+**ServeQ API unused methods** · Free and above · **Block after validation**
+
+```text
+(http.host eq "api.serveq.tech" and http.request.method in {"TRACE" "CONNECT"})
+```
+
+**ServeQ API bot challenge exclusion** · Pro and above, only if enabling Super
+Bot Fight Mode · **Skip** with only **All Super Bot Fight Mode rules** selected
+
+```text
+(http.host eq "api.serveq.tech")
+```
+
+Put the bot exception before enabling Super Bot Fight Mode for the rest of the
+zone. The whole API hostname serves clients that may be unable to complete a
+browser challenge, including browsers using cross-origin fetch, mobile clients,
+Vercel rewrites, Socket.IO and providers. Keep managed inspection, custom rules,
+and rate limits enabled there.
+
+**ServeQ API automated sign-in observation** · Enterprise with Bot Management ·
+**Log**
+
+```text
+(http.host eq "api.serveq.tech" and http.request.method eq "POST"
+  and lower(http.request.uri.path) in {"/api/auth/signin" "/api/auth/signin/"}
+  and cf.bot_management.score eq 1 and not cf.bot_management.verified_bot)
+```
+
+Review it alongside credential failures and burst rates before configuring any
+blocking action. An automated score can also identify legitimate client tools.
+Keep challenges out of the API and avoid treating user agent, country, or
+missing `Origin` as proof of abuse.
+
+[Custom rule actions](https://developers.cloudflare.com/waf/custom-rules/) ·
+[Skip options](https://developers.cloudflare.com/waf/custom-rules/skip/options/) ·
+[Super Bot Fight Mode](https://developers.cloudflare.com/bots/get-started/super-bot-fight-mode/) ·
+[Bot scores](https://developers.cloudflare.com/bots/concepts/bot-score/)
+
+### Rate rules
+
+Use **Security → Security rules → Create rule → Rate limiting rules**.
+Select **IP** as the counting characteristic and **Block** as the final
+action. Keep the origin's JSON 429 limits and account-level OTP limits.
+The following are conservative starting points for detecting sustained bursts.
+Calibrate them against normal traffic and origin 429s before enabling them. A
+Vercel rewrite or a shared network can concentrate clients into one IP bucket.
+
+**Free** · Use the single rule only if the two paths are unique in this zone.
+Free cannot add the API hostname or method to this rate rule. Start with
+**30 requests per 10 seconds**, **10 seconds mitigation**.
+
+```text
+(lower(http.request.uri.path) in {"/api/auth/signin" "/api/auth/signin/"})
+```
+
+**Pro and above, rule 1** · Credential and OTP surfaces. Start with **60
+requests per 60 seconds**, **10 seconds mitigation**. On Business or above,
+add `and http.request.method eq "POST"` inside the outer parentheses.
+Without method matching, preflights can count towards the rate.
+
+```text
+(http.host eq "api.serveq.tech" and (
+  lower(http.request.uri.path) in {
+    "/api/auth/signin" "/api/auth/signin/" "/api/auth/signup" "/api/auth/signup/"
+    "/api/auth/forgot-password" "/api/auth/forgot-password/"
+    "/api/auth/verify-otp" "/api/auth/verify-otp/"
+    "/api/auth/reset-password" "/api/auth/reset-password/"
+  }
+  or starts_with(lower(http.request.uri.path), "/api/auth/forgot-password/")
+  or starts_with(lower(http.request.uri.path), "/api/auth/email/")
+  or starts_with(lower(http.request.uri.path), "/api/auth/phone/")
+  or starts_with(lower(http.request.uri.path), "/api/otp/")
+))
+```
+
+**Pro and above, rule 2** · Costly public API traffic. Start with **240
+requests per 60 seconds**, **10 seconds mitigation**. On Business or above,
+consider separate rules after measuring Maps autocomplete and form traffic.
+
+```text
+(http.host eq "api.serveq.tech" and (
+  starts_with(lower(http.request.uri.path), "/api/maps/")
+  or lower(http.request.uri.path) in {
+    "/api/chatbot/chat" "/api/chatbot/chat/"
+    "/api/support" "/api/support/" "/api/waitlist" "/api/waitlist/"
+    "/api/business-applications" "/api/business-applications/"
+  }
+))
+```
+
+Both paid rules exclude OAuth callbacks, the Razorpay webhook, Socket.IO and
+health probes by construction. When a rate rule offers **Log**, use it first.
+Otherwise keep the rule off in production during baseline collection. Use
+**Security → Analytics → Traffic** and origin 429 metrics to estimate legitimate
+bursts, then verify the thresholds with controlled requests to staging. Traffic
+analytics does not register matches from a disabled rule. Business can add
+status-based counting after observing which responses actually indicate failed
+sign-ins. Keep OTP send limits based on attempts, since some OTP flows return
+generic success responses for privacy.
+
+[Create rate rules](https://developers.cloudflare.com/waf/rate-limiting-rules/create-dashboard/) ·
+[Rate parameters](https://developers.cloudflare.com/waf/rate-limiting-rules/parameters/)
+
+### Monitor, validate, and enable blocking
+
+1. Validate successful sign-in, OTP send and verify, Google OAuth navigation and
+   callback, credentialed CORS preflight, real signed Razorpay test delivery,
+   Socket.IO upgrade, polling GET and POST, reconnection, public and Render
+   health checks, and ordinary Maps and free-text requests. Test both direct API
+   requests and the Vercel rewrite with staging fixtures. Use Cloudflare Trace
+   to check scope and order, and staging requests to verify actual behavior.
+   Cloudflare inspects the WebSocket handshake and polling HTTP, with ongoing
+   WebSocket messages handled by ServeQ.
+2. Review **Security → Analytics → Events** by hostname, rule ID, action and
+   path. Correlate `CF-Ray` with origin logs if available and check origin 429s,
+   payment delivery retries, login failures and reconnect failures. Observe a
+   normal peak period before enforcing. Sampled events may omit individual
+   requests. Do not collect payload logs, credentials, OAuth query values, or
+   patient data for this rollout.
+3. If a managed rule falsely flags a legitimate provider request, use
+   **Security rules → Deploy → Deploy managed exception**. Match the API host,
+   exact path and method where appropriate, and select only the specific managed
+   rule ID shown in Events. Place the exception before the relevant Execute
+   rule. Keep Razorpay signature verification and the original body intact.
+4. Enable blocking one rule at a time and repeat the smoke checks. If legitimate
+   traffic starts failing, return the offending rule to Log or disable that
+   rule. Keep the Render origin guard and TLS in place while rolling back WAF
+   changes.
+
+[Security Events](https://developers.cloudflare.com/waf/analytics/security-events/) ·
+[Managed exceptions](https://developers.cloudflare.com/waf/managed-rules/waf-exceptions/define-dashboard/) ·
+[WebSocket inspection](https://developers.cloudflare.com/network/websockets/)
+
 ## Platform references
 
 The frontend smoke failure in [run 44320083098](https://github.com/ayushman3004/SmartQueue/actions/runs/44320083098)
