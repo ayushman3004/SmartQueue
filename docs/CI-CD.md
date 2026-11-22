@@ -898,6 +898,91 @@ polling, health checks, and other API consumers do not use the widget.
 [Mobile implementation](https://developers.cloudflare.com/turnstile/get-started/mobile-implementation/) ·
 [Content Security Policy](https://developers.cloudflare.com/turnstile/reference/content-security-policy/)
 
+## Render origin exposure and hardening
+
+Read-only checks on November 22, 2026, used normal TLS certificate validation.
+The public API DNS resolved to ServeQ's Cloudflare proxy. Render's public
+service hostname resolved to a different upstream address range.
+
+| Request path | Observed result | What it establishes |
+| --- | --- | --- |
+| `api.serveq.tech`, normal DNS | `GET /api/auth/me` returned the application's anonymous `401`. | The public API forwards legitimate traffic to the app. |
+| `serveqdocker.onrender.com` | `GET /live` returned `200`. `GET /api/auth/me` returned the same generic JSON `404` used by the origin guard, without the gateway request ID. | The default name is public. The tested application route was rejected in a way consistent with the origin guard. |
+| `smartqueue-1-bxqx.onrender.com`, the former public DNS target | `GET /live` returned `200`. `GET /api/auth/me` returned the application's anonymous `401` with a gateway request ID. | A legacy route reaches a ServeQ authentication handler outside the canonical API hostname. The probe did not establish which Atlas database or background jobs the legacy service uses. |
+| Canonical API hostname sent to the published Render ingress, retaining its HTTPS hostname | `/live` returned `200`, `/api/auth/me` returned `401`, and Socket.IO polling opened with `200`. | The canonical hostname is accepted at that ingress. Both public and forced-ingress responses had Cloudflare headers, including reporting headers. These status codes do not establish whether ServeQ's zone rules ran or whether the route circumvented them. Treat the path as unverified until checked against the zone's own events. |
+
+The repository uses a constant-time comparison of a 256-bit origin secret
+before Express route handling or Engine.IO polling and upgrades. The Cloudflare
+rule must overwrite both the secret header and the client IP header, and scope
+injection to HTTPS requests for `api.serveq.tech`. The origin ignores generic
+forwarding headers. CORS is browser policy. DNS, `Host`, `CF-Ray`, and
+`CF-Connecting-IP` are not proof that ServeQ's zone authorized the request.
+The guard is disabled when the Render secret is unset. Exactly `GET` and
+`HEAD` on `/live` and `/ready` can bypass the secret for Render health checks.
+The guard currently does not enforce an application-level hostname allowlist.
+
+### Recommended steps on the current Render web service
+
+1. In **Render → serveqdocker → Settings → Custom Domains**, confirm that
+   `api.serveq.tech` is the verified custom domain, check its certificate, and
+   inventory any other bindings. Confirm Full (strict) and the
+   Phase 2 origin request-header rule in the ServeQ zone. Verify the matching
+   `CLOUDFLARE_ORIGIN_SECRET` is set in Render without reading its value into
+   logs. Restrict access to that configuration and rotate the credential if
+   it was disclosed. Keep `/ready` for Render's direct health check.
+2. On the **ServeQ Cloudflare zone**, temporarily create a custom **Block**
+   rule for one unused, unique audit path and only on the API host. Give the
+   rule a recognizable name. Request that path once through normal public DNS
+   and once using the known Render ingress with the canonical hostname.
+   Check the application and ServeQ **Security → Analytics → Events** for
+   both requests. An event for this exact temporary rule proves the request
+   reached ServeQ's WAF. A missing event alone is inconclusive because events
+   can be sampled. If the public path is blocked but the Render ingress gets
+   the app's normal response, treat that ingress path as a bypass and resolve
+   it before relying on WAF-only controls. Remove the rule after the check.
+3. Confirm Vercel, Razorpay, Google OAuth, Socket.IO, release automation and
+   monitors use `api.serveq.tech` before changing Render. Set **Settings →
+   Custom Domains → Render Subdomain → Disabled** on `serveqdocker`.
+   Verify the default hostname returns Render's `404` even at `/live`.
+   Rerun the canonical API, CORS, signed webhook and Socket.IO smoke checks.
+   Disabling the name does not by itself lock down the custom-domain ingress.
+4. Audit the former Render service, `smartqueue-1-bxqx.onrender.com`. Check
+   users, integrations, monitoring, deploy hooks, Atlas database binding,
+   and the booking completion worker before removing it. Retire the service
+   after confirming it is unused. If it still has a purpose, give it a distinct
+   staging database and credentials, and apply an origin restriction that
+   fits that service. No public probe determines whether the legacy service
+   can read or modify production data.
+5. Consider validating the literal HTTP Host against the canonical hostname
+   in Express and Engine.IO as a second check. Test the host that Render
+   sends for its probes before enforcing. Do not use `X-Forwarded-Host` as
+   authority. Host validation reduces accidental alias exposure. An external
+   client can still send the canonical hostname, so keep origin authentication.
+
+### Render network restrictions and stronger options
+
+| Control | Fit for ServeQ |
+| --- | --- |
+| Render inbound IP restrictions | Public web-service rules require a **Render Scale or Enterprise** workspace and support IPv4 CIDRs only. In **serveqdocker → Settings → Networking → Inbound IP Restrictions**, first reproduce the two-hop topology on staging and verify which IP Render evaluates. Render uses its own Cloudflare ingress, so do not assume its filter sees the ServeQ Cloudflare egress IP. Confirm normal HTTPS, WebSocket, polling, signed provider traffic, verification/renewal, and probes before changing a production allowlist. Shared Cloudflare ranges do not identify ServeQ's zone. Keep the secret guard, even with a verified IP allowlist. |
+| Cloudflare Authenticated Origin Pulls | Requires the actual TLS listener to validate Cloudflare's client certificate. Render terminates public TLS before handing HTTP to Express. Standard Render web-service settings do not document customer control of client-certificate enforcement at that listener. Do not count an enabled Cloudflare toggle as mTLS unless Render confirms support and an origin-side rejection test passes. On an origin you control, use a zone-specific or per-hostname certificate and enforce verification at the listener. Full (strict) validates the origin's certificate and is independent of client-certificate authentication. |
+| Private Render service and Cloudflare Tunnel | Strongest fit if the API must have no public origin. Deploy the API as a **Render Private Service** and run an outbound `cloudflared` connector with access to its private endpoint, for example from a Render worker in the same region and private network. Route `api.serveq.tech` through the tunnel after staging and remove the public service binding once cutover is verified. Preserve end-user TLS and use a trusted certificate if the connector-to-origin leg uses HTTPS. Plan connector redundancy and private service health checks, update the public-web-service assumptions in the deployment script, and validate WebSocket behavior, provider callbacks, and both new and active booking flows before retiring the old service. |
+
+The near-term choice is to verify and keep the secret guard and close both
+unneeded public hostnames. Render's public ingress still accepts network
+traffic and the application still needs to reject requests; the guard does
+not move that traffic off Render or protect against a leaked credential.
+ServeQ's WAF protections do not cover requests that reach an origin without
+passing through the ServeQ zone. Use a private origin and Tunnel if that
+residual exposure is unacceptable.
+
+[Render custom domains](https://render.com/docs/custom-domains#disabling-your-onrendercom-subdomain) ·
+[Render inbound IP rules](https://render.com/docs/inbound-ip-rules) ·
+[Render TLS termination](https://render.com/docs/web-services#connect-to-your-web-service) ·
+[Cloudflare SaaS product compatibility](https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/saas-customers/product-compatibility/) ·
+[Authenticated Origin Pulls](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/) ·
+[Render private services](https://render.com/docs/private-services) ·
+[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/)
+
 ## Platform references
 
 The frontend smoke failure in [run 44320083098](https://github.com/ayushman3004/SmartQueue/actions/runs/44320083098)
