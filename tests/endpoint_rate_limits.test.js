@@ -97,4 +97,7 @@ test("concurrent Redis clients enforce one budget and expire it", { skip: !redis
   assert.ok(last.retryMs > 0 && last.retryMs <= policy.windowMs);
   await new Promise(resolve => setTimeout(resolve, last.retryMs + 20));
   assert.equal((await a.consume(key, policy)).allowed, true);
+  const claimKey = "serveq:turnstile:test:" + randomUUID();
+  const claims = await Promise.all([a.claimOnce(claimKey, 1000), b.claimOnce(claimKey, 1000)]);
+  assert.equal(claims.filter(Boolean).length, 1);
 });

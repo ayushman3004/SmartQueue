@@ -34,27 +34,33 @@ export function createRedisRateLimitStore(url) {
     console.warn("Rate limit store unavailable");
   };
   client.on("error", reportUnavailable);
+  async function execute(operation) {
+    if (!client.isReady) throw new Error("Redis store unavailable");
+    const command = operation(client.withCommandOptions({ timeout: 250 }));
+    // Bound waiting for commands that have already reached the socket.
+    let timer;
+    const deadline = new Promise((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error("Redis store timed out")), 250);
+    });
+    try {
+      return await Promise.race([command, deadline]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
   return {
     connect: () => client.connect(),
     close: () => { if (client.isOpen) client.destroy(); },
     reportUnavailable,
     async consume(key, { max, windowMs }) {
-      if (!client.isReady) throw new Error("Rate limit store unavailable");
-      const command = client.withCommandOptions({ timeout: 250 }).eval(
+      const [allowed, count, now, retryMs] = await execute(redis => redis.eval(
         SLIDING_WINDOW,
         { keys: [key], arguments: [String(windowMs), String(max), randomUUID()] },
-      );
-      // The client timeout covers queued commands. Bound the wait for a reply too.
-      let timer;
-      const deadline = new Promise((_resolve, reject) => {
-        timer = setTimeout(() => reject(new Error("Rate limit store timed out")), 250);
-      });
-      try {
-        const [allowed, count, now, retryMs] = await Promise.race([command, deadline]);
-        return { allowed: allowed === 1, count, now, retryMs };
-      } finally {
-        clearTimeout(timer);
-      }
+      ));
+      return { allowed: allowed === 1, count, now, retryMs };
+    },
+    async claimOnce(key, ttlMs) {
+      return await execute(redis => redis.set(key, "1", { NX: true, PX: ttlMs })) === "OK";
     },
   };
 }

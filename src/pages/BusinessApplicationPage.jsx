@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { useSeo } from "../utils/useSeo";
 import "../styles/business-admission.css";
+import TurnstileWidget from "../components/TurnstileWidget";
 export default function BusinessApplicationPage({ embedded = false }) {
   useSeo({
     title: embedded
@@ -15,12 +16,15 @@ export default function BusinessApplicationPage({ embedded = false }) {
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState(null);
+  const [verificationAttempt, setVerificationAttempt] = useState(0);
   async function submit(event) {
     event.preventDefault();
     setBusy(true);
     setError("");
     const data = Object.fromEntries(new FormData(event.currentTarget));
     data.privacyAcknowledged = data.privacyAcknowledged === "on";
+    if (turnstileToken) data.turnstileToken = turnstileToken;
     try {
       const response = await api.post("/business-applications", data);
       setMessage(response.data.message);
@@ -30,6 +34,10 @@ export default function BusinessApplicationPage({ embedded = false }) {
           "Unable to submit your application. Please try again.",
       );
     } finally {
+      if (turnstileToken) {
+        setTurnstileToken(null);
+        setVerificationAttempt(value => value + 1);
+      }
       setBusy(false);
     }
   }
@@ -134,6 +142,7 @@ export default function BusinessApplicationPage({ embedded = false }) {
                 contact me about this application.
               </span>
             </label>
+            <TurnstileWidget key={verificationAttempt} action="business_application" onToken={setTurnstileToken} />
             {error && (
               <p role="alert" className="admission-error">
                 {error}

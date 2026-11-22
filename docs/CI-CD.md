@@ -789,6 +789,115 @@ responses and deciding whether a failed-IP burst should also delay successes.
 [Render Key Value](https://render.com/docs/key-value) ·
 [Cloudflare rate limit plans and limits](https://developers.cloudflare.com/waf/rate-limiting-rules/)
 
+## Bot, credential stuffing, and HTTP DDoS protection
+
+Use these settings in the ServeQ zone after confirming `api.serveq.tech` is
+proxied through that zone. Verify the plan in the account. A Cloudflare header
+from Render's upstream alone does not show that ServeQ's own rules are active.
+On November 22, 2026, public DNS showed Cloudflare nameservers and proxied API
+addresses. Public HTTPS liveness, CORS preflight, Socket.IO polling and a
+guest WebSocket connection passed. These checks do not show which dashboard
+rules or SSL/TLS origin mode are configured.
+
+1. **HTTP DDoS.** Keep Cloudflare's default HTTP DDoS Attack Protection managed
+   ruleset on the proxied API hostname. It is always on for onboarded zones on
+   all plans. In **Security → Security rules → DDoS protection**, review existing
+   overrides and start with the defaults. In **Security → Analytics → Events**,
+   filter for HTTP DDoS and correlate with Render origin errors and latency.
+   Do not use zone-wide Under Attack mode for this API. Investigate confirmed
+   false positives by rule ID before tuning. Most plans have one override that
+   applies across the zone. Request-specific expressions require Enterprise
+   Advanced DDoS Protection.
+2. **Automated login and credential stuffing.** Keep the Phase 4 IP and
+   normalized email sign-in budgets, plus the Cloudflare burst rule appropriate
+   to the plan. Under **Security → Settings → Detection tools**, review
+   **Leaked credential detection**. It is enabled by default on Free and may
+   need to be enabled on a paid plan. Free can see the leaked-password signal;
+   Pro and above can see the leaked-pair signal. Verify that the default
+   detection understands ServeQ's JSON login before relying on either signal.
+   If Enterprise is available and detection misses it, open **Configurations →
+   Edit → Add custom username and password location** and use
+   `lookup_json_string(http.request.body.raw, "email")` for the username
+   and `lookup_json_string(http.request.body.raw, "password")` for the password.
+   Test with Cloudflare's published fixture credentials against staging.
+   Keep enforcement limited to `POST /api/auth/signin` on the API host, including
+   its trailing-slash variant. Start with Analytics or Log where available.
+   Do not auto-block an account on a leaked-password-only signal or use a
+   browser challenge on the sign-in API. When a confirmed leaked pair leads
+   to enforcement, ensure the affected user can still reach password recovery.
+3. **Scraping and excessive API requests.** Keep the Phase 4 costly-route and
+   origin budgets. Use **Security → Analytics → Traffic** to baseline public
+   business listings, public queue reads, Maps, and chatbot traffic. Check
+   normal polling, shared IPs, mobile browsers and Vercel rewrites before
+   adding a dedicated read-rate rule. Prefer an exact route burst limit over
+   blocking broad client categories. Verified bots are a useful signal for
+   public web pages, not proof of authorization for API data.
+
+| Capability | Plan and ServeQ setting |
+| --- | --- |
+| Bot Fight Mode | Free. Leave it off on the API's zone because it cannot exempt legitimate automated requests or non-browser clients. |
+| Super Bot Fight Mode | Pro, Business, and Enterprise without the Bot Management add-on. Apply the Phase 3 API hostname **Skip** rule for this phase alone before enabling it for eligible proxied web hosts elsewhere in the zone. Keep API WAF and rate rules enabled. |
+| Bot Management | Enterprise add-on. Use the Phase 3 automated sign-in **Log** rule first. For suspected scraping, optionally log `http.host eq "api.serveq.tech" and http.request.method eq "GET" and lower(http.request.uri.path) in {"/api/businesses" "/api/businesses/"} and cf.bot_management.score eq 1 and not cf.bot_management.verified_bot`. Correlate with traffic volume before choosing any mitigation. Extend to other observed paths individually. |
+| Turnstile | Available independently on Free, with an Enterprise tier for higher limits and additional features. ServeQ uses a form widget on Vercel with server-side verification. It does not require Vercel DNS to be proxied. |
+
+[HTTP DDoS managed rules](https://developers.cloudflare.com/ddos-protection/managed-rulesets/http/) ·
+[Leaked credential detection setup](https://developers.cloudflare.com/waf/detections/leaked-credentials/get-started/) ·
+[Bot compatibility](https://developers.cloudflare.com/waf/feature-interoperability/) ·
+[Turnstile plans](https://developers.cloudflare.com/turnstile/plans/)
+
+### Turnstile setup and rollout
+
+Turnstile applies to business application submissions and to support requests
+without a valid ServeQ session. These browser forms can trigger processing and
+email for unauthenticated visitors. Authentication, registration, OAuth,
+signed-in support, payment and external callbacks, WebSocket and Socket.IO
+polling, health checks, and other API consumers do not use the widget.
+
+1. Open **Cloudflare Dashboard → Turnstile → Add widget**. Name it
+   `ServeQ web forms`. Under **Hostname Management**, add the exact production
+   Vercel frontend hostnames, normally `serveq.tech` and `www.serveq.tech` if
+   both serve pages. Use **Managed** mode with **pre-clearance disabled**.
+   Use a separate widget and keys for staging. Configure its actual frontend
+   hostname independently and avoid wildcard preview coverage.
+2. Set **Vercel → Project → Settings → Environment Variables →
+   `VITE_TURNSTILE_SITE_KEY`** to the public site key and rebuild the frontend.
+   If a frontend Content Security Policy is added outside the repo, allow
+   `https://challenges.cloudflare.com` in `script-src` and `frame-src` as documented.
+   In **Render → serveqdocker → Environment**, set `TURNSTILE_MODE=observe`,
+   `TURNSTILE_SECRET_KEY` to the matching secret, and
+   `TURNSTILE_ALLOWED_HOSTNAMES=serveq.tech,www.serveq.tech` adjusted to the
+   actual frontend hosts. Never put the secret in a `VITE_` variable. Server
+   verification checks the hostname serving the form, rather than the API
+   hostname receiving the submission.
+3. Confirm the shared Redis store from Phase 4 is ready. Render calls Siteverify
+   with a three-second timeout, checks success, hostname and expected action
+   (`business_application` or `guest_support`), then atomically claims a token
+   digest in Redis for five minutes. This prevents reuse across Render instances
+   even when Cloudflare accepts concurrent redemptions. Render logs only
+   aggregate outcomes, without tokens or form data. Observe mode continues
+   accepting submissions while collecting these outcomes.
+4. With a staging widget, exercise both forms on iOS Safari and Android Chrome,
+   including narrow screens, expired tokens, script failures and submitting
+   after retry. Use the real staging widget for hostname and action checks.
+   Repeat signed-in support, customer/owner/doctor login, OAuth, Socket.IO
+   WebSocket and polling, and a signed Razorpay test delivery. If another
+   integration submits either protected form without a browser, identify it
+   before enforcement and give it an authenticated integration path. Native
+   consumers of the browser forms can use the hosted form in a supported
+   browser or a Turnstile-compatible WebView.
+5. Review **Turnstile → ServeQ web forms → Analytics** and Render outcome logs
+   across normal peak traffic. Only then set `TURNSTILE_MODE=enforce` on Render.
+   Missing, invalid, and replayed tokens receive `403`. If Siteverify or Redis
+   is unavailable, the protected forms return `503` with `Retry-After`.
+   If legitimate submissions drop or checks fail, roll back to `observe`
+   (or `off` to stop validation). The WAF, origin guard, and rate limits can
+   continue operating independently.
+
+[Create a Turnstile widget](https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/) ·
+[Server-side validation and token reuse](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/) ·
+[Mobile implementation](https://developers.cloudflare.com/turnstile/get-started/mobile-implementation/) ·
+[Content Security Policy](https://developers.cloudflare.com/turnstile/reference/content-security-policy/)
+
 ## Platform references
 
 The frontend smoke failure in [run 44320083098](https://github.com/ayushman3004/SmartQueue/actions/runs/44320083098)

@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useSeo } from '../utils/useSeo'
 import { sendSupportMessage } from '../api/support.api'
+import TurnstileWidget from '../components/TurnstileWidget'
 
 export default function HelpSupportPage() {
   const { user } = useAuth()
@@ -48,6 +49,10 @@ export default function HelpSupportPage() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [submittedTicket, setSubmittedTicket] = useState(null)
+  const [turnstileToken, setTurnstileToken] = useState(null)
+  const [verificationAttempt, setVerificationAttempt] = useState(0)
+  const [needsSecurityCheck, setNeedsSecurityCheck] = useState(false)
+  const showSecurityCheck = !user || needsSecurityCheck
 
   // Auto-fill user data if available
   useEffect(() => {
@@ -93,6 +98,7 @@ export default function HelpSupportPage() {
         email: form.email.trim(),
         subject: form.subject,
         message: form.message.trim(),
+        turnstileToken: showSecurityCheck && turnstileToken ? turnstileToken : undefined,
       })
 
       if (res.data?.success) {
@@ -119,9 +125,13 @@ export default function HelpSupportPage() {
         toast.error(res.data?.message || 'Could not send message. Please try again.')
       }
     } catch (err) {
-      console.error('Support message submission error:', err)
+      if (err.response?.data?.code === 'TURNSTILE_REQUIRED') setNeedsSecurityCheck(true)
       toast.error(err.response?.data?.message || 'Failed to send message. Please email support@serveq.tech directly.')
     } finally {
+      if (showSecurityCheck && turnstileToken) {
+        setTurnstileToken(null)
+        setVerificationAttempt(value => value + 1)
+      }
       setSubmitting(false)
     }
   }
@@ -316,6 +326,7 @@ export default function HelpSupportPage() {
                     </div>
                   </div>
 
+                  {showSecurityCheck && <TurnstileWidget key={verificationAttempt} action="guest_support" onToken={setTurnstileToken} />}
                   {/* Submit Button */}
                   <div className="pt-2">
                     <button

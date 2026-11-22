@@ -13,10 +13,12 @@ import {
 import { protect, allowRoles } from "../../../middleware/auth.middleware.js";
 import { generateToken, setTokenCookie } from "../auth.utils.js";
 import { sanitize } from "../auth/auth.service.js";
+import { protectWithTurnstile } from "../../../middleware/turnstile.middleware.js";
 export const applicationRoutes = Router();
 applicationRoutes.post(
   "/",
   businessApplicationLimit,
+  protectWithTurnstile("business_application"),
   asyncHandler(async (req, res) => {
     const result = await submitApplication(req.body);
     res.status(202).json(new ApiResponse(202, result, result.message));

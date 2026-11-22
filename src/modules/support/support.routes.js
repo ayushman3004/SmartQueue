@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { createSupportMessage } from "./support.service.js";
 import { gatewayOptionalAuth } from "../../gateway/gateway.middleware.js";
+import { protectWithTurnstile } from "../../../middleware/turnstile.middleware.js";
 
 const router = Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-router.post("/", gatewayOptionalAuth, async (req, res) => {
+router.post("/", gatewayOptionalAuth, protectWithTurnstile("guest_support", { anonymousOnly: true }), async (req, res) => {
   try {
     const { name, email, subject, message } = req.body || {};
 
