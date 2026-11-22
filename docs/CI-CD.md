@@ -358,6 +358,127 @@ with `node scripts/check-frontend-http.mjs http://127.0.0.1:8080` against a loca
 running frontend container. These checks do not replace live service readiness,
 OAuth/payment verification, or the deployment checks already described above.
 
+## Cloudflare API cutover
+
+The public API hostname is **`api.serveq.tech`**. The Render service designated
+for the cutover is **`serveqdocker.onrender.com`**. Its `/ready` endpoint
+returned HTTP 200 and reported MongoDB connected on November 22, 2026. Public
+DNS still returned **`smartqueue-1-bxqx.onrender.com`** as the API's CNAME
+target, so verify the custom-domain assignment in Render before switching it.
+`serveq.tech` was delegated to OrderBox nameservers. A `CF-Ray` from Render's
+upstream does not verify a proxy or rules in ServeQ's own Cloudflare zone.
+
+1. **Prepare the zone.** In Cloudflare, choose **Add a domain**, enter
+   `serveq.tech`, and select the plan. Before changing nameservers, export or
+   inventory the current zone and reconcile it with **DNS → Records**. Preserve
+   the apex and `www` Vercel targets, MX, SPF, DKIM, DMARC, verification, CAA,
+   and any other existing records. Keep existing web/mail targets DNS only
+   during this migration. If a DNSSEC DS record exists at the registrar, remove
+   the old DS before changing delegation and verify that it is gone. Set the
+   registrar's nameservers to exactly the two assigned by Cloudflare, then wait
+   for **Overview** to show **Active** and independently verify DNS. Re-enable
+   DNSSEC with Cloudflare's new DS after the cutover. [Cloudflare nameserver and DNSSEC checks](https://developers.cloudflare.com/dns/zone-setups/full-setup/troubleshooting/)
+2. **Confirm the Render origin.** Open the service with the default hostname
+   `serveqdocker.onrender.com`, then go to **Settings → Custom Domains**.
+   Check whether `api.serveq.tech` is attached there. If it is attached to
+   another service, coordinate moving the custom domain in Render with the
+   DNS cutover. A CNAME edit alone does not move the domain binding or
+   certificate. Record the previous service and DNS target before the move.
+   In Cloudflare **DNS → Records**, use type **CNAME**, name **api**, and
+   target **serveqdocker.onrender.com**. Use **DNS only** during Render
+   verification if required, then switch to **Proxied** after Render shows
+   an issued, valid certificate for `api.serveq.tech`. Preserve any Render
+   verification or renewal records.
+   [Render's Cloudflare DNS guide](https://render.com/docs/configure-cloudflare-dns)
+3. **Configure verified TLS.** In **Rules → Overview → Create rule →
+   Configuration Rule**, match `http.host eq "api.serveq.tech"` and select
+   **SSL/TLS encryption mode → Full (strict)**. If using **SSL/TLS → Overview**
+   instead, select **Full (strict)** there only after verifying the certificates
+   of every proxied hostname affected by the zone setting. Under **SSL/TLS →
+   Edge Certificates**, confirm the certificate covering the API is active.
+   Keep TLS verification enabled. If origin verification fails, repair the
+   Render certificate or roll back to the previously working DNS/TLS setup.
+   [Cloudflare encryption modes](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/) · [Full (strict) certificate requirements](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/)
+4. **Redirect API HTTP at the edge.** In **Rules → Overview → Create rule →
+   Redirect Rule**, choose **Custom filter expression** and enter
+   `(http.host eq "api.serveq.tech" and not ssl)`. Choose **Dynamic** and set
+   the target expression to
+   `concat("https://api.serveq.tech", http.request.uri.path)`. Choose **308**,
+   enable **Preserve query string**, then deploy ahead of broader redirect rules
+   that would match. If zone-wide **Always Use HTTPS** is enabled, check the
+   effective API redirect and keep API clients on the HTTPS URL directly.
+   [Cloudflare redirect rules](https://developers.cloudflare.com/rules/url-forwarding/single-redirects/create-dashboard/)
+5. **Bypass cache and enable WebSockets.** In **Cache Rules → Create rule**,
+   match `http.host eq "api.serveq.tech"` and set **Cache eligibility →
+   Bypass cache**. Check that no later cache rule overrides it. In **Network**,
+   confirm **WebSockets** is on. Use this hostname for both WebSocket and polling.
+   [Cache Rules](https://developers.cloudflare.com/cache/how-to/cache-rules/create-dashboard/) · [WebSockets](https://developers.cloudflare.com/network/websockets/)
+6. **Authenticate traffic from ServeQ's edge.** Generate a fresh value locally
+   with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
+   In **Rules → Overview → Create rule → Request Header Transform Rule**,
+   choose **Custom filter expression** and use
+   `(http.host eq "api.serveq.tech" and ssl)`. Set these two actions in the
+   same rule, covering the whole hostname including `OPTIONS` and `/socket.io`.
+
+   | Action | Header | Value |
+   | --- | --- | --- |
+   | Set static | `x-serveq-origin-auth` | The generated 64-character hex value |
+   | Set dynamic | `x-serveq-client-ip` | `to_string(ip.src)` |
+
+   **Set** overwrites incoming values. Check that no later transform replaces
+   either field. Deploy the rule before deploying the backend with the same
+   value as `CLOUDFLARE_ORIGIN_SECRET` in **Render → Environment**. Treat
+   the header value and dashboard rule as secrets. Keep the values out of
+   browser code, Vercel variables, logs, screenshots, and Git. Keep `/ready`
+   as the Render HTTP health check. Direct `GET` and `HEAD` requests to
+   `/live` and `/ready` are exempt for Render probes. The other application and
+   Socket.IO requests require both headers. With the secret unset the guard is
+   off and Express uses the immediate peer IP, which can group users behind
+   Render's proxy, so coordinate the backend deployment with this rule.
+   [Header transform setup](https://developers.cloudflare.com/rules/transform/request-header-modification/create-dashboard/) · [Render health probes](https://render.com/docs/health-checks)
+7. **Verify before closing the default hostname.** Confirm public DNS no
+   longer exposes the Render CNAME, and use Cloudflare Trace in the
+   ServeQ zone to verify the API rule matches without sharing its secret.
+   Check the API through the following commands without passing the secret.
+
+   ```powershell
+   Resolve-DnsName api.serveq.tech
+   curl.exe -sS -i "http://api.serveq.tech/live?edge_check=1"
+   curl.exe -sS -i "https://api.serveq.tech/ready"
+   curl.exe -sS -i "https://api.serveq.tech/api/auth/me" -H "Origin: https://serveq.tech"
+   curl.exe -sS -i -X OPTIONS "https://api.serveq.tech/api/auth/me" -H "Origin: https://serveq.tech" -H "Access-Control-Request-Method: GET"
+   curl.exe -sS -i "https://api.serveq.tech/socket.io/?EIO=4&transport=polling" -H "Origin: https://serveq.tech"
+   ```
+
+   Expect the HTTP redirect to preserve the query, readiness `200`, anonymous
+   `/me` `401` with credentialed CORS, preflight `204`, and a polling open packet.
+   Repeat the `/me` request with dummy `x-serveq-origin-auth` and
+   `x-serveq-client-ip` headers and expect the same `401`. Check the Render
+   hostname's `/api/auth/me` directly and expect `404`. Verify the WebSocket
+   upgrade in browser dev tools, along with login, Google OAuth, a signed test
+   Razorpay webhook, and a relative Vercel API rewrite. Keep Vercel's
+   `VITE_API_URL` and Render's `SERVER_URL` set to
+   `https://api.serveq.tech`, with both provider callbacks using that domain.
+   Cloudflare's IP is the address that reached the ServeQ edge. For relative
+   Vercel rewrites this can be Vercel's egress IP. Prefer the direct API hostname
+   for traffic that needs per-visitor limits. In staging, confirm the stored
+   source IP for a test support submission matches the test client's public IP,
+   even if the request included a different IP in a forwarding header.
+8. **Close the default hostname.** Once integrations and monitors use
+   `api.serveq.tech`, go to **Render → Settings → Custom Domains →
+   Render Subdomain** and select **Disabled**. Retest public API and Socket.IO
+   traffic. Render still receives public ingress traffic to its custom-domain
+   infrastructure. The shared secret rejects unauthenticated application traffic
+   at Node and does not provide network isolation. [Render subdomain policy](https://render.com/docs/custom-domains#disabling-your-onrendercom-subdomain)
+
+If the API starts returning 404 while readiness is healthy, check proxy status
+and the two header actions before touching the database or OAuth configuration.
+Restore the previous rule or roll back the backend and its environment together.
+Keep the transform in place as long as any active backend instance requires the
+credential. Restore DNS-only service only after rolling back the origin guard.
+Apply any WAF or bot rules separately and exercise OAuth, Razorpay, preflights,
+and both Socket.IO transports before enforcing rules on those paths.
+
 ## Platform references
 
 The frontend smoke failure in [run 44320083098](https://github.com/ayushman3004/SmartQueue/actions/runs/44320083098)

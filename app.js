@@ -1,9 +1,9 @@
 import { cookieOriginGuard } from "./middleware/cookie-origin.middleware.js";
+import { cloudflareOriginGuard } from "./middleware/cloudflare-origin.middleware.js";
 import express from "express";
 import cors from "cors";
 import passport from "passport";
 import cookieParser from "cookie-parser";
-import mongoose from "mongoose";
 
 import { corsOptions, allowedOrigins, isOriginAllowed } from "./config/cors.js";
 
@@ -23,7 +23,11 @@ import "./src/modules/Oauth/passport.config.js";
 const app = express();
 
 // ─── Trust Proxy (Required for reverse proxy, HTTPS detection & client IP) ──
-app.set("trust proxy", 1);
+// Render terminates TLS before Express. Only the authenticated edge guard
+// supplies a client IP; Express must ignore the generic forwarding headers.
+app.set("trust proxy", false);
+app.disable("x-powered-by");
+app.use(cloudflareOriginGuard);
 
 // ─── CORS Configuration ──────────────────────────────────────────
 app.set("allowedOrigins", allowedOrigins);

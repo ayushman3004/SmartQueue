@@ -25,7 +25,7 @@ class SlidingWindowRateLimiter {
 
   middleware() {
     return (req, res, next) => {
-      const key = req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "anonymous";
+      const key = req.clientIp || req.ip || "anonymous";
       const now = Date.now();
       const userTimestamps = this.hits.get(key) || [];
       const windowStart = now - this.windowMs;

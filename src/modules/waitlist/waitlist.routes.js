@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const clientIp = req.ip || req.headers["x-forwarded-for"] || "";
+    const clientIp = req.clientIp || req.ip || "";
 
     // 1. Check or save in database as prelaunch customer
     let customer = null;

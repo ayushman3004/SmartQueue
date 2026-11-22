@@ -13,6 +13,8 @@ const dbStatusMap = {
  * Fast, lightweight, suitable for cloud uptime monitors, AWS ALB, Render & Vercel
  */
 export const getBasicHealth = (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  if (process.env.NODE_ENV === "production") return res.json({ status: "ok" });
   const dbState = mongoose.connection.readyState;
   const memory = process.memoryUsage();
 
@@ -35,6 +37,7 @@ export const getBasicHealth = (_req, res) => {
  * Confirms that the HTTP server process is running and responding.
  */
 export const getLiveness = (_req, res) => {
+  res.set("Cache-Control", "no-store");
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString(),
@@ -48,6 +51,8 @@ export const getLiveness = (_req, res) => {
  * Returns 200 if ready, 503 if dependencies are disconnected or unreachable.
  */
 export const getReadiness = async (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  const production = process.env.NODE_ENV === "production";
   const dbState = mongoose.connection.readyState;
 
   if (dbState === 1 && mongoose.connection.db) {
@@ -61,6 +66,7 @@ export const getReadiness = async (_req, res) => {
       ]);
       const latencyMs = Date.now() - startTime;
 
+      if (production) return res.json({ status: "ready", database: { status: "connected" } });
       return res.status(200).json({
         status: "ready",
         database: {
@@ -71,6 +77,7 @@ export const getReadiness = async (_req, res) => {
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
+      if (production) return res.status(503).json({ status: "not_ready" });
       return res.status(503).json({
         status: "not_ready",
         database: {
@@ -82,6 +89,7 @@ export const getReadiness = async (_req, res) => {
     }
   }
 
+  if (production) return res.status(503).json({ status: "not_ready" });
   return res.status(503).json({
     status: "not_ready",
     database: {
@@ -96,6 +104,8 @@ export const getReadiness = async (_req, res) => {
  * Reports architecture details, active service registry health, and system specs.
  */
 export const getDetailedHealth = (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  if (process.env.NODE_ENV === "production") return res.status(404).json({ message: "Not found" });
   const dbState = mongoose.connection.readyState;
   const memory = process.memoryUsage();
 

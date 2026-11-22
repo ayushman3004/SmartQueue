@@ -30,7 +30,7 @@ router.post("/", gatewayOptionalAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: "Message cannot exceed 1000 characters." });
     }
 
-    const clientIp = req.ip || req.headers["x-forwarded-for"] || "";
+    const clientIp = req.clientIp || req.ip || "";
 
     const result = await createSupportMessage({
       name,
