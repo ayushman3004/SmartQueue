@@ -18,6 +18,7 @@ import { isBusinessSubscriptionActive } from '../subscription/subscription.servi
 import * as queueService from '../../queue/queue.service.js';
 import * as bookingService from '../../booking/booking.service.js';
 import { prescriptionPdf } from './prescription.pdf.js';
+import { accountSecurityLimit, doctorAccessLimit } from '../../gateway/endpointRateLimits.js';
 
 const router = Router();
 router.use(protect, (_req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
@@ -36,7 +37,7 @@ router.get('/owner/:businessId', allowRoles('owner'), asyncHandler(async (req, r
     return { staffId: staff._id, name: staff.name, email: staff.email, doctorId: staff.doctorId, status: account?.doctorAccess.status || 'NOT_INVITED', delivery: account?.doctorAccess.invitationDelivery, canCheckDelivery: Boolean(account?.doctorAccess.invitationResendId), mustChangePassword: account?.doctorAccess.mustChangePassword };
   }) } });
 }));
-router.post('/owner/:businessId/:staffId/invite', allowRoles('owner'), requireVerifiedEmail, asyncHandler(async (req, res) => {
+router.post('/owner/:businessId/:staffId/invite', allowRoles('owner'), requireVerifiedEmail, doctorAccessLimit, asyncHandler(async (req, res) => {
   const business = await ownerBusiness(req);
   const staff = business.staff.find(member => ref(member._id) === req.params.staffId);
   if (!staff || !staff.doctorId?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staff.email || '')) throw new ApiError(400, 'Save the doctor email and registration ID in the roster first.');
@@ -86,12 +87,12 @@ router.get('/owner/:businessId/:staffId/delivery', allowRoles('owner'), asyncHan
   await User.updateOne({ _id: account._id, 'doctorAccess.invitationResendId': id }, { $set: { 'doctorAccess.invitationDelivery': delivery } });
   res.json({ data: { delivery } });
 }));
-router.post('/owner/:businessId/:staffId/revoke', allowRoles('owner'), asyncHandler(async (req, res) => {
+router.post('/owner/:businessId/:staffId/revoke', allowRoles('owner'), doctorAccessLimit, asyncHandler(async (req, res) => {
   const business = await ownerBusiness(req);
   await User.updateOne({ role: 'doctor', 'doctorAccess.businessId': business._id, 'doctorAccess.staffId': validId(req.params.staffId) }, { $set: { 'doctorAccess.status': 'REVOKED' }, $inc: { tokenVersion: 1 } });
   res.json({ message: 'Doctor access revoked.' });
 }));
-router.post('/password', allowRoles('doctor'), asyncHandler(async (req, res) => {
+router.post('/password', allowRoles('doctor'), accountSecurityLimit, asyncHandler(async (req, res) => {
   validateOwnerPassword(req.body.newPassword);
   const doctor = await User.findById(req.user._id).select('+password');
   if (!await comparePassword(req.body.currentPassword || '', doctor.password)) throw new ApiError(400, 'Current password is incorrect.');

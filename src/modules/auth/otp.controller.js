@@ -17,8 +17,14 @@ export const sendOtp = asyncHandler(async (req, res) => {
 
   // Cooldown check (30 seconds)
   const existingOtp = await Otp.findOne({ phoneNumber, purpose: "phone_login" });
-  if (existingOtp && (Date.now() - new Date(existingOtp.updatedAt).getTime() < 30000)) {
-    return res.status(429).json(new ApiResponse(429, null, "Please wait 30 seconds before requesting another OTP"));
+  const cooldownMs = existingOtp ? new Date(existingOtp.updatedAt).getTime() + 30_000 - Date.now() : 0;
+  if (cooldownMs > 0) {
+    const retryAfterSeconds = Math.ceil(cooldownMs / 1000);
+    res.setHeader("Retry-After", retryAfterSeconds);
+    return res.status(429).json({
+      ...new ApiResponse(429, null, "Please wait 30 seconds before requesting another OTP"),
+      retryAfterSeconds,
+    });
   }
 
   // Generate 6-digit OTP

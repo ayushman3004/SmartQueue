@@ -8,10 +8,13 @@ import { initSocket } from "./realtime/socket.js";
 import { allowedOrigins, isOriginAllowed } from "./config/cors.js";
 import { startBookingCompletionWorker } from "./src/booking/booking.completion.js";
 import { cloudflareOriginGuard } from "./middleware/cloudflare-origin.middleware.js";
+import { configureRateLimitStore } from "./src/gateway/rateLimitStore.js";
 
 const PORT = process.env.PORT || 3001;
 
 const httpServer = http.createServer(app);
+const rateLimitStore = configureRateLimitStore(app);
+httpServer.on("close", () => rateLimitStore?.close());
 
 // Export for use in app.js / route handlers
 app.set("allowedOrigins", allowedOrigins);

@@ -24,7 +24,8 @@ import {
   verifyStandardPayment,
 } from "../modules/payment/standardCheckout.controller.js";
 
-import { globalLimiter, authLimiter } from "./rateLimiter.js";
+import { globalLimiter } from "./rateLimiter.js";
+import { legacyOrderLimit, mapsLimit } from "./endpointRateLimits.js";
 import { requestIdMiddleware } from "./gateway.middleware.js";
 
 /**
@@ -74,15 +75,17 @@ export const createGatewayRouter = () => {
 
   // Gateway base middleware
   router.use(requestIdMiddleware);
-  router.use(globalLimiter);
-
-  // Health check endpoints & probes
   router.use("/health", healthRoutes);
+  router.use((req, res, next) => {
+    // Provider delivery uses raw-body signature verification, not a visitor IP quota.
+    if (req.method === "POST" && /^\/payments\/webhook\/?$/i.test(req.path)) return next();
+    return globalLimiter(req, res, next);
+  });
 
   // Domain Routes Registration
   router.use("/business-applications", applicationRoutes);
   router.use("/admin/applications", adminApplicationRoutes);
-  router.use("/auth", authLimiter, authRoutes);
+  router.use("/auth", authRoutes);
   router.use("/businesses", businessRoutes);
   router.use("/notifications", notificationRoutes);
   router.use("/bookings", bookingRoutes);
@@ -95,14 +98,14 @@ export const createGatewayRouter = () => {
   router.use("/admin", adminRoutes);
   router.use("/chat", chatRoutes);
   router.use("/chatbot", chatbotRoutes);
-  router.use("/otp", authLimiter, otpRoutes);
+  router.use("/otp", otpRoutes);
   router.use("/waitlist", waitlistRoutes);
   router.use("/support", supportRoutes);
   router.use("/subscriptions", subscriptionRoutes);
-  router.use("/maps", mapsRoutes);
+  router.use("/maps", mapsLimit, mapsRoutes);
 
   // Razorpay Standard Checkout endpoints
-  router.post("/create-order", createStandardOrder);
+  router.post("/create-order", legacyOrderLimit, createStandardOrder);
   router.post("/verify-payment", verifyStandardPayment);
 
   return router;

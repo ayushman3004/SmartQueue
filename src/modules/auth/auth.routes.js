@@ -19,6 +19,10 @@ import {
   verifyEmailVerificationOtp,
 } from "./auth.controller.js";
 import { protect } from "../../../middleware/auth.middleware.js";
+import {
+  accountSecurityLimit, emailOtpSendLimit, phoneOtpSendLimit, profileOtpVerifyLimit,
+  resetCompleteLimit, resetSendLimit, resetVerifyLimit, signInLimit, signupLimit,
+} from "../../gateway/endpointRateLimits.js";
 
 import { beginOAuth, validateOAuthState, oauthClientUrl, oauthResponseHeaders } from "./oauth-security.js";
 
@@ -29,29 +33,26 @@ router.use((_req, res, next) => {
 });
 
 // Local auth
-router.post("/signup", signup);
-router.post("/signin", signin);
+router.post("/signup", signupLimit, signup);
+router.post("/signin", signInLimit, signin);
 router.post("/logout", logout);
 router.get("/me", protect, getMe);
 router.patch("/me", protect, updateMe);
-router.post("/upgrade-to-owner", protect, upgradeToOwner);
+router.post("/upgrade-to-owner", protect, accountSecurityLimit, upgradeToOwner);
 
-router.post("/change-password", protect, changePasswordHandler);
+router.post("/change-password", protect, accountSecurityLimit, changePasswordHandler);
 
 // Profile Contact Verification
-router.post("/phone/send-otp", protect, sendPhoneVerificationOtp);
-router.post("/phone/verify-otp", protect, verifyPhoneVerificationOtp);
-router.post("/phone/verify-firebase", protect, verifyFirebasePhone);
-router.post("/email/send-otp", protect, sendEmailVerificationOtp);
-router.post("/email/verify-otp", protect, verifyEmailVerificationOtp);
+router.post("/phone/send-otp", protect, phoneOtpSendLimit, sendPhoneVerificationOtp);
+router.post("/phone/verify-otp", protect, profileOtpVerifyLimit, verifyPhoneVerificationOtp);
+router.post("/phone/verify-firebase", protect, profileOtpVerifyLimit, verifyFirebasePhone);
+router.post("/email/send-otp", protect, emailOtpSendLimit, sendEmailVerificationOtp);
+router.post("/email/verify-otp", protect, profileOtpVerifyLimit, verifyEmailVerificationOtp);
 
 // Forgot Password & Nodemailer OTP Verification
-router.post("/forgot-password", forgotPasswordSendOtp);
-router.post("/forgot-password/send-otp", forgotPasswordSendOtp);
-router.post("/verify-otp", forgotPasswordVerifyOtp);
-router.post("/forgot-password/verify-otp", forgotPasswordVerifyOtp);
-router.post("/reset-password", forgotPasswordReset);
-router.post("/forgot-password/reset-password", forgotPasswordReset);
+router.post(["/forgot-password", "/forgot-password/send-otp"], resetSendLimit, forgotPasswordSendOtp);
+router.post(["/verify-otp", "/forgot-password/verify-otp"], resetVerifyLimit, forgotPasswordVerifyOtp);
+router.post(["/reset-password", "/forgot-password/reset-password"], resetCompleteLimit, forgotPasswordReset);
 
 // Google OAuth
 router.get("/google", (req, res, next) => {

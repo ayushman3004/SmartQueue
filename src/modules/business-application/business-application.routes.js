@@ -1,7 +1,7 @@
 import { Router } from "express";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
-import { createRateLimiter } from "../../gateway/rateLimiter.js";
+import { businessApplicationLimit } from "../../gateway/endpointRateLimits.js";
 import {
   submitApplication,
   deleteApplication,
@@ -16,10 +16,7 @@ import { sanitize } from "../auth/auth.service.js";
 export const applicationRoutes = Router();
 applicationRoutes.post(
   "/",
-  createRateLimiter({
-    windowMs: 3600000,
-    max: 5,
-  }),
+  businessApplicationLimit,
   asyncHandler(async (req, res) => {
     const result = await submitApplication(req.body);
     res.status(202).json(new ApiResponse(202, result, result.message));

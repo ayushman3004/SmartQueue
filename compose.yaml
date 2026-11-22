@@ -9,10 +9,24 @@ services:
       NODE_ENV: production
       PORT: "3001"
       CLIENT_URL: "http://localhost:8080"
+      REDIS_URL: "redis://rate-limit-store:6379"
+      RATE_LIMIT_KEY_SECRET: "0000000000000000000000000000000000000000000000000000000000000000"
+    depends_on:
+      rate-limit-store:
+        condition: service_healthy
     expose:
       - "3001"
     ports:
       - "3001:3001"
+    restart: unless-stopped
+
+  rate-limit-store:
+    image: valkey/valkey:8-alpine
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
   frontend:

@@ -11,7 +11,7 @@ test("Admin & Security Flow - Role Protection & Gateway", async (t) => {
     assert.ok(mongoose.models.Appointment);
   });
 
-  await t.test("Gateway rate limiter blocks after hitting max thresholds", () => {
+  await t.test("Gateway rate limiter blocks after hitting max thresholds", async () => {
     const limiter = createRateLimiter({ windowMs: 1000, max: 2 });
     const req = { ip: "127.0.0.1", headers: {}, socket: {} };
     let statusSet = null;
@@ -26,11 +26,11 @@ test("Admin & Security Flow - Role Protection & Gateway", async (t) => {
     let called = 0;
     const next = () => { called++; };
 
-    limiter(req, res, next); // 1st
-    limiter(req, res, next); // 2nd
+    await limiter(req, res, next); // 1st
+    await limiter(req, res, next); // 2nd
     assert.equal(called, 2);
 
-    limiter(req, res, next); // 3rd (exceeds limit)
+    await limiter(req, res, next); // 3rd (exceeds limit)
     assert.equal(statusSet, 429);
   });
 

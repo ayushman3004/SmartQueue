@@ -27,6 +27,7 @@
     "firebase": "^13.0.0",
     "firebase-admin": "^14.5.1",
     "framer-motion": "^12.38.0",
+    "ipaddr.js": "^2.5.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.47.0",
     "mongoose": "^9.3.3",
@@ -41,6 +42,7 @@
     "react-dom": "^19.2.4",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.13.2",
+    "redis": "^6.3.1",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "twilio": "^5.13.1"

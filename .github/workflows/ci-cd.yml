@@ -51,7 +51,16 @@ jobs:
         run: |
           case "$TASK" in
             lint) npm run lint ;;
-            test) NODE_ENV=test npm test ;;
+            test)
+              docker run -d --rm --name serveq-test-valkey -p 127.0.0.1:6379:6379 valkey/valkey:8-alpine
+              trap 'docker stop serveq-test-valkey' EXIT
+              for attempt in {1..20}; do
+                if docker exec serveq-test-valkey valkey-cli ping 2>/dev/null | grep -qx PONG; then break; fi
+                sleep 1
+              done
+              docker exec serveq-test-valkey valkey-cli ping | grep -qx PONG
+              RATE_LIMIT_TEST_REDIS_URL=redis://127.0.0.1:6379 npm test
+              ;;
             build) npm run build && npm run check:build ;;
             audit) npm audit --omit=dev --audit-level=high ;;
             *) exit 1 ;;
