@@ -1,3 +1,4 @@
+import { useDialog } from '../hooks/useDialog'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
@@ -37,6 +38,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
     return () => clearInterval(timer)
   }, [cooldown])
 
+  const dialogRef = useDialog(isOpen, onClose)
   if (!isOpen) return null
 
   // Step 1: Send OTP
@@ -131,7 +133,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${className}`}>
+    <div className={`app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4 ${className}`}>
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -147,7 +149,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-200/80 z-10 overflow-hidden"
+        ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Reset password" className="app-dialog relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-200/80 z-10 overflow-hidden"
       >
         {/* Top Accent Line */}
         <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[#FF5537] to-[#FA5032]" />
@@ -252,6 +254,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
                   required
                   autoFocus
                   maxLength={6}
+                      inputMode="numeric" autoComplete="one-time-code"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="••••••"

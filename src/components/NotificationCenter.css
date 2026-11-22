@@ -1,0 +1,31 @@
+.notification-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border: 1px solid #c1d5c7; border-radius: 50%; background: #f4f9f4; color: #315b45; cursor: pointer; }
+.notification-count { position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border: 2px solid #fbfefb; border-radius: 12px; background: #315b45; color: white; font-size: 10px; font-weight: 700; line-height: 14px; }
+.notification-panel { position: fixed; right: 24px; z-index: 1000; display: flex; flex-direction: column; width: min(400px, calc(100vw - 24px)); max-height: min(560px, calc(100dvh - 100px)); border: 1px solid #c1d5c7; border-radius: 20px; background: #fbfefb; box-shadow: 0 16px 48px #153c2b24; color: #153c2b; font-family: inherit; overflow: hidden; }
+.notification-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 20px 14px; }
+.notification-heading h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.025em; }
+.notification-heading p { margin: 4px 0 0; color: #617168; font-size: 12px; }
+.notification-close { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: #315b45; cursor: pointer; }
+.notification-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px 12px; border-bottom: 1px solid #dce7df; }
+.notification-filters { display: flex; gap: 4px; }
+.notification-filters button { min-height: 36px; padding: 6px 12px; border-radius: 10px; color: #617168; font-size: 12px; font-weight: 600; cursor: pointer; }
+.notification-filters button[aria-pressed='true'] { color: #315b45; background: #e6f0e8; }
+.notification-read-all { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; font-size: 11px; font-weight: 600; color: #315b45; cursor: pointer; }
+.notification-panel button:disabled { opacity: .55; cursor: default; }
+.notification-list { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.notification-item { display: flex; width: 100%; align-items: flex-start; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #e6eee7; text-align: left; cursor: pointer; }
+.notification-item[data-unread='true'] { background: #edf5ee; }
+.notification-icon { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 38px; border: 1px solid #c1d5c7; border-radius: 16px 16px 8px 8px; background: #e6f0e8; color: #315b45; }
+.notification-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 5px; overflow-wrap: anywhere; }
+.notification-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 650; line-height: 1.4; }
+.notification-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: #315b45; }
+.notification-message { color: #52675b; font-size: 12px; line-height: 1.6; }
+.notification-copy time { color: #617168; font-size: 10px; line-height: 1.5; }
+.notification-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 24px; text-align: center; color: #617168; font-size: 12px; line-height: 1.6; }
+.notification-empty h3 { font-size: 14px; font-weight: 600; color: #315b45; }
+.notification-more { width: 100%; min-height: 44px; padding: 12px; color: #315b45; font-size: 12px; cursor: pointer; }
+.notification-error { padding: 12px 20px; background: #faf0ea; color: #765546; font-size: 12px; line-height: 1.6; }
+.notification-error button { margin-left: 10px; min-height: 32px; text-decoration: underline; cursor: pointer; }
+.notification-panel button:focus-visible, .notification-bell:focus-visible { outline: 2px solid #315b45; outline-offset: -3px; }
+.notification-bell:active { transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) { .notification-item:hover, .notification-close:hover, .notification-bell:hover { background: #e1ede4; } }
+@media (max-width: 640px) { .notification-panel { right: 12px; max-height: min(560px, calc(100dvh - 100px - env(safe-area-inset-bottom))); } }

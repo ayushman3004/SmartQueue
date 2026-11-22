@@ -1,9 +1,9 @@
+import NotificationCenter from '../components/NotificationCenter'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
   MapPin,
-  Bell,
   ChevronDown,
   ChevronRight,
   ArrowRight,
@@ -1028,13 +1028,7 @@ export default function CustomerDashboardPage() {
         <div className="flex items-center gap-2.5">
           {/* Notifications Bell */}
           <div className="relative">
-            <button
-              onClick={() => toast('No new notifications', { icon: 'info' })}
-              className="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors relative"
-            >
-              <Bell className="w-4 h-4 text-zinc-600" />
-              <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white" />
-            </button>
+            <NotificationCenter />
           </div>
 
           {/* User Profile Avatar with dropdown */}
@@ -1167,7 +1161,9 @@ export default function CustomerDashboardPage() {
                   </h4>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5">
                     <p className="text-xs text-teal-200 font-medium">
-                      {myActiveQueues[0].peopleAhead === 0
+                      {myActiveQueues[0].isServing
+                        ? 'It’s your turn! Please proceed to your service counter.'
+                        : myActiveQueues[0].peopleAhead === 0
                         ? 'You are next in line!'
                         : `${myActiveQueues[0].peopleAhead} patrons ahead of you`}
                     </p>

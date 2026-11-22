@@ -1,9 +1,10 @@
+import { useDialog } from '../hooks/useDialog'
+import NotificationCenter from '../components/NotificationCenter'
 import QueueStatusPass from '../components/QueueStatusPass'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, Navigate, Link } from 'react-router-dom'
 import {
-  Bell,
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
@@ -106,6 +107,7 @@ export default function QueuePage() {
 
   // Live Queue Modal / Full View
   const [showLiveStreamModal, setShowLiveStreamModal] = useState(false)
+  const streamDialog = useDialog(Boolean(showLiveStreamModal), () => setShowLiveStreamModal(false))
 
   // Fetch initial data
   const fetchData = useCallback(async () => {
@@ -504,13 +506,7 @@ export default function QueuePage() {
 
         {/* Right: Notifications, Profile Avatar */}
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => toast('No new notifications', { icon: 'info' })}
-            className="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors relative cursor-pointer"
-          >
-            <Bell className="w-4 h-4 text-zinc-600" />
-            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white" />
-          </button>
+          <NotificationCenter />
 
           <div className="relative">
             <button
@@ -870,23 +866,23 @@ export default function QueuePage() {
                     </div>
 
                     {/* Pay at Counter Notice Box */}
-                    <div className="rounded-2xl bg-amber-50/70 border border-amber-200/80 p-3.5 flex items-center justify-between">
+                    <div className="rounded-2xl bg-[#e6f0e8] border border-[#c1d5c7] p-3.5 flex items-center justify-between">
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                          <p className="text-[10px] text-amber-800 font-bold uppercase tracking-wider">
+                          <span className="w-2 h-2 rounded-full bg-[#315b45]" />
+                          <p className="text-[10px] text-[#315b45] font-bold uppercase tracking-wider">
                             Payment • Pay at Counter
                           </p>
                         </div>
-                        <p className="text-xs text-amber-950 font-medium">
+                        <p className="text-xs text-[#153c2b] font-medium">
                           Pay directly to business staff upon arrival.
                         </p>
                       </div>
                       <div className="text-right shrink-0 pl-3">
-                        <p className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">
+                        <p className="text-[10px] text-[#315b45] font-bold uppercase tracking-wider">
                           To Pay
                         </p>
-                        <p className="text-base font-black text-amber-950">
+                        <p className="text-base font-black text-[#153c2b]">
                           ₹{selectedService?.price ?? (activeBusiness.services?.[0]?.price || activeBusiness.basePrice || 0)}
                         </p>
                       </div>
@@ -1102,12 +1098,12 @@ export default function QueuePage() {
       {/* ── LIVE QUEUE STREAM MODAL (COLUMNS BY STAFF) ── */}
       <AnimatePresence>
         {showLiveStreamModal && activeBusiness && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
+          <div className="app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="customer-surface bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+              ref={streamDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Live queue" className="app-dialog customer-surface bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl space-y-5 max-h-[90dvh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>

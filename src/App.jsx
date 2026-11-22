@@ -1,3 +1,4 @@
+import { useMobileViewport } from './hooks/useMobileViewport'
 import DoctorPage, { DoctorLogin } from './pages/DoctorPage'
 import OwnerCategoryBoundary from './components/OwnerCategoryBoundary'
 import { useEffect, useState } from 'react'
@@ -64,9 +65,14 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 }
 
 export default function App() {
+  useMobileViewport()
   const { user, loading: authLoading } = useAuth()
   const { socket, joinUser, connected } = useSocket()
   const location = useLocation()
+  // A new screen or dashboard tab starts at its content, rather than a stale footer offset.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [location.pathname, location.search])
   const isHubPage = location.pathname.startsWith('/hub')
   const isOnboarding = location.pathname.startsWith('/business/onboarding')
   const isVenueDashboard = !isOnboarding && location.pathname !== '/business/apply' &&
@@ -97,7 +103,7 @@ export default function App() {
         },
         duration: 5000,
       })
-      if (Notification.permission === 'granted') {
+      if ('Notification' in window && Notification.permission === 'granted') {
         new Notification("serveQ", { body: data.message })
       }
     }
@@ -105,11 +111,7 @@ export default function App() {
     return () => socket.off('notification:near', handleNear)
   }, [socket])
 
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission !== "granted") {
-      Notification.requestPermission()
-    }
-  }, [])
+
 
   const isCustomerDashboard =
     location.pathname === '/customers' ||
@@ -147,6 +149,10 @@ export default function App() {
     location.pathname === '/403'
   const isAdminSignIn = location.pathname.startsWith('/admin') && user?.role !== 'admin'
   const isStandalonePage = isNotFoundPage || isUnauthorizedPage || isAdminSignIn || location.pathname.startsWith('/doctor/')
+  const showFooter = !isLoginPage && !isStandalonePage && (
+    location.pathname === '/customers' || location.pathname === '/hub/dashboard' ||
+    isVenueDashboard || (!isHubPage && !isCustomerWorkspace)
+  )
   const hasPublicPageHeader = ['/privacy', '/terms', '/about'].includes(location.pathname)
 
   if (authLoading) {
@@ -168,10 +174,11 @@ export default function App() {
     : 'app-background'
 
   return (
-    <div data-service={isCustomerWorkspace ? workspaceService : undefined} className={`page-wrapper ${bgClass} ${isCustomerWorkspace ? 'customer-workspace' : ''} ${location.pathname === '/' ? 'landing-shell' : ''} ${isBusinessWorkspace ? 'business-page' : ''} ${location.pathname.startsWith('/admin') && user?.role === 'admin' ? 'admin-shell' : ''}`}>
+    <div data-service={isCustomerWorkspace ? workspaceService : undefined} className={`page-wrapper ${user ? 'app-workspace' : ''} ${bgClass} ${isCustomerWorkspace ? 'customer-workspace' : ''} ${location.pathname === '/' ? 'landing-shell' : ''} ${isBusinessWorkspace ? 'business-page' : ''} ${location.pathname.startsWith('/admin') && user?.role === 'admin' ? 'admin-shell' : ''}`}>
       {!isStandalonePage && <AmbientBackground variant={bgVariant} />}
       <Toaster 
         position="top-right"
+        containerStyle={{ top: 'calc(16px + env(safe-area-inset-top, 0px))', right: 'max(12px, env(safe-area-inset-right, 0px))', left: 'max(12px, env(safe-area-inset-left, 0px))' }}
         toastOptions={{
           style: {
             background: '#ffffff',
@@ -191,7 +198,7 @@ export default function App() {
       )}
       {user && !isOnboarding && !isStandalonePage && <AIDesistant />}
       {user?.role === 'owner' && user.ownerAccess?.mustChangePassword && ['ACTIVE','PASSWORD_REQUIRED'].includes(user.ownerAccess.status) && <aside className="owner-password-banner" role="status">Change your temporary password by {new Date(user.ownerAccess.passwordChangeDeadline).toLocaleString()}. <a href="/hub/change-password">Change password</a></aside>}
-      <main className={user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !hasPublicPageHeader ? "main-content flex-1 flex flex-col min-h-[calc(100vh-140px)]" : "flex-1 flex flex-col min-h-[calc(100vh-140px)]"}>
+      <main className={user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !hasPublicPageHeader ? "main-content flex-1 flex flex-col min-h-[calc(100dvh-140px)]" : "flex-1 flex flex-col min-h-[calc(100dvh-140px)]"}>
         <Routes>
           {guidePages.map(page => <Route key={page.path} path={page.path} element={<PublicGuidePage page={page} />} />)}
           <Route path="/business/apply" element={<BusinessApplicationPage />} />
@@ -340,7 +347,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
-      {!isHubPage && !isVenueDashboard && !isLoginPage && !isStandalonePage && !isCustomerWorkspace && location.pathname !== '/customers' && <Footer />}
+      {showFooter && <Footer />}
     </div>
   )
 }

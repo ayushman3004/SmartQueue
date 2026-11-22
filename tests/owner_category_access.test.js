@@ -28,6 +28,11 @@ test('owner category permissions isolate clinic and salon management', async t =
   category = 'clinic';
   assert.equal(await authorize(venueRequest), undefined);
   assert.match((await authorize(bookingRequest)).message, /assigned doctor/);
+  assert.equal(await authorize({ ...bookingRequest, method: 'GET', originalUrl: '/api/bookings/booking/all' }), undefined);
+  assert.equal(await authorize({ ...bookingRequest, method: 'PATCH', originalUrl: '/api/bookings/booking/collect-payment' }), undefined);
+  const queueRequest = { user: clinicOwner, params: { businessId: 'venue' }, method: 'POST' };
+  assert.equal(await authorize({ ...queueRequest, originalUrl: '/api/queue/venue/users/patient/collect-payment' }), undefined);
+  for (const action of ['next', 'extend']) assert.match((await authorize({ ...queueRequest, originalUrl: `/api/queue/venue/${action}` })).message, /assigned doctor/);
   category = 'salon';
   assert.equal(await authorize({ ...bookingRequest, user: salonOwner }), undefined);
 });

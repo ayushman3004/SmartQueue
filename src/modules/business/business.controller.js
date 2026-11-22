@@ -1,3 +1,4 @@
+import { notifyUser } from '../notification/notification.service.js';
 import { assertTestVenueAccess } from '../admin/admin-workspace.service.js';
 const publicBusiness = business => {
   const value = business.toObject?.() || business;
@@ -22,6 +23,9 @@ export const create = asyncHandler(async (req, res) => {
   if (io) {
     io.emit("service:created", { businessId: business._id, business: publicBusiness(business) });
   }
+  await notifyUser({ recipient: req.user._id, type: 'hub', title: 'Hub registered',
+    message: `${business.name} has been added to your account.`, href: `/business/${business._id}`,
+    eventKey: `hub:registered:${business._id}` }, io);
   res.status(201).json(new ApiResponse(201, { business }, "Business created"));
 });
 
@@ -99,6 +103,9 @@ export const initOnboarding = asyncHandler(async (req, res) => {
     business.categorySelectedAt = new Date();
     await business.save();
   }
+  if (business.onboarding?.status === 'IN_PROGRESS') await notifyUser({ recipient: req.user._id, type: 'hub', title: 'Your hub setup is ready',
+    message: `Continue setting up ${business.name}. Your business category is ${business.category}.`, href: `/business/onboarding/${business._id}`,
+    eventKey: `hub:setup:${business._id}` }, req.app.get('io'));
   res.status(201).json(new ApiResponse(201, { business }, "Onboarding session initialized"));
 });
 
@@ -116,6 +123,9 @@ export const saveOnboardingStep = asyncHandler(async (req, res) => {
 export const launchBusiness = asyncHandler(async (req, res) => {
   const io = req.app.get("io");
   const business = await businessService.launchBusiness(req.params.id, req.user._id, io);
+  await notifyUser({ recipient: req.user._id, type: 'hub', title: 'Your hub is live',
+    message: `${business.name} is ready to welcome customers.`, href: `/business/${business._id}`,
+    eventKey: `hub:live:${business._id}` }, io);
   res.json(new ApiResponse(200, { business }, "Your business is ready on ServeQ!"));
 });
 

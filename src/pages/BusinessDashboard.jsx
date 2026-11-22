@@ -1,3 +1,5 @@
+import { useDialog } from '../hooks/useDialog'
+import NotificationCenter from '../components/NotificationCenter'
 import AdminWorkspaceSwitcher from '../components/AdminWorkspaceSwitcher'
 import DoctorAccessControls from '../components/DoctorAccessControls'
 import { getDoctorAccess } from '../api/doctor.api'
@@ -26,8 +28,6 @@ import {
   X,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
-  Store,
   Layers,
   Activity,
   Clock,
@@ -72,6 +72,7 @@ export default function BusinessDashboard() {
   )
   const [business, setBusiness] = useState(null)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const drawerRef = useDialog(mobileSidebarOpen, () => setMobileSidebarOpen(false), true)
   const [showUserMenu, setShowUserMenu] = useState(false)
 
   // Sync tab with URL search parameter
@@ -98,6 +99,8 @@ export default function BusinessDashboard() {
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [calling, setCalling] = useState(false)
+  const [collectingPayment, setCollectingPayment] = useState(false)
+  const [doctorCall, setDoctorCall] = useState(null)
   const [toggling, setToggling] = useState(false)
 
   // Profile Edit State
@@ -133,6 +136,8 @@ export default function BusinessDashboard() {
   const [savingUpi, setSavingUpi] = useState(false)
 
   const handleCollectCounterPayment = async (bookingId) => {
+    if (collectingPayment) return
+    setCollectingPayment(true)
     try {
       await collectCounterPayment(bookingId)
       toast.success('Counter payment recorded as collected!')
@@ -140,10 +145,12 @@ export default function BusinessDashboard() {
       setBookings(bkRes.data.data.bookings || [])
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to record counter payment')
-    }
+    } finally { setCollectingPayment(false) }
   }
 
   const handleCollectQueuePayment = async (userId) => {
+    if (collectingPayment) return
+    setCollectingPayment(true)
     try {
       const res = await collectQueuePayment(businessId, userId)
       toast.success('Queue counter payment accepted and marked as paid!')
@@ -154,7 +161,7 @@ export default function BusinessDashboard() {
       setBookings(bkRes.data.data.bookings || [])
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to record queue payment')
-    }
+    } finally { setCollectingPayment(false) }
   }
 
   const handleSaveUpi = async (e) => {
@@ -176,7 +183,7 @@ export default function BusinessDashboard() {
 
   const isClinic = business?.category === 'clinic' || business?.category === 'healthcare'
   const clinicalOwner = isClinic && user?.role === 'owner'
-  const visibleTab = clinicalOwner && ['queue', 'appointments'].includes(activeTab) ? 'staff' : activeTab
+  const visibleTab = activeTab
   useEffect(() => {
     if (clinicalOwner) refreshDoctors().catch(() => toast.error('Could not load doctor access.'))
   }, [clinicalOwner, refreshDoctors])
@@ -245,7 +252,7 @@ export default function BusinessDashboard() {
     joinAdmin(businessId)
 
     const unsub = onQueueUpdate((updatedQueue) => {
-      setQueue(updatedQueue)
+      if (String(updatedQueue.businessId?._id || updatedQueue.businessId) === String(businessId)) setQueue(updatedQueue)
     })
 
     const handleBookingUpdate = () => {
@@ -253,12 +260,26 @@ export default function BusinessDashboard() {
       getBusinessAnalytics(businessId).then(res => setAnalytics(res.data.data)).catch(() => { })
     }
 
+    const handleDoctorCall = event => {
+      if (String(event.businessId) !== String(businessId)) return
+      setDoctorCall(event)
+      toast.success(`${event.doctorName || 'Doctor'} called the next person`)
+    }
+    const reconnect = () => {
+      joinAdmin(businessId)
+      getQueue(businessId).then(res => setQueue(res.data.data.queue)).catch(() => {})
+      handleBookingUpdate()
+    }
+    socket?.on('doctor:called-next', handleDoctorCall)
+    socket?.on('connect', reconnect)
     socket?.on('bookings:updated', handleBookingUpdate)
 
     return () => {
       leaveRoom(businessId)
       unsub?.()
       socket?.off('bookings:updated', handleBookingUpdate)
+      socket?.off('doctor:called-next', handleDoctorCall)
+      socket?.off('connect', reconnect)
     }
   }, [businessId, fetchDashboardData, joinAdmin, leaveRoom, onQueueUpdate, socket])
 
@@ -272,7 +293,7 @@ export default function BusinessDashboard() {
   }, [activeTab, businessId])
 
   const handleCallNext = async () => {
-    if (!queue?.users?.length) return
+    if (calling || !queue?.users?.length) return
     setCalling(true)
     try {
       const res = await callNext(businessId)
@@ -624,7 +645,7 @@ export default function BusinessDashboard() {
               label: 'Hub Settings',
               icon: Settings,
             },
-          ].filter(item => !clinicalOwner || !['queue', 'appointments'].includes(item.id)).map((item) => {
+          ].map((item) => {
             const isActive = visibleTab === item.id
             const IconComponent = item.icon
             return (
@@ -686,42 +707,6 @@ export default function BusinessDashboard() {
                 <Building2 className="w-3.5 h-3.5" />
               </span>
               <span className="truncate">All My Venues</span>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-          </button>
-
-          {/* Live Customer Queue Pass */}
-          <button
-            type="button"
-            onClick={() => {
-              navigate(`/queue/${businessId}`)
-              if (isMobile) setMobileSidebarOpen(false)
-            }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-teal shrink-0">
-                <Ticket className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">Customer Live Queue</span>
-            </div>
-            <ExternalLink className="w-3 h-3 text-zinc-400" />
-          </button>
-
-          {/* Customer Directory */}
-          <button
-            type="button"
-            onClick={() => {
-              navigate('/customers')
-              if (isMobile) setMobileSidebarOpen(false)
-            }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 transition-colors cursor-pointer"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 inline-flex items-center justify-center rounded-xl icon-3d icon-3d-blue shrink-0">
-                <Store className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">Customer Portal</span>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
           </button>
@@ -847,8 +832,8 @@ export default function BusinessDashboard() {
             {toggling ? 'Updating...' : business?.isOpen ? 'Close Services' : 'Open Services'}
           </button>
 
-          {/* Quick Serve Next */}
-          <button
+          {/* Clinic consultations are controlled from the doctor dashboard. */}
+          {!isClinic && <button
             type="button"
             onClick={handleCallNext}
             disabled={calling || users.length === 0}
@@ -860,9 +845,11 @@ export default function BusinessDashboard() {
                 {users.length}
               </span>
             )}
-          </button>
+          </button>}
 
 
+
+          <NotificationCenter />
 
           {/* Profile Menu */}
           <div className="relative">
@@ -963,7 +950,10 @@ export default function BusinessDashboard() {
                 animate={{ x: 0 }}
                 exit={{ x: -280 }}
                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                className="venue-mobile-sidebar relative w-72 max-w-[85vw] bg-white z-10 shadow-2xl p-4 flex flex-col"
+                ref={drawerRef}
+                tabIndex={-1}
+                role="dialog" aria-modal="true" aria-label="Business navigation"
+                className="app-drawer venue-mobile-sidebar relative w-72 max-w-[85vw] bg-white z-10 shadow-2xl p-4 flex flex-col"
               >
                 <div className="shrink-0 flex items-center justify-between pb-3 border-b border-zinc-100 mb-3">
                   <div className="flex items-center gap-2">
@@ -1044,6 +1034,9 @@ export default function BusinessDashboard() {
           {/* TAB 1: LIVE QUEUE */}
           {visibleTab === 'queue' && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {isClinic && <div className="lg:col-span-12 rounded-2xl border border-[#c1d5c7] bg-[#e6f0e8] px-5 py-4 text-sm text-[#315b45]" role="status" aria-live="polite">
+                {doctorCall ? <><span className="font-semibold">{doctorCall.doctorName || 'Doctor'} called the next person.</span> <time className="text-xs" dateTime={doctorCall.calledAt}>{new Date(doctorCall.calledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></> : 'Doctors manage consultations. Collect payments here; updates appear when a doctor calls the next person.'}
+              </div>}
               {/* Active Serving Card */}
               <div className="lg:col-span-12">
                 <div className="business-surface bg-white border border-teal-200 rounded-3xl p-6 md:p-8 shadow-sm bg-gradient-to-r from-teal-50/60 to-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -1127,16 +1120,18 @@ export default function BusinessDashboard() {
                   </div>
 
                   {serving && (
-                    <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="venue-service-actions flex items-center gap-3 w-full md:w-auto">
                       {serving.paymentStatus !== 'paid' && (
                         <button
                           type="button"
+                          disabled={collectingPayment}
                           onClick={() => handleCollectQueuePayment(serving.userId?._id || serving.userId)}
                           className="flex-1 md:flex-none px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                         >
                           Collect ₹{serving.paidAmount || 0}
                         </button>
                       )}
+                      {!isClinic && <>
                       <button
                         onClick={() => handleExtendQueue(serving.userId?._id || serving.userId, 5)}
                         className="flex-1 md:flex-none px-4 py-2.5 bg-white border border-zinc-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 shadow-xs"
@@ -1150,11 +1145,13 @@ export default function BusinessDashboard() {
                         +15m Extend
                       </button>
                       <button
+                        disabled={calling}
                         onClick={handleCallNext}
                         className="flex-1 md:flex-none px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm"
                       >
                         Complete & Next →
                       </button>
+                      </>}
                     </div>
                   )}
                 </div>
@@ -1277,7 +1274,8 @@ export default function BusinessDashboard() {
                                     </span>
                                     <button
                                       type="button"
-                                      onClick={() => handleCollectQueuePayment(u.userId?._id || u.userId)}
+                                      disabled={collectingPayment}
+                          onClick={() => handleCollectQueuePayment(u.userId?._id || u.userId)}
                                       className="text-[10px] font-bold bg-teal-600 hover:bg-teal-700 text-white px-2.5 py-1 rounded-md shadow-xs transition cursor-pointer"
                                     >
                                       Collect
@@ -1387,13 +1385,14 @@ export default function BusinessDashboard() {
                             {b.paymentMethod === 'counter' && b.paymentStatus !== 'paid' && b.status !== 'cancelled' && b.status !== 'refunded' && (
                               <button
                                 type="button"
+                                disabled={collectingPayment}
                                 onClick={() => handleCollectCounterPayment(b._id)}
                                 className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer mr-1"
                               >
                                 Collect ₹{b.paidAmount || b.amount}
                               </button>
                             )}
-                            {b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'waiting' ? (
+                            {!isClinic && (b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'waiting' ? (
                               <>
                                 <button
                                   onClick={() => handleStartBooking(b._id)}
@@ -1417,7 +1416,7 @@ export default function BusinessDashboard() {
                               </button>
                             ) : (
                               <span className="text-slate-400 text-[11px]">Finished</span>
-                            )}
+                            ))}
                           </td>
                         </tr>
                       ))}

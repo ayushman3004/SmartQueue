@@ -1,3 +1,5 @@
+import { useDialog } from '../hooks/useDialog'
+import NotificationCenter from '../components/NotificationCenter'
 import AdminWorkspaceSwitcher from '../components/AdminWorkspaceSwitcher'
 import '../styles/admin-workspace.css'
 import '../styles/customer-auth.css'
@@ -209,6 +211,7 @@ export default function AdminDashboard() {
 
   // Layout state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const drawerRef = useDialog(mobileSidebarOpen, () => setMobileSidebarOpen(false), true)
   const [showUserMenu, setShowUserMenu] = useState(false)
 
   // Active Tab: 'hubs' | 'customers' | 'prelaunch'
@@ -232,12 +235,15 @@ export default function AdminDashboard() {
   // Detail Modal & Remove Hub Confirmation Modal
   const [selectedBusinessDetail, setSelectedBusinessDetail] = useState(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const detailDialog = useDialog(Boolean(detailModalOpen), () => setDetailModalOpen(false))
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const [hubToDelete, setHubToDelete] = useState(null)
+  const deleteHubDialog = useDialog(Boolean(hubToDelete), () => setHubToDelete(null))
   const [deletingHub, setDeletingHub] = useState(false)
 
   const [customerToDelete, setCustomerToDelete] = useState(null)
+  const deleteCustomerDialog = useDialog(Boolean(customerToDelete), () => setCustomerToDelete(null))
   const [deletingCustomer, setDeletingCustomer] = useState(false)
 
   // Fetch telemetry from API
@@ -628,6 +634,8 @@ export default function AdminDashboard() {
             <span className="hidden sm:inline">{loading ? 'Syncing...' : 'Refresh'}</span>
           </button>
 
+          <NotificationCenter />
+
           {/* Profile Dropdown */}
           <div className="relative">
             <button
@@ -707,7 +715,7 @@ export default function AdminDashboard() {
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
         {/* Desktop Left Sidebar */}
-        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100vh-61px)] bg-white/60 backdrop-blur-xs sticky top-[61px] self-start max-h-[calc(100vh-61px)] overflow-y-auto">
+        <aside className="w-64 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 min-h-[calc(100dvh-61px)] bg-white/60 backdrop-blur-xs sticky top-[61px] self-start max-h-[calc(100dvh-61px)] overflow-y-auto">
           {renderSidebarContent(false)}
         </aside>
 
@@ -727,7 +735,10 @@ export default function AdminDashboard() {
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className="fixed inset-y-0 left-0 w-72 bg-white z-50 p-5 flex flex-col justify-between shadow-2xl lg:hidden overflow-y-auto"
+                ref={drawerRef}
+                tabIndex={-1}
+                role="dialog" aria-modal="true" aria-label="Admin navigation"
+                className="app-drawer fixed inset-y-0 left-0 w-72 bg-white z-50 p-5 flex flex-col justify-between shadow-2xl lg:hidden overflow-y-auto"
               >
                 <div className="flex items-center justify-between pb-4 border-b border-zinc-100 mb-2">
                   <div className="flex items-center gap-2">
@@ -1267,13 +1278,13 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs"
+            className="app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs"
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="admin-surface w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
+              ref={deleteHubDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Delete hub" className="app-dialog admin-surface w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
             >
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
                 <Trash2 className="w-6 h-6" />
@@ -1314,13 +1325,13 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs"
+            className="app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs"
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="admin-surface w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
+              ref={deleteCustomerDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Delete customer" className="app-dialog admin-surface w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
             >
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
                 <Trash2 className="w-6 h-6" />
@@ -1361,13 +1372,13 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs overflow-y-auto"
+            className="app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="admin-surface w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-6 text-left my-8"
+              ref={detailDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Business details" className="app-dialog admin-surface w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-6 text-left my-8"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
                 <div>

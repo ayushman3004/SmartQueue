@@ -27,3 +27,6 @@
 @media (max-width: 560px) { .site-footer { padding-top: 16px; }.site-footer-body { padding: 28px 24px 22px; }.site-footer-brand { display: block; margin-bottom: 32px; }.site-footer-brand img { width: 150px; }.site-footer-brand p { margin-top: 20px; font-size: 18px; }.site-footer-columns { gap: 32px 20px; }.site-footer-columns > :first-child, .site-footer-columns > :last-child { grid-column: 1 / -1; }.site-footer-mobile { display: grid; grid-template-columns: 112px minmax(0, 1fr); column-gap: 18px; align-items: center; }.site-footer-mobile h2 { grid-column: 1 / -1; margin-bottom: 16px; }.site-footer .site-footer-qr { grid-row: 2 / 4; margin-bottom: 0; }.site-footer-qr img { width: 112px; height: 112px; }.site-footer-mobile p { font-size: 11px; }.site-footer .site-footer-inline { margin-top: 0; font-size: 12px; }.site-footer h2 { font-size: 15px; margin-bottom: 16px; }.site-footer li a { font-size: 12px; }.site-footer-bottom { margin-top: 30px; }.site-footer-bottom p { width: 100%; } }
 
 .site-footer-bottom button { cursor: pointer; }
+/* Preserve contrast when the footer sits inside a dashboard theme. */
+.site-footer .site-footer-columns h2 { color: #f3f4e9; }
+.site-footer .site-footer-body :is(a, button):focus-visible { outline-color: #dfc8bb; }

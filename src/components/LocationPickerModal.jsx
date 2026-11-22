@@ -1,3 +1,4 @@
+import { useDialog } from '../hooks/useDialog'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
@@ -233,6 +234,7 @@ export default function LocationPickerModal({
     onClose()
   }
 
+  const dialogRef = useDialog(isOpen, onClose)
   if (!isOpen) return null
 
   return (
@@ -253,7 +255,7 @@ export default function LocationPickerModal({
           animate={{ opacity: 1, transform: 'translateY(0) scale(1)' }}
           exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'translateY(12px) scale(0.96)' }}
           transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-          aria-labelledby="location-picker-title" role="dialog" aria-modal="true" className="location-picker-dialog relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-100 overflow-hidden z-10"
+          ref={dialogRef} tabIndex={-1} aria-labelledby="location-picker-title" role="dialog" aria-modal="true" className="app-dialog location-picker-dialog relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-100 overflow-hidden z-10"
         >
           {/* Header */}
           <div className="location-picker-heading px-6 pt-6 pb-4 border-b border-zinc-100 flex items-center justify-between">

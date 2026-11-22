@@ -1,0 +1,24 @@
+/* Account settings keep one palette, independent of the last visited service. */
+.profile-page {
+  --service-ink: #315b45;
+  --service-soft: #e6f0e8;
+  --service-door: #b7d5c2;
+  --service-line: #c1d5c7;
+  --customer-text: #153c2b;
+  color: #153c2b;
+}
+.profile-page.customer-tab > header,
+.profile-page.customer-tab aside { background-color: #fbfefbe8; border-color: var(--service-line); }
+.profile-page.customer-tab .customer-surface { background-color: #fffffc; border-color: var(--service-line); box-shadow: 0 4px 0 var(--service-soft); }
+.profile-page.customer-tab .icon-3d { background: var(--service-soft); color: var(--service-ink); border: 1px solid var(--service-line); box-shadow: none; transform: none; }
+.profile-page.customer-tab .icon-3d::before,
+.profile-page.customer-tab .icon-3d::after { display: none; }
+.profile-page .icon-3d > svg { color: inherit; }
+.profile-page button.profile-primary { background-color: var(--service-ink); color: #fff; }
+.profile-page button.profile-primary .icon-3d { background: #ffffff1f; border-color: #ffffff40; color: #fff; }
+.profile-page.customer-tab .icon-3d-rose { background: #fff1f2; border-color: #fecdd3; color: #be123c; }
+.profile-page.customer-tab :is(input, textarea) { border-color: var(--service-line); color: #153c2b; }
+.profile-page :is(button, a, input, textarea):focus-visible { outline: 2px solid var(--service-ink); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) {
+  .profile-page button.profile-primary:not(:disabled):hover { background-color: #254a36; }
+}

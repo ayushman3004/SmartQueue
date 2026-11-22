@@ -1,3 +1,5 @@
+import { useDialog } from '../hooks/useDialog'
+import NotificationCenter from '../components/NotificationCenter'
 import Prescriptions from '../components/Prescriptions'
 import { usePrescriptions } from '../hooks/usePrescriptions'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
@@ -6,7 +8,6 @@ import { Link } from 'react-router-dom'
 import {
   MapPin,
   Search,
-  Bell,
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
@@ -80,6 +81,7 @@ export default function HistoryPage() {
   } = useCustomerLocation()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const reviewDialog = useDialog(Boolean(reviewModalOpen), () => setReviewModalOpen(false))
   const [selectedBookingForReview, setSelectedBookingForReview] = useState(null)
   const [rating, setRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
@@ -141,6 +143,7 @@ export default function HistoryPage() {
     (record) => ['waiting', 'serving', 'confirmed', 'scheduled', 'delayed'].includes(record.status)
   )
   const selectedRecordDetails = unifiedServiceRecords.find((record) => record._id === selectedRecordId) || null
+  const detailsDialog = useDialog(Boolean(selectedRecordDetails), () => setSelectedRecordId(null))
 
   useEffect(() => {
     const refresh = () => { refreshBookings().catch(() => {}) }
@@ -302,13 +305,7 @@ export default function HistoryPage() {
 
         {/* Right: Notifications, Profile Avatar */}
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => toast('No new notifications', { icon: 'info' })}
-            className="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors relative"
-          >
-            <Bell className="w-4 h-4 text-zinc-600" />
-            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white" />
-          </button>
+          <NotificationCenter />
 
           <div className="relative">
             <button
@@ -412,7 +409,7 @@ export default function HistoryPage() {
               <div className="bg-zinc-100 p-1 rounded-xl flex items-center gap-1 text-xs">
                 <button
                   onClick={() => setViewMode('cards')}
-                  title="Card View (Image 2 style)"
+                  title="Card view"
                   className={`p-1.5 rounded-lg transition-all ${
                     viewMode === 'cards' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
                   }`}
@@ -421,7 +418,7 @@ export default function HistoryPage() {
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
-                  title="Table View (Image 1 style)"
+                  title="Table view"
                   className={`p-1.5 rounded-lg transition-all ${
                     viewMode === 'table' ? 'bg-white text-zinc-950 shadow-xs' : 'text-zinc-500 hover:text-zinc-900'
                   }`}
@@ -790,12 +787,12 @@ export default function HistoryPage() {
       {/* ── RECORD DETAILS MODAL ── */}
       <AnimatePresence>
         {selectedRecordDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
+          <div className="app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-4"
+              ref={detailsDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Visit details" className="app-dialog bg-white border border-zinc-200 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-4"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
@@ -880,12 +877,12 @@ export default function HistoryPage() {
       {/* ── REVIEW MODAL ── */}
       <AnimatePresence>
         {reviewModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
+          <div className="app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5"
+              ref={reviewDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Review service" className="app-dialog bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5"
             >
               <h3 className="text-lg font-black text-zinc-950">{selectedBookingForReview?.review ? 'Edit your review' : 'Leave a Verified Review'}</h3>
               <form onSubmit={handleSubmitReview} className="space-y-4">
@@ -896,6 +893,8 @@ export default function HistoryPage() {
                       <button
                         type="button"
                         key={star}
+                        aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                        aria-pressed={rating === star}
                         onClick={() => setRating(star)}
                         className={`text-2xl transition-transform hover:scale-110 cursor-pointer ${
                           star <= rating ? 'text-amber-400' : 'text-zinc-200'

@@ -57,7 +57,9 @@ test('prescriptions are saved for the assigned patient and readable only by that
   function matches(filter) { return saved && (!filter.$or || filter.$or.some(clause => clause.doctor === saved.doctor || clause.patient === saved.patient)) && (!filter.patient || filter.patient === saved.patient) && (!filter.doctor || filter.doctor === saved.doctor); }
   t.mock.method(Prescription, 'find', filter => ({ sort: () => ({ select: async () => matches(filter) ? [saved] : [] }) }));
   t.mock.method(Prescription, 'findOne', async filter => matches(filter) ? saved : null);
+  const events = [];
   const app = express();
+  app.set('io', { to(room) { return { emit(event, payload) { events.push({ room, event, payload }); } }; } });
   app.use(express.json());
   app.use('/api/doctors', doctorRoutes);
   app.use((error, _req, res, _next) => res.status(error.statusCode || 500).json({ message: error.message }));
@@ -92,4 +94,22 @@ test('prescriptions are saved for the assigned patient and readable only by that
   assert.equal(pdf.headers.get('cache-control'), 'private, no-store');
   assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
   assert.equal((await request(doctorId, path)).status, 200);
+  // A doctor advancing their own queue announces the action to the clinic desk.
+  const nextPatient = '888888888888888888888888';
+  queue.users.push({ userId: nextPatient, status: 'waiting', serviceTime: 15, assignedStaff: visit.assignedStaff });
+  t.mock.method(Booking, 'findOne', () => ({ sort: async () => null }));
+  t.mock.method(Booking, 'create', async data => ({ ...data, _id: bookingId }));
+  t.mock.method(Business, 'findById', async () => ({ ...clinic, async save() {} }));
+  assert.equal((await request(doctorId, `/queue/${otherDoctorId}/next`, {})).status, 403);
+  assert.equal(events.filter(entry => entry.event === 'doctor:called-next').length, 0);
+  const next = await request(doctorId, `/queue/${patientId}/next`, {});
+  assert.equal(next.status, 200, await next.text());
+  const announcements = events.filter(entry => entry.event === 'doctor:called-next');
+  assert.equal(announcements.length, 1);
+  assert.equal(announcements[0].room, `business:${clinicId}:admin`);
+  assert.equal(announcements[0].payload.doctorName, staff.name);
+  assert.equal(announcements[0].payload.businessId, clinicId);
+  assert.ok(Number.isFinite(Date.parse(announcements[0].payload.calledAt)));
+  assert.equal(queue.users.find(entry => entry.userId === nextPatient).status, 'serving');
+
 });

@@ -1,0 +1,52 @@
+/* Platform behavior for browsers and a future edge-to-edge native WebView. */
+html { -webkit-text-size-adjust: 100%; }
+button, [role='button'] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+html:has(.app-workspace), body:has(.app-workspace) { overscroll-behavior-y: none; }
+.app-workspace { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.app-workspace .min-h-screen { min-height: 100dvh; }
+.app-workspace :is(.customer-tab, .customer-dashboard, .hub-dashboard, .venue-console, .admin-workspace) > header { padding-top: calc(.75rem + env(safe-area-inset-top, 0px)); }
+.app-modal-layer { top: var(--visual-viewport-top, 0px); bottom: auto; height: var(--visual-viewport-height, 100dvh); padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+.app-dialog { min-width: 0; max-height: calc(var(--visual-viewport-height, 100dvh) - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto; overscroll-behavior: contain; }
+.app-modal-layer > .bezel-shell { margin-block: 0; max-height: 100%; }
+body:has([aria-modal='true']) .app-assistant { visibility: hidden; pointer-events: none; }
+.app-drawer { height: var(--visual-viewport-height, 100dvh); max-height: var(--visual-viewport-height, 100dvh); padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding-left: calc(16px + env(safe-area-inset-left, 0px)); overscroll-behavior: contain; }
+.site-footer-body { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+.app-assistant { bottom: calc(16px + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px)); right: calc(16px + env(safe-area-inset-right, 0px)); }
+@media (pointer: coarse), (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), select, textarea { font-size: 16px; }
+  button, [role='button'], input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']):not([type='file']), select { min-height: 44px; }
+  button, [role='button'], .app-workspace :is(button, [role='button']) { min-width: 44px; min-height: 44px; }
+  button:active:not(:disabled), [role='button']:active { opacity: .8; }
+  input[type='checkbox'], input[type='radio'] { width: 20px; height: 20px; flex-shrink: 0; }
+}
+@media (max-width: 767px) {
+  .app-workspace :is(main, section, article, form, fieldset) { min-width: 0; }
+  .app-workspace :where(.flex, .grid) > :where(div, section, article, form, main, fieldset) { min-width: 0; }
+  .app-workspace :is(h1, h2, h3, p) { overflow-wrap: anywhere; }
+  .app-workspace svg { flex-shrink: 0; }
+  .customer-tab > header, .hub-dashboard > header, .venue-console > header, .admin-workspace > header { gap: 8px; }
+  .venue-console > header { height: auto; min-height: calc(65px + env(safe-area-inset-top, 0px)); flex-wrap: wrap; }
+  .venue-console > header > div:last-child { flex-wrap: wrap; gap: 8px; }
+  .venue-console main > div:first-child { flex-wrap: wrap; }
+  .venue-console :is(td, th) { white-space: nowrap; }
+  .venue-console .venue-service-actions { flex-wrap: wrap; }
+  .profile-page > .flex-1 > main > .grid { grid-template-columns: minmax(0, 1fr); }
+  .profile-page .profile-contact-field, .profile-page .profile-identity { flex-wrap: wrap; }
+  .profile-page .profile-contact-field > div { flex-basis: 100%; }
+  .profile-page .profile-identity > div { min-width: 0; }
+  .profile-page .profile-identity h1, .profile-page .profile-identity p { overflow-wrap: anywhere; }
+  .customer-tab > .flex-1 > main, .hub-canvas { max-width: 100%; }
+  .notification-panel { right: max(12px, env(safe-area-inset-right, 0px)); max-width: calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+  .notification-toolbar { flex-wrap: wrap; }
+  .business-page-header { flex-wrap: wrap; gap: 12px; padding-inline: 16px; }
+  .site-footer-columns a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .customer-search-header { position: relative; }
+}
+@media (max-width: 374px) {
+  .app-dialog { padding: 20px 16px; }
+  .customer-tab > header, .customer-dashboard > header, .hub-dashboard > header, .venue-console > header, .admin-workspace > header { padding-inline: 12px; }
+  .customer-search-header > div:first-child { gap: 4px; }
+  .customer-search-header > div:first-child img { max-width: 76px; height: auto; }
+}

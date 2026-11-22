@@ -1,3 +1,4 @@
+import './ProfilePage.css'
 import Prescriptions from '../components/Prescriptions'
 import { usePrescriptions } from '../hooks/usePrescriptions'
 import { normalizePhoneNumber } from '../utils/phoneNumbers'
@@ -46,6 +47,8 @@ import ForgotPasswordModal from '../components/ForgotPasswordModal'
 import CustomerSidebar from '../components/CustomerSidebar'
 import { prepareAvatar } from '../utils/avatarUpload'
 
+const profileValues = user => ({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', bio: user?.bio || '', location: user?.location || '', avatar: user?.avatar || '' })
+
 export default function ProfilePage() {
   const { user, setUser, logOut } = useAuth()
   const navigate = useNavigate()
@@ -78,26 +81,10 @@ export default function ProfilePage() {
   const [otpCooldown, setOtpCooldown] = useState(0)
 
   // Form data
-  const [form, setForm] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    bio: user?.bio || '',
-    location: user?.location || '',
-    avatar: user?.avatar || '',
-  })
+  const [form, setForm] = useState(() => profileValues(user))
 
   useEffect(() => {
-    if (user) {
-      setForm({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        bio: user.bio || '',
-        location: user.location || '',
-        avatar: user.avatar || '',
-      })
-    }
+    if (user) setForm(profileValues(user))
   }, [user])
 
   // Cooldown countdown timer for OTP resend
@@ -229,13 +216,13 @@ export default function ProfilePage() {
 
   // Upgrade Account to Hub Owner (for customers)
   return (
-    <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative">
+    <div className="profile-page customer-tab min-h-screen app-background-glow text-[#153c2b] flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-900 relative">
       {/* ── TOP HEADER BAR ── */}
       <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="lg:hidden p-2 -ml-1 rounded-xl text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+            className="lg:hidden p-2 -ml-1 rounded-xl text-[#52675b] hover:text-[#153c2b] hover:bg-zinc-100 transition-colors cursor-pointer"
             aria-label="Toggle navigation menu"
           >
             <Menu className="w-5 h-5" />
@@ -244,7 +231,7 @@ export default function ProfilePage() {
             <img src="/serveq-logo.png" alt="serveQ" className="h-7 sm:h-8 w-auto object-contain transition-transform group-hover:scale-105" />
           </Link>
           <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-zinc-200">
-            <span className="text-xs font-semibold text-zinc-600">Profile & Security</span>
+            <span className="text-xs font-semibold text-[#52675b]">Profile & Security</span>
           </div>
         </div>
 
@@ -253,7 +240,7 @@ export default function ProfilePage() {
           <span
             className={`hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
               isAdmin
-                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                ? 'bg-[#e6f0e8] text-[#315b45] border-[#c1d5c7]'
                 : isOwner
                 ? 'bg-[#EAF7EE] text-[#114227] border-[#BDE8CB]'
                 : 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -265,7 +252,7 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => navigate(backPath)}
-            className="text-xs font-bold text-zinc-800 hover:text-zinc-950 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/80 pl-2 pr-3.5 py-1.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-2xs active:scale-95"
+            className="text-xs font-bold text-zinc-800 hover:text-[#153c2b] bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/80 pl-2 pr-3.5 py-1.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-2xs active:scale-95"
             title="Return to Home Dashboard"
           >
             <span className="w-6 h-6 rounded-lg icon-3d icon-3d-emerald shrink-0">
@@ -298,7 +285,7 @@ export default function ProfilePage() {
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
             {/* Avatar & User Details */}
-            <div className="flex items-center gap-5">
+            <div className="profile-identity flex items-center gap-5">
               <div className="relative group shrink-0">
                 {form.avatar ? (
                   <img
@@ -323,12 +310,12 @@ export default function ProfilePage() {
 
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#153c2b] tracking-tight">
                     {user?.name || 'ServeQ Member'}
                   </h1>
                   {isAdmin && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-300 flex items-center gap-1">
-                      <ShieldAlert className="w-3 h-3 text-purple-700" />
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#e6f0e8] text-[#315b45] border border-[#c1d5c7] flex items-center gap-1">
+                      <ShieldAlert className="w-3 h-3 text-[#315b45]" />
                       Root Admin
                     </span>
                   )}
@@ -346,12 +333,12 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-                <p className="text-xs sm:text-sm text-zinc-600 font-medium">
+                <p className="text-xs sm:text-sm text-[#52675b] font-medium">
                   {user?.email}
                 </p>
 
                 {user?.location && (
-                  <div className="flex items-center gap-1 pt-1 text-[11px] text-zinc-500 font-medium">
+                  <div className="flex items-center gap-1 pt-1 text-[11px] text-[#617168] font-medium">
                     <MapPin className="w-3.5 h-3.5 text-zinc-400" />
                     {user.location}
                   </div>
@@ -363,11 +350,20 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2 self-stretch sm:self-auto">
               <button
                 type="button"
-                onClick={() => setEditing((prev) => !prev)}
+                disabled={saving || processingAvatar}
+                onClick={() => {
+                  if (editing) {
+                    setForm(profileValues(user))
+                    setAvatarError('')
+                    setEmailOtpSent(false)
+                    setEmailOtp('')
+                  }
+                  setEditing(prev => !prev)
+                }}
                 className={`w-full sm:w-auto px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   editing
                     ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
-                    : 'bg-[#114227] hover:bg-[#0D361F] text-white shadow-xs'
+                    : 'profile-primary bg-[#315b45] hover:bg-[#254a36] text-white shadow-xs'
                 }`}
               >
                 {editing ? (
@@ -393,24 +389,24 @@ export default function ProfilePage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-rose-500/5 to-white border-2 border-amber-300/80 shadow-xs relative overflow-hidden text-left space-y-4"
+            className="p-5 sm:p-6 rounded-3xl bg-[#faf4ef] border border-[#dfcbbd] shadow-xs relative overflow-hidden text-left space-y-4"
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5">
-                <div className="w-11 h-11 rounded-2xl bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
-                  <AlertTriangle className="w-5 h-5 text-amber-700" />
+                <div className="w-11 h-11 rounded-2xl bg-[#f3e9e1] border border-[#dfcbbd] text-[#765546] flex items-center justify-center shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5 text-[#765546]" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                  <div className="profile-contact-field flex flex-wrap items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#f3e9e1] text-[#765546] border border-[#dfcbbd]">
                       Action Required
                     </span>
-                    <h3 className="text-base font-black text-zinc-950">
+                    <h3 className="text-base font-black text-[#153c2b]">
                       Email Address Not Verified
                     </h3>
                   </div>
-                  <p className="text-xs text-zinc-600 font-medium mt-1 leading-relaxed max-w-2xl">
-                    Your account email <span className="font-bold text-zinc-900">{form.email || user?.email}</span> is currently unverified. Verify with a 6-digit OTP to enable queue pass receipts, booking alerts, and account recovery.
+                  <p className="text-xs text-[#52675b] font-medium mt-1 leading-relaxed max-w-2xl">
+                    Your account email <span className="font-bold text-[#153c2b]">{form.email || user?.email}</span> is currently unverified. Verify with a 6-digit OTP to enable queue pass receipts, booking alerts, and account recovery.
                   </p>
                 </div>
               </div>
@@ -420,7 +416,7 @@ export default function ProfilePage() {
                   type="button"
                   disabled={sendingEmailOtp}
                   onClick={() => handleSendEmailOtp()}
-                  className="px-5 py-2.5 rounded-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                  className="px-5 py-2.5 rounded-full profile-primary bg-[#315b45] hover:bg-[#254a36] disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
                 >
                   {sendingEmailOtp ? (
                     <>
@@ -441,28 +437,29 @@ export default function ProfilePage() {
             {emailOtpSent && (
               <form
                 onSubmit={handleVerifyEmailOtp}
-                className="pt-3 border-t border-amber-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-50/60 p-4 rounded-2xl"
+                className="pt-3 border-t border-[#dfcbbd] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#faf4ef] p-4 rounded-2xl"
               >
                 <div className="flex items-center gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-[#765546] block">
                       Enter 6-Digit Passcode
                     </label>
                     <input
                       type="text"
                       maxLength={6}
+                      inputMode="numeric" autoComplete="one-time-code"
                       autoFocus
                       placeholder="• • • • • •"
                       value={emailOtp}
                       onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
-                      className="w-44 px-3.5 py-2 text-center text-lg font-black tracking-widest bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-zinc-900 shadow-2xs"
+                      className="w-44 px-3.5 py-2 text-center text-lg font-black tracking-widest bg-white border border-[#dfcbbd] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#315b45] text-[#153c2b] shadow-2xs"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={verifyingEmailOtp || emailOtp.length < 6}
-                    className="mt-4 px-5 py-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 disabled:opacity-40 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    className="mt-4 px-5 py-2.5 rounded-xl profile-primary bg-[#315b45] hover:bg-[#254a36] disabled:opacity-40 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     {verifyingEmailOtp ? (
                       <>
@@ -480,8 +477,8 @@ export default function ProfilePage() {
 
                 <div className="flex items-center gap-3 text-xs">
                   {otpCooldown > 0 ? (
-                    <span className="text-zinc-500 font-semibold text-[11px] flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-amber-600" />
+                    <span className="text-[#617168] font-semibold text-[11px] flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-[#765546]" />
                       Resend code in {otpCooldown}s
                     </span>
                   ) : (
@@ -489,7 +486,7 @@ export default function ProfilePage() {
                       type="button"
                       disabled={sendingEmailOtp}
                       onClick={() => handleSendEmailOtp()}
-                      className="text-amber-800 hover:text-amber-950 font-bold underline text-xs cursor-pointer flex items-center gap-1"
+                      className="text-[#765546] hover:text-[#614437] font-bold underline text-xs cursor-pointer flex items-center gap-1"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>Resend OTP</span>
@@ -508,10 +505,10 @@ export default function ProfilePage() {
             <div className="customer-surface bg-white border border-zinc-200/90 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
                 <div className="space-y-0.5">
-                  <h3 className="text-lg font-black text-zinc-950 tracking-tight">
+                  <h3 className="text-lg font-black text-[#153c2b] tracking-tight">
                     Account Credentials
                   </h3>
-                  <p className="text-xs text-zinc-500 font-medium">
+                  <p className="text-xs text-[#617168] font-medium">
                     Personal and contact details linked to your serveQ node.
                   </p>
                 </div>
@@ -525,7 +522,7 @@ export default function ProfilePage() {
               <form onSubmit={handleSaveProfile} className="space-y-5">
                 {/* Full Name */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
                     Full Name
                   </label>
                   <input
@@ -545,7 +542,7 @@ export default function ProfilePage() {
                 {/* Email Address with Verification Pill & Quick OTP Button */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
                       Email Terminal
                     </label>
                     {isEmailVerified ? (
@@ -554,14 +551,14 @@ export default function ProfilePage() {
                         Verified
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
-                        <AlertCircle className="w-3 h-3 text-amber-500" />
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#faf4ef] text-[#765546] border border-[#dfcbbd]">
+                        <AlertCircle className="w-3 h-3 text-[#765546]" />
                         Unverified
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="profile-contact-field flex items-center gap-2">
                     <div className="relative flex-1">
                       <input
                         type="email"
@@ -582,7 +579,7 @@ export default function ProfilePage() {
                         type="button"
                         disabled={sendingEmailOtp}
                         onClick={() => handleSendEmailOtp()}
-                        className="px-4 py-3 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-xs"
+                        className="px-4 py-3 rounded-2xl profile-primary bg-[#315b45] hover:bg-[#254a36] text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-xs"
                       >
                         <Mail className="w-3.5 h-3.5" />
                         <span>Verify OTP</span>
@@ -594,7 +591,7 @@ export default function ProfilePage() {
                 {/* Phone Number with Verification */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
                       Mobile Number (SMS Alerts)
                     </label>
                     {isPhoneVerified ? (
@@ -603,13 +600,13 @@ export default function ProfilePage() {
                         Verified
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-zinc-100 text-zinc-600 border border-zinc-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-zinc-100 text-[#52675b] border border-zinc-200">
                         Optional
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="profile-contact-field flex items-center gap-2">
                     <div className="relative flex-1">
                       <input
                         type="tel"
@@ -629,7 +626,7 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         onClick={() => setPhoneModalOpen(true)}
-                        className="px-4 py-3 rounded-2xl bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-xs"
+                        className="px-4 py-3 rounded-2xl profile-primary bg-[#315b45] hover:bg-[#254a36] text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-xs"
                       >
                         <Smartphone className="w-3.5 h-3.5" />
                         <span>Verify Phone</span>
@@ -641,7 +638,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Location */}
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
                       City / Location
                     </label>
                     <input
@@ -660,7 +657,7 @@ export default function ProfilePage() {
 
                   {/* Avatar upload */}
                   <div className="space-y-2">
-                    <label htmlFor="avatar-upload" className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                    <label htmlFor="avatar-upload" className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
                       Profile photo
                     </label>
                     <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
@@ -675,7 +672,7 @@ export default function ProfilePage() {
                           <span>{processingAvatar ? 'Preparing photo…' : form.avatar ? 'Change photo' : 'Upload photo'}</span>
                           <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarUpload} disabled={processingAvatar || saving} aria-describedby="avatar-upload-help avatar-upload-error" className="sr-only" />
                         </label>
-                        <p id="avatar-upload-help" className="text-[10px] leading-relaxed text-zinc-500">JPG, PNG or WebP, up to 5 MB. Save changes to update your photo.</p>
+                        <p id="avatar-upload-help" className="text-[10px] leading-relaxed text-[#617168]">JPG, PNG or WebP, up to 5 MB. Save changes to update your photo.</p>
                         {form.avatar && (
                           <button type="button" disabled={processingAvatar || saving} onClick={() => { setForm((prev) => ({ ...prev, avatar: '' })); setEditing(true); setAvatarError('') }} className="text-[11px] font-semibold text-rose-700 hover:underline disabled:opacity-50">Remove photo</button>
                         )}
@@ -687,7 +684,7 @@ export default function ProfilePage() {
 
                 {/* Bio / Operational Notes */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
                     Bio / Operational Notes
                   </label>
                   <textarea
@@ -710,7 +707,7 @@ export default function ProfilePage() {
                     <button
                       type="submit"
                       disabled={saving || processingAvatar}
-                      className="w-full py-3.5 px-6 rounded-2xl bg-[#114227] hover:bg-[#0D361F] text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-3.5 px-6 rounded-2xl profile-primary bg-[#315b45] hover:bg-[#254a36] text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {saving ? (
                         <>
@@ -740,8 +737,8 @@ export default function ProfilePage() {
                     <UserCheck className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm text-zinc-950">Customer Hub</h3>
-                    <p className="text-[11px] text-zinc-500 font-medium">Virtual queues & reservations</p>
+                    <h3 className="font-black text-sm text-[#153c2b]">Customer Hub</h3>
+                    <p className="text-[11px] text-[#617168] font-medium">Virtual queues & reservations</p>
                   </div>
                 </div>
 
@@ -778,8 +775,8 @@ export default function ProfilePage() {
                     <Building2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm text-zinc-950">Hub Operations Suite</h3>
-                    <p className="text-[11px] text-zinc-500 font-medium">Verified Enterprise Business</p>
+                    <h3 className="font-black text-sm text-[#153c2b]">Hub Operations Suite</h3>
+                    <p className="text-[11px] text-[#617168] font-medium">Verified Enterprise Business</p>
                   </div>
                 </div>
 
@@ -807,38 +804,38 @@ export default function ProfilePage() {
                   </Link>
                 </div>
 
-                <div className="pt-2 text-[11px] text-zinc-500 font-medium leading-relaxed bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
+                <div className="pt-2 text-[11px] text-[#617168] font-medium leading-relaxed bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
                   <span className="font-bold text-zinc-800">Privileges Active:</span> Multi-counter live queuing, doctor/barber roster management, and AI predictive wait analytics.
                 </div>
               </div>
             )}
 
             {isAdmin && (
-              <div className="customer-surface bg-white border border-purple-200/90 rounded-3xl p-6 shadow-xs space-y-5">
+              <div className="customer-surface bg-white border border-[#c1d5c7] rounded-3xl p-6 shadow-xs space-y-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center font-black">
+                  <div className="w-10 h-10 rounded-xl bg-[#e6f0e8] text-[#315b45] border border-[#c1d5c7] flex items-center justify-center font-black">
                     <ShieldAlert className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-black text-sm text-zinc-950">System Root Console</h3>
-                    <p className="text-[11px] text-purple-600 font-bold">Master Administrative Tier</p>
+                    <h3 className="font-black text-sm text-[#153c2b]">System Root Console</h3>
+                    <p className="text-[11px] text-[#315b45] font-bold">Master Administrative Tier</p>
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-purple-100">
+                <div className="space-y-2 pt-2 border-t border-[#c1d5c7]">
                   <Link
                     to="/admin"
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-purple-50/60 hover:bg-purple-100 text-purple-900 text-xs font-bold transition-colors group"
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-[#e6f0e8] hover:bg-[#d9e8dc] text-[#153c2b] text-xs font-bold transition-colors group"
                   >
                     <div className="flex items-center gap-2.5">
-                      <ShieldCheck className="w-4 h-4 text-purple-700" />
+                      <ShieldCheck className="w-4 h-4 text-[#315b45]" />
                       <span>Launch Admin Console</span>
                     </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-purple-500 group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#315b45] group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                 </div>
 
-                <div className="pt-2 text-[11px] text-zinc-500 font-medium leading-relaxed bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
+                <div className="pt-2 text-[11px] text-[#617168] font-medium leading-relaxed bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
                   <span className="font-bold text-zinc-800">Root Permissions:</span> Global venue control, user account moderation, queue bypass authorization, and audit logs.
                 </div>
               </div>
@@ -850,26 +847,26 @@ export default function ProfilePage() {
                 <span className="w-8 h-8 rounded-xl icon-3d icon-3d-purple shrink-0">
                   <KeyRound className="w-4 h-4" />
                 </span>
-                <h4 className="font-black text-xs text-zinc-950 uppercase tracking-wider">
+                <h4 className="font-black text-xs text-[#153c2b] uppercase tracking-wider">
                   Security & Access
                 </h4>
               </div>
 
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-100">
-                  <span className="text-zinc-600 font-medium">Auth Provider</span>
-                  <span className="font-bold text-zinc-900 capitalize">
+                  <span className="text-[#52675b] font-medium">Auth Provider</span>
+                  <span className="font-bold text-[#153c2b] capitalize">
                     {user?.authProvider || 'Email & Password'}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 border border-zinc-100">
-                  <span className="text-zinc-600 font-medium">Email Verification</span>
+                  <span className="text-[#52675b] font-medium">Email Verification</span>
                   <span
                     className={`font-black text-[10px] uppercase px-2 py-0.5 rounded-full ${
                       isEmailVerified
                         ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
+                        : 'bg-[#f3e9e1] text-[#765546]'
                     }`}
                   >
                     {isEmailVerified ? 'Verified' : 'Unverified'}
@@ -882,7 +879,7 @@ export default function ProfilePage() {
                 onClick={() => setShowPasswordModal(true)}
                 className="w-full py-2.5 px-4 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-800 text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Lock className="w-3.5 h-3.5 text-zinc-500" />
+                <Lock className="w-3.5 h-3.5 text-[#617168]" />
                 <span>Change / Reset Password</span>
               </button>
             </div>
@@ -896,8 +893,8 @@ export default function ProfilePage() {
               <LogOut className="w-5 h-5 text-white" />
             </span>
             <div>
-              <h4 className="text-sm font-black text-zinc-950">Session Management</h4>
-              <p className="text-xs text-zinc-500 font-medium mt-0.5">
+              <h4 className="text-sm font-black text-[#153c2b]">Session Management</h4>
+              <p className="text-xs text-[#617168] font-medium mt-0.5">
                 Sign out of your serveQ session on this device.
               </p>
             </div>

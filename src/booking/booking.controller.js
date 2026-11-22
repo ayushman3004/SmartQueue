@@ -1,3 +1,4 @@
+import { notifyUser } from '../modules/notification/notification.service.js';
 import * as bookingService from "./booking.service.js";
 import asyncHandler from "../../utils/asyncHandler.js";
 import ApiResponse from "../../utils/ApiResponse.js";
@@ -44,6 +45,9 @@ export const book = asyncHandler(async (req, res) => {
     paymentMethod,
   }, io);
 
+  await notifyUser({ recipient: req.user._id, type: 'booking', title: result.booking.status === 'confirmed' ? 'Booking confirmed' : 'Booking created',
+    message: result.booking.status === 'confirmed' ? 'Your appointment is reserved. View your booking for visit details.' : 'Your booking is awaiting payment. Complete payment to confirm your appointment.',
+    href: '/history', eventKey: `booking:created:${result.booking._id}` }, io);
   res.status(201).json(new ApiResponse(201, result, "Booking reserved successfully!"));
 });
 
@@ -81,7 +85,7 @@ export const respondDelay = asyncHandler(async (req, res) => {
 
 // PATCH /api/bookings/:id/start
 export const startService = asyncHandler(async (req, res) => {
-  const booking = await bookingService.startService(req.params.id, req.user._id, req.user.role);
+  const booking = await bookingService.startService(req.params.id, req.user._id, req.user.role, null, req.app.get('io'));
   const io = req.app.get("io");
   if (io) {
     io.to(`business:${booking.businessId}`).emit("service:started", {
@@ -132,5 +136,7 @@ export const cancel = asyncHandler(async (req, res) => {
   const message = result.refunded > 0
     ? `Booking cancelled. ₹${result.refunded} refunded to your wallet.`
     : "Booking cancelled.";
+  await notifyUser({ recipient: req.user._id, type: 'booking', title: 'Booking cancelled', message,
+    href: '/history', eventKey: `booking:cancelled:${req.params.id}` }, io);
   res.json(new ApiResponse(200, result, message));
 });

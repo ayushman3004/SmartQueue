@@ -1,3 +1,4 @@
+import { notifyUser, turnNotificationPayload } from '../modules/notification/notification.service.js';
 import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
 import { isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
@@ -483,7 +484,7 @@ export const respondToDelay = async (bookingId, userId, accept, io = null) => {
 };
 
 // ─── Start Service ────────────────────────────────────────────
-export const startService = async (bookingId, requesterId, requesterRole, doctor = null) => {
+export const startService = async (bookingId, requesterId, requesterRole, doctor = null, io = null) => {
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new ApiError(404, "Booking not found");
   if (doctor) requireAssigned(booking, doctor);
@@ -526,6 +527,10 @@ export const startService = async (bookingId, requesterId, requesterRole, doctor
   } catch {
     // Non-critical queue sync
   }
+
+  await notifyUser(turnNotificationPayload(business, {
+    userId: booking.userId, bookingId: booking._id, assignedStaff: booking.assignedStaff,
+  }), io);
 
   return booking;
 };

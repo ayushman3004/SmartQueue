@@ -11,7 +11,7 @@
   --location-door: #dfc8bb;
 }
 .location-picker .location-picker-backdrop { background: #17372955; }
-.location-picker .location-picker-dialog { background: #fffffc; border: 1px solid var(--location-line); border-radius: 28px 64px 28px 28px; box-shadow: 0 16px 64px #153c2b26; max-height: calc(100svh - 32px); display: flex; flex-direction: column; }
+.location-picker .location-picker-dialog { background: #fffffc; border: 1px solid var(--location-line); border-radius: 28px 64px 28px 28px; box-shadow: 0 16px 64px #153c2b26; max-height: calc(var(--visual-viewport-height, 100dvh) - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; }
 .location-picker-heading { background: var(--location-soft); border-color: var(--location-line); padding: 24px; align-items: flex-start; gap: 16px; }
 .location-picker-heading h2 { color: #153c2b; font-size: 23px; font-weight: 650; letter-spacing: -.04em; gap: 12px; }
 .location-picker-heading h2 > svg { color: var(--location-ink); width: 32px; height: 40px; padding: 7px 4px; border: 1px solid var(--location-ink); border-radius: 18px 18px 5px 5px; flex-shrink: 0; }

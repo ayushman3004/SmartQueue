@@ -1,3 +1,4 @@
+import { useDialog } from '../hooks/useDialog'
 import AdminWorkspaceSwitcher from './AdminWorkspaceSwitcher'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
@@ -27,6 +28,7 @@ export default function CustomerSidebar({
   mobileOpen = false,
   onCloseMobile = () => {},
 }) {
+  const drawerRef = useDialog(mobileOpen, onCloseMobile, true)
   const navigate = useNavigate()
   const { user, logOut } = useAuth()
   const location = useLocation()
@@ -188,7 +190,7 @@ export default function CustomerSidebar({
   return (
     <>
       {/* Desktop Left Sidebar */}
-      <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 h-[calc(100vh-61px)] min-h-[calc(100vh-61px)] max-h-[calc(100vh-61px)] bg-white/80 backdrop-blur-md sticky top-[61px] self-start overflow-y-auto custom-scrollbar">
+      <aside className="w-56 shrink-0 hidden lg:flex flex-col justify-between py-5 px-4 border-r border-zinc-200/70 h-[calc(100dvh-61px)] min-h-[calc(100dvh-61px)] max-h-[calc(100dvh-61px)] bg-white/80 backdrop-blur-md sticky top-[61px] self-start overflow-y-auto custom-scrollbar">
         {renderNavList(false)}
       </aside>
 
@@ -212,7 +214,10 @@ export default function CustomerSidebar({
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="relative w-72 max-w-[85vw] bg-white h-full z-10 shadow-2xl p-4 flex flex-col justify-between overflow-y-auto"
+              ref={drawerRef}
+                tabIndex={-1}
+                role="dialog" aria-modal="true" aria-label="Customer navigation"
+                className="app-drawer relative w-72 max-w-[85vw] bg-white h-full z-10 shadow-2xl p-4 flex flex-col justify-between overflow-y-auto"
             >
               <div className="flex items-center justify-between pb-3 border-b border-zinc-100 mb-4">
                 <Link to={dashboardRoute} onClick={onCloseMobile} className="flex items-center gap-2 text-decoration-none">

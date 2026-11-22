@@ -1,3 +1,4 @@
+import { notifyUser, notifyServingTurns } from '../modules/notification/notification.service.js';
 import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
 import { isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
@@ -289,6 +290,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   queueDoc.users = queueDS.toArray();
   await queueDoc.save();
+  await notifyServingTurns(business, queueDoc.users, io);
 
   if (io) {
     io.to(`business:${businessId}`).emit("bookings:updated");
@@ -340,6 +342,8 @@ export const leaveQueue = async (businessId, userId, io = null) => {
 
   queueDoc.users = queueDS.toArray();
   await queueDoc.save();
+  const business = await Business.findById(businessId);
+  if (business) await notifyServingTurns(business, queueDoc.users, io);
 
   return queueDoc;
 };
@@ -503,6 +507,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
 
   queue.users = queueDS.toArray();
   await queue.save();
+  await notifyServingTurns(business, queue.users, io);
 
   // Update any newly serving users' bookings to serving in database
   for (const u of queue.users) {
@@ -563,17 +568,19 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
       io.to(`user:${user.userId?._id || user.userId}`).emit("bookings:updated");
     }
 
-    // 4. Notify near users
-    queue.users.forEach((u, index) => {
-      if (index > 0 && index <= 3 && u.status === "waiting") {
-        io.to(`user:${u.userId}`).emit("notification:near", {
-          message: `Your turn is near! You are at position ${index + 1} at ${business.name}.`,
-          businessName: business.name,
-          position: index + 1,
-        });
-      }
-    });
   }
+
+  // Persist one near-turn alert per queue entry, even if the customer is offline.
+  await Promise.all(queue.users.map(async (entry, index) => {
+    if (index < 1 || index > 3 || entry.status !== 'waiting') return;
+    const recipient = entry.userId?._id || entry.userId;
+    // QueueDS rebuilds subdocument IDs; booking/join time survives reordering.
+    const visit = entry.bookingId || new Date(entry.joinedAt).getTime();
+    const message = `Your turn is near! You are at position ${index + 1} at ${business.name}.`;
+    const notification = await notifyUser({ recipient, type: 'queue', title: 'Your turn is coming up', message,
+      href: `/queue/${businessId}`, eventKey: `queue:near:${businessId}:${visit}:${recipient}` }, io);
+    if (notification) io?.to(`user:${recipient}`).emit('notification:near', { message, businessName: business.name, position: index + 1 });
+  }));
 
   return queue;
 };
@@ -599,6 +606,7 @@ export const getQueue = async (businessId, io = null, requesterId = null) => {
   }
 
   const business = await Business.findById(businessId);
+  if (wasCleaned && business) await notifyServingTurns(business, queue.users, io);
   const isOwner = !["clinic", "healthcare"].includes(business?.category) && requesterId && business?.owner?.toString() === requesterId.toString();
 
   if (isOwner) {
@@ -762,6 +770,7 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
   }
 
   await queue.save();
+  await notifyServingTurns(business, queue.users, io);
   const assigned = queue.users.find(entry => String(entry.userId?._id || entry.userId) === String(userId));
   if (assigned?.bookingId) {
     await Booking.updateOne({ _id: assigned.bookingId, businessId, userId }, { $set: { assignedStaff: assigned.assignedStaff } });

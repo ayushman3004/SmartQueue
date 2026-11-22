@@ -1,3 +1,4 @@
+import { useDialog } from '../hooks/useDialog'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
@@ -24,6 +25,7 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
     setEditingIndex(null)
   }, [business])
 
+  const dialogRef = useDialog(isOpen, onClose)
   if (!isOpen || !business) return null
 
   const categoryInfo = CATEGORY_METADATA[business.category] || CATEGORY_METADATA.other
@@ -105,16 +107,16 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm overflow-y-auto">
+      <div className="app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-          className="bezel-shell w-full max-w-xl my-8 text-left shadow-2xl"
+          ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Manage services" className="bezel-shell w-full max-w-xl my-8 text-left shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bezel-core p-6 sm:p-8 bg-white border border-zinc-200/90 rounded-3xl max-h-[90vh] overflow-y-auto custom-scrollbar space-y-6">
+          <div className="app-dialog bezel-core p-6 sm:p-8 bg-white border border-zinc-200/90 rounded-3xl max-h-[90dvh] overflow-y-auto custom-scrollbar space-y-6">
             
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-zinc-100">

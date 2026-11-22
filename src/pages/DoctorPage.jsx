@@ -1,3 +1,5 @@
+import { useDialog } from '../hooks/useDialog'
+import NotificationCenter from '../components/NotificationCenter'
 import AdminWorkspaceSwitcher from '../components/AdminWorkspaceSwitcher'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
@@ -75,6 +77,7 @@ function DoctorWorkspace() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [visit, setVisit] = useState(null)
+  const prescriptionDialog = useDialog(Boolean(visit), () => setVisit(null))
   const [revision, setRevision] = useState(0)
   const [extension, setExtension] = useState(5)
   const prescriptions = usePrescriptions(user._id, revision)
@@ -131,7 +134,7 @@ function DoctorWorkspace() {
     <main className="business-page mx-auto w-full max-w-6xl space-y-5 px-4 py-8 sm:px-8">
     <header className="flex flex-wrap items-center justify-between gap-4">
       <img src="/serveq-logo.png" alt="ServeQ" className="h-8 w-auto" />
-      <button type="button" className={button} onClick={() => logOut()}>Sign out</button>
+      <div className="flex items-center gap-3"><NotificationCenter /><button type="button" className={button} onClick={() => logOut()}>Sign out</button></div>
     </header>
     <div><h1 className="text-3xl font-bold">Doctor dashboard</h1><p className="text-zinc-600">{data && `${data.clinic.name} · ${data.doctor.name} · ${data.doctor.doctorId}`}</p></div>
     {loadError && <p role="alert">{loadError}</p>}
@@ -149,8 +152,8 @@ function DoctorWorkspace() {
       </div>
       <Prescriptions result={prescriptions} />
     </>}
-    {data && visit && <div role="dialog" aria-modal="true" aria-label="Write prescription" className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 p-4">
-      <form className={`${panel} max-h-[90dvh] w-full max-w-xl overflow-y-auto`} onSubmit={async event => {
+    {data && visit && <div className="app-modal-layer fixed inset-0 z-100 flex items-center justify-center bg-black/40 p-4">
+      <form ref={prescriptionDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Write prescription" className={`app-dialog ${panel} max-h-[90dvh] w-full max-w-xl overflow-y-auto`} onSubmit={async event => {
         event.preventDefault()
         setBusy(true)
         setError('')

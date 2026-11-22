@@ -31,7 +31,7 @@ export default function AIDesistant() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100]">
+    <div className="app-assistant fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100]">
       <AnimatePresence>
         {isOpen && (
           <motion.div 

@@ -1,8 +1,9 @@
+import { useDialog } from '../hooks/useDialog'
+import NotificationCenter from '../components/NotificationCenter'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, Navigate, Link } from 'react-router-dom'
 import {
-  Bell,
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
@@ -86,11 +87,13 @@ export default function BookingPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [validatingCoupon, setValidatingCoupon] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const paymentDialog = useDialog(Boolean(paymentModalOpen), () => setPaymentModalOpen(false))
   const [bookingInProgress, setBookingInProgress] = useState(false)
   const [isSubscriptionInactive, setIsSubscriptionInactive] = useState(false)
 
   // Review Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const reviewDialog = useDialog(Boolean(reviewModalOpen), () => setReviewModalOpen(false))
   const [selectedBookingForReview, setSelectedBookingForReview] = useState(null)
   const [rating, setRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
@@ -489,13 +492,7 @@ export default function BookingPage() {
 
         {/* Right: Notifications, Profile Avatar */}
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => toast('No new notifications', { icon: 'info' })}
-            className="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors relative cursor-pointer"
-          >
-            <Bell className="w-4 h-4 text-zinc-600" />
-            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 border-2 border-white" />
-          </button>
+          <NotificationCenter />
 
           <div className="relative">
             <button
@@ -1132,12 +1129,12 @@ export default function BookingPage() {
       {/* ── PAYMENT CONFIRMATION MODAL ── */}
       <AnimatePresence>
         {paymentModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="app-modal-layer fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <motion.div
               initial={{ scale: 0.95, y: 20, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 20, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-5"
+              ref={paymentDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Confirm appointment" className="app-dialog bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-5"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
@@ -1240,12 +1237,12 @@ export default function BookingPage() {
       {/* ── REVIEW MODAL ── */}
       <AnimatePresence>
         {reviewModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="app-modal-layer fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <motion.div
               initial={{ scale: 0.95, y: 20, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 20, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-5"
+              ref={reviewDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Review service" className="app-dialog bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-5"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
@@ -1268,6 +1265,8 @@ export default function BookingPage() {
                       <button
                         type="button"
                         key={star}
+                        aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                        aria-pressed={rating === star}
                         onClick={() => setRating(star)}
                         className={`text-2xl transition-transform hover:scale-110 cursor-pointer ${
                           star <= rating ? 'text-amber-400' : 'text-zinc-200'

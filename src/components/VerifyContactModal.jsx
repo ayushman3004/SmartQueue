@@ -1,3 +1,4 @@
+import { useDialog } from '../hooks/useDialog'
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
@@ -165,11 +166,12 @@ export default function VerifyContactModal({
     }
   }
 
+  const dialogRef = useDialog(isOpen, onClose)
   if (!isOpen) return null
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="app-modal-layer fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -184,7 +186,7 @@ export default function VerifyContactModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="business-page verification-dialog relative w-full max-w-md bg-white border border-zinc-200/80 rounded-3xl shadow-2xl p-7 md:p-8 z-10 overflow-hidden"
+          ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Verify contact" className="app-dialog business-page verification-dialog relative w-full max-w-md bg-white border border-zinc-200/80 rounded-3xl shadow-2xl p-7 md:p-8 z-10 overflow-hidden"
         >
           {/* Subtle Ambient Glow */}
           <div className="absolute -top-16 -right-16 w-44 h-44 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -258,6 +260,7 @@ export default function VerifyContactModal({
                   inputMode="numeric"
                   autoFocus
                   maxLength={6}
+                      inputMode="numeric" autoComplete="one-time-code"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="••••••"

@@ -135,6 +135,9 @@ router.post('/queue/:patientId/:action', allowRoles('doctor', 'admin'), asyncHan
   if (req.params.action === 'next') {
     if (row.status !== 'serving') throw new ApiError(400, 'Only the current consultation can be completed.');
     await queueService.callNext(businessId, ownerId, 'owner', req.app.get('io'), context.staff.name, req.params.patientId, null, context);
+    req.app.get('io')?.to(`business:${businessId}:admin`).emit('doctor:called-next', {
+      businessId, doctorName: context.staff.name, calledAt: new Date().toISOString(),
+    });
   } else if (req.params.action === 'extend') await queueService.extendTime(businessId, req.params.patientId, minutes(req.body.minutes), ownerId, 'owner', req.app.get('io'), context);
   else if (req.params.action === 'payment') await queueService.collectQueuePayment(businessId, req.params.patientId, { _id: ownerId, role: 'owner' }, null, context);
   else throw new ApiError(400, 'Unknown queue action.');
@@ -150,7 +153,7 @@ router.post('/bookings/:bookingId/:action', allowRoles('doctor', 'admin'), async
   requireAssigned(booking, context);
   if (['cancelled', 'refunded'].includes(booking.status)) throw new ApiError(400, 'This booking is closed.');
   const ownerId = context.business.owner;
-  if (req.params.action === 'start') await bookingService.startService(booking._id, ownerId, 'owner', context);
+  if (req.params.action === 'start') await bookingService.startService(booking._id, ownerId, 'owner', context, req.app.get('io'));
   else if (req.params.action === 'complete') await bookingService.completeService(booking._id, ownerId, 'owner', context);
   else if (req.params.action === 'extend') await bookingService.extendBooking(booking._id, minutes(req.body.minutes), ownerId, 'owner', req.app.get('io'), context);
   else if (req.params.action === 'payment') await bookingService.collectCounterPayment(booking._id, { _id: ownerId, role: 'owner' }, null, context);

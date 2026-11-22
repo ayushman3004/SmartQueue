@@ -1,3 +1,5 @@
+import { useDialog } from '../hooks/useDialog'
+import NotificationCenter from './NotificationCenter'
 import AdminWorkspaceSwitcher from './AdminWorkspaceSwitcher'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
@@ -42,6 +44,7 @@ export default function HubCommandCenter() {
 
   // Layout & Navigation State
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const drawerRef = useDialog(mobileSidebarOpen, () => setMobileSidebarOpen(false), true)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'live' | 'onboarding' | 'closed'
   const [searchQuery, setSearchQuery] = useState('')
@@ -410,6 +413,8 @@ export default function HubCommandCenter() {
         {/* Right: Actions (Profile) */}
         <div className="flex items-center gap-2 sm:gap-3">
 
+          <NotificationCenter />
+
           {/* Profile Menu */}
           <div className="relative">
             <button
@@ -514,7 +519,9 @@ export default function HubCommandCenter() {
                 role="dialog"
                 aria-modal="true"
                 aria-label="Hub navigation"
-                className="hub-mobile-sidebar fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 p-4 flex flex-col justify-between shadow-2xl lg:hidden overflow-y-auto"
+                ref={drawerRef}
+                tabIndex={-1}
+                className="app-drawer hub-mobile-sidebar fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 p-4 flex flex-col justify-between shadow-2xl lg:hidden overflow-y-auto"
               >
                 <div className="flex items-center justify-between pb-4 border-b border-zinc-100 mb-2">
                   <div className="flex items-center gap-2">
