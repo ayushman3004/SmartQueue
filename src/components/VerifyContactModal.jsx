@@ -3,15 +3,25 @@ import { Smartphone, X } from 'lucide-react'
 import { useDialog } from '../hooks/useDialog'
 import { confirmFirebasePhone } from '../api/auth.api.js'
 import { confirmFirebasePhoneOtp, isFirebaseConfigured, sendFirebasePhoneOtp } from '../lib/firebase.js'
+import { normalizePhoneNumber } from '../utils/phoneNumbers.js'
 
 const errors = {
   'auth/captcha-check-failed': 'The security check failed. Request another code.',
+  'auth/invalid-app-credential': 'The security check could not be verified. Reload the page and try again.',
+  'auth/network-request-failed': 'Could not connect securely to phone verification. Check your connection or try another network.',
+  'auth/invalid-phone-number': 'Enter a valid phone number with its country code.',
+  'auth/billing-not-enabled': 'SMS delivery is unavailable. Please contact support.',
+  'auth/operation-not-allowed': 'SMS verification is unavailable for this number. Please contact support.',
+  'auth/unauthorized-domain': 'Phone verification is unavailable on this domain. Please contact support.',
+  'auth/unauthorized-continue-uri': 'Phone verification is unavailable on this domain. Please contact support.',
+  'auth/quota-exceeded': 'The SMS limit has been reached. Try again later.',
   'auth/code-expired': 'This code expired. Request another code.',
   'auth/invalid-verification-code': 'That code is incorrect. Try again.',
   'auth/too-many-requests': 'Too many requests. Wait a few minutes and try again.',
 }
 
 export default function VerifyContactModal({ onClose, value, onSuccess }) {
+  const phone = normalizePhoneNumber(value)
   const [otp, setOtp] = useState('')
   const [confirmation, setConfirmation] = useState(null)
   const [proof, setProof] = useState(null)
@@ -31,16 +41,20 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
   }, [cooldown])
 
   async function sendCode() {
+    if (!phone) {
+      setError(errors['auth/invalid-phone-number'])
+      return
+    }
     setPending('send')
     setError('')
     try {
-      const result = await sendFirebasePhoneOtp(value, recaptcha.current)
+      const result = await sendFirebasePhoneOtp(phone, recaptcha.current)
       setConfirmation(result)
       setOtp('')
       setProof(null)
       setCooldown(30)
     } catch (failure) {
-      setError(errors[failure.code] || 'Could not send an SMS. Check the number and try again.')
+      setError(errors[failure.code] || 'Could not send a verification code. Try again or contact support.')
     } finally {
       setPending('')
     }
@@ -54,7 +68,7 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
     try {
       const token = proof || await confirmFirebasePhoneOtp(confirmation, otp)
       setProof(token)
-      const response = await confirmFirebasePhone(value, token)
+      const response = await confirmFirebasePhone(phone, token)
       onSuccess(response.data.data.user)
     } catch (failure) {
       if (failure.response?.status === 401) {
@@ -78,7 +92,7 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
         <Smartphone className="text-teal-700" size={24} aria-hidden="true" />
         <h2 id="verify-phone-heading" className="text-xl font-bold">Verify your phone</h2>
         <p className="text-sm text-slate-600">
-          {confirmation ? 'Enter the six-digit code sent to' : 'Send a verification code by SMS to'} <strong>{value}</strong>.
+          {confirmation ? 'Enter the six-digit code sent to' : 'Send a verification code by SMS to'} <strong>{phone || value}</strong>.
         </p>
       </header>
       {isFirebaseConfigured && !confirmation && <p className="text-xs text-slate-600">Firebase sends the SMS. Standard messaging rates may apply.</p>}
