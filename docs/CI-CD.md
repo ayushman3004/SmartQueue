@@ -478,6 +478,44 @@ credential. Restore DNS-only service only after rolling back the origin guard.
 Apply any WAF or bot rules separately and exercise OAuth, Razorpay, preflights,
 and both Socket.IO transports before enforcing rules on those paths.
 
+### TLS and origin certificate verification
+
+**November 23, 2026: Public HTTPS verified. Effective Cloudflare-to-origin
+certificate validation remains unverified.**
+
+| Check | Observed result |
+| --- | --- |
+| Public `https://api.serveq.tech/live` over IPv4 | `200` with Windows certificate validation enabled and successful. Ray ID `a5eed98fef5238b4-DEL`. |
+| Public HTTP redirect | `301` to `https://api.serveq.tech/live?tls_check=1`, preserving the path and query for the sampled HEAD request. The proposed `308` was not observed, so method preservation was not established. Ray ID `a5eed9926ee986e5-DEL`. |
+| Published Render ingress with `api.serveq.tech` as HTTPS hostname | `200` with Windows certificate validation enabled and successful. Ray ID `a5eed9957b9725a4-DEL`. |
+| Certificate observed on both successful canonical-name connections | Subject `api.serveq.tech`, issuer Google Trust Services `WE1`, expires February 15, 2027 at 12:45:57 UTC. |
+
+Initial checks from this environment gave inconsistent trust results. Some
+failed with an untrusted or self-signed chain. The Windows IPv4 retests above
+passed without disabling verification. The IPv6-only request could not be
+completed here. Recheck from an independent network if clients report trust
+errors. These probes do not establish the zone's minimum TLS version, certificate
+chain behavior on every path, or the certificate served on Render's internal
+hop. Render's published ingress itself uses Cloudflare, and a certificate seen
+on that path does not show how ServeQ's Cloudflare zone validates its origin.
+
+For configuration evidence, open the `serveq.tech` zone and record
+**SSL/TLS → Overview** and any **Rules → Configuration Rules** that set SSL/TLS
+mode for `api.serveq.tech`. Verify the **effective** setting is **Full (strict)**.
+Review any **Origin Rules** for an overridden origin hostname or TLS server
+name and verify that the certificate on the actual upstream matches that name.
+In Render, confirm `api.serveq.tech` is **Verified** and its certificate is
+issued on the intended service. Keep the origin validation item open until
+those settings are confirmed. If the current `301` is intentional, keep API clients
+on HTTPS directly. If the intended policy requires preserving methods on
+redirect, check which rule emitted the `301` and validate the API-specific
+`308` separately. Do not downgrade certificate validation to work around
+certificate errors.
+
+[Cloudflare Full (strict)](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/) ·
+[Configuration Rules settings](https://developers.cloudflare.com/rules/configuration-rules/settings/) ·
+[Render TLS certificates](https://render.com/docs/tls)
+
 ## Cloudflare WAF rules for the API
 
 Apply these rules in the `serveq.tech` zone after the API cutover checks pass.
