@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import Application from "../src/modules/business-application/business-application.model.js";
 import User from "../src/modules/auth/auth.model.js";
+import Otp from "../src/modules/auth/otp.model.js";
 import Business from "../src/modules/business/business.model.js";
 import {
   submitApplication,
