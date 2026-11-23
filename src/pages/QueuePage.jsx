@@ -674,7 +674,7 @@ export default function QueuePage() {
             <QueuePageSkeleton />
           ) : !activeBusiness ? (
             <NoServiceState
-              selectedLocationName={currentLocation?.name || selectedCity}
+              selectedLocationName={selectedCity}
               onChangeLocation={openLocationModal}
               onSelectHub={updateLocation}
             />

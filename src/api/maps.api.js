@@ -7,7 +7,8 @@ export const autocompleteLocations = async (input, sessionToken = "") => {
   const res = await api.get("/maps/autocomplete", {
     params: { input, sessionToken },
   });
-  return res.data?.data?.suggestions || [];
+  const data = res.data?.data;
+  return data?.predictions ?? data?.suggestions ?? [];
 };
 
 /**
@@ -17,7 +18,8 @@ export const geocodeAddress = async ({ address = "", placeId = "" } = {}) => {
   const res = await api.get("/maps/geocode", {
     params: { address, placeId },
   });
-  return res.data?.data || null;
+  const data = res.data?.data;
+  return data?.location ?? data ?? null;
 };
 
 /**
@@ -27,6 +29,7 @@ export const reverseGeocodeCoords = async (lat, lng) => {
   const res = await api.get("/maps/reverse-geocode", {
     params: { lat, lng },
   });
-  return res.data?.data || null;
+  const data = res.data?.data;
+  return data?.location ?? data ?? null;
 };
 

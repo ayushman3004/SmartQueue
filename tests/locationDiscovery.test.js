@@ -2,6 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateHaversineKm } from '../src/modules/business/business.service.js';
 import { autocompleteLocations, geocodeAddress, reverseGeocode } from '../src/modules/maps/maps.service.js';
+import { getLocationLabel, resolveGpsLocation } from '../src/utils/locationAddress.js';
+
+test('GPS labels show the returned address and hide old coordinate fallbacks', () => {
+  const lat = 31.3056;
+  const lng = 75.5794;
+  const formattedAddress = '12 Model Town Road, Jalandhar, Punjab';
+  const resolved = resolveGpsLocation({ formattedAddress, city: 'Jalandhar' }, lat, lng);
+  assert.equal(getLocationLabel(resolved), formattedAddress);
+  assert.deepEqual([resolved.lat, resolved.lng], [lat, lng]);
+  assert.equal(getLocationLabel({ isGps: true, name: 'Current Location', formattedAddress }), formattedAddress);
+  for (const fallback of ['31.3056, 75.5794', 'Near (31.3056, 75.5794)', 'Coordinates (31.3056, 75.5794)']) {
+    assert.equal(resolveGpsLocation({ formattedAddress: fallback }, lat, lng), null);
+    assert.equal(getLocationLabel({ isGps: true, name: 'Current Location', formattedAddress: fallback }), 'Address unavailable');
+  }
+  assert.equal(resolveGpsLocation({ formattedAddress, approximate: true }, lat, lng), null);
+});
 
 test('Location Proximity - Haversine Distance Calculation', async (t) => {
   await t.test('Calculates exact distance between Jalandhar and Phagwara (~13 km)', () => {

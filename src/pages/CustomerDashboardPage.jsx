@@ -1185,7 +1185,7 @@ export default function CustomerDashboardPage() {
               <BusinessGridSkeleton count={6} />
             ) : displayedServices.length === 0 ? (
               <NoServiceState
-                selectedLocationName={currentLocation?.name || selectedCity}
+                selectedLocationName={selectedCity}
                 onChangeLocation={() => openLocationModal()}
                 onSelectHub={handleSelectLocation}
               />

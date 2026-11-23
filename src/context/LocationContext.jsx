@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import LocationPickerModal from '../components/LocationPickerModal'
 import { useAuth } from './AuthContext'
+import { reverseGeocodeCoords } from '../api/maps.api'
+import { getLocationAddress, getLocationLabel, resolveGpsLocation } from '../utils/locationAddress'
 
 export const LocationContext = createContext(null)
 
@@ -20,18 +22,7 @@ export function LocationProvider({ children }) {
   const showLocationModal = !authLoading && user?.role === 'customer' &&
     (locationModalRequested || !currentLocation)
 
-  const [selectedCity, setSelectedCity] = useState(() => {
-    try {
-      const saved = localStorage.getItem('serveq_selected_location')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.name || parsed.city || parsed.formattedAddress || 'Select Location'
-      }
-    } catch {
-      // Use the default label if the stored location cannot be read.
-    }
-    return 'Select Location'
-  })
+  const selectedCity = getLocationLabel(currentLocation)
 
   const [userCoords, setUserCoords] = useState(() => {
     try {
@@ -53,8 +44,6 @@ export function LocationProvider({ children }) {
   const updateLocation = useCallback((loc) => {
     if (!loc) return
     setCurrentLocation(loc)
-    const label = loc.name || loc.city || loc.formattedAddress || 'Selected Location'
-    setSelectedCity(label)
 
     let coords = null
     if (loc.lat && loc.lng) {
@@ -76,6 +65,22 @@ export function LocationProvider({ children }) {
     setLocationModalRequested(false)
   }, [])
 
+  // Repair GPS selections saved by clients that persisted coordinates as an address.
+  useEffect(() => {
+    if (authLoading || locationModalRequested || user?.role !== 'customer' ||
+        !currentLocation?.isGps || getLocationAddress(currentLocation)) return
+    const { lat, lng } = currentLocation
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+    let cancelled = false
+    reverseGeocodeCoords(lat, lng).then(result => {
+      const resolved = resolveGpsLocation(result, lat, lng)
+      if (!cancelled && resolved) updateLocation(resolved)
+    }).catch(() => {
+      // Leave the saved proximity pin in place and let the user retry in the picker.
+    })
+    return () => { cancelled = true }
+  }, [authLoading, locationModalRequested, user?.role, currentLocation, updateLocation])
+
   const openLocationModal = useCallback(() => {
     setLocationModalRequested(true)
   }, [])
@@ -94,7 +99,6 @@ export function LocationProvider({ children }) {
         }
         if (loc) {
           setCurrentLocation(loc)
-          setSelectedCity(loc.name || loc.city || loc.formattedAddress || 'Selected Location')
           if (loc.lat && loc.lng) {
             setUserCoords({ lat: Number(loc.lat), lng: Number(loc.lng) })
           }

@@ -615,7 +615,7 @@ export default function BookingPage() {
           ) : !business ? (
             businesses.length === 0 ? (
               <NoServiceState
-                selectedLocationName={currentLocation?.name || selectedCity}
+                selectedLocationName={selectedCity}
                 onChangeLocation={openLocationModal}
                 onSelectHub={updateLocation}
               />

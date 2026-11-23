@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { autocompleteLocations, geocodeAddress, reverseGeocodeCoords } from '../api/maps.api'
+import { getLocationLabel, resolveGpsLocation } from '../utils/locationAddress'
 import './LocationPickerModal.css'
 
 const QUICK_HUBS = [
@@ -120,29 +121,18 @@ export default function LocationPickerModal({
 
         try {
           const rev = await reverseGeocodeCoords(lat, lng)
-          const resolvedLocation = {
-            name: rev?.city ? `${rev.city}${rev.state ? ', ' + rev.state : ''}` : 'Current Location',
-            formattedAddress: rev?.formattedAddress || `Coordinates (${lat}, ${lng})`,
-            city: rev?.city || '',
-            state: rev?.state || '',
-            postalCode: rev?.postalCode || '',
-            lat,
-            lng,
-            isGps: true,
+          const resolvedLocation = resolveGpsLocation(rev, lat, lng)
+          if (!resolvedLocation) {
+            setErrorMessage('We found your location but couldn’t find its address. Search for your area or street below.')
+            searchInputRef.current?.focus()
+            return
           }
 
           onSelectLocation(resolvedLocation)
           onClose()
-        } catch (err) {
-          console.warn('Reverse geocode error, using raw coords:', err)
-          onSelectLocation({
-            name: 'Current Location',
-            formattedAddress: `Near (${lat}, ${lng})`,
-            lat,
-            lng,
-            isGps: true,
-          })
-          onClose()
+        } catch {
+          setErrorMessage('We found your location but couldn’t load its address. Retry or search for your area below.')
+          searchInputRef.current?.focus()
         } finally {
           setDetectingGps(false)
         }
@@ -297,7 +287,7 @@ export default function LocationPickerModal({
                     </span>
                   </div>
                   <p className="text-xs text-zinc-500">
-                    {detectingGps ? 'Pinpointing your device coordinates...' : 'Auto-detect using device location'}
+                    {detectingGps ? 'Finding your address...' : 'Auto-detect using device location'}
                   </p>
                 </div>
               </div>
@@ -397,7 +387,7 @@ export default function LocationPickerModal({
             {currentLocation && (
               <div className="location-picker-current pt-2 text-center border-t border-zinc-100">
                 <span className="text-xs text-zinc-400">
-                  Currently viewing: <strong className="text-zinc-700 font-semibold">{currentLocation.name || currentLocation.formattedAddress}</strong>
+                  Currently viewing: <strong className="text-zinc-700 font-semibold">{getLocationLabel(currentLocation)}</strong>
                 </span>
               </div>
             )}

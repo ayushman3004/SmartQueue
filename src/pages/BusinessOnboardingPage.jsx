@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { getCoordinatesForLocation } from '../utils/geoUtils'
 import { autocompleteLocations, geocodeAddress, reverseGeocodeCoords } from '../api/maps.api'
+import { getLocationAddress } from '../utils/locationAddress'
 import SubscriptionPlansModal from '../components/SubscriptionPlansModal'
 import { OnboardingStudioSkeleton } from '../components/Skeleton'
 
@@ -506,13 +507,14 @@ export default function BusinessOnboardingPage() {
 
         try {
           const rev = await reverseGeocodeCoords(lat, lng)
-          if (rev) {
+          const address = getLocationAddress(rev)
+          if (address) {
             setStep2((prev) => ({
               ...prev,
               city: rev.city || prev.city,
               state: rev.state || prev.state,
               postalCode: rev.postalCode || prev.postalCode,
-              address: prev.address || rev.formattedAddress || '',
+              address: prev.address || address,
               location: prev.location || rev.city || '',
             }))
           }
@@ -1222,7 +1224,7 @@ export default function BusinessOnboardingPage() {
                     {step2.coordinates?.lat && step2.coordinates?.lng ? (
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Coordinates verified ({step2.coordinates.lat.toFixed(4)}, {step2.coordinates.lng.toFixed(4)})</span>
+                        <span>{step2.address || 'Venue location pinned'}</span>
                       </div>
                     ) : (
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">

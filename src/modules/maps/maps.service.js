@@ -428,7 +428,7 @@ export async function reverseGeocode(lat, lng) {
         const city = a.city || a.town || a.municipality || a.county || a.state_district || "";
         const state = a.state || "";
         const area = a.suburb || a.neighbourhood || a.residential || a.village || city;
-        const readableLabel = area && city && area !== city ? `${area}, ${city}` : city ? `${city}, ${state}` : data.display_name.split(",").slice(0, 2).join(",");
+        const readableLabel = area && city && area !== city ? `${area}, ${city}` : city ? [city, state].filter(Boolean).join(", ") : data.display_name?.split(",").slice(0, 2).join(",") || "";
 
         return {
           lat: Number(nLat.toFixed(6)),
@@ -466,6 +466,7 @@ export async function reverseGeocode(lat, lng) {
       lng: nLng,
       formattedAddress: closestHub.description,
       displayName: closestHub.description.split(",").slice(0, 2).join(","),
+      approximate: true,
       area: closestHub.mainText,
       city: closestHub.city,
       state: closestHub.state,
@@ -476,8 +477,8 @@ export async function reverseGeocode(lat, lng) {
   return {
     lat: nLat,
     lng: nLng,
-    formattedAddress: `${nLat.toFixed(4)}, ${nLng.toFixed(4)}`,
-    displayName: `Location (${nLat.toFixed(2)}, ${nLng.toFixed(2)})`,
+    formattedAddress: "",
+    displayName: "",
     area: "",
     city: "",
     state: "",
