@@ -33,6 +33,7 @@ import CustomerSidebar from '../components/CustomerSidebar'
 import CustomerSearchTools from '../components/CustomerSearchTools'
 import VenueSortDropdown from '../components/VenueSortDropdown'
 import './CustomerDashboardPage.css'
+import '../styles/queue-status.css'
 import { filterServiceVenues, filterServiceBookings } from '../utils/customerService'
 import NoServiceState from '../components/NoServiceState'
 import { BusinessGridSkeleton } from '../components/Skeleton'
@@ -318,6 +319,8 @@ export default function CustomerDashboardPage() {
 
     return active
   }, [businesses, user?._id])
+
+  const activeQueue = myActiveQueues[0]
 
   const displayedServices = useMemo(() => {
 
@@ -1092,60 +1095,55 @@ export default function CustomerDashboardPage() {
 
         {/* MAIN CANVAS */}
         <main className="customer-canvas flex-1 min-w-0">
-          {/* Active Live Queues Callout (If user is currently in line) */}
-          {myActiveQueues.length > 0 && (
-            <div className="bg-gradient-to-r from-teal-900 to-emerald-950 text-white rounded-3xl p-5 sm:p-6 shadow-lg border border-teal-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-xl font-black text-white shrink-0">
-                  #{myActiveQueues[0].position}
-                </div>
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/30 text-teal-200 text-[10px] font-black uppercase tracking-wider mb-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping" />
-                    {myActiveQueues[0].isServing ? 'You are being served now!' : 'Active Live Queue Token'}
+          {activeQueue && (
+            <section className="queue-status queue-status-preview" aria-labelledby="active-queue-heading">
+              <div className="queue-preview-visit">
+                <span className="queue-ticket-emblem" aria-label={`Queue position ${activeQueue.position}`}>
+                  #{activeQueue.position}
+                </span>
+                <div className="queue-preview-copy">
+                  <div className="queue-status-badge" role="status">
+                    <span aria-hidden="true" />
+                    {activeQueue.isServing ? 'Ready for you' : 'You’re in line'}
                   </div>
-                  <h4 className="text-base font-black text-white">
-                    {myActiveQueues[0].business.name}
-                  </h4>
-                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                    <p className="text-xs text-teal-200 font-medium">
-                      {myActiveQueues[0].isServing
-                        ? 'It’s your turn! Please proceed to your service counter.'
-                        : myActiveQueues[0].peopleAhead === 0
-                        ? 'You are next in line!'
-                        : `${myActiveQueues[0].peopleAhead} patrons ahead of you`}
-                    </p>
-                    <span className="text-teal-400 text-xs">•</span>
-                    <span className="text-xs font-black text-white">
-                      ₹{myActiveQueues[0].myQueueItem?.paidAmount ?? 0}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      myActiveQueues[0].myQueueItem?.paymentStatus === 'paid'
-                        ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/40'
-                        : 'bg-amber-500/30 text-amber-200 border border-amber-400/40'
-                    }`}>
-                      {myActiveQueues[0].myQueueItem?.paymentStatus === 'paid' ? 'Paid at Counter' : 'Pending at Counter'}
-                    </span>
-                  </div>
+                  <h2 id="active-queue-heading">{activeQueue.business.name}</h2>
+                  <p className="queue-pass-description">
+                    {activeQueue.isServing
+                      ? 'It’s your turn. Head to the service desk.'
+                      : activeQueue.peopleAhead === 0
+                        ? 'You’re next in line.'
+                        : `${activeQueue.peopleAhead} ${activeQueue.peopleAhead === 1 ? 'person is' : 'people are'} ahead of you.`}
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="queue-preview-payment" data-paid={activeQueue.myQueueItem?.paymentStatus === 'paid'}>
+                <strong>₹{activeQueue.myQueueItem?.paidAmount ?? 0}</strong>
+                <span className="queue-payment-state">
+                  {activeQueue.myQueueItem?.paymentStatus === 'paid'
+                    ? <><Check size={14} aria-hidden="true" />Paid at counter</>
+                    : <><span className="queue-payment-dot" aria-hidden="true" />Payment pending</>}
+                </span>
+              </div>
+              <div className="queue-preview-actions">
                 <button
-                  onClick={() => navigate(`/queue/${myActiveQueues[0].business._id}`)}
-                  className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-zinc-950 font-black text-xs shadow-sm transition-transform active:scale-95"
+                  type="button"
+                  className="queue-primary-action"
+                  onClick={() => navigate(`/queue/${activeQueue.business._id}`)}
                 >
-                  View Live Screen
+                  <Eye size={17} strokeWidth={1.6} aria-hidden="true" />
+                  View live queue
                 </button>
                 <button
-                  onClick={() =>
-                    handleLeaveQueue(myActiveQueues[0].business._id, myActiveQueues[0].business.name)
-                  }
-                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-rose-300 font-bold text-xs border border-white/10"
+                  type="button"
+                  className="queue-leave-button"
+                  disabled={leavingBizId === activeQueue.business._id}
+                  onClick={() => handleLeaveQueue(activeQueue.business._id, activeQueue.business.name)}
                 >
-                  Leave
+                  <LogOut size={17} strokeWidth={1.7} aria-hidden="true" />
+                  {leavingBizId === activeQueue.business._id ? 'Leaving queue…' : 'Leave queue'}
                 </button>
               </div>
-            </div>
+            </section>
           )}
 
           <section className="customer-welcome" aria-labelledby="customer-welcome-title">

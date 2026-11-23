@@ -366,7 +366,7 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.queue-payment-summary[data-paid="true"] .queue-payment-state {
+.queue-status [data-paid="true"] .queue-payment-state {
   color: var(--queue-ink);
 }
 .queue-pass-actions {
@@ -387,6 +387,87 @@
   background: transparent;
   border: 1px solid var(--queue-line);
   color: var(--queue-ink);
+}
+.queue-status-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 24px;
+  background: var(--queue-soft);
+  border: 1px solid var(--queue-line);
+  border-radius: 24px 48px 24px 24px;
+  padding: 22px 26px;
+}
+.queue-preview-visit {
+  display: flex;
+  flex: 1 1 250px;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+}
+.queue-preview-visit .queue-ticket-emblem {
+  font-size: 17px;
+  font-weight: 650;
+}
+.queue-preview-copy {
+  min-width: 0;
+}
+.queue-preview-visit h2 {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.queue-preview-visit .queue-pass-description {
+  max-width: none;
+  font-size: 13px;
+}
+.queue-preview-payment {
+  display: grid;
+  gap: 4px;
+}
+.queue-preview-payment strong {
+  font-size: 17px;
+  font-weight: 650;
+}
+.queue-status-preview .queue-payment-state {
+  width: auto;
+  margin: 0;
+  justify-content: start;
+  text-align: left;
+}
+.queue-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+.queue-status-preview .queue-leave-button {
+  width: auto;
+  margin: 0;
+}
+@media (max-width: 560px) {
+  .queue-status-preview {
+    padding: 18px;
+    border-top-right-radius: 38px;
+    gap: 14px;
+  }
+  .queue-preview-payment {
+    display: flex;
+    flex-basis: 100%;
+    align-items: center;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--queue-line);
+  }
+  .queue-preview-actions {
+    width: 100%;
+  }
+  .queue-preview-actions > button {
+    flex: 1 1 auto;
+  }
 }
 .queue-booking-callout {
   display: flex;
