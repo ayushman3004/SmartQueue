@@ -60,7 +60,7 @@ export default function NoServiceState({ selectedLocationName, onChangeLocation,
             </h2>
 
             <p className="text-sm text-zinc-600 max-w-sm leading-relaxed">
-              We haven’t expanded verified clinics and salons to this exact area yet. Please select an alternate address or switch to one of our active hubs below.
+              We haven’t expanded verified clinics to this exact area yet. Please select an alternate address or switch to one of our active hubs below.
             </p>
 
             <div className="pt-1 flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">

@@ -51,7 +51,7 @@ export const validateApplication = (input = {}) => {
   if (!isValidEmail(data.email) || !/^\+?[\d ()-]{8,24}$/.test(data.phone))
     throw new ApiError(400, "Enter a valid email and contact number.");
   if (
-    !["salon", "clinic", "healthcare", "other"].includes(input.businessCategory)
+    !["clinic", "healthcare"].includes(input.businessCategory)
   )
     throw new ApiError(400, "Choose a business category.");
   data.businessCategory = input.businessCategory;
@@ -290,6 +290,7 @@ export const reviewApplication = async (
           session,
         },
       );
+      if (!["clinic", "healthcare"].includes(application.businessCategory)) throw new ApiError(400, "Only clinic applications can be approved.");
       const [hub] = await Business.create(
         [
           {

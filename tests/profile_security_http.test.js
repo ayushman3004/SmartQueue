@@ -5,6 +5,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../src/modules/auth/auth.model.js';
 import authRoutes from '../src/modules/auth/auth.routes.js';
+import retiredOtpRoutes from '../src/modules/auth/otp.routes.js';
 import { gatewayErrorHandler } from '../src/gateway/gateway.middleware.js';
 
 test('profile and phone HTTP endpoints reject mass assignment and phone-only verification', async t => {
@@ -18,6 +19,7 @@ test('profile and phone HTTP endpoints reject mass assignment and phone-only ver
   const app = express();
   app.use(express.json());
   app.use('/api/auth', authRoutes);
+  app.use('/api/otp', retiredOtpRoutes);
   app.use(gatewayErrorHandler);
   const server = http.createServer(app);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -34,6 +36,15 @@ test('profile and phone HTTP endpoints reject mass assignment and phone-only ver
   }
   assert.equal((await request('/phone/send-otp', { phone: '+919876543210' })).status, 410);
   assert.equal((await request('/phone/verify-otp', { phone: '+919876543210', otp: '123456' })).status, 410);
+  for (const path of ['send', 'verify']) {
+    const response = await fetch(new URL(`/api/otp/${path}`, base), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ phoneNumber: '+919876543210', otp: '123456' }),
+    });
+    assert.equal(response.status, 410);
+    assert.equal(response.headers.get('set-cookie'), null);
+  }
   assert.equal(saves, 0);
   assert.equal(user.isPhoneVerified, false);
 

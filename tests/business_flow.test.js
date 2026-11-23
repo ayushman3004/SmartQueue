@@ -38,8 +38,8 @@ test("Business Flow - Queue DS FIFO and Call Next Processing", async (t) => {
 test("Business Flow - AI Analytics Deterministic Fallback", async (t) => {
   await t.test("Generates structured analytics heuristics without external API keys", async () => {
     const analytics = await generateBusinessAIAnalytics({
-      businessName: "Elite Salon",
-      category: "salon",
+      businessName: "Elite Clinic",
+      category: "clinic",
       bookingsCount: 20,
       cancellationCount: 2,
       averageRating: 4.8,
@@ -72,8 +72,8 @@ test("Business Flow - AI Analytics Deterministic Fallback", async (t) => {
     const mongoose = (await import("mongoose")).default;
 
     const sample = new Business({
-      name: "Downtown Barbershop",
-      category: "salon",
+      name: "Downtown Clinic",
+      category: "clinic",
       owner: new mongoose.Types.ObjectId(),
       services: [
         { name: "Fade Cut", duration: 25, price: 200 },
@@ -107,7 +107,7 @@ test("Business Flow - AI Analytics Deterministic Fallback", async (t) => {
     Business.findById = async () => ({
       _id: businessId,
       name: "Hair Studio",
-      category: "salon",
+      category: "clinic",
       owner: ownerId,
       staff: [],
     });

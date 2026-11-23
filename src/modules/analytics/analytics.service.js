@@ -213,7 +213,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     }
   });
 
-  // ─── 3. Identify Top Employee (Barber or Doctor) ───────────────────────────
+  // ─── 3. Identify Top Employee ───────────────────────────
   const staffList = Array.isArray(business.staff) ? business.staff : [];
   let topEmployee = null;
   if (staffList.length > 0) {

@@ -35,7 +35,7 @@ test('one admin session prepares Pro workspaces and handles its own assigned tes
   const visit = { _id: bookingId, businessId: clinicId, assignedStaff: { staffId }, status: 'serving', userId: admin };
   t.mock.method(Booking, 'find', () => ({ sort: () => ({ populate: async () => [visit] }) }));
   t.mock.method(Booking, 'findById', () => ({ populate: async () => visit }));
-  t.mock.method(Prescription, 'create', async data => ({ _id: '666666666666666666666666', ...data }));
+  t.mock.method(Prescription, 'create', async data => ({ toObject: () => ({ _id: '666666666666666666666666', ...data }) }));
   const app = express();
   app.use(express.json());
   app.use('/api/admin', adminRoutes);

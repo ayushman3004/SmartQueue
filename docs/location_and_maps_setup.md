@@ -68,7 +68,6 @@ node scripts/migrate-business-coordinates.js
 ### Updated Venue Coordinates
 
 - **Jalandhar Clinic**: `[31.3056, 75.5794]` (Model Town, Jalandhar, Punjab)
-- **Bh-9 Salon**: `[31.2530, 75.7037]` (Lovely Professional University, Phagwara, Punjab)
 - **Hair Studio**: `[26.7606, 83.3732]` (Gorakhpur, Uttar Pradesh)
 
 ---
@@ -89,7 +88,7 @@ node scripts/migrate-business-coordinates.js
    - Businesses with missing or invalid coordinates (0, 0) are excluded.
    - Results are sorted nearest first.
 5. **No-Service State**:
-   - If no clinics or salons operate within the search radius of the customer's selected location, the dedicated coverage page renders:
+   - If no clinics operate within the search radius of the customer's selected location, the dedicated coverage page renders:
      "We aren’t currently serving in this location."
    - Includes quick-switch buttons for active hubs.
 

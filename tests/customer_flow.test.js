@@ -74,7 +74,7 @@ test("Customer Flow - Queue Serialization Preserves Paid Amount and Pricing Labe
   });
 });
 
-test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", async (t) => {
+test("Customer Flow - Multi-Service & Doctor Auto-Fallback Assignment", async (t) => {
   const { createBooking } = await import("../src/booking/booking.service.js");
   const Business = (await import("../src/modules/business/business.model.js")).default;
   const Booking = (await import("../src/booking/booking.model.js")).default;
@@ -215,15 +215,15 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
     }
   });
 
-  await t.test("Auto-assigns to any available Barber in salon when none specified or preferred is busy", async () => {
+  await t.test("Auto-assigns to an available doctor when none specified or preferred is busy", async () => {
     const origFindById = Business.findById;
     Business.findById = async () => ({
       _id: businessId,
-      name: "Urban Fade Salon",
-      category: "salon",
+      name: "Urban Clinic",
+      category: "clinic",
       basePrice: 200,
       staff: [
-        { name: "Alex Rivera", role: "Master Barber", specialties: "Fades", isAvailable: true },
+        { name: "Dr. Alex Rivera", role: "Physician", specialties: "Primary Care", isAvailable: true },
       ],
     });
 
@@ -257,8 +257,8 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
         userId,
         startTime: new Date(Date.now() + 86400000).toISOString(),
         services: [
-          { name: "Haircut", duration: 25, price: 250 },
-          { name: "Beard Trim", duration: 15, price: 150 },
+          { name: "Consultation", duration: 25, price: 250 },
+          { name: "Follow-up", duration: 15, price: 150 },
         ],
         preferredStaff: "any",
       });
@@ -266,7 +266,7 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
       assert.ok(createdPayload);
       assert.equal(createdPayload.duration, 40);
       assert.equal(createdPayload.paidAmount, 400);
-      assert.equal(createdPayload.assignedStaff.name, "Alex Rivera");
+      assert.equal(createdPayload.assignedStaff.name, "Dr. Alex Rivera");
       assert.equal(createdPayload.assignedStaff.autoAssigned, true);
     } finally {
       Business.findById = origFindById;
@@ -279,7 +279,7 @@ test("Customer Flow - Multi-Service & Doctor/Barber Auto-Fallback Assignment", a
   });
 });
 
-test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async (t) => {
+test("Customer Flow - Live Queue Multi-Service & Doctor Fallback", async (t) => {
   const { joinQueue } = await import("../src/queue/queue.service.js");
   const Queue = (await import("../src/queue/queue.model.js")).default;
   const Business = (await import("../src/modules/business/business.model.js")).default;
@@ -403,7 +403,7 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
     }
   });
 
-  await t.test("joinQueue auto-assigns available barber in salon when 'any' is selected", async (t) => {
+  await t.test("joinQueue auto-assigns an available doctor when 'any' is selected", async (t) => {
     // Queue joins write their linked booking; keep this unit test offline.
     t.mock.method(BookingModel, "create", async (payload) => ({
       ...payload, _id: new mongoose.Types.ObjectId(),
@@ -419,13 +419,13 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
     const origBizFindById = Business.findById;
     Business.findById = async () => ({
       _id: businessId,
-      name: "Hair & Grooming Studio",
-      category: "salon",
+      name: "Family Clinic",
+      category: "clinic",
       isOpen: true,
       isActive: true,
       basePrice: 150,
       staff: [
-        { name: "John Barber", role: "Senior Barber", isAvailable: true },
+        { name: "Dr. John", role: "Physician", isAvailable: true },
       ],
     });
 
@@ -440,14 +440,14 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
       const updatedQueue = await joinQueue(businessId, {
         userId,
         services: [
-          { name: "Haircut", duration: 30, price: 250 },
+          { name: "Consultation", duration: 30, price: 250 },
         ],
         preferredStaff: "any",
       });
 
       assert.equal(updatedQueue.users.length, 1);
       const enqueued = updatedQueue.users[0];
-      assert.equal(enqueued.assignedStaff.name, "John Barber");
+      assert.equal(enqueued.assignedStaff.name, "Dr. John");
       assert.equal(enqueued.assignedStaff.autoAssigned, true);
     } finally {
       Queue.findOne = origQueueFindOne;
@@ -624,7 +624,8 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
 
     const mockBusiness = {
       _id: fakeBizId,
-      name: "Smile Hub",
+      name: "Smile Clinic",
+      category: "clinic",
       rating: 4.0,
       totalReviews: 1,
       staff: [{ name: "Dr. Elena Rostova", rating: 4.0 }],
@@ -710,11 +711,11 @@ test("Customer Flow - Live Queue Multi-Service & Doctor/Barber Fallback", async 
 
     const mockBusiness = {
       _id: fakeBizId,
-      name: "Downtown Salon",
+      name: "Downtown Clinic",
       isOpen: true,
       isActive: true,
-      category: "salon",
-      staff: [{ name: "Sam Stylist", isAvailable: true }],
+      category: "clinic",
+      staff: [{ name: "Dr. Sam", isAvailable: true }],
       queueSettings: { enableLiveQueue: true, maxQueueCapacity: 50 },
       basePrice: 500,
       averageServiceTime: 20,

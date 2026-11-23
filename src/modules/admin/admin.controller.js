@@ -1,3 +1,5 @@
+import { serviceCategories } from '../../utils/customerService.js';
+import { isClinic } from '../doctor/doctor-access.js';
 import { sanitize } from '../auth/auth.service.js';
 import { ensureAdminWorkspace } from './admin-workspace.service.js';
 import mongoose from "mongoose";
@@ -31,14 +33,14 @@ export const issueFreeSubscriptionCoupon = asyncHandler(async (req, res) => {
 export const getStats = asyncHandler(async (_req, res) => {
   const [userCount, businessCount, bookingCount, completedBookings, prelaunchCount] = await Promise.all([
     User.countDocuments(),
-    Business.countDocuments(),
+    Business.countDocuments({ category: { $in: serviceCategories.clinic } }),
     Booking.countDocuments(),
     Booking.find({ status: "completed" }),
     PrelaunchCustomer.countDocuments(),
   ]);
 
   const totalSystemRevenue = completedBookings.reduce((sum, b) => sum + (b.paidAmount || 0) + (b.extraCharge || 0), 0);
-  const recentBusinesses = await Business.find().sort({ createdAt: -1 }).limit(5).populate("owner", "name email phone");
+  const recentBusinesses = await Business.find({ category: { $in: serviceCategories.clinic } }).sort({ createdAt: -1 }).limit(5).populate("owner", "name email phone");
   const recentBookings = await Booking.find().sort({ createdAt: -1 }).limit(6).populate("userId", "name email").populate("businessId", "name category");
 
   const onlineUserIds = getOnlineUserIds();
@@ -60,7 +62,7 @@ export const getStats = asyncHandler(async (_req, res) => {
 
 export const getAllBusinesses = asyncHandler(async (req, res) => {
   const { search, status } = req.query;
-  const filter = {};
+  const filter = { category: { $in: serviceCategories.clinic } };
   if (search) {
     const regex = { $regex: search, $options: "i" };
     filter.$or = [{ name: regex }, { category: regex }, { location: regex }, { address: regex }];
@@ -108,7 +110,7 @@ export const getAllBusinesses = asyncHandler(async (req, res) => {
 export const getBusinessDetail = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const business = await Business.findById(id).populate("owner", "name email phone avatar");
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   const [queue, bookings] = await Promise.all([
     mongoose.model("Queue").findOne({ businessId: id }).populate("users.userId", "name email phone"),
@@ -134,7 +136,7 @@ export const moderateBusiness = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { action, approvalStatus, isActive, isOpen } = req.body;
   const business = await Business.findById(id);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   if (action === "approve") {
     business.approvalStatus = "approved";
@@ -177,7 +179,7 @@ export const moderateBusiness = asyncHandler(async (req, res) => {
 export const toggleBusinessStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const business = await Business.findById(id);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   business.isActive = !business.isActive;
   if (!business.isActive) {

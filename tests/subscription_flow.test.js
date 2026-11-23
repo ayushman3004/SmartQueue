@@ -178,7 +178,8 @@ test("Subscription Flow - Venue Subscription Enforcement & Pay-at-Counter Safegu
 
     const unsubscribedBiz = {
       _id: testBizId,
-      name: "Unsubscribed Salon",
+      name: "Unsubscribed Clinic",
+      category: "clinic",
       isOpen: true,
       isActive: true,
       subscription: {
@@ -191,7 +192,8 @@ test("Subscription Flow - Venue Subscription Enforcement & Pay-at-Counter Safegu
 
     const subscribedBiz = {
       _id: testBizId,
-      name: "Subscribed Salon",
+      name: "Subscribed Clinic",
+      category: "clinic",
       isOpen: true,
       isActive: true,
       subscription: {
@@ -202,7 +204,7 @@ test("Subscription Flow - Venue Subscription Enforcement & Pay-at-Counter Safegu
       bookingSettings: { enableAppointments: true },
       queueSettings: { enableLiveQueue: true },
       staff: [{ name: "Alice", isAvailable: true }],
-      services: [{ name: "Haircut", duration: 30, price: 300 }],
+      services: [{ name: "Consultation", duration: 30, price: 300 }],
     };
 
     await t.test("isBusinessSubscriptionActive correctly evaluates active vs inactive", async () => {
@@ -254,7 +256,7 @@ test("Subscription Flow - Venue Subscription Enforcement & Pay-at-Counter Safegu
         () =>
           joinQueue(testBizId, {
             userId: testUserId,
-            services: [{ name: "Haircut", duration: 20, price: 200 }],
+            services: [{ name: "Consultation", duration: 20, price: 200 }],
             paymentMethod: "counter",
           }),
         (err) => {
@@ -292,7 +294,7 @@ test("Subscription Flow - Live Queue Counter Payment & AI Insights Plan Gating",
         {
           userId: testUserId,
           bookingId: testBookingId,
-          serviceType: "Haircut",
+          serviceType: "Consultation",
           paidAmount: 350,
           paymentMethod: "counter",
           paymentStatus: "pending",
@@ -322,6 +324,7 @@ test("Subscription Flow - Live Queue Counter Payment & AI Insights Plan Gating",
       Business.findById = async () => ({
         _id: testBizId,
         owner: testOwnerId,
+        category: "clinic",
         ownerId: testOwnerId,
       });
 
@@ -371,8 +374,8 @@ test("Subscription Flow - Live Queue Counter Payment & AI Insights Plan Gating",
       Business.findById = async () => ({
         _id: testBizId,
         owner: testOwnerId,
-        name: "Basic Salon",
-        category: "salon",
+        name: "Basic Clinic",
+        category: "clinic",
         subscription: {
           plan: "BASIC",
           status: "ACTIVE",
@@ -489,8 +492,8 @@ test("Subscription Flow - Live Queue Counter Payment & AI Insights Plan Gating",
       Business.findById = async () => ({
         _id: testBizId,
         owner: testOwnerId,
-        name: "Pro Salon",
-        category: "salon",
+        name: "Pro Clinic",
+        category: "clinic",
         subscription: {
           plan: "PRO",
           status: "ACTIVE",

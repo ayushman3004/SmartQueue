@@ -63,7 +63,7 @@ flowchart TB
     Adapters --> Identity[Google OAuth and phone verification]
     Adapters --> Maps[Google Maps and Nominatim]
     Adapters --> Razorpay[Razorpay]
-    Adapters --> Messages[SMTP or Resend and Twilio]
+    Adapters --> Messages[SMTP or Resend and WhatsApp Cloud API]
     Adapters --> AI[OpenRouter]
 ```
 
@@ -117,7 +117,7 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    Discover[Explore nearby salons and clinics] --> Venue[View venue, services, professionals, and availability]
+    Discover[Explore nearby clinics] --> Venue[View venue, services, professionals, and availability]
     Venue --> Select[Choose services and preferred professional]
     Select --> Mode{Choose visit type}
 
@@ -324,7 +324,7 @@ All route prefixes below are under `/api` unless noted.
 | Health | `/health`, `/live`, `/ready` and aliases | Process and database probes |
 | Wallet | Present in source; not mounted by gateway | Retired customer-wallet implementation |
 
-Supporting layers are the API gateway, auth middleware, MongoDB configuration, Socket.IO, Twilio, and AI adapter files. `ai/gemini.service.js` is a compatibility re-export; it is not a separate active Gemini integration. The current service-duration predictor is deterministic; OpenRouter is used for analytics and conversational assistance.
+Supporting layers are the API gateway, auth middleware, MongoDB configuration, Socket.IO, WhatsApp Cloud API, and AI adapter files. `ai/gemini.service.js` is a compatibility re-export; it is not a separate active Gemini integration. The current service-duration predictor is deterministic; OpenRouter is used for analytics and conversational assistance.
 
 ## 10. Persistence design
 

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const businessSchema = new mongoose.Schema(
   {
-    adminTestKind: { type: String, enum: ["clinic", "salon"] },
+    adminTestKind: { type: String, enum: ["clinic"] },
     name: {
       type: String,
       required: [true, "Business name is required"],
@@ -14,8 +14,8 @@ const businessSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["salon", "clinic", "healthcare", "other"],
-      default: "salon",
+      enum: ["clinic", "healthcare", "doctor"],
+      default: "clinic",
     },
     categorySelectedAt: { type: Date, default: null },
     owner: {

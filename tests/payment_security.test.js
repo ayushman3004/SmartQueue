@@ -42,7 +42,7 @@ test('production payment security regressions', async t => {
   await t.test('missing credentials cannot create fake orders or activate fake accounts', async t => {
     delete process.env.RAZORPAY_KEY_SECRET;
     t.after(() => { process.env.RAZORPAY_KEY_SECRET = secret; });
-    const business = { _id: 'business', paymentConfiguration: { onlinePaymentStatus: 'ACTIVE', paymentMode: 'BOTH', providerAccountReference: 'acc_real' }, save: t.mock.fn() };
+    const business = { _id: 'business', category: 'clinic', paymentConfiguration: { onlinePaymentStatus: 'ACTIVE', paymentMode: 'BOTH', providerAccountReference: 'acc_real' }, save: t.mock.fn() };
     const doc = booking({ businessId: business, save: t.mock.fn() });
     t.mock.method(Booking, 'findById', () => ({ populate: async () => doc }));
     t.mock.method(Business, 'findById', async () => business);
@@ -74,7 +74,7 @@ test('production payment security regressions', async t => {
   });
 
   await t.test('linked accounts require provider verification and preserve pending status', async t => {
-    const business = { _id: 'business', paymentConfiguration: {}, save: t.mock.fn(async () => {}) };
+    const business = { _id: 'business', category: 'clinic', paymentConfiguration: {}, save: t.mock.fn(async () => {}) };
     t.mock.method(Business, 'findById', async () => business);
     t.mock.method(getRazorpayClient().accounts, 'fetch', async id => ({ id, status: 'created' }));
     await assert.rejects(connectRazorpayRouteAccount('business', {}, { accountId: 'acc_mock_fake' }), { statusCode: 400 });
@@ -83,7 +83,7 @@ test('production payment security regressions', async t => {
   });
 
   await t.test('provider failures and fake provider responses never persist orders', async t => {
-    const business = { _id: 'business', name: 'Venue', paymentConfiguration: { onlinePaymentStatus: 'ACTIVE', paymentMode: 'BOTH', providerAccountReference: 'acc_real' } };
+    const business = { _id: 'business', name: 'Clinic', category: 'clinic', paymentConfiguration: { onlinePaymentStatus: 'ACTIVE', paymentMode: 'BOTH', providerAccountReference: 'acc_real' } };
     const doc = booking({ businessId: business, save: t.mock.fn(async () => {}) });
     t.mock.method(Booking, 'findById', () => ({ populate: async () => doc }));
     const create = t.mock.method(getRazorpayClient().orders, 'create', async () => { throw new Error('provider unavailable'); });

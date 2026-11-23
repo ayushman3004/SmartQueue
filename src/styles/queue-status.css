@@ -9,11 +9,6 @@
   color: var(--queue-text);
   font-variant-numeric: tabular-nums;
 }
-.queue-status[data-service="salon"] {
-  --queue-ink: var(--service-ink, #765546);
-  --queue-soft: var(--service-soft, #f3e9e1);
-  --queue-line: var(--service-line, #dfcbbd);
-}
 .queue-pass-layout {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr);

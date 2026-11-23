@@ -3,43 +3,27 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import { createBusiness } from '../api/business.api'
-import { CATEGORY_METADATA, SERVICE_PRESETS, ALLOWED_CATEGORIES } from '../utils/servicePresets'
+import { SERVICE_PRESETS } from '../utils/servicePresets'
 
 export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     name: '',
     description: '',
-    category: 'salon',
+    category: 'clinic',
     address: '',
     location: '',
     phone: '',
     timings: { open: '09:00', close: '20:00' },
     averageServiceTime: 20,
     basePrice: 150,
-    services: [
-      { name: 'Haircut & Styling', duration: 30, price: 250 },
-      { name: 'Beard Grooming & Trim', duration: 15, price: 150 },
-    ],
+    services: SERVICE_PRESETS.clinic.slice(0, 2),
   })
 
   const [newService, setNewService] = useState({ name: '', duration: 20, price: 150 })
 
   const dialogRef = useDialog(isOpen, onClose)
   if (!isOpen) return null
-
-  const handleCategoryChange = (cat) => {
-    const meta = CATEGORY_METADATA[cat] || {}
-    const presets = SERVICE_PRESETS[cat] || []
-    setForm(prev => ({
-      ...prev,
-      category: cat,
-      averageServiceTime: meta.defaultDuration || 20,
-      basePrice: meta.defaultPrice || 100,
-      // If services list has default or is empty, auto-populate with the first 2 presets of new category
-      services: presets.slice(0, 3),
-    }))
-  }
 
   const handleAddService = () => {
     if (!newService.name.trim()) {
@@ -74,7 +58,7 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
       ...prev,
       services: [...presets],
     }))
-    toast.success(`Loaded standard ${CATEGORY_METADATA[form.category]?.label || ''} services!`)
+    toast.success('Loaded standard clinic services!')
   }
 
   const handleSubmit = async (e) => {
@@ -152,34 +136,6 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               
-              {/* Category Pill Selector */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-zinc-500 tracking-wider block">
-                  Industry / Category
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {ALLOWED_CATEGORIES.map((catKey) => {
-                    const meta = CATEGORY_METADATA[catKey] || {}
-                    const isSelected = form.category === catKey
-                    return (
-                      <button
-                        key={catKey}
-                        type="button"
-                        onClick={() => handleCategoryChange(catKey)}
-                        className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2.5 transition-all ${
-                          isSelected
-                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-600/20'
-                            : 'bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100'
-                        }`}
-                      >
-                        <span className="text-lg">{meta.icon}</span>
-                        <span className="font-extrabold">{meta.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
               {/* Hub Basic Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2 space-y-1.5">

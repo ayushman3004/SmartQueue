@@ -1,3 +1,4 @@
+import { isClinic } from "../doctor/doctor-access.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
 import ApiError from "../../../utils/ApiError.js";
@@ -97,7 +98,7 @@ export const handleWebhook = asyncHandler(async (req, res) => {
 export const connectRouteAccount = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   if (
     req.user.role !== "admin" &&
@@ -116,7 +117,7 @@ export const connectRouteAccount = asyncHandler(async (req, res) => {
 export const getBusinessPaymentStatus = asyncHandler(async (req, res) => {
   const { businessId } = req.params;
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   res.json(
     new ApiResponse(
@@ -142,7 +143,7 @@ export const updatePaymentModes = asyncHandler(async (req, res) => {
   const { paymentMode, upiId } = req.body;
 
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   if (
     req.user.role !== "admin" &&

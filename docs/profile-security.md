@@ -17,7 +17,7 @@ expiry, revocation, and disabled users. The proof must have a phone sign-in
 provider, match the requested number, and have authenticated within ten minutes.
 Only the authenticated account is updated. No Firebase token is persisted.
 
-The old email-delivered phone OTP endpoints return HTTP 410. An email OTP proves
+The legacy phone sign-in and email-delivered phone verification endpoints return HTTP 410. Phone OTP is available in Profile after signing in with email or Google. An email OTP proves
 email access, not ownership of a phone. Existing boolean-only phone verification
 flags are no longer trusted: users must verify again by SMS to obtain matching
 server-issued proof metadata. There is no bulk account mutation during deployment.

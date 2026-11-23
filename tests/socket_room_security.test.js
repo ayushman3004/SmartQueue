@@ -22,8 +22,8 @@ test('private Socket.IO rooms enforce authorization on actual connections', asyn
   const previous = process.env.JWT_SECRET;
   process.env.JWT_SECRET = 'private-socket-regression-secret';
   t.after(() => { if (previous === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = previous; });
-  const users = new Map([customer, other, owner, admin].map(id => [id, { _id: id, role: id === owner ? 'owner' : id === admin ? 'admin' : 'user', tokenVersion: 0, businessCategories: ['salon'] }]));
-  const businesses = new Map([[venue, { _id: venue, owner, category: 'salon', approvalStatus: 'approved' }], [foreignVenue, { _id: foreignVenue, owner: other, approvalStatus: 'approved' }]]);
+  const users = new Map([customer, other, owner, admin].map(id => [id, { _id: id, role: id === owner ? 'owner' : id === admin ? 'admin' : 'user', tokenVersion: 0, businessCategories: ['clinic'] }]));
+  const businesses = new Map([[venue, { _id: venue, owner, category: 'clinic', approvalStatus: 'approved' }], [foreignVenue, { _id: foreignVenue, owner: other, approvalStatus: 'approved' }]]);
   t.mock.method(User, 'findById', async id => users.get(String(id)));
   t.mock.method(Business, 'findById', async id => businesses.get(String(id)));
   t.mock.method(Business, 'findOne', async query => {
@@ -102,27 +102,13 @@ test('private Socket.IO rooms enforce authorization on actual connections', asyn
     assert.equal(foreign.socket.rooms.has(`booking:${bookingId}`), false);
   });
 
-  await t.test('owners need an approved owned venue; admins still cannot impersonate users', async () => {
+  await t.test('clinic owners cannot join clinical rooms, and admins cannot impersonate users', async () => {
     const own = await connect(token(owner));
     await denied(own.client, 'join:admin', { businessId: foreignVenue });
-    own.client.emit('join:admin', { businessId: venue });
-    await waitRoom(own.socket, `business:${venue}:admin`);
-    assert.ok(getOnlineHubIds().includes(venue));
-    own.client.emit('join:booking', { bookingId });
-    await waitRoom(own.socket, `booking:${bookingId}`);
-    businesses.get(venue).approvalStatus = 'pending';
+    await denied(own.client, 'join:admin', { businessId: venue });
+    await denied(own.client, 'join:booking', { bookingId });
     await maintenance();
-    assert.equal(own.socket.rooms.has(`business:${venue}:admin`), false);
-    assert.equal(own.socket.rooms.has(`booking:${bookingId}`), false);
     assert.equal(getOnlineHubIds().includes(venue), false);
-    await denied(own.client, 'join:admin', { businessId: venue });
-    businesses.get(venue).approvalStatus = 'approved';
-    own.client.emit('join:admin', { businessId: venue });
-    await waitRoom(own.socket, `business:${venue}:admin`);
-    businesses.get(venue).owner = other;
-    await denied(own.client, 'join:admin', { businessId: venue });
-    assert.equal(own.socket.rooms.has(`business:${venue}:admin`), false);
-    businesses.get(venue).owner = owner;
     const staff = await connect(token(admin));
     staff.client.emit('join:admin', { businessId: venue });
     await waitRoom(staff.socket, `business:${venue}:admin`);

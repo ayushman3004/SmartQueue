@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }) => {
     const cleared = logoutBrowserSession(api, localStorage);
     localStorage.removeItem(LAST_ACTIVE_KEY);
     delete api.defaults.headers.common["Authorization"];
-    Object.keys(sessionStorage).filter((key) => key.startsWith('customer-service:')).forEach((key) => sessionStorage.removeItem(key));
     setUser(null);
     if (!await cleared) {
       toast.error("Could not clear your server session. Reconnect and sign out again.");
@@ -67,7 +66,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logIn = useCallback((userData, token) => {
-    sessionStorage.removeItem(`customer-service:${userData?._id || userData?.id}`);
     storeToken(token);
     setUser(userData);
     setLoading(false);

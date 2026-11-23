@@ -1,10 +1,9 @@
 import { useDialog } from '../hooks/useDialog'
 import AdminWorkspaceSwitcher from './AdminWorkspaceSwitcher'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Stethoscope,
-  Scissors,
   Ticket,
   Calendar,
   Clock,
@@ -19,10 +18,8 @@ import { useAuth } from '../context/AuthContext'
 
 export default function CustomerSidebar({
   activeNavTab,
-  serviceCategory,
   onSelectTab,
   clinicsCount = 0,
-  salonsCount = 0,
   myActiveQueuesCount = 0,
   myBookingsCount = 0,
   mobileOpen = false,
@@ -31,12 +28,7 @@ export default function CustomerSidebar({
   const drawerRef = useDialog(mobileOpen, onCloseMobile, true)
   const navigate = useNavigate()
   const { user, logOut } = useAuth()
-  const location = useLocation()
-  const urlCategory = new URLSearchParams(location.search).get('category')
-  const category = serviceCategory || urlCategory || sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
-  const selectedCategory = ['clinic', 'salon'].includes(category) ? category : null
-  const dashboardRoute = selectedCategory ? `/customers?category=${selectedCategory}` : '/customers'
-
+  const dashboardRoute = '/customers'
 
   const isOwner = user?.role === 'owner'
   const isAdmin = user?.role === 'admin'
@@ -52,27 +44,23 @@ export default function CustomerSidebar({
     : isAdmin
     ? [
         { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: '/customers?category=clinic', count: clinicsCount },
-        { id: 'salons', label: 'Salons', icon: Scissors, route: '/customers?category=salon', count: salonsCount },
         { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
         { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
       ]
     : [
-        ...(selectedCategory === 'clinic' ? [{ id: 'clinics', label: 'Clinics', icon: Stethoscope, route: dashboardRoute, count: clinicsCount }] : []),
-        ...(selectedCategory === 'salon' ? [{ id: 'salons', label: 'Salons', icon: Scissors, route: dashboardRoute, count: salonsCount }] : []),
+        { id: 'clinics', label: 'Clinics', icon: Stethoscope, route: dashboardRoute, count: clinicsCount },
         { id: 'my-queues', label: 'My Queues', icon: Ticket, route: '/queue', count: myActiveQueuesCount },
         { id: 'appointments', label: 'Appointments', icon: Calendar, route: '/booking', count: myBookingsCount },
         { id: 'history', label: 'History', icon: Clock, route: '/history', count: null },
         { id: 'profile', label: 'My Profile', icon: User, route: '/profile', count: null },
-        { id: 'switch-service', label: 'Switch service', icon: Building2, route: '/customers?choose=1', count: null },
       ]
 
-  const navItems = serviceNavItems.map(item => ({ ...item, route: customerServicePath(item.route, selectedCategory) }))
+  const navItems = serviceNavItems.map(item => ({ ...item, route: customerServicePath(item.route, 'clinic') }))
 
   const get3DIconTheme = (id) => {
     switch (id) {
       case 'dashboard': return 'icon-3d-emerald'
       case 'clinics': return 'icon-3d-teal'
-      case 'salons': return 'icon-3d-rose'
       case 'my-queues': return 'icon-3d-emerald'
       case 'appointments': return 'icon-3d-amber'
       case 'history': return 'icon-3d-blue'

@@ -14,6 +14,13 @@ const schema = new mongoose.Schema({
   investigations: { type: String, maxlength: 10000, default: '' },
   advice: { type: String, maxlength: 10000, default: '' },
   followUp: { type: String, maxlength: 2000, default: '' },
+  followUpDate: { type: String },
+  reminderNextRunAt: { type: Date, select: false },
+  reminderExpiresAt: { type: Date, select: false },
+  reminderWhatsAppAttemptedAt: { type: Date, select: false },
 }, { timestamps: true });
+schema.index({ reminderNextRunAt: 1, reminderExpiresAt: 1 }, {
+  partialFilterExpression: { reminderNextRunAt: { $exists: true } },
+});
 schema.index({ booking: 1, doctor: 1 }, { unique: true });
 export default mongoose.model('Prescription', schema);

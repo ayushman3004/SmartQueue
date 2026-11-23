@@ -16,7 +16,7 @@ test('owner category choice persists, filters venues, and requires admin for fur
   const admin = { _id: 'admin', role: 'admin' };
   t.mock.method(User, 'findById', id => ({ select: async () => id === 'admin' ? admin : owner }));
   t.mock.method(User, 'findOneAndUpdate', async (query, update) => {
-    if (query.$or && owner.businessCategories.length) return null;
+    if (query.businessCategories && owner.businessCategories.includes('clinic')) return null;
     Object.assign(owner, update.$set);
     return owner;
   });
@@ -60,8 +60,8 @@ test('owner category choice persists, filters venues, and requires admin for fur
     assert.equal(created.length, count);
     owner.isEmailVerified = true;
   }
-  assert.equal((await request('/owner-category', 'POST', { category: 'salon' })).status, 403);
+  assert.equal((await request('/owner-category', 'POST', { category: 'salon' })).status, 400);
   assert.equal((await request('/owner-category/owner', 'PUT', { categories: ['clinic', 'salon'] })).status, 403);
-  assert.equal((await request('/owner-category/owner', 'PUT', { categories: ['clinic', 'salon'] }, 'admin')).status, 200);
-  assert.equal((await (await request('/accessible')).json()).data.businesses.length, 2);
+  assert.equal((await request('/owner-category/owner', 'PUT', { categories: ['clinic', 'salon'] }, 'admin')).status, 400);
+  assert.equal((await (await request('/accessible')).json()).data.businesses.length, 1);
 });

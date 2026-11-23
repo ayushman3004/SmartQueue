@@ -66,7 +66,7 @@ test('generated public HTML has correct initial metadata and crawlable guide con
       assert.ok(html.includes('href="/business"'))
     }
   }
-  assert.equal(guidePages.length, 4)
+  assert.equal(guidePages.length, 3)
 })
 
 test('private and missing pages do not use the homepage index directive', () => {

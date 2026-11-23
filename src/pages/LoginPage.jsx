@@ -208,7 +208,7 @@ export default function LoginPage() {
             <span>A little more living.</span>
           </h2>
           <p className="customer-auth-intro-copy">
-            Your next visit, with time for yourself. Find a clinic or salon,
+            Your next visit, with time for yourself. Find a clinic,
             save your place, and follow your turn from your phone.
           </p>
           <div

@@ -13,3 +13,8 @@ export function hasVerifiedPhone(user) {
   return Boolean(user?.isPhoneVerified && phone && proof?.provider === 'firebase' && proof.verifiedAt &&
     proof.phone === phone && Number.isFinite(new Date(proof.verifiedAt).getTime()))
 }
+
+export function canSendWhatsAppFollowUps(user) {
+  return user?.role === 'customer' && hasVerifiedPhone(user) &&
+    user.whatsappFollowUpPhone === normalizePhoneNumber(user.phone)
+}

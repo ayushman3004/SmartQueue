@@ -1,6 +1,6 @@
 import { notifyUser, notifyServingTurns } from '../modules/notification/notification.service.js';
 import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
-import { isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
+import { isClinic, isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
 import Queue from "./queue.model.js";
 import QueueDS from "./queue.ds.js";
@@ -19,7 +19,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
   }
 
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
   assertTestVenueAccess(business, userData.userId);
   if (!business.isOpen || !business.isActive) {
     throw new ApiError(400, "This business is currently closed or not accepting queue entries");
@@ -88,10 +88,9 @@ export const joinQueue = async (businessId, userData, io = null) => {
     finalServiceType = "General Service";
   }
 
-  // 2. Staff Assignment (Doctor / Barber) with auto-fallback
-  const isClinic = business.category === "clinic" || business.category === "healthcare";
+  // 2. Staff Assignment (Doctor) with auto-fallback
   const roster = Array.isArray(business.staff) ? business.staff : [];
-  const registeredDoctors = isClinic ? roster.filter(staff => staff.email && staff.doctorId) : [];
+  const registeredDoctors = roster.filter(staff => staff.email && staff.doctorId);
   const staffList = registeredDoctors.length ? registeredDoctors : roster;
   const staffNameRequested = typeof userData.preferredStaff === "string"
     ? userData.preferredStaff.trim()
@@ -122,7 +121,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   let assignedStaff = null;
 
-  // Check requested doctor / barber
+  // Check requested doctor
   if (staffNameRequested && staffNameRequested.toLowerCase() !== "any") {
     const candidate = staffList.find(
       (s) => s.name.toLowerCase() === staffNameRequested.toLowerCase() && s.isAvailable !== false
@@ -131,7 +130,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
       assignedStaff = {
         staffId: candidate._id,
         name: candidate.name,
-        role: candidate.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+        role: candidate.role || "Doctor / Specialist",
         specialties: candidate.specialties || "",
         autoAssigned: false,
       };
@@ -170,15 +169,15 @@ export const joinQueue = async (businessId, userData, io = null) => {
       assignedStaff = {
         staffId: chosen._id,
         name: chosen.name,
-        role: chosen.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+        role: chosen.role || "Doctor / Specialist",
         specialties: chosen.specialties || "",
         autoAssigned: true,
       };
     } else {
       assignedStaff = {
-        name: isClinic ? "Dr. On-Duty (General Physician)" : "On-Duty Specialist",
-        role: isClinic ? "General Physician" : "Barber / Stylist",
-        specialties: isClinic ? "General Medicine & Primary Care" : "Hair & Grooming",
+        name: "Dr. On-Duty (General Physician)",
+        role: "General Physician",
+        specialties: "General Medicine & Primary Care",
         autoAssigned: true,
       };
     }
@@ -343,7 +342,7 @@ export const leaveQueue = async (businessId, userId, io = null) => {
   queueDoc.users = queueDS.toArray();
   await queueDoc.save();
   const business = await Business.findById(businessId);
-  if (business) await notifyServingTurns(business, queueDoc.users, io);
+  if (isClinic(business)) await notifyServingTurns(business, queueDoc.users, io);
 
   return queueDoc;
 };
@@ -351,7 +350,7 @@ export const leaveQueue = async (businessId, userId, io = null) => {
 // ⏭️ CALL NEXT
 export const callNext = async (businessId, requesterId, requesterRole, io, staffName, targetUserId, autoCompleteAt = null, doctor = null) => {
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
     throw new ApiError(403, "Access denied: you can only manage queues for your own business");
@@ -587,6 +586,9 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
 
 //  GET QUEUE
 export const getQueue = async (businessId, io = null, requesterId = null) => {
+  const business = await Business.findById(businessId);
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
+  assertTestVenueAccess(business, requesterId);
   let queue = await Queue.findOne({ businessId });
   if (!queue) {
     queue = await Queue.create({ businessId, users: [] });
@@ -605,14 +607,7 @@ export const getQueue = async (businessId, io = null, requesterId = null) => {
     }
   }
 
-  const business = await Business.findById(businessId);
-  if (wasCleaned && business) await notifyServingTurns(business, queue.users, io);
-  const isOwner = !["clinic", "healthcare"].includes(business?.category) && requesterId && business?.owner?.toString() === requesterId.toString();
-
-  if (isOwner) {
-    queue = await Queue.findOne({ businessId }).populate("users.userId", "name email phone");
-  }
-
+  if (wasCleaned) await notifyServingTurns(business, queue.users, io);
   return queue;
 };
 
@@ -620,7 +615,7 @@ export const getQueue = async (businessId, io = null, requesterId = null) => {
 export const estimateWaitTime = async (businessId, userId) => {
   const queue = await Queue.findOne({ businessId });
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   const avgTime = business.averageServiceTime || 10;
   const users = queue?.users || [];
@@ -654,7 +649,7 @@ export const estimateWaitTime = async (businessId, userId) => {
 // ⏱️ EXTEND TIME
 export const extendTime = async (businessId, userId, minutes = 5, requesterId, requesterRole, io = null, doctor = null) => {
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
     throw new ApiError(403, "Access denied: only business owners can extend queue service times");
@@ -715,10 +710,10 @@ export const handleCancelDelay = async (businessId, userId, io = null) => {
   return { queue: queueDoc, totalCredited: 0 };
 };
 
-// ASSIGN STAFF (DOCTOR / BARBER / SPECIALIST)
+// ASSIGN STAFF (DOCTOR / SPECIALIST)
 export const assignStaff = async (businessId, userId, staffName, requesterId, requesterRole, io = null) => {
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
     throw new ApiError(403, "Access denied: you can only manage queues for your own business");
@@ -727,7 +722,6 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
   const queue = await Queue.findOne({ businessId });
   if (!queue) throw new ApiError(404, "Queue not found");
 
-  const isClinic = business.category === "clinic" || business.category === "healthcare";
   const staffMember = (business.staff || []).find(
     (s) => s.name?.toLowerCase() === staffName?.toLowerCase()
   );
@@ -742,7 +736,7 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
       current.assignedStaff = {
         staffId: staffMember?._id,
         name: staffMember ? staffMember.name : staffName,
-        role: staffMember?.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+        role: staffMember?.role || "Doctor / Specialist",
         specialties: staffMember?.specialties || "",
         autoAssigned: false,
       };
@@ -762,7 +756,7 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
       u.assignedStaff = {
         staffId: staffMember?._id,
         name: staffMember ? staffMember.name : staffName,
-        role: staffMember?.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+        role: staffMember?.role || "Doctor / Specialist",
         specialties: staffMember?.specialties || "",
         autoAssigned: false,
       };
@@ -794,7 +788,7 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
  */
 export const collectQueuePayment = async (businessId, userId, staffUser, io = null, doctor = null) => {
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   const businessOwnerId = (business.owner?._id || business.owner || business.ownerId)?.toString();
   if (

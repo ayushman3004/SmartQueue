@@ -35,7 +35,7 @@ test('Location Discovery - Radius and Proximity Filtering Logic', async (t) => {
       coordinates: { lat: 31.3056, lng: 75.5794 },
     },
     {
-      name: 'Bh-9 Salon',
+      name: 'Bh-9 Clinic',
       location: 'LPU',
       coordinates: { lat: 31.2530, lng: 75.7037 },
     },
@@ -66,7 +66,7 @@ test('Location Discovery - Radius and Proximity Filtering Logic', async (t) => {
 
     assert.equal(nearby.length, 2, 'Should only discover 2 venues in Punjab');
     assert.equal(nearby[0].name, 'Jalandhar Clinic', 'Nearest should be Jalandhar Clinic');
-    assert.equal(nearby[1].name, 'Bh-9 Salon', 'Second nearest should be Bh-9 Salon');
+    assert.equal(nearby[1].name, 'Bh-9 Clinic', 'Second nearest should be Bh-9 Clinic');
     assert(nearby.every((b) => b.name !== 'Hair Studio'), 'Hair Studio (Gorakhpur) must NOT appear in Punjab');
     assert(nearby.every((b) => b.name !== 'Unpinned Business'), 'Unpinned business must NOT appear');
   });

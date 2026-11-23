@@ -59,7 +59,7 @@ test('Queue completion follows shown finish ETA, advances the next customer, and
     _id: u.bookingId, businessId: 'venue', userId: u.userId, status: u.status,
     startTime: minutesAgo(30), endTime: minutesAgo(1), paidAmount: 100,
   }]));
-  const business = { name: 'Clinic', staff: [{ name: 'A', customersServed: 0 }], save: async () => {} };
+  const business = { name: 'Clinic', category: 'clinic', staff: [{ name: 'A', customersServed: 0 }], save: async () => {} };
   t.mock.method(Queue, 'find', async () => [queue]);
   t.mock.method(Queue, 'findOneAndUpdate', async () => queue);
   t.mock.method(Queue, 'updateOne', async () => ({}));
@@ -93,7 +93,7 @@ test('Queue completion follows shown finish ETA, advances the next customer, and
 
 test('A live ETA extension or removed customer prevents stale automatic completion', async (t) => {
   const queue = { users: [{ userId: 'customer', status: 'serving', estimatedStartTime: minutesAgo(10), serviceTime: 20 }] };
-  t.mock.method(Business, 'findById', async () => ({}));
+  t.mock.method(Business, 'findById', async () => ({ category: 'clinic' }));
   t.mock.method(Queue, 'findOne', async () => queue);
   const query = t.mock.method(Booking, 'findOne', () => { throw new Error('Must not complete'); });
   assert.equal(await callNext('venue', null, 'admin', null, null, 'customer', now), queue);

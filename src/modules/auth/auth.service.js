@@ -1,5 +1,5 @@
 import { effectiveSubscription } from '../../utils/subscription.js';
-import { hasVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
+import { canSendWhatsAppFollowUps, hasVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import { ownerState, assertOwnerLogin, publicOwnerAccess } from "../business-application/owner-lifecycle.js";
 import { validateInvitation } from "../business-application/business-application.service.js";
 import User from "./auth.model.js";
@@ -218,9 +218,18 @@ export const updateProfile = async (userId, data) => {
     if (existing && String(existing._id) !== String(user._id)) throw new ApiError(400, "Email is already taken by another account");
   }
 
+  if (Object.hasOwn(data, "whatsappFollowUpOptIn")) {
+    if (typeof data.whatsappFollowUpOptIn !== "boolean") throw new ApiError(400, "Invalid WhatsApp preference.");
+    if (data.whatsappFollowUpOptIn && (user.role !== "customer" || !hasVerifiedPhone(user) ||
+        (changes.phone !== undefined && changes.phone !== normalizePhoneNumber(user.phone)))) {
+      throw new ApiError(400, "Verify your current phone number to enable WhatsApp reminders.");
+    }
+    user.whatsappFollowUpPhone = data.whatsappFollowUpOptIn ? normalizePhoneNumber(user.phone) : "";
+  }
   if (changes.email !== undefined && changes.email !== user.email) user.isEmailVerified = false;
   if (changes.phone !== undefined && (!changes.phone || changes.phone !== normalizePhoneNumber(user.phone || "", { allowEmpty: true }))) {
     user.isPhoneVerified = false;
+    user.whatsappFollowUpPhone = "";
     user.phoneVerification = undefined;
   }
   for (const key of Object.keys(changes)) user[key] = changes[key];
@@ -239,10 +248,11 @@ export const sanitize = (user) => ({
   authProvider: user.authProvider,
   phone: user.phone || "",
   isPhoneVerified: hasVerifiedPhone(user),
+  whatsappFollowUpOptIn: canSendWhatsAppFollowUps(user),
   isEmailVerified: Boolean(user.isEmailVerified),
   bio: user.bio || "",
   location: user.location || "",
-  businessCategories: user.businessCategories || [],
+  businessCategories: (user.businessCategories || []).filter(category => category === "clinic"),
   doctorAccess: user.role === "doctor" ? { businessId: user.doctorAccess?.businessId, staffId: user.doctorAccess?.staffId, mustChangePassword: user.doctorAccess?.mustChangePassword } : undefined,
   ownerAccess: publicOwnerAccess(user),
   subscription: effectiveSubscription(user),

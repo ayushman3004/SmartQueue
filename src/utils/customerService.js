@@ -1,15 +1,10 @@
 export const serviceCategories = {
   clinic: ['clinic', 'healthcare', 'doctor'],
-  salon: ['salon', 'barbershop', 'beauty'],
 }
 
 export function normalizeServiceCategory(value) {
   const category = typeof value === 'string' ? value.toLowerCase().trim() : ''
   return Object.keys(serviceCategories).find(service => serviceCategories[service].includes(category)) || null
-}
-
-export function resolveCustomerService(requested, saved) {
-  return normalizeServiceCategory(requested) || normalizeServiceCategory(saved)
 }
 
 export function matchesCustomerService(venue, service) {

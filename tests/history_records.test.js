@@ -41,11 +41,11 @@ for (const status of ['completed', 'cancelled', 'refunded']) {
   test(`History API never turns a ${status} booking back into serving from a stale queue`, async (t) => {
     const bookingId = '507f1f77bcf86cd799439011';
     const booking = {
-      _id: bookingId, status, businessId: { _id: 'venue', name: 'Clinic' }, notes: 'Direct Live Queue Entry',
+      _id: bookingId, status, businessId: { _id: 'venue', name: 'Clinic', category: 'clinic' }, notes: 'Direct Live Queue Entry',
     };
     t.mock.method(Booking, 'find', () => ({ populate: () => ({ sort: async () => [booking] }) }));
     t.mock.method(Queue, 'find', () => ({ populate: async () => [{
-      _id: 'queue', businessId: { _id: 'venue', name: 'Clinic' },
+      _id: 'queue', businessId: { _id: 'venue', name: 'Clinic', category: 'clinic' },
       users: [{ userId: 'customer', bookingId, status: 'serving' }],
     }] }));
     t.mock.method(Review, 'find', async () => []);
@@ -59,10 +59,10 @@ for (const status of ['completed', 'cancelled', 'refunded']) {
 test('First queue position does not override an explicit waiting status in History', async (t) => {
   const bookingId = '507f1f77bcf86cd799439011';
   t.mock.method(Booking, 'find', () => ({ populate: () => ({ sort: async () => [{
-    _id: bookingId, status: 'waiting', businessId: { _id: 'venue' },
+    _id: bookingId, status: 'waiting', businessId: { _id: 'venue', category: 'clinic' },
   }] }) }));
   t.mock.method(Queue, 'find', () => ({ populate: async () => [{
-    _id: 'queue', businessId: { _id: 'venue' },
+    _id: 'queue', businessId: { _id: 'venue', category: 'clinic' },
     users: [{ userId: 'customer', bookingId, status: 'waiting' }],
   }] }));
   t.mock.method(Review, 'find', async () => []);

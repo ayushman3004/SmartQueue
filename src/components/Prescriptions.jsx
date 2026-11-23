@@ -24,6 +24,7 @@ export default function Prescriptions({ result, bookingId, compact = false }) {
         <p>{selected.patientName} · {selected.clinicName}</p>
         <p className="text-sm text-zinc-600">{selected.doctorName} · {selected.doctorId} · {new Date(selected.createdAt).toLocaleDateString()}</p>
         {prescriptionFields.map(([key, title]) => selected[key] && <div key={key}><h3 className="font-semibold">{title}</h3><p className="whitespace-pre-wrap break-words text-sm">{selected[key]}</p></div>)}
+        {selected.followUpDate && <p className="text-sm"><strong>Follow-up date</strong> {new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeZone: "UTC" }).format(new Date(selected.followUpDate))}</p>}
         <button type="button" className="rounded-xl bg-emerald-900 px-4 py-2 font-semibold text-white" onClick={() => downloadPrescription(selected._id).catch(() => toast.error('Could not download the prescription.'))}>Download PDF</button>
       </div>}
     </dialog>

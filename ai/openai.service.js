@@ -21,7 +21,6 @@ const getFallback = (context) => {
   const baseTimes = {
     clinic: 20,
     healthcare: 20,
-    salon: 25,
     general: 15,
   };
 
@@ -40,7 +39,7 @@ const getFallback = (context) => {
  */
 export const generateBusinessAIAnalytics = async ({
   businessName,
-  category = "salon",
+  category = "clinic",
   bookingsCount = 0,
   cancellationCount = 0,
   averageRating = 5.0,
@@ -53,11 +52,8 @@ export const generateBusinessAIAnalytics = async ({
   const getHeuristicAnalytics = () => {
     const cancelRate =
       bookingsCount > 0 ? Math.round((cancellationCount / bookingsCount) * 100) : 0;
-    const isClinic = category === "clinic" || category === "healthcare";
 
-    const peakWindows = isClinic
-      ? ["10:00 AM - 1:00 PM", "4:30 PM - 6:30 PM"]
-      : ["11:30 AM - 1:30 PM", "5:00 PM - 8:00 PM"];
+    const peakWindows = ["10:00 AM - 1:00 PM", "4:30 PM - 6:30 PM"];
 
     const sentiment =
       averageRating >= 4.5
@@ -76,28 +72,28 @@ export const generateBusinessAIAnalytics = async ({
       badge: "VIP Regular",
     };
 
-    // Best Employee Fallback (Barber or Doctor)
+    // Best Employee Fallback
     const staffCandidate =
       topEmployee || (staffList && staffList.length > 0 ? staffList[0] : null);
     const resolvedBestEmployee = staffCandidate
       ? {
           name: staffCandidate.name,
-          role: staffCandidate.role || (isClinic ? "Senior Consultant" : "Master Barber"),
+          role: staffCandidate.role || ("Senior Consultant"),
           customersServed:
             staffCandidate.customersServed || Math.max(12, Math.round(bookingsCount * 0.4)),
           rating: staffCandidate.rating || 4.9,
           review: `${staffCandidate.name} has maintained the highest service velocity and client satisfaction score this month.`,
-          badge: isClinic ? "Top Doctor" : "Barber of the Month",
+          badge: "Top Doctor",
         }
       : {
-          name: isClinic ? "Dr. Sarah Jenkins" : "Alex Rivera",
-          role: isClinic ? "Senior Consultant" : "Master Barber",
+          name: "Dr. Sarah Jenkins",
+          role: "Senior Consultant",
           customersServed: Math.max(15, Math.round(bookingsCount * 0.45)),
           rating: 4.9,
           review: `${
-            isClinic ? "Dr. Sarah Jenkins" : "Alex Rivera"
+            "Dr. Sarah Jenkins"
           } delivered outstanding turnaround velocity and positive client feedback across all appointments.`,
-          badge: isClinic ? "Top Doctor" : "Barber of the Month",
+          badge: "Top Doctor",
         };
 
     const recommendations = [
@@ -116,7 +112,7 @@ export const generateBusinessAIAnalytics = async ({
       peakHours: peakWindows,
       peakHoursAnalysis: `Primary traffic surges occur between ${peakWindows[0]} and ${
         peakWindows[1]
-      }. We recommend scheduling ${isClinic ? "doctor shifts" : "barber chairs"} accordingly.`,
+      }. We recommend scheduling doctor shifts accordingly.`,
       cancellationRate: `${cancelRate}%`,
       sentimentSummary: sentiment,
       bestCustomer: resolvedBestCustomer,
@@ -131,7 +127,6 @@ export const generateBusinessAIAnalytics = async ({
     return getHeuristicAnalytics();
   }
 
-  const isClinic = category === "clinic" || category === "healthcare";
   const systemPrompt = `You are an elite operational analytics advisor for ${businessName} (Category: ${category}).
 Analyze the provided metrics and generate an actionable executive report.
 Respond ONLY with a valid JSON object matching this schema (no markdown fences, no explanatory text):
@@ -160,13 +155,13 @@ Respond ONLY with a valid JSON object matching this schema (no markdown fences, 
 
   const userContent = `Operational metrics for ${businessName}:
 - Venue: ${businessName}
-- Type: ${isClinic ? "Medical Clinic" : "Salon & Wellness"}
+- Type: Medical Clinic
 - Total Bookings: ${bookingsCount}
 - Total Cancellations: ${cancellationCount}
 - Average Customer Rating: ${averageRating}/5
 - Top Customer Data: ${topCustomer ? JSON.stringify(topCustomer) : "Frequent returning patron"}
 - Top Staff Performer: ${
-    topEmployee ? JSON.stringify(topEmployee) : isClinic ? "Top Doctor" : "Top Barber"
+    topEmployee ? JSON.stringify(topEmployee) : "Top Doctor"
   }
 - Available Staff: ${
     staffList.map((s) => `${s.name} (${s.role || "Staff"})`).join(", ") || "Active team"

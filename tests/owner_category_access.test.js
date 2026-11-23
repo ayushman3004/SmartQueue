@@ -7,17 +7,17 @@ import Booking from '../src/booking/booking.model.js';
 
 const authorize = request => new Promise(resolve => allowRoles('owner', 'admin')(request, {}, resolve));
 
-test('owner category permissions isolate clinic and salon management', async t => {
+test('clinic permissions reject legacy venues for all roles', async t => {
   const clinicOwner = { _id: 'owner', role: 'owner', businessCategories: ['clinic'] };
   const salonOwner = { ...clinicOwner, businessCategories: ['salon'] };
   assert.equal(canAccessOwnerCategory(clinicOwner, { category: 'clinic' }), true);
   assert.equal(canAccessOwnerCategory(clinicOwner, { category: 'healthcare' }), true);
   assert.equal(canAccessOwnerCategory(clinicOwner, { category: 'salon' }), false);
   assert.equal(canAccessOwnerCategory(salonOwner, { category: 'clinic' }), false);
-  assert.equal(canAccessOwnerCategory(salonOwner, { category: 'salon' }), true);
+  assert.equal(canAccessOwnerCategory(salonOwner, { category: 'salon' }), false);
   assert.equal(canAccessOwnerCategory({ role: 'owner' }, { category: 'salon' }), false);
-  assert.equal(canAccessOwnerCategory({ role: 'admin' }, { category: 'salon' }), true);
-  assert.equal(canAccessOwnerCategory({ ...clinicOwner, businessCategories: ['clinic', 'salon'] }, { category: 'salon' }), true);
+  assert.equal(canAccessOwnerCategory({ role: 'admin' }, { category: 'salon' }), false);
+  assert.equal(canAccessOwnerCategory({ ...clinicOwner, businessCategories: ['clinic', 'salon'] }, { category: 'salon' }), false);
   let category = 'salon';
   t.mock.method(Business, 'findOne', async () => ({ category }));
   t.mock.method(Booking, 'findById', async () => ({ businessId: 'venue' }));
@@ -34,5 +34,5 @@ test('owner category permissions isolate clinic and salon management', async t =
   assert.equal(await authorize({ ...queueRequest, originalUrl: '/api/queue/venue/users/patient/collect-payment' }), undefined);
   for (const action of ['next', 'extend']) assert.match((await authorize({ ...queueRequest, originalUrl: `/api/queue/venue/${action}` })).message, /assigned doctor/);
   category = 'salon';
-  assert.equal(await authorize({ ...bookingRequest, user: salonOwner }), undefined);
+  assert.equal((await authorize({ ...bookingRequest, user: salonOwner })).statusCode, 403);
 });

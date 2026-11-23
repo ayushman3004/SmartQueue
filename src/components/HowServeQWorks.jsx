@@ -4,13 +4,13 @@ import { Link } from 'react-router-dom'
 import './HowServeQWorks.css'
 
 const CUSTOMER_STEPS = [
-  { id: 'join', tab: 'Join a queue', number: '01', title: 'Your place.\nWithout the line.', summary: 'Get in line from your phone.', description: 'Choose a clinic or salon near you, select your service, and tap “Join Live Queue”. Your digital token keeps your place while staff see your entry on their dashboard.', action: 'Find a clinic or salon', note: 'Your token is your reference number. It does not mean that many people are ahead of you.' },
+  { id: 'join', tab: 'Join a queue', number: '01', title: 'Your place.\nWithout the line.', summary: 'Get in line from your phone.', description: 'Choose a clinic near you, select your service, and tap “Join Live Queue”. Your digital token keeps your place while staff see your entry on their dashboard.', action: 'Find a clinic', note: 'Your token is your reference number. It does not mean that many people are ahead of you.' },
   { id: 'track', tab: 'Track your turn', number: '02', title: 'Less guessing.\nMore living.', summary: 'Wait somewhere comfortable nearby.', description: 'Open “My Queues” to see how many people are ahead and your estimated wait. Your progress updates as staff serve customers, so you can plan when to head back.', action: 'Explore live queues', note: 'Wait times are estimates and may change. Allow enough time to travel back to the business.' },
   { id: 'arrive', tab: 'Get served', number: '03', title: 'Your turn.\nCome on in.', summary: 'Head in when your token is called.', description: 'Check your queue status and turn alerts, where enabled. Show your token to the staff when you arrive. They’ll guide you to your service and mark your visit complete afterward.', action: 'Get started', note: 'Keep checking your queue screen. Notification delivery depends on your settings and the business.' },
 ]
 
 const BUSINESS_STEPS = [
-  { id: 'setup', tab: 'Set up', number: '01', title: 'Your services.\nYour team.', summary: 'Prepare your business before opening the queue.', description: 'Create your business profile, add services and prices, and list your doctors or stylists. Set opening hours and appointment availability, then complete onboarding to launch.', action: 'Set up your business', note: 'Business setup requires a verified email and an active plan.' },
+  { id: 'setup', tab: 'Set up', number: '01', title: 'Your services.\nYour team.', summary: 'Prepare your business before opening the queue.', description: 'Create your business profile, add services and prices, and list your doctors and specialists. Set opening hours and appointment availability, then complete onboarding to launch.', action: 'Set up your business', note: 'Business setup requires a verified email and an active plan.' },
   { id: 'manage', tab: 'Manage queues', number: '02', title: 'One queue.\nA clearer day.', summary: 'Keep walk-ins and appointments organized.', description: 'View waiting customers and upcoming bookings in your dashboard. Call the next token, update service progress, and mark visits complete so customers can follow their turn.', action: 'Explore the business portal', note: 'Keep queue statuses current so the information customers see stays useful.' },
   { id: 'monitor', tab: 'Monitor your day', number: '03', title: 'See the flow.\nPlan ahead.', summary: 'Understand what is happening at your venue.', description: 'Review your queue, appointment history, and business analytics. See service activity and staff availability, with additional AI insights available on Pro.', action: 'Explore the business portal', note: 'Available insights depend on your plan and the activity recorded at your venue.' },
 ]
@@ -30,11 +30,11 @@ function QueueExample({ step }) {
   const ready = step === 'arrive'
   const tracking = step === 'track'
   const progress = ready ? 2 : tracking ? 1 : 0
-  return <figure className="journey-ticket-example" aria-label="Illustrative salon queue example">
+  return <figure className="journey-ticket-example" aria-label="Illustrative clinic queue example">
     <div className="journey-demo" data-ready={ready}>
       <div className="journey-ticket-header">
         <div className="journey-demo-top"><span><Ticket size={16} strokeWidth={1.5} />serveQ</span><span className="journey-demo-example">Sample pass</span></div>
-        <div className="journey-demo-venue"><div><strong>Your chosen salon</strong><p><MapPin size={12} />Haircut · Live queue</p></div><span className="journey-ticket-seal" aria-hidden="true"><Ticket size={25} strokeWidth={1.2} /></span></div>
+        <div className="journey-demo-venue"><div><strong>Your chosen clinic</strong><p><MapPin size={12} />Consultation · Live queue</p></div><span className="journey-ticket-seal" aria-hidden="true"><Ticket size={25} strokeWidth={1.2} /></span></div>
       </div>
       <div className="journey-ticket-main">
         <div className="journey-token"><span>YOUR TOKEN</span><strong><span>#</span>24</strong></div>

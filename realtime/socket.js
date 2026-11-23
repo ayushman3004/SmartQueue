@@ -1,5 +1,4 @@
 import { isClinic } from "../src/modules/doctor/doctor-access.js";
-import { canAccessOwnerCategory } from "../src/utils/ownerCategory.js";
 import Booking from "../src/booking/booking.model.js";
 import User from "../src/modules/auth/auth.model.js";
 import { ownerState } from "../src/modules/business-application/owner-lifecycle.js";
@@ -104,14 +103,10 @@ const mayJoinPrivateRoom = async (socket, type, id) => {
   if (type === "user") return id === user.id;
   if (type === "admin") {
     const business = await Business.findById(id);
-    return Boolean(business && (user.role === "admin" || (!isClinic(business) && user.role === "owner" && business.approvalStatus === "approved" && refId(business.owner) === user.id && canAccessOwnerCategory(user, business))));
+    return Boolean(user.role === "admin" && isClinic(business));
   }
   const booking = await Booking.findById(id);
-  if (!booking) return false;
-  if (user.role === "admin" || refId(booking.userId) === user.id) return true;
-  if (user.role !== "owner") return false;
-  const business = await Business.findOne({ _id: booking.businessId?._id || booking.businessId, owner: user.id, approvalStatus: "approved" });
-  return Boolean(business && !isClinic(business) && canAccessOwnerCategory(user, business));
+  return Boolean(booking && (user.role === "admin" || refId(booking.userId) === user.id));
 };
 
 /** Socket rooms are server-owned; private subscriptions require a live session. */
@@ -186,10 +181,24 @@ export const initSocket = io => {
       grants.get(socket.id).set(`user:${id}`, { type: "user", id });
       trackUserSocket(id, socket.id);
     }
-    socket.on("join:room", payload => {
+    const pendingClinicJoins = new Map();
+    socket.on("join:room", async payload => {
       const id = payloadId(payload, "businessId");
       if (!id) return deny(socket, "Invalid business ID");
-      socket.join(`business:${id}`);
+      const request = Symbol();
+      pendingClinicJoins.set(id, request);
+      try {
+        const business = await Business.findById(id);
+        if (!connections.has(socket) || pendingClinicJoins.get(id) !== request) return;
+        if (!isClinic(business) || (business.adminTestKind && refId(business.owner) !== socket.user?.id)) {
+          return deny(socket, "Access denied to clinic room");
+        }
+        socket.join(`business:${id}`);
+      } catch {
+        if (pendingClinicJoins.get(id) === request) deny(socket, "Clinic room authorization failed");
+      } finally {
+        if (pendingClinicJoins.get(id) === request) pendingClinicJoins.delete(id);
+      }
     });
     const privateJoin = (event, field, type) => socket.on(event, async payload => {
       const id = payloadId(payload, field);
@@ -226,6 +235,7 @@ export const initSocket = io => {
       const userId = payloadId(payload, "userId");
       const bookingId = payloadId(payload, "bookingId");
       if (businessId) {
+        pendingClinicJoins.delete(businessId);
         await socket.leave(`business:${businessId}`);
         await removeGrant(socket, `business:${businessId}:admin`);
       }
@@ -233,6 +243,7 @@ export const initSocket = io => {
       if (bookingId) await removeGrant(socket, `booking:${bookingId}`);
     });
     socket.on("disconnect", () => {
+      pendingClinicJoins.clear();
       connections.delete(socket);
       grants.delete(socket.id);
       untrackSocket(socket.id);

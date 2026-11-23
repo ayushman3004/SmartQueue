@@ -12,7 +12,6 @@ import {
   ChevronRight,
   LayoutDashboard,
   Stethoscope,
-  Scissors,
   Ticket,
   Calendar,
   Star,
@@ -62,7 +61,6 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
 
   // Filters & Controls
-  const categoryFilter = serviceCategory || 'all'
   const businesses = useMemo(() => serviceCategory ? filterServiceVenues(discoveredBusinesses, serviceCategory) : discoveredBusinesses, [discoveredBusinesses, serviceCategory])
   const myBookings = useMemo(() => serviceCategory ? filterServiceBookings(allMyBookings, businesses, serviceCategory) : allMyBookings, [allMyBookings, businesses, serviceCategory])
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'live_queue' | 'appointment' | 'completed' | 'upcoming'
@@ -166,16 +164,6 @@ export default function HistoryPage() {
   // Filtered list based on category filter, status filter, and search
   const filteredRecords = useMemo(() => {
     return unifiedServiceRecords.filter((record) => {
-      // Category filter (All / Clinics / Salons)
-      if (categoryFilter === 'clinic') {
-        const cat = (record.businessCategory || '').toLowerCase()
-        if (cat !== 'clinic' && cat !== 'healthcare' && cat !== 'doctor') return false
-      }
-      if (categoryFilter === 'salon') {
-        const cat = (record.businessCategory || '').toLowerCase()
-        if (cat !== 'salon' && cat !== 'barbershop' && cat !== 'beauty') return false
-      }
-
       // Status filter
       if (statusFilter === 'completed' && record.status !== 'completed') return false
       if (statusFilter === 'upcoming') {
@@ -201,7 +189,7 @@ export default function HistoryPage() {
 
       return true
     })
-  }, [unifiedServiceRecords, categoryFilter, statusFilter, debouncedSearch])
+  }, [unifiedServiceRecords, statusFilter, debouncedSearch])
 
   // Review handlers
   const handleOpenReview = (record, e) => {
@@ -286,7 +274,7 @@ export default function HistoryPage() {
           <div className="relative flex-1">
             <input
               type="text"
-              placeholder="Search history by clinic, salon, service or specialist..."
+              placeholder="Search history by clinic, service or specialist..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-xs rounded-full bg-zinc-100/90 border border-zinc-200/70 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium transition-all"
@@ -363,10 +351,8 @@ export default function HistoryPage() {
       <div className="flex-1 flex w-full">
         {/* LEFT SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
         <CustomerSidebar
-          serviceCategory={serviceCategory}
           activeNavTab="history"
           clinicsCount={filterServiceVenues(businesses, 'clinic').length}
-          salonsCount={filterServiceVenues(businesses, 'salon').length}
           myActiveQueuesCount={myActiveQueues.length}
           myBookingsCount={
             myBookings.filter(
@@ -385,7 +371,7 @@ export default function HistoryPage() {
               Service History
             </h1>
             <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
-              Your past queues and appointments at clinics and salons.
+              Your past queues and appointments at clinics.
             </p>
           </div>
 
@@ -504,7 +490,7 @@ export default function HistoryPage() {
                 onClick={() => navigate('/customers')}
                 className="mt-3 px-4 py-2 bg-[#114227] text-white rounded-xl text-xs font-bold hover:bg-[#0D361F] transition-colors"
               >
-                Browse Clinics & Salons
+                Browse Clinics
               </button>
             </div>
           ) : viewMode === 'cards' ? (
@@ -515,11 +501,6 @@ export default function HistoryPage() {
                 const isCancelled = item.status === 'cancelled' || item.status === 'refunded'
                 const isServing = item.status === 'serving'
                 const isWaiting = item.status === 'waiting'
-                const isSalon =
-                  (item.businessCategory || '').toLowerCase() === 'salon' ||
-                  (item.businessCategory || '').toLowerCase() === 'barbershop' ||
-                  (item.businessCategory || '').toLowerCase() === 'beauty'
-
                 const dateObj = new Date(item.startTime || item.createdAt || Date.now())
                 const dateStr = dateObj.toLocaleDateString('en-GB', {
                   day: '2-digit',
@@ -545,16 +526,10 @@ export default function HistoryPage() {
                         className={`w-12 h-12 rounded-2xl icon-3d flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
                           isCancelled
                             ? 'icon-3d-rose'
-                            : isSalon
-                            ? 'icon-3d-rose'
                             : 'icon-3d-teal'
                         }`}
                       >
-                        {isSalon ? (
-                          <Scissors className="w-5 h-5" />
-                        ) : (
-                          <Stethoscope className="w-5 h-5" />
-                        )}
+                        <Stethoscope className="w-5 h-5" />
                       </span>
 
                       {/* Main Titles */}
@@ -572,9 +547,7 @@ export default function HistoryPage() {
                             <User className="w-3.5 h-3.5 text-zinc-400" />
                             <span>
                               {item.assignedStaff?.name
-                                ? `${item.assignedStaff.name} (${item.assignedStaff.role || (isSalon ? 'Stylist' : 'Physician')})`
-                                : isSalon
-                                ? 'On-Duty Stylist'
+                                ? `${item.assignedStaff.name} (${item.assignedStaff.role || 'Physician'})`
                                 : 'On-Duty Doctor'}
                             </span>
                           </span>

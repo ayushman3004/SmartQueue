@@ -169,6 +169,10 @@ function DoctorWorkspace() {
           <textarea name={key} required={key === 'diagnosis'} rows={3} maxLength={key === 'followUp' ? 2000 : 10000} className="mt-1 block w-full rounded-xl border border-zinc-300 p-3 font-normal" />
         </label>)}
         {error && <p role="alert">{error}</p>}
+        <label className="block font-medium">Follow-up date (optional)
+          <input type="date" name="followUpDate" className="mt-1 block w-full rounded-xl border border-zinc-300 p-3 font-normal" />
+          <span className="mt-1 block text-sm font-normal text-zinc-600">A date schedules a reminder for the patient. Dates use India Standard Time.</span>
+        </label>
         <div className="flex gap-2"><button disabled={busy} className={button}>Save prescription</button><button type="button" className={button} disabled={busy} onClick={() => { setVisit(null); setError('') }}>Cancel</button></div>
       </form>
     </div>}

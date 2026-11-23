@@ -6,12 +6,6 @@
   --service-line: #c1d5c7;
   color: #153c2b;
 }
-.customer-dashboard[data-service='salon'] {
-  --service-ink: #765546;
-  --service-soft: #f3e9e1;
-  --service-door: #dfc8bb;
-  --service-line: #dfcbbd;
-}
 .customer-dashboard > header { background: #fbfefbe8; border-color: var(--service-line); box-shadow: none; }
 .customer-dashboard > .flex-1 > main { width: 100%; max-width: 1440px; margin-inline: auto; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 24px; }
 .customer-dashboard aside { background: #fbfefb99; border-color: var(--service-line); padding-top: 24px; }

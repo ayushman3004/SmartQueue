@@ -9,11 +9,6 @@ const otpSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
-    phoneNumber: {
-      type: String,
-      sparse: true,
-      index: true,
-    },
     otp: {
       type: String,
       required: true,
@@ -21,9 +16,7 @@ const otpSchema = new mongoose.Schema(
     purpose: {
       type: String,
       enum: [
-        "phone_login",
         "forgot_password",
-        "phone_verification",
         "email_verification",
       ],
       default: "forgot_password",

@@ -55,7 +55,7 @@ export default function WebsiteTour({ manualTrigger, onTourClose }) {
         title: 'Find Venues & Join Queues',
         badge: 'Key Action',
         description:
-          'Tap "Get Started" to search nearby salons, medical clinics, and wellness lounges. Reserve your virtual place in line before stepping out of your home.',
+          'Tap "Get Started" to search nearby clinics. Reserve your virtual place in line before stepping out of your home.',
         selector: '#tour-join-queue-btn',
         fallbackPlacement: 'bottom',
       },

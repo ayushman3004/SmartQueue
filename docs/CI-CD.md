@@ -147,7 +147,7 @@ Before enabling deployment, inspect the **new service** in Render and confirm:
 | `CLIENT_URL=https://serveq.tech` | OAuth redirects and allowed frontend origin. |
 | `SERVER_URL=https://api.serveq.tech` | Ensures Google callback uses the custom API domain instead of a Render subdomain. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Keep existing Google credentials; authorized Google redirect URI must be `https://api.serveq.tech/api/auth/google/callback`. |
-| Existing integration credentials | Preserve `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, OpenRouter keys/model settings, Resend/SMTP/Gmail settings, and optional Twilio settings as used by the application. |
+| Existing integration credentials | Preserve `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, OpenRouter keys/model settings, Resend/SMTP/Gmail settings, and optional WhatsApp Cloud API credentials as used by the application. |
 | Administrator accounts | Sign-in authenticates existing database accounts only. There are no default administrator credentials or environment-based account bootstrap. Remove obsolete `ADMIN_EMAIL` / `ADMIN_PASSWORD` settings and review any previously bootstrapped accounts separately. |
 
 The script does not read or log Render environment values. Dashboard verification
@@ -186,8 +186,7 @@ they cannot be inferred from `vercel.json` alone.
 Set the Production environment value **`VITE_API_URL=https://api.serveq.tech`**
 with no trailing slash or `/api` suffix. Keep the existing public
 `VITE_RAZORPAY_KEY_ID` and `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-`VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`,
-`VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID` if those features are
+`VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` if those features are
 enabled. Vite embeds all `VITE_*` variables in public browser assets; never prefix
 backend credentials with `VITE_`.
 
@@ -822,8 +821,8 @@ from Phase 3, with its existing method behavior, for the fifth rule.
 | --- | --- | --- |
 | Sign-in | `/api/auth/signin` | 60/min |
 | Registration | `/api/auth/signup` | 30/min |
-| OTP and reset sends | `/api/otp/send`, `/api/auth/email/send-otp`, `/api/auth/phone/send-otp`, `/api/auth/forgot-password`, `/api/auth/forgot-password/send-otp` | 90/5 min |
-| Verify and complete | `/api/otp/verify`, `/api/auth/phone/verify-otp`, `/api/auth/phone/verify-firebase`, `/api/auth/email/verify-otp`, `/api/auth/verify-otp`, `/api/auth/forgot-password/verify-otp`, `/api/auth/reset-password`, `/api/auth/forgot-password/reset-password` | 120/5 min |
+| OTP and reset sends | `/api/auth/email/send-otp`, `/api/auth/phone/send-otp`, `/api/auth/forgot-password`, `/api/auth/forgot-password/send-otp` | 90/5 min |
+| Verify and complete | `/api/auth/phone/verify-otp`, `/api/auth/phone/verify-firebase`, `/api/auth/email/verify-otp`, `/api/auth/verify-otp`, `/api/auth/forgot-password/verify-otp`, `/api/auth/reset-password`, `/api/auth/forgot-password/reset-password` | 120/5 min |
 | Costly public API | Phase 3 Maps, chatbot, support, waitlist, and business application rule | 240/min |
 
 The edge ceilings intentionally leave room for shared networks and do not

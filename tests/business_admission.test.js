@@ -1,4 +1,3 @@
-import { verifyOtp as verifyPhoneLogin } from "../src/modules/auth/otp.controller.js";
 import { initOnboarding as initOnboardingHandler } from "../src/modules/business/business.controller.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -7,7 +6,6 @@ import jwt from "jsonwebtoken";
 import Application from "../src/modules/business-application/business-application.model.js";
 import User from "../src/modules/auth/auth.model.js";
 import Business from "../src/modules/business/business.model.js";
-import Otp from "../src/modules/auth/otp.model.js";
 import {
   submitApplication,
   validateApplication,
@@ -50,11 +48,11 @@ const actor = {
   role: "admin",
 };
 const input = {
-  businessName: "Aster Salon",
+  businessName: "Aster Clinic",
   ownerName: "Asha Sen",
   email: "ASHA@example.com",
   phone: "+919876543210",
-  businessCategory: "salon",
+  businessCategory: "clinic",
   businessAddress: "12 Market Road",
   city: "Kolkata",
   description: "Haircuts and styling",
@@ -765,90 +763,6 @@ test("application and owner activation lifecycle", async (t) => {
       );
     },
   );
-  await t.test(
-    "legacy phone OTP cannot register owners or skip invitation credentials",
-    async (t) => {
-      const store = fixture(t);
-      t.mock.method(Otp, "findOne", async () => ({
-        otp: "123456",
-        attempts: 0,
-        expiresAt: new Date(Date.now() + 10000),
-      }));
-      await assert.rejects(
-        middleware(verifyPhoneLogin, {
-          body: { phoneNumber: "+919876543210", otp: "123456", role: "owner" },
-        }),
-        /invitation-only/,
-      );
-      assert.equal(store.createdUsers, 0);
-      store.user = {
-        _id: uid,
-        role: "owner",
-        ownerAccess: {
-          applicationId: id,
-          status: "INVITED",
-          invitationExpiresAt: new Date(Date.now() + 100000),
-        },
-      };
-      await assert.rejects(
-        middleware(verifyPhoneLogin, {
-          body: {
-            phoneNumber: "+919876543210",
-            otp: "123456",
-            role: "customer",
-          },
-        }),
-        /invitation password/,
-      );
-    },
-  );
-  await t.test("existing customer phone OTP login is preserved", async (t) => {
-    const store = fixture(t);
-    store.user = {
-      _id: uid,
-      role: "customer",
-      phone: "+919876543210",
-      name: "Customer",
-      email: "customer@example.com",
-    };
-    t.mock.method(Otp, "findOne", async () => ({
-      otp: "123456",
-      attempts: 0,
-      expiresAt: new Date(Date.now() + 10000),
-    }));
-    t.mock.method(Otp, "deleteOne", async () => {});
-    let data;
-    let failure;
-    const response = {
-      cookie() {},
-      status() {
-        return this;
-      },
-      json(value) {
-        data = value;
-      },
-    };
-    await verifyPhoneLogin(
-      {
-        body: {
-          phoneNumber: store.user.phone,
-          otp: "123456",
-          role: "customer",
-        },
-        headers: {},
-      },
-      response,
-      (error) => {
-        failure = error;
-      },
-    );
-    assert.equal(failure, undefined);
-    assert.equal(data.data.user.role, "customer");
-    assert.equal(
-      jwt.verify(data.data.token, process.env.JWT_SECRET).purpose,
-      "session",
-    );
-  });
   await t.test(
     "managed owner cannot create another draft after completing onboarding",
     async (t) => {

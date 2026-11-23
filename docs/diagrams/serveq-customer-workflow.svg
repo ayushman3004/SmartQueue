@@ -74,7 +74,7 @@
 <text x="560" y="510" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Location, services, availability</text>
 <rect x="80" y="585" width="368" height="100" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
 <text x="104" y="622" font-size="26" font-weight="600" fill="#17372A" text-anchor="start">Find venue and services</text>
-<text x="104" y="655" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Salon / clinic · professional</text>
+<text x="104" y="655" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Clinic · doctor</text>
 <path d="M264.0 708 L408 758.0 L264.0 808 L120 758.0 Z" fill="#ECFDF5" stroke="#047857" stroke-width="2"/>
 <text x="264.0" y="766.0" font-size="25" font-weight="600" fill="#114227" text-anchor="middle">Choose visit type</text>
 <rect x="992" y="310" width="368" height="218" rx="16" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>

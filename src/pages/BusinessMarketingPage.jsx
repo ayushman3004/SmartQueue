@@ -6,9 +6,9 @@ import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
 import "../styles/business-admission.css";
 export default function BusinessMarketingPage() {
   useSeo({
-    title: "ServeQ for Business — Apply to join",
+    title: "ServeQ for Clinics — Apply to join",
     description:
-      "Manage queues, appointments and staff in one place. Apply for a personally reviewed ServeQ business account.",
+      "Manage patient queues, appointments, and digital prescriptions. Send automatic follow-up reminders with WhatsApp opt-in.",
     canonical: "https://www.serveq.tech/business",
   });
   const plans = Object.values(SUBSCRIPTION_PLANS);
@@ -29,15 +29,14 @@ export default function BusinessMarketingPage() {
         </nav>
       </header>
       <section className="business-marketing-hero">
-        <p className="admission-eyebrow">ServeQ for Business</p>
+        <p className="admission-eyebrow">ServeQ for Clinics</p>
         <h1>
           Less waiting.
           <br />
-          <em>More welcoming.</em>
+          <em>Better follow-up.</em>
         </h1>
         <p>
-          Give customers their time back. Manage your walk-ins, appointments and
-          team from one place, while people follow their turn on their phone.
+          Help patients spend less time waiting. Manage clinic queues and appointments, issue digital prescriptions, and send automatic follow-up reminders.
         </p>
         <div className="business-hero-actions">
           <a href="#apply" className="admission-primary">
@@ -137,7 +136,7 @@ export default function BusinessMarketingPage() {
             ],
             [
               "Set up & welcome",
-              "Choose your plan, complete the existing setup steps, add services and staff, then launch your venue.",
+              "Choose your plan, complete the existing setup steps, add services and staff, then launch your clinic.",
             ],
           ].map(([title, copy], i) => (
             <li key={title}>
@@ -149,20 +148,20 @@ export default function BusinessMarketingPage() {
         </ol>
       </section>
       <section className="admission-section admission-sage">
-        <h2>Built around your kind of service.</h2>
+        <h2>From the waiting room to the follow-up</h2>
         <div className="admission-grid">
           {[
             [
-              "Salons",
-              "Coordinate haircuts, grooming appointments and walk-ins.",
+              "Shorter waits",
+              "Let patients join a live queue from their phones and see when their turn is approaching.",
             ],
             [
-              "Clinics",
-              "Organise consultation bookings and the patient queue.",
+              "Digital prescriptions",
+              "Doctors can write prescriptions after consultations and patients can access them in their accounts.",
             ],
             [
-              "Service centres",
-              "Give visitors a clear turn and help staff manage arrivals.",
+              "Automatic follow-up reminders",
+              "Set a follow-up date on the prescription. Patients receive an in-app reminder and can opt in to WhatsApp updates.",
             ],
           ].map(([title, copy]) => (
             <article key={title}>
@@ -190,7 +189,7 @@ export default function BusinessMarketingPage() {
           ],
           [
             "When do I pay?",
-            "Applying is free. After activation, review and choose a plan before continuing your venue setup.",
+            "Applying is free. After activation, review and choose a plan before continuing your clinic setup.",
           ],
           [
             "Do I need to set everything up again?",

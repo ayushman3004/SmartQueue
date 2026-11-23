@@ -3,6 +3,7 @@ import {
   executeOpenRouterChat,
   getOpenRouterApiKeys,
 } from "../../../ai/openrouter.client.js";
+import { serviceCategories } from "../../utils/customerService.js";
 import Business from "../business/business.model.js";
 import Queue from "../../queue/queue.model.js";
 import { getAvailableSlots } from "../../booking/booking.service.js";
@@ -28,9 +29,9 @@ function cleanAssistantText(text) {
 async function getPlatformContext() {
   try {
     if (mongoose.connection.readyState !== 1) {
-      return { businesses: [], summary: "Multiple verified salons and clinics active on serveQ." };
+      return { businesses: [], summary: "Multiple verified clinics active on serveQ." };
     }
-    const businesses = await Business.find({ isActive: true })
+    const businesses = await Business.find({ isActive: true, category: { $in: serviceCategories.clinic }, adminTestKind: { $exists: false } })
       .select("name category services averageServiceTime timings address location phone isOpen staff")
       .lean();
 
@@ -53,11 +54,11 @@ async function getPlatformContext() {
         .join("; ");
 
       const staffList = (b.staff || [])
-        .map((s) => `${s.name} (${s.role || (b.category === "salon" ? "Barber" : "Doctor")})`)
+        .map((s) => `${s.name} (${s.role || "Doctor"})`)
         .join("; ");
 
       return `- ${b.name} [ID: ${b._id}]:
-    Category: ${b.category === "salon" ? "Salon and Hair Studio" : "Medical Clinic and Healthcare"}
+    Category: Medical clinic
     Status: ${b.isOpen ? "OPEN NOW" : "CLOSED"}
     Location: ${b.address || b.location || "Local Hub"} | Phone: ${b.phone || "N/A"}
     Operating Timings: ${b.timings?.open || "09:00"} to ${b.timings?.close || "18:00"}
@@ -69,7 +70,7 @@ async function getPlatformContext() {
     return { businesses, summary: summary.join("\n\n") };
   } catch (err) {
     console.warn("Could not compile live platform context:", err.message);
-    return { businesses: [], summary: "Multiple verified salons and clinics active on serveQ." };
+    return { businesses: [], summary: "Multiple verified clinics active on serveQ." };
   }
 }
 
@@ -109,8 +110,7 @@ async function checkSlotAvailability(message, businesses) {
   if (!targetBiz) {
     if (lower.includes("clinic") || lower.includes("doctor")) {
       targetBiz = businesses.find((b) => b.category === "clinic" || b.category === "healthcare");
-    } else if (lower.includes("salon") || lower.includes("barber")) {
-      targetBiz = businesses.find((b) => b.category === "salon");
+
     } else if (businesses.length === 1) {
       targetBiz = businesses[0];
     }
@@ -175,13 +175,6 @@ function getDeterministicResponse(message, businesses, slotContext) {
     return `We currently have ${slotContext.availableCount} available slots for ${slotContext.businessName} today. Available times include: ${sampleTimes}. Which time would you prefer to reserve?`;
   }
 
-  if (lower.includes("salon") || lower.includes("haircut") || lower.includes("barber")) {
-    const salons = businesses.filter((b) => b.category === "salon");
-    if (salons.length > 0) {
-      const s = salons[0];
-      return `Welcome to serveQ. For salon and grooming services, ${s.name} is active with live virtual queues and services including haircut, beard styling, and coloring. You can join the queue online and walk in when called.`;
-    }
-  }
 
   if (lower.includes("clinic") || lower.includes("doctor")) {
     const clinics = businesses.filter((b) => b.category === "clinic" || b.category === "healthcare");
@@ -191,7 +184,7 @@ function getDeterministicResponse(message, businesses, slotContext) {
     }
   }
 
-  return `Hello. I am the serveQ assistant. I can help you check live queue lengths, find open appointment slots for salons and clinics, and guide you on booking services. Which venue or service are you interested in today?`;
+  return `Hello. I am the serveQ assistant. I can help you check live queue lengths, find open appointment slots at clinics, and guide you on booking services. Which venue or service are you interested in today?`;
 }
 
 /**
@@ -217,7 +210,7 @@ export const processMessage = async (message, businessInfo) => {
     if (isPureGreeting) {
       return {
         reply:
-          "Hello. Welcome to serveQ. I am your virtual concierge. I can help you check live queue wait times, view service prices, see available doctors or stylists, or find open appointment slots. Which salon or clinic can I help you with today?",
+          "Hello. Welcome to serveQ. I am your virtual concierge. I can help you check live queue wait times, view service prices, see available doctors, or find open appointment slots. Which clinic can I help you with today?",
         intent: "greeting",
         extractedData: {},
         actionRequired: false,
@@ -249,8 +242,8 @@ export const processMessage = async (message, businessInfo) => {
 
 CORE KNOWLEDGE BASE & SERVEQ PLATFORM INFO:
 1. WHAT IS SERVEQ:
-   serveQ is an intelligent SaaS platform for Salons & Hair Studios, and Medical Clinics & Doctors.
-   - Customers can view present queues live, join queues from their phone (virtual token), monitor live wait times, and walk straight into the salon/clinic when called.
+   serveQ is an intelligent SaaS platform for medical clinics and doctors.
+   - Customers can view present queues live, join queues from their phone (virtual token), monitor live wait times, and walk straight into the clinic when called.
    - Customers can also book scheduled appointment slots in advance with pre-payment via their in-app wallet.
    - Instant automated wallet refunds if an appointment is cancelled.
    - Live queues sync in real-time (<10ms WebSocket latency).
@@ -264,7 +257,7 @@ STRICT OPERATING & FORMATTING GUIDELINES:
 1. NO EMOJIS: Do not include any emojis, symbols, or pictograms in your response under any circumstances.
 2. NO ASTERISKS: Do not use asterisks (*) or double asterisks (**) anywhere in your response. Do not use markdown bold or italic markers.
 3. PROFESSIONAL STRUCTURE: Write in clear, professional English. Use line breaks between paragraphs. For lists, use a plain hyphen (-) or numbered lists (1., 2.).
-4. DOMAIN RESTRICTION: Answer strictly about serveQ, verified salons and clinics, services, prices, staff, live queue tokens, and appointment slot availability. If a user asks about anything unrelated, politely decline.
+4. DOMAIN RESTRICTION: Answer strictly about serveQ, verified clinics, services, prices, staff, live queue tokens, and appointment slot availability. If a user asks about anything unrelated, politely decline.
 5. SLOT AVAILABILITY INQUIRIES: State the number of open slots and list specific available times clearly.`;
 
     const userPrompt = `Customer Query: "${cleanMessage}"
@@ -307,7 +300,7 @@ Provide your direct, professional response without using any emojis or asterisks
     console.error("Chatbot processMessage top-level error:", err);
     return {
       reply:
-        "Hello. I am the serveQ assistant. How can I help you with live queues, salons, clinics, or available booking slots today?",
+        "Hello. I am the serveQ assistant. How can I help you with live clinic queues or available booking slots today?",
       intent: "greeting",
       extractedData: {},
       actionRequired: false,

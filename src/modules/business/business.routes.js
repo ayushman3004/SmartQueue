@@ -24,25 +24,25 @@ const router = Router();
 router.get("/", optionalAuth, getAll);
 
 router.get("/owner-category", protect, allowRoles("owner", "admin"), (req, res) => {
-  res.json({ success: true, data: { categories: req.user.businessCategories || [] } });
+  res.json({ success: true, data: { categories: (req.user.businessCategories || []).filter(category => category === "clinic") } });
 });
 router.post("/owner-category", protect, allowRoles("owner"), requireVerifiedEmail, async (req, res, next) => {
   try {
     const { category } = req.body;
-    if (!["clinic", "salon"].includes(category)) return res.status(400).json({ message: "Choose clinic or salon." });
+    if (category !== "clinic") return res.status(400).json({ message: "Select clinic access." });
     if (!await isBusinessSubscriptionActive({ _id: req.user.subscription?.businessId, owner: req.user._id })) return res.status(403).json({ message: "Complete payment before choosing your business category." });
     const updated = await User.findOneAndUpdate(
-      { _id: req.user._id, $or: [{ businessCategories: { $size: 0 } }, { businessCategories: { $exists: false } }] },
+      { _id: req.user._id, businessCategories: { $ne: "clinic" } },
       { $set: { businessCategories: [category] } }, { new: true, runValidators: true }
     );
-    if (!updated) return res.status(403).json({ message: "Ask the admin to change or add a business category." });
+    if (!updated) return res.status(403).json({ message: "Clinic access is already enabled." });
     res.json({ success: true, data: { categories: updated.businessCategories } });
   } catch (error) { next(error); }
 });
 router.put("/owner-category/:ownerId", protect, allowRoles("admin"), async (req, res, next) => {
   try {
     const categories = req.body.categories;
-    if (!Array.isArray(categories) || !categories.length || categories.some(category => !["clinic", "salon"].includes(category))) return res.status(400).json({ message: "Provide clinic and/or salon categories." });
+    if (!Array.isArray(categories) || !categories.length || categories.some(category => category !== "clinic")) return res.status(400).json({ message: "Provide the clinic category." });
     const owner = await User.findOneAndUpdate({ _id: req.params.ownerId, role: "owner" }, { $set: { businessCategories: [...new Set(categories)] } }, { new: true, runValidators: true });
     if (!owner) return res.status(404).json({ message: "Owner not found." });
     res.json({ success: true, data: { categories: owner.businessCategories } });

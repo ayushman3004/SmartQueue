@@ -130,7 +130,7 @@ def workflow():
     d.node(536, 310, "Verify customer session", ["Identity and customer role"], h=88)
     d.node(80, 440, "Choose location", ["Current location or manual area"], h=104)
     d.node(536, 440, "Load venue directory", ["Location, services, availability"], h=104)
-    d.node(80, 585, "Find venue and services", ["Salon / clinic · professional"], h=100)
+    d.node(80, 585, "Find venue and services", ["Clinic · doctor"], h=100)
     d.decision(120, 708, "Choose visit type", "", w=288, h=100)
 
     d.node(992, 310, "Prepare venue", ["Owner email verified", "Active business subscription", "Services, staff, and hours", "Publish venue and accept visits"], h=218)
@@ -219,7 +219,7 @@ def architecture():
 
     d.rect(984, 1190, 400, 430, fill="#FFFFFF", stroke=BORDER, radius=18)
     d.text(1008, 1232, "External integrations", 27, INK, 600)
-    d.lines(1008, 1280, ["Google OAuth / Firebase Phone", "Google Maps / Nominatim", "Razorpay orders and webhooks", "SMTP or Resend email", "Twilio SMS", "OpenRouter assistance / analytics"], size=21, gap=48)
+    d.lines(1008, 1280, ["Google OAuth / Firebase Phone", "Google Maps / Nominatim", "Razorpay orders and webhooks", "SMTP or Resend email", "WhatsApp Cloud API", "OpenRouter assistance / analytics"], size=21, gap=48)
 
     # Dedicated outer return rail avoids intersecting modules and their labels.
     d.path([(920, 1288), (952, 1288), (952, 1150), (1415, 1150), (1415, 226), (552, 226), (552, 268)], color=LINE, dashed=True)

@@ -2,7 +2,7 @@ const locks = new WeakMap()
 const focusable = 'a[href], button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
 
 // Shared by drawers and dialogs so nested overlays cannot unlock the page early.
-export function activateDialog(dialog, onClose) {
+export function activateDialog(dialog, onClose, allowOutsideFocus = () => false) {
   const doc = dialog.ownerDocument
   const view = doc.defaultView
   const previousFocus = doc.activeElement
@@ -19,6 +19,7 @@ export function activateDialog(dialog, onClose) {
   const focusFirst = () => (controls()[0] || dialog).focus({ preventScroll: true })
   const keydown = event => {
     if (lock.stack.at(-1) !== dialog) return
+    if (allowOutsideFocus(event.target)) return
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); return }
     if (event.key !== 'Tab') return
     const nodes = controls()
@@ -29,7 +30,7 @@ export function activateDialog(dialog, onClose) {
     else if (!event.shiftKey && (doc.activeElement === last || !dialog.contains(doc.activeElement))) { event.preventDefault(); first.focus() }
   }
   const focusin = event => {
-    if (lock.stack.at(-1) === dialog && !dialog.contains(event.target)) focusFirst()
+    if (lock.stack.at(-1) === dialog && !dialog.contains(event.target) && !allowOutsideFocus(event.target)) focusFirst()
   }
   doc.addEventListener('keydown', keydown)
   doc.addEventListener('focusin', focusin)

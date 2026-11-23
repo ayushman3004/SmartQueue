@@ -77,7 +77,7 @@
 <text x="1008" y="1328" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Google Maps / Nominatim</text>
 <text x="1008" y="1376" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Razorpay orders and webhooks</text>
 <text x="1008" y="1424" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">SMTP or Resend email</text>
-<text x="1008" y="1472" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Twilio SMS</text>
+<text x="1008" y="1472" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">WhatsApp Cloud API</text>
 <text x="1008" y="1520" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">OpenRouter assistance / analytics</text>
 <path d="M920 1288 L952 1288 L952 1150 L1415 1150 L1415 226 L552 226 L552 268" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow-6C8576)"/>
 <path d="M920 1530 L952 1530 L952 1288" fill="none" stroke="#6C8576" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6"/>

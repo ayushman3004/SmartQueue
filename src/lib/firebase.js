@@ -1,88 +1,40 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { normalizePhoneNumber } from '../utils/phoneNumbers';
-import {
-  getAuth,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-} from "firebase/auth";
+import { getApps, initializeApp } from 'firebase/app'
+import { initializeAuth, inMemoryPersistence, RecaptchaVerifier, signInWithPhoneNumber, signOut } from 'firebase/auth'
+import { normalizePhoneNumber } from '../utils/phoneNumbers.js'
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
-};
+const config = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY?.trim(),
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN?.trim(),
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim(),
+  appId: import.meta.env.VITE_FIREBASE_APP_ID?.trim(),
+}
 
 export const isFirebaseConfigured = Boolean(
-  firebaseConfig.apiKey &&
-  firebaseConfig.apiKey !== "placeholder-api-key" &&
-  firebaseConfig.authDomain &&
-  firebaseConfig.projectId
-);
+  config.apiKey && config.apiKey !== 'placeholder-api-key' && config.authDomain && config.projectId
+)
+const appName = 'serveq-phone'
+const auth = isFirebaseConfigured ? initializeAuth(
+  getApps().find(app => app.name === appName) || initializeApp(config, appName),
+  { persistence: inMemoryPersistence }
+) : null
 
-export const app = isFirebaseConfigured
-  ? (!getApps().length ? initializeApp(firebaseConfig) : getApp())
-  : null;
-
-export const auth = app ? getAuth(app) : null;
-
-/**
- * Initializes Invisible reCAPTCHA verifier for Firebase Phone Auth
- */
-export const setupRecaptcha = (containerId = "recaptcha-container") => {
-  if (typeof window === "undefined" || !auth) return null;
-
-  if (window.recaptchaVerifier) {
-    try {
-      window.recaptchaVerifier.clear();
-    } catch (e) {
-      console.warn("Could not clear recaptchaVerifier:", e);
-    }
+export async function sendFirebasePhoneOtp(phone, container) {
+  if (!auth) throw new Error('Phone verification is temporarily unavailable.')
+  const number = normalizePhoneNumber(phone)
+  if (!number) throw new Error('Enter a valid phone number with its country code.')
+  const verifier = new RecaptchaVerifier(auth, container, { size: 'invisible' })
+  try {
+    return await signInWithPhoneNumber(auth, number, verifier)
+  } finally {
+    verifier.clear()
   }
+}
 
-  window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
-    size: "invisible",
-    callback: () => {
-      // reCAPTCHA solved
-    },
-    "expired-callback": () => {
-      console.warn("reCAPTCHA expired. Please request OTP again.");
-    },
-  });
-
-  return window.recaptchaVerifier;
-};
-
-/**
- * Sends Phone Number OTP via Firebase Phone Auth directly to mobile device
- */
-export const sendFirebasePhoneOtp = async (phoneNumber, containerId = "recaptcha-container") => {
-  if (!isFirebaseConfigured || !auth) {
-    throw new Error(
-      "Firebase credentials are not set in .env. Please configure VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, and VITE_FIREBASE_PROJECT_ID."
-    );
+export async function confirmFirebasePhoneOtp(confirmation, otp) {
+  const { user } = await confirmation.confirm(otp)
+  try {
+    return await user.getIdToken()
+  } finally {
+    await signOut(auth)
   }
-
-  // Ensure E.164 international format (e.g. +91 7888746047)
-  const cleanNumber = normalizePhoneNumber(phoneNumber);
-  if (!cleanNumber) throw new Error('Enter a valid phone number with its country code.');
-
-  const verifier = setupRecaptcha(containerId);
-  const confirmationResult = await signInWithPhoneNumber(auth, cleanNumber, verifier);
-  window.confirmationResult = confirmationResult;
-  return confirmationResult;
-};
-
-/**
- * Verifies the 6-digit OTP code with Firebase
- */
-export const verifyFirebasePhoneOtp = async (otp, confirmationResultOverride) => {
-  const confirmation = confirmationResultOverride || window.confirmationResult;
-  if (!confirmation) {
-    throw new Error("No active OTP session found. Please click Resend Code.");
-  }
-  const result = await confirmation.confirm(otp.trim());
-  return result.user;
-};
+}

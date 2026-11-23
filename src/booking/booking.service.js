@@ -1,6 +1,6 @@
 import { notifyUser, turnNotificationPayload } from '../modules/notification/notification.service.js';
 import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
-import { isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
+import { isClinic, isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
 import Booking from "./booking.model.js";
 import Business from "../modules/business/business.model.js";
@@ -19,7 +19,7 @@ const FLEX_WINDOW = 10; // ±10 minutes flexibility
 // ─── Available Slots ──────────────────────────────────────────
 export const getAvailableSlots = async (businessId, date) => {
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   const dateError = getBookingDateError(date, business);
   if (dateError) {
@@ -120,7 +120,7 @@ export const createBooking = async ({
   paymentMethod = "WALLET",
 }, io = null) => {
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
   assertTestVenueAccess(business, userId);
 
   // Validate that business has an active ServeQ subscription
@@ -188,16 +188,15 @@ export const createBooking = async ({
   });
   if (duplicate) throw new ApiError(409, "You already have an active booking at this time.");
 
-  // 3. Staff Assignment (Doctor / Barber) with auto-fallback
-  const isClinic = business.category === "clinic" || business.category === "healthcare";
+  // 3. Staff Assignment (Doctor) with auto-fallback
   const roster = Array.isArray(business.staff) ? business.staff : [];
-  const registeredDoctors = isClinic ? roster.filter(staff => staff.email && staff.doctorId) : [];
+  const registeredDoctors = roster.filter(staff => staff.email && staff.doctorId);
   const staffList = registeredDoctors.length ? registeredDoctors : roster;
   const staffNameRequested = typeof preferredStaff === "string" ? preferredStaff.trim() : preferredStaff?.name?.trim();
 
   let assignedStaff = null;
 
-  // Check if requested specific doctor/barber is available
+  // Check if requested specific doctor is available
   if (staffNameRequested && staffNameRequested.toLowerCase() !== "any") {
     const candidate = staffList.find(
       (s) => s.name.toLowerCase() === staffNameRequested.toLowerCase() && s.isAvailable !== false
@@ -213,8 +212,8 @@ export const createBooking = async ({
       if (!conflict) {
         assignedStaff = {
           staffId: candidate._id,
-        name: candidate.name,
-          role: candidate.role || (isClinic ? "Doctor / Specialist" : "Barber / Stylist"),
+          name: candidate.name,
+          role: candidate.role || "Doctor / Specialist",
           specialties: candidate.specialties || "",
           autoAssigned: false,
         };
@@ -222,87 +221,47 @@ export const createBooking = async ({
     }
   }
 
-  // Fallback if not assigned:
-  // If clinic: assign to an available General Physician (or on-duty physician)
-  // If salon: assign to any available barber at that time (or on-duty stylist)
   if (!assignedStaff) {
-    if (isClinic) {
-      const activeDocs = staffList.filter((s) => s.isAvailable !== false);
-      const freeDocs = [];
+    const activeDocs = staffList.filter((s) => s.isAvailable !== false);
+    const freeDocs = [];
 
-      for (const doc of activeDocs) {
-        const busy = await Booking.findOne({
-          businessId,
-          status: { $nin: ["cancelled", "refunded"] },
-          "assignedStaff.name": doc.name,
-          startTime: { $lt: reqEnd },
-          endTime: { $gt: reqStart },
-        });
-        if (!busy) {
-          const text = `${doc.role || ""} ${doc.specialties || ""} ${doc.name || ""}`.toLowerCase();
-          const isGP =
-            text.includes("general") ||
-            text.includes("physician") ||
-            text.includes("primary") ||
-            text.includes("family") ||
-            text.includes("mbbs") ||
-            text.includes("medicine");
-          freeDocs.push({ doc, isGP });
-        }
+    for (const doc of activeDocs) {
+      const busy = await Booking.findOne({
+        businessId,
+        status: { $nin: ["cancelled", "refunded"] },
+        "assignedStaff.name": doc.name,
+        startTime: { $lt: reqEnd },
+        endTime: { $gt: reqStart },
+      });
+      if (!busy) {
+        const text = `${doc.role || ""} ${doc.specialties || ""} ${doc.name || ""}`.toLowerCase();
+        const isGP =
+          text.includes("general") ||
+          text.includes("physician") ||
+          text.includes("primary") ||
+          text.includes("family") ||
+          text.includes("mbbs") ||
+          text.includes("medicine");
+        freeDocs.push({ doc, isGP });
       }
+    }
 
-      const chosen = freeDocs.find((d) => d.isGP)?.doc || freeDocs[0]?.doc;
-      if (chosen) {
-        assignedStaff = {
-          staffId: chosen._id,
+    const chosen = freeDocs.find((d) => d.isGP)?.doc || freeDocs[0]?.doc;
+    if (chosen) {
+      assignedStaff = {
+        staffId: chosen._id,
         name: chosen.name,
-          role: chosen.role || "General Physician",
-          specialties: chosen.specialties || "General Medicine & Primary Care",
-          autoAssigned: true,
-        };
-      } else {
-        assignedStaff = {
-          name: "Dr. On-Duty (General Physician)",
-          role: "General Physician",
-          specialties: "General Medicine & Primary Care",
-          autoAssigned: true,
-        };
-      }
+        role: chosen.role || "General Physician",
+        specialties: chosen.specialties || "General Medicine & Primary Care",
+        autoAssigned: true,
+      };
     } else {
-      // Salon: assign any barber available at that time
-      let chosenBarber = null;
-      const activeBarbers = staffList.filter((s) => s.isAvailable !== false);
-
-      for (const barber of activeBarbers) {
-        const busy = await Booking.findOne({
-          businessId,
-          status: { $nin: ["cancelled", "refunded"] },
-          "assignedStaff.name": barber.name,
-          startTime: { $lt: reqEnd },
-          endTime: { $gt: reqStart },
-        });
-        if (!busy) {
-          chosenBarber = barber;
-          break;
-        }
-      }
-
-      if (chosenBarber) {
-        assignedStaff = {
-          staffId: chosenBarber._id,
-        name: chosenBarber.name,
-          role: chosenBarber.role || "Barber / Stylist",
-          specialties: chosenBarber.specialties || "Hair Styling & Grooming",
-          autoAssigned: true,
-        };
-      } else {
-        assignedStaff = {
-          name: "On-Duty Stylist",
-          role: "Barber / Stylist",
-          specialties: "Hair Styling & Grooming",
-          autoAssigned: true,
-        };
-      }
+      assignedStaff = {
+        name: "Dr. On-Duty (General Physician)",
+        role: "General Physician",
+        specialties: "General Medicine & Primary Care",
+        autoAssigned: true,
+      };
     }
   }
 
@@ -385,7 +344,8 @@ export const extendBooking = async (bookingId, extraMinutes, requesterId, reques
   if (doctor) requireAssigned(booking, doctor);
 
   const business = await Business.findById(booking.businessId);
-  if (requesterRole !== "admin" && (!business || business.owner.toString() !== requesterId.toString())) {
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
+  if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
     throw new ApiError(403, "Access denied: you can only extend bookings for your own business");
   }
 
@@ -490,7 +450,8 @@ export const startService = async (bookingId, requesterId, requesterRole, doctor
   if (doctor) requireAssigned(booking, doctor);
 
   const business = await Business.findById(booking.businessId);
-  if (requesterRole !== "admin" && (!business || business.owner.toString() !== requesterId.toString())) {
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
+  if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
     throw new ApiError(403, "Access denied: you can only start services for your own business");
   }
 
@@ -542,7 +503,8 @@ export const completeService = async (bookingId, requesterId, requesterRole, doc
   if (doctor) requireAssigned(booking, doctor);
 
   const business = await Business.findById(booking.businessId);
-  if (requesterRole !== "admin" && (!business || business.owner.toString() !== requesterId.toString())) {
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
+  if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
     throw new ApiError(403, "Access denied: you can only complete services for your own business");
   }
 
@@ -630,7 +592,8 @@ export const getMyBookings = async (userId) => {
     .sort({ startTime: -1, createdAt: -1 });
 
   // Convert mongoose documents to plain objects for mutation
-  bookings = bookings.map((b) => (typeof b.toObject === "function" ? b.toObject() : { ...b }));
+  bookings = bookings.filter(booking => isClinic(booking.businessId))
+    .map(booking => booking.toObject?.() || { ...booking });
 
   // Check active queues where user is currently waiting or serving
   try {
@@ -640,6 +603,7 @@ export const getMyBookings = async (userId) => {
     );
 
     for (const qDoc of activeQueues) {
+      if (!isClinic(qDoc.businessId)) continue;
       const idx = (qDoc.users || []).findIndex(
         (u) => (u.userId?._id || u.userId)?.toString() === userId.toString()
       );
@@ -745,7 +709,7 @@ export const getMyBookings = async (userId) => {
 
 export const getBusinessBookings = async (businessId, requesterId, requesterRole) => {
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
     throw new ApiError(403, "Access denied: not the owner of this business");
@@ -819,6 +783,7 @@ export const collectCounterPayment = async (bookingId, staffUser, io = null, doc
   if (doctor) requireAssigned(booking, doctor);
 
   const business = booking.businessId;
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
   if (
     staffUser.role !== "admin" &&
     business?.owner?.toString() !== staffUser._id?.toString()

@@ -9,9 +9,9 @@ import { isBusinessSubscriptionActive } from "../subscription/subscription.servi
 export const isCategoryLocked = (business) => Boolean(business.categorySelectedAt || business.onboarding?.status === "COMPLETED" || business.onboarding?.completedSteps?.includes(1));
 
 export const selectBusinessCategory = async (id, ownerId, category) => {
-  if (!["clinic", "salon"].includes(category)) throw new ApiError(400, "Choose clinic or salon");
+  if (category !== "clinic") throw new ApiError(400, "Enable clinic access");
   const business = await Business.findOne({ _id: id, owner: ownerId });
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!normalizeServiceCategory(business?.category)) throw new ApiError(404, "Clinic not found");
   if (!await isBusinessSubscriptionActive(business)) throw new ApiError(403, "Complete payment before choosing your business category");
   if (isCategoryLocked(business)) throw new ApiError(403, "Ask the admin to change your business category");
   const selected = await Business.findOneAndUpdate(
@@ -36,22 +36,8 @@ export const createBusiness = async (ownerId, data) => {
       .filter(s => s.name);
     payload.serviceTypes = payload.services.map(s => s.name);
   } else if (!payload.services || payload.services.length === 0) {
-    payload.services = [{ name: "General Service", duration: payload.averageServiceTime || 15, price: payload.basePrice || 0 }];
-    payload.serviceTypes = ["General Service"];
-  }
-
-  // Initialize default staff (Barbers for salons, Doctors for clinics) if not provided
-  if (!Array.isArray(payload.staff) || payload.staff.length === 0) {
-    const isClinic = payload.category === "clinic" || payload.category === "healthcare";
-    payload.staff = isClinic
-      ? [
-          { name: "Dr. Sarah Jenkins", role: "Senior Consultant", specialties: "General Medicine & Family Care", isAvailable: true, customersServed: 28, rating: 4.9 },
-          { name: "Dr. Rajesh Gupta", role: "Specialist Physician", specialties: "Internal Medicine & Diagnostics", isAvailable: true, customersServed: 24, rating: 5.0 },
-        ]
-      : [
-          { name: "Alex Rivera", role: "Master Barber", specialties: "Fade, Lineup & Beard Design", isAvailable: true, customersServed: 32, rating: 4.9 },
-          { name: "David Chen", role: "Senior Stylist", specialties: "Scissor Cut & Texture Styling", isAvailable: true, customersServed: 21, rating: 4.8 },
-        ];
+    payload.services = [{ name: "General Consultation", duration: payload.averageServiceTime || 15, price: payload.basePrice || 0 }];
+    payload.serviceTypes = ["General Consultation"];
   }
 
   const business = await Business.create(payload);
@@ -103,10 +89,8 @@ export const getAllBusinesses = async (filters = {}) => {
     match["onboarding.status"] = { $ne: "IN_PROGRESS" };
   }
 
-  if (filters.category && filters.category !== "all") {
-    const service = normalizeServiceCategory(filters.category);
-    match.category = service ? { $in: serviceCategories[service] } : filters.category;
-  }
+  if (filters.category && filters.category !== "all" && !normalizeServiceCategory(filters.category)) return [];
+  match.category = { $in: serviceCategories.clinic };
 
   const hasCoords =
     filters.lat !== undefined &&
@@ -325,7 +309,7 @@ export const enrichStaffAvailability = async (businesses) => {
 
 export const getBusinessById = async (id) => {
   const b = await Business.findById(id).populate("owner", "name avatar subscription role");
-  if (!b) throw new ApiError(404, "Business not found");
+  if (!normalizeServiceCategory(b?.category)) throw new ApiError(404, "Clinic not found");
 
   const queue = await mongoose.model("Queue").findOne({ businessId: id });
   const bObj = b.toObject();
@@ -390,7 +374,7 @@ function validateDoctorRoster(staff) {
 export const updateBusiness = async (id, ownerId, data, userRole = null) => {
   const query = userRole === "admin" ? { _id: id } : { _id: id, owner: ownerId };
   const b = await Business.findOne(query);
-  if (!b) throw new ApiError(403, "Not your business or not found");
+  if (!normalizeServiceCategory(b?.category)) throw new ApiError(403, "Clinic not found or unauthorized");
 
   // Prevent overwriting protected fields
   const { owner: _owner, _id: _idField, __v: _version, createdAt: _createdAt, updatedAt: _updatedAt, ...safeData } = data;
@@ -405,6 +389,7 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
     delete safeData.onboarding;
   }
 
+  if (safeData.category && !normalizeServiceCategory(safeData.category)) throw new ApiError(400, "Only clinics are supported.");
   if (userRole === "admin" && safeData.category) safeData.categorySelectedAt = new Date();
 
   // Validate averageServiceTime if provided
@@ -462,7 +447,7 @@ export const deleteBusiness = async (id) => {
 
 export const toggleOpen = async (id, ownerId, io) => {
   const b = await Business.findOne({ _id: id, owner: ownerId });
-  if (!b) throw new ApiError(403, "Not your business or not found");
+  if (!normalizeServiceCategory(b?.category)) throw new ApiError(403, "Clinic not found or unauthorized");
   
   if (!b.isActive) {
     throw new ApiError(403, "Access Revoked. Your business has been deactivated by administration.");
@@ -492,13 +477,14 @@ const PHONE_REGEX = /^[+0-9\s\-()]{7,20}$/;
 export const getOnboardingDraft = async (ownerId, businessId = null) => {
   if (businessId) {
     const biz = await Business.findOne({ _id: businessId, owner: ownerId });
-    if (!biz) throw new ApiError(404, "Business draft not found or unauthorized");
+    if (!normalizeServiceCategory(biz?.category)) throw new ApiError(404, "Clinic draft not found or unauthorized");
     return biz;
   }
 
   // Find the active in-progress onboarding business for this owner
   let draft = await Business.findOne({
     owner: ownerId,
+    category: { $in: serviceCategories.clinic },
     "onboarding.status": "IN_PROGRESS",
   }).sort({ updatedAt: -1 });
 
@@ -510,6 +496,7 @@ export const initOnboarding = async (ownerId, data = {}) => {
   if (!data.createNew) {
     const existing = await Business.findOne({
       owner: ownerId,
+      category: { $in: serviceCategories.clinic },
       "onboarding.status": "IN_PROGRESS",
     }).sort({ updatedAt: -1 });
 
@@ -518,8 +505,7 @@ export const initOnboarding = async (ownerId, data = {}) => {
     }
   }
 
-  const defaultCategory = data.category || "salon";
-  const isClinic = defaultCategory === "clinic" || defaultCategory === "healthcare";
+  const defaultCategory = data.category || "clinic";
 
   const defaultSchedule = [
     { day: "monday", isOpen: true, open: "09:00", close: "20:00" },
@@ -531,26 +517,13 @@ export const initOnboarding = async (ownerId, data = {}) => {
     { day: "sunday", isOpen: false, open: "10:00", close: "18:00" },
   ];
 
-  const defaultServices = isClinic
-    ? [
-        { name: "General Physician Consultation", duration: 15, price: 400, description: "Primary care checkup", category: "clinic", isAvailable: true, assignedStaff: [] },
-        { name: "Specialist Health Review", duration: 30, price: 800, description: "Detailed clinical consult", category: "clinic", isAvailable: true, assignedStaff: [] },
-      ]
-    : [
-        { name: "Haircut & Styling", duration: 30, price: 250, description: "Precision scissor & clipper cut", category: "salon", isAvailable: true, assignedStaff: [] },
-        { name: "Beard Grooming & Trim", duration: 15, price: 150, description: "Hot towel & shape lineup", category: "salon", isAvailable: true, assignedStaff: [] },
-      ];
-
-  const defaultStaff = isClinic
-    ? [
-        { name: "Dr. Sarah Jenkins", role: "Senior Consultant", specialties: "General Medicine & Family Health", isAvailable: true, customersServed: 0, rating: 5.0 },
-      ]
-    : [
-        { name: "Alex Rivera", role: "Master Stylist", specialties: "Fade, Lineup & Scissor Craft", isAvailable: true, customersServed: 0, rating: 5.0 },
-      ];
+  const defaultServices = [
+    { name: "General Physician Consultation", duration: 15, price: 400, description: "Primary care checkup", category: "clinic", isAvailable: true, assignedStaff: [] },
+    { name: "Specialist Health Review", duration: 30, price: 800, description: "Detailed clinical consult", category: "clinic", isAvailable: true, assignedStaff: [] },
+  ];
 
   const newBiz = await Business.create({
-    name: data.name ? String(data.name).trim() : "My New Business Hub",
+    name: data.name ? String(data.name).trim() : "My New Clinic",
     category: defaultCategory,
     description: data.description || "",
     email: data.email || "",
@@ -572,7 +545,6 @@ export const initOnboarding = async (ownerId, data = {}) => {
     timings: { open: "09:00", close: "20:00" },
     services: defaultServices,
     serviceTypes: defaultServices.map((s) => s.name),
-    staff: defaultStaff,
     bookingSettings: {
       enableAppointments: true,
       allowStaffSelection: true,
@@ -622,8 +594,8 @@ export const initOnboarding = async (ownerId, data = {}) => {
 
 export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
   const b = await Business.findOne({ _id: id, owner: ownerId });
-  if (!b) throw new ApiError(404, "Business not found or unauthorized");
-  if (!isCategoryLocked(b)) throw new ApiError(403, "Choose clinic or salon before continuing setup.");
+  if (!normalizeServiceCategory(b?.category)) throw new ApiError(404, "Clinic not found or unauthorized");
+  if (!isCategoryLocked(b)) throw new ApiError(403, "Enable clinic access before continuing setup.");
 
   const step = Number(stepNumber);
   if (![1, 2, 3, 4, 5, 6].includes(step)) {
@@ -650,7 +622,7 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
       b.name = String(stepData.name).trim();
 
       if (stepData.category) {
-        const allowed = ["salon", "clinic", "healthcare", "other"];
+        const allowed = serviceCategories.clinic;
         if (!allowed.includes(stepData.category)) {
           throw new ApiError(400, `Category must be one of: ${allowed.join(", ")}`);
         }
@@ -886,8 +858,8 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
 
 export const launchBusiness = async (id, ownerId, io = null) => {
   const b = await Business.findOne({ _id: id, owner: ownerId });
-  if (!b) throw new ApiError(404, "Business not found or unauthorized");
-  if (!isCategoryLocked(b)) throw new ApiError(403, "Choose clinic or salon before continuing setup.");
+  if (!normalizeServiceCategory(b?.category)) throw new ApiError(404, "Clinic not found or unauthorized");
+  if (!isCategoryLocked(b)) throw new ApiError(403, "Enable clinic access before continuing setup.");
 
   if (b.onboarding?.status === "COMPLETED") {
     return b; // Idempotent

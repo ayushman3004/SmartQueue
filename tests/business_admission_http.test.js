@@ -97,14 +97,14 @@ test("business admission HTTP boundaries", async (t) => {
     async () => {
       const response = await request("/business-applications", {
         body: {
-          businessName: "HTTP Salon",
+          businessName: "HTTP Clinic",
           ownerName: "Owner",
           email: "apply@example.com",
           phone: "9876543210",
-          businessCategory: "salon",
+          businessCategory: "clinic",
           businessAddress: "12 Road",
           city: "Kolkata",
-          description: "A salon",
+          description: "A clinic",
           privacyAcknowledged: true,
         },
       });

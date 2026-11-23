@@ -100,10 +100,8 @@ export default function BusinessApplicationPage({ embedded = false }) {
                 Business category
                 <select name="businessCategory" required>
                   <option value="">Choose a category</option>
-                  <option value="salon">Salon & grooming</option>
                   <option value="clinic">Clinic</option>
                   <option value="healthcare">Healthcare</option>
-                  <option value="other">Service centre / other</option>
                 </select>
               </label>
               <label>

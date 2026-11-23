@@ -14,7 +14,7 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
   await t.test("Business Model schema accommodates full onboarding state and safe defaults", () => {
     const biz = new Business({
       name: "Grooming Lounge",
-      category: "salon",
+      category: "clinic",
       owner: ownerId,
     });
 
@@ -32,7 +32,7 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
       _id: businessId,
       name: "Draft Venue",
       categorySelectedAt: new Date(),
-      category: "salon",
+      category: "clinic",
       owner: ownerId,
       onboarding: { status: "IN_PROGRESS", currentStep: 1, completedSteps: [] },
     });
@@ -50,13 +50,13 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
 
       fakeBiz.save = async () => fakeBiz;
       const updated = await businessService.saveOnboardingStep(businessId, ownerId, 1, {
-        name: "Luxe Cut Salon",
-        category: "salon",
+        name: "Luxe Clinic",
+        category: "clinic",
         email: "contact@luxecut.com",
         phone: "+91 9876543210",
       });
 
-      assert.equal(updated.name, "Luxe Cut Salon");
+      assert.equal(updated.name, "Luxe Clinic");
       assert.equal(updated.email, "contact@luxecut.com");
       assert.ok(updated.onboarding.completedSteps.includes(1));
     } finally {
@@ -67,8 +67,8 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
   await t.test("saveOnboardingStep Step 2 validates operating hours closing time after opening time", async () => {
     const fakeBiz = new Business({
       _id: businessId,
-      name: "Luxe Cut Salon",
-      category: "salon",
+      name: "Luxe Clinic",
+      category: "clinic",
       owner: ownerId,
       onboarding: { status: "IN_PROGRESS", currentStep: 2, completedSteps: [1] },
     });
@@ -115,8 +115,8 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
   await t.test("saveOnboardingStep Step 3 validates service duration and price", async () => {
     const fakeBiz = new Business({
       _id: businessId,
-      name: "Luxe Cut Salon",
-      category: "salon",
+      name: "Luxe Clinic",
+      category: "clinic",
       owner: ownerId,
       onboarding: { status: "IN_PROGRESS", currentStep: 3, completedSteps: [1, 2] },
     });
@@ -136,7 +136,7 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
       const updated = await businessService.saveOnboardingStep(businessId, ownerId, 3, {
         services: [
           { name: "Executive Haircut", duration: 30, price: 350 },
-          { name: "Beard Trim", duration: 15, price: 150 },
+          { name: "Follow-up", duration: 15, price: 150 },
         ],
       });
 
@@ -151,8 +151,8 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
   await t.test("saveOnboardingStep Step 6 allows PAY_AT_BUSINESS without blocking online payment", async () => {
     const fakeBiz = new Business({
       _id: businessId,
-      name: "Luxe Cut Salon",
-      category: "salon",
+      name: "Luxe Clinic",
+      category: "clinic",
       owner: ownerId,
       onboarding: { status: "IN_PROGRESS", currentStep: 6, completedSteps: [1, 2, 3, 4, 5] },
     });
@@ -178,8 +178,8 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
   await t.test("launchBusiness validates pre-flight fields and marks status COMPLETED", async () => {
     const fakeBiz = new Business({
       _id: businessId,
-      name: "Luxe Cut Salon",
-      category: "salon",
+      name: "Luxe Clinic",
+      category: "clinic",
       address: "123 High Street",
       owner: ownerId,
       services: [{ name: "Cut", duration: 20, price: 200 }],
@@ -206,6 +206,7 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
     Business.findById = async () => ({
       _id: businessId,
       name: "Queue-Only Venue",
+      category: "clinic",
       bookingSettings: { enableAppointments: false },
     });
 
@@ -230,7 +231,8 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
     const origFindById = Business.findById;
     Business.findById = async () => ({
       _id: businessId,
-      name: "Appointments-Only Venue",
+      name: "Appointments-Only Clinic",
+      category: "clinic",
       isOpen: true,
       isActive: true,
       queueSettings: { enableLiveQueue: false },

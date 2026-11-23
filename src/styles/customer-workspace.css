@@ -6,12 +6,6 @@
   --service-line: #c1d5c7;
   --customer-text: #153c2b;
 }
-.customer-workspace[data-service='salon'] {
-  --service-ink: #765546;
-  --service-soft: #f3e9e1;
-  --service-door: #dfc8bb;
-  --service-line: #dfcbbd;
-}
 .customer-workspace .customer-tab { color: var(--customer-text); }
 .customer-workspace .customer-tab > header,
 .customer-workspace .customer-tab > div.sticky { background: #fbfefbe8; border-color: var(--service-line); box-shadow: none; }

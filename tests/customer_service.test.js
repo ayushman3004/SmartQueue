@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   customerServicePath, filterServiceVenues, filterServiceBookings,
-  matchesCustomerService, normalizeServiceCategory, resolveCustomerService,
+  matchesCustomerService, normalizeServiceCategory,
 } from '../src/utils/customerService.js';
 
 const venues = [
@@ -15,11 +15,11 @@ const venues = [
   { _id: 'unknown' },
 ];
 
-test('clinic and salon venue discovery, fallback selection and search candidates remain separate', () => {
+test('clinic discovery excludes legacy categories', () => {
   const clinics = filterServiceVenues(venues, 'clinic');
   const salons = filterServiceVenues(venues, 'salon');
   assert.deepEqual(clinics.map(v => v._id), ['clinic', 'health', 'doctor']);
-  assert.deepEqual(salons.map(v => v._id), ['salon', 'barber', 'beauty']);
+  assert.deepEqual(salons, []);
   assert.equal(clinics[0].name, 'Jalandhar Clinic', 'never fall back to the first salon in a mixed response');
   assert.deepEqual(clinics.filter(v => v.name?.includes('Salon')), []);
   assert.deepEqual(filterServiceVenues(venues, null), [], 'wait for a service choice before showing venues');
@@ -28,16 +28,12 @@ test('clinic and salon venue discovery, fallback selection and search candidates
   assert.equal(matchesCustomerService(venues[0], 'clinic'), false, 'cross-service deep links must not load booking details');
 });
 
-test('explicit service links override remembered service and service routes preserve it', () => {
-  assert.equal(resolveCustomerService('clinic', 'salon'), 'clinic');
-  assert.equal(resolveCustomerService(null, 'salon'), 'salon');
-  assert.equal(resolveCustomerService('invalid', 'clinic'), 'clinic');
-  assert.equal(resolveCustomerService(null, null), null);
+test('clinic service routes replace legacy category parameters', () => {
   assert.equal(normalizeServiceCategory(' Healthcare '), 'clinic');
   assert.equal(customerServicePath('/booking/clinic?date=2026-11-20#slots', 'clinic'), '/booking/clinic?date=2026-11-20&category=clinic#slots');
-  assert.equal(customerServicePath('/customers?category=salon', 'clinic'), '/customers?category=salon');
+  assert.equal(customerServicePath('/customers?category=salon', 'clinic'), '/customers?category=clinic');
   assert.equal(customerServicePath('/queue', 'clinic'), '/queue?category=clinic');
-  assert.equal(customerServicePath('/history', 'salon'), '/history?category=salon');
+  assert.equal(customerServicePath('/history', 'salon'), '/history');
   assert.equal(customerServicePath('/profile', 'salon'), '/profile');
 });
 
@@ -48,7 +44,7 @@ test('history, queue badges and appointment lists exclude bookings from the othe
     { _id: 5, businessId: 'missing' },
   ];
   assert.deepEqual(filterServiceBookings(bookings, venues, 'clinic').map(b => b._id), [2, 3]);
-  assert.deepEqual(filterServiceBookings(bookings, venues, 'salon').map(b => b._id), [1, 4]);
+  assert.deepEqual(filterServiceBookings(bookings, venues, 'salon'), []);
 });
 
 test('discovery API restricts each service to its supported category aliases', async (t) => {
@@ -56,13 +52,25 @@ test('discovery API restricts each service to its supported category aliases', a
   const { getAllBusinesses } = await import('../src/modules/business/business.service.js');
   let match;
   t.mock.method(Business, 'aggregate', async pipeline => { match = pipeline[0].$match; return []; });
-  for (const category of ['clinic', 'healthcare', 'doctor']) {
+  for (const category of [undefined, 'all', 'clinic', 'healthcare', 'doctor']) {
     await getAllBusinesses({ category, includeAll: false });
     assert.deepEqual(match.category, { $in: ['clinic', 'healthcare', 'doctor'] });
     assert.equal(match.isActive, true);
   }
   for (const category of ['salon', 'barbershop', 'beauty']) {
-    await getAllBusinesses({ category, includeAll: false });
-    assert.deepEqual(match.category, { $in: ['salon', 'barbershop', 'beauty'] });
+    match = null;
+    assert.deepEqual(await getAllBusinesses({ category }), []);
+    assert.equal(match, null);
   }
+});
+
+test('legacy venue IDs cannot open clinic queues or create appointments', async t => {
+  const { default: Business } = await import('../src/modules/business/business.model.js');
+  const { createBooking, getAvailableSlots } = await import('../src/booking/booking.service.js');
+  const { getQueue } = await import('../src/queue/queue.service.js');
+  t.mock.method(Business, 'findById', async () => venues[0]);
+
+  await assert.rejects(getQueue('salon'), { statusCode: 404 });
+  await assert.rejects(getAvailableSlots('salon', '2026-12-01'), { statusCode: 404 });
+  await assert.rejects(createBooking({ businessId: 'salon', userId: 'patient' }), { statusCode: 404 });
 });

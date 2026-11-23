@@ -1,4 +1,4 @@
-import { doctorContext, isClinic } from "../src/modules/doctor/doctor-access.js";
+import { doctorContext } from "../src/modules/doctor/doctor-access.js";
 import { ownerState } from "../src/modules/business-application/owner-lifecycle.js";
 import { canAccessOwnerCategory } from "../src/utils/ownerCategory.js";
 import Booking from "../src/booking/booking.model.js";
@@ -106,7 +106,7 @@ export const allowRoles = (...roles) =>
       if (!hub) throw new ApiError(403, "Business not found, not approved, or not owned by this account.");
       if (!canAccessOwnerCategory(req.user, hub)) throw new ApiError(403, "This category is not enabled for your account. Ask the admin for access.");
       const path = req.originalUrl?.split("?")[0] || "";
-      if (isClinic(hub) && ((req.method !== "GET" && /^\/api\/bookings\//.test(path) && !path.endsWith("/collect-payment")) || /^\/api\/queue\/.+\/(next|extend)$/.test(path))) {
+      if ((req.method !== "GET" && /^\/api\/bookings\//.test(path) && !path.endsWith("/collect-payment")) || /^\/api\/queue\/.+\/(next|extend)$/.test(path)) {
         throw new ApiError(403, "Open the assigned doctor's dashboard to manage this consultation.");
       }
 

@@ -54,7 +54,7 @@ import {
 } from '../api/booking.api'
 import { collectCounterPayment, updatePaymentModes } from '../api/payment.api'
 import { getBusinessAnalytics, generateAIAnalyticsReview } from '../api/analytics.api'
-import { CATEGORY_METADATA, SERVICE_PRESETS, STAFF_PRESETS, ALLOWED_CATEGORIES } from '../utils/servicePresets'
+import { SERVICE_PRESETS } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 
@@ -107,7 +107,6 @@ export default function BusinessDashboard() {
   const [profileForm, setProfileForm] = useState({
     name: '',
     description: '',
-    category: 'other',
     address: '',
     phone: '',
     location: '',
@@ -122,7 +121,7 @@ export default function BusinessDashboard() {
   const [editingServiceIndex, setEditingServiceIndex] = useState(null)
   const [editServiceForm, setEditServiceForm] = useState({ name: '', duration: 15, price: 0 })
 
-  // Staff Management State (Barbers for salons, Doctors for clinics)
+  // Staff Management State
   const [newStaff, setNewStaff] = useState({ name: '', role: '', specialties: '', phone: '' })
   const [doctors, setDoctors] = useState([])
   const [editingDoctor, setEditingDoctor] = useState(null)
@@ -181,7 +180,7 @@ export default function BusinessDashboard() {
     }
   }
 
-  const isClinic = business?.category === 'clinic' || business?.category === 'healthcare'
+  const isClinic = ['clinic', 'healthcare', 'doctor'].includes(business?.category)
   const clinicalOwner = isClinic && user?.role === 'owner'
   const visibleTab = activeTab
   useEffect(() => {
@@ -230,7 +229,6 @@ export default function BusinessDashboard() {
       setProfileForm({
         name: biz.name || '',
         description: biz.description || '',
-        category: biz.category || 'other',
         address: biz.address || '',
         phone: biz.phone || '',
         location: biz.location || '',
@@ -444,7 +442,7 @@ export default function BusinessDashboard() {
   }
 
   const handleLoadCategoryPresets = () => {
-    const presets = SERVICE_PRESETS[business?.category] || []
+    const presets = SERVICE_PRESETS[business?.category] || SERVICE_PRESETS.clinic
     if (presets.length === 0) return
     setProfileForm(prev => ({
       ...prev,
@@ -470,14 +468,14 @@ export default function BusinessDashboard() {
     }
   }
 
-  // Staff operations (Barbers for salons, Doctors for clinics)
+  // Staff operations
   const handleSaveStaff = async (updatedStaff) => {
     setSavingStaff(true)
     try {
       const res = await updateBusiness(businessId, { staff: updatedStaff })
       setBusiness(res.data.data.business)
       if (clinicalOwner) await refreshDoctors().catch(() => toast.error("Could not refresh doctor access."))
-      toast.success(`${isClinic ? 'Doctor roster' : 'Barber team'} updated successfully!`)
+      toast.success('Doctor roster updated successfully!')
       return true
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update team')
@@ -490,10 +488,10 @@ export default function BusinessDashboard() {
   const handleAddStaffMember = async (e) => {
     e?.preventDefault()
     if (!newStaff.name.trim()) {
-      toast.error(`Please enter the ${isClinic ? 'doctor' : 'barber'} name`)
+      toast.error('Please enter the doctor name')
       return
     }
-    const defaultRole = isClinic ? 'Doctor / Specialist' : 'Barber / Stylist'
+    const defaultRole = 'Doctor / Specialist'
     const currentStaff = business?.staff || []
     const existing = currentStaff.find(member => member._id === editingDoctor)
     const member = {
@@ -527,12 +525,6 @@ export default function BusinessDashboard() {
     if (isClinic && !window.confirm('Remove this doctor and revoke their clinic access?')) return
     const currentStaff = (business?.staff || []).filter((_, i) => i !== index)
     await handleSaveStaff(currentStaff)
-  }
-
-  const handleLoadStaffPresets = async () => {
-    const categoryKey = isClinic ? 'clinic' : 'salon'
-    const presets = STAFF_PRESETS[categoryKey]?.defaults || STAFF_PRESETS.salon?.defaults || []
-    await handleSaveStaff([...presets])
   }
 
   // AI Analytics Review operation
@@ -630,7 +622,7 @@ export default function BusinessDashboard() {
             },
             {
               id: 'staff',
-              label: isClinic ? 'Doctors & Specialists' : 'Barbers & Stylists',
+              label: 'Doctors & Specialists',
               icon: UserCheck,
               count: business?.staff?.length || 0,
             },
@@ -1060,7 +1052,7 @@ export default function BusinessDashboard() {
                       {serving && (
                         <div className="mt-3 flex flex-wrap items-center gap-2 pt-2.5 border-t border-teal-100/80">
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                            {isClinic ? 'Assigned Doctor:' : 'Assigned Specialist:'}
+                            {'Assigned Doctor:'}
                           </span>
                           {serving.assignedStaff?.name ? (
                             <div className="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-xl border border-teal-200 shadow-2xs">
@@ -1086,7 +1078,7 @@ export default function BusinessDashboard() {
                                 {business.staff[0].name}
                               </span>
                               <span className="text-[10px] text-teal-600 font-medium">
-                                ({business.staff[0].role || (isClinic ? 'Doctor' : 'Staff')})
+                                ({business.staff[0].role || 'Doctor'})
                               </span>
                               <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1 rounded font-bold">
                                 On-Duty
@@ -1094,7 +1086,7 @@ export default function BusinessDashboard() {
                             </div>
                           ) : (
                             <span className="text-xs text-slate-400 italic bg-white px-2.5 py-1 rounded-lg border border-zinc-200">
-                              {isClinic ? 'On-Duty General Physician' : 'On-Duty Specialist'}
+                              {'On-Duty General Physician'}
                             </span>
                           )}
 
@@ -1105,11 +1097,11 @@ export default function BusinessDashboard() {
                               className="text-[11px] font-bold text-teal-800 bg-white border border-teal-300 rounded-lg px-2 py-1 shadow-2xs hover:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
                             >
                               <option value="" disabled>
-                                Switch {isClinic ? 'Doctor' : 'Staff'}...
+                                Switch {'Doctor'}...
                               </option>
                               {business.staff.map((s, idx) => (
                                 <option key={idx} value={s.name}>
-                                  {s.name} ({s.role || (isClinic ? 'Doctor' : 'Staff')})
+                                  {s.name} ({s.role || 'Doctor'})
                                 </option>
                               ))}
                             </select>
@@ -1183,7 +1175,7 @@ export default function BusinessDashboard() {
                           <th className="py-3.5 px-6">#</th>
                           <th className="py-3.5 px-6">Customer</th>
                           <th className="py-3.5 px-6">Service</th>
-                          <th className="py-3.5 px-6">{isClinic ? 'Assigned Doctor' : 'Assigned Staff'}</th>
+                          <th className="py-3.5 px-6">{'Assigned Doctor'}</th>
                           <th className="py-3.5 px-6">Duration</th>
                           <th className="py-3.5 px-6">Est. Start Time</th>
                           <th className="py-3.5 px-6">Payment</th>
@@ -1211,7 +1203,7 @@ export default function BusinessDashboard() {
                                     )}
                                   </div>
                                   <p className="text-[10px] text-teal-700 font-medium">
-                                    {u.assignedStaff.role || (isClinic ? 'Doctor / Specialist' : 'Barber / Stylist')}
+                                    {u.assignedStaff.role || 'Doctor / Specialist'}
                                   </p>
                                   {business.staff && business.staff.length > 1 && (
                                     <select
@@ -1221,7 +1213,7 @@ export default function BusinessDashboard() {
                                     >
                                       {business.staff.map((s, idx) => (
                                         <option key={idx} value={s.name}>
-                                          Reassign: {s.name} ({s.role || (isClinic ? 'Doctor' : 'Staff')})
+                                          Reassign: {s.name} ({s.role || 'Doctor'})
                                         </option>
                                       ))}
                                     </select>
@@ -1241,18 +1233,18 @@ export default function BusinessDashboard() {
                                     className="text-[10px] font-semibold text-teal-800 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
                                   >
                                     <option value="" disabled>
-                                      Assign {isClinic ? 'Doctor' : 'Staff'}...
+                                      Assign {'Doctor'}...
                                     </option>
                                     {business.staff.map((s, idx) => (
                                       <option key={idx} value={s.name}>
-                                        {s.name} ({s.role || (isClinic ? 'Doctor' : 'Staff')})
+                                        {s.name} ({s.role || 'Doctor'})
                                       </option>
                                     ))}
                                   </select>
                                 </div>
                               ) : (
                                 <span className="text-slate-400 italic text-[11px]">
-                                  {isClinic ? 'On-Duty Doctor' : 'On-Duty Staff'}
+                                  {'On-Duty Doctor'}
                                 </span>
                               )}
                             </td>
@@ -1347,7 +1339,7 @@ export default function BusinessDashboard() {
                             {b.assignedStaff?.name && (
                               <div className="flex items-center gap-1.5 mt-1 text-[11px] text-teal-800 font-bold">
                                 <span>{b.assignedStaff.name}</span>
-                                <span className="text-[10px] text-zinc-400 font-normal">({b.assignedStaff.role || (isClinic ? 'Doctor' : 'Barber')})</span>
+                                <span className="text-[10px] text-zinc-400 font-normal">({b.assignedStaff.role || 'Doctor'})</span>
                                 {b.assignedStaff.autoAssigned && (
                                   <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1 py-0.2 rounded font-semibold">
                                     On-Duty
@@ -1581,7 +1573,7 @@ export default function BusinessDashboard() {
                     <div className="sm:col-span-6">
                       <input
                         type="text"
-                        placeholder="Service Name (e.g. Hair Wash & Blow Dry)"
+                        placeholder="Service name (e.g. Follow-up consultation)"
                         value={newService.name}
                         onChange={(e) => setNewService(s => ({ ...s, name: e.target.value }))}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs bg-white focus:outline-none focus:border-teal-600 font-medium"
@@ -1645,33 +1637,21 @@ export default function BusinessDashboard() {
             </div>
           )}
 
-          {/* TAB: STAFF ROSTER (BARBERS OR DOCTORS) */}
+          {/* TAB: STAFF ROSTER */}
           {visibleTab === 'staff' && (
             <div className="space-y-6 text-left">
               <div className="business-surface bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
                   <div>
                     <h3 className="text-xl font-black text-zinc-950 tracking-tight flex items-center gap-2">
-                      <span>{isClinic ? 'Doctors & Medical Specialists' : 'Barbers & Master Stylists'}</span>
+                      <span>Doctors & Medical Specialists</span>
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 font-extrabold">
                         {business?.staff?.length || 0} Registered
                       </span>
                     </h3>
                     <p className="text-xs text-zinc-500 font-medium">
-                      {isClinic
-                        ? 'Manage your clinic doctors, consultation specialties, and on-duty patient queue availability.'
-                        : 'Manage your salon barbers, styling specialties, chair capacity, and live availability.'}
+                      Manage your clinic doctors, consultation specialties, and on-duty patient queue availability.
                     </p>
-                  </div>
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    {!isClinic && <button
-                      type="button"
-                      onClick={handleLoadStaffPresets}
-                      disabled={savingStaff}
-                      className="text-xs font-bold text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/80 border border-teal-200 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      Load Standard Roster
-                    </button>}
                   </div>
                 </div>
 
@@ -1683,7 +1663,7 @@ export default function BusinessDashboard() {
 
                   {(!business?.staff || business.staff.length === 0) ? (
                     <div className="p-12 text-center border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/50 space-y-3">
-                      <p className="text-sm font-bold text-zinc-700">No {isClinic ? 'doctors' : 'barbers'} registered yet</p>
+                      <p className="text-sm font-bold text-zinc-700">No {'doctors'} registered yet</p>
                       <p className="text-xs text-zinc-400 max-w-md mx-auto">
                         Add your staff below or click "Load Standard Roster" to get started with recommended profiles.
                       </p>
@@ -1793,15 +1773,15 @@ export default function BusinessDashboard() {
                   )}
                 </div>
 
-                {/* Add New Barber / Doctor Form */}
+                {/* Add Doctor Form */}
                 <form onSubmit={handleAddStaffMember} className="p-5 rounded-2xl border border-dashed border-teal-300/80 bg-teal-50/40 space-y-4">
                   <p className="text-xs font-black uppercase text-teal-800 tracking-wider">
-                    + Add New {isClinic ? 'Doctor / Specialist' : 'Barber / Stylist'}
+                    + Add New {'Doctor / Specialist'}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <input
                       type="text"
-                      placeholder={isClinic ? "Doctor Name (e.g. Dr. Priya Nair)" : "Barber Name (e.g. Alex Rivera)"}
+                      placeholder={"Doctor Name (e.g. Dr. Priya Nair)"}
                       value={newStaff.name}
                       onChange={(e) => setNewStaff(s => ({ ...s, name: e.target.value }))}
                       className="px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs bg-white focus:outline-none focus:border-teal-600 font-medium"
@@ -1809,14 +1789,14 @@ export default function BusinessDashboard() {
                     />
                     <input
                       type="text"
-                      placeholder={isClinic ? "Designation (e.g. Consultant Physician)" : "Role (e.g. Master Stylist & Colorist)"}
+                      placeholder={"Designation (e.g. Consultant Physician)"}
                       value={newStaff.role}
                       onChange={(e) => setNewStaff(s => ({ ...s, role: e.target.value }))}
                       className="px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs bg-white focus:outline-none focus:border-teal-600 font-medium"
                     />
                     <input
                       type="text"
-                      placeholder={isClinic ? "Specialties (comma-separated, e.g. Internal Medicine, Pediatrics)" : "Specialties (e.g. Beard Craft, Fade, Styling)"}
+                      placeholder={"Specialties (comma-separated, e.g. Internal Medicine, Pediatrics)"}
                       value={newStaff.specialties}
                       onChange={(e) => setNewStaff(s => ({ ...s, specialties: e.target.value }))}
                       className="px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs bg-white focus:outline-none focus:border-teal-600 font-medium"
@@ -1838,7 +1818,7 @@ export default function BusinessDashboard() {
                     disabled={savingStaff}
                     className="w-full sm:w-auto px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs disabled:opacity-50"
                   >
-                    {savingStaff ? 'Saving...' : editingDoctor ? 'Save doctor' : `+ Add ${isClinic ? 'Doctor' : 'Barber'} to Roster`}
+                    {savingStaff ? 'Saving...' : editingDoctor ? 'Save doctor' : `+ Add Doctor to Roster`}
                   </button>
                 </form>
               </div>
@@ -1863,20 +1843,6 @@ export default function BusinessDashboard() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Category</label>
-                    <select
-                      disabled={user?.role !== 'admin'}
-                      value={profileForm.category}
-                      onChange={(e) => setProfileForm(p => ({ ...p, category: e.target.value }))}
-                      className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-                    >
-                      {ALLOWED_CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{CATEGORY_METADATA[cat]?.label || cat.toUpperCase()}</option>
-                      ))}
-                    </select>
-                    <a href="/support" className="mt-2 block text-xs font-semibold text-teal-700 underline">Ask the admin to change category or add a clinic or salon</a>
-                  </div>
 
                   <div>
                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Phone Contact</label>
@@ -2298,7 +2264,7 @@ export default function BusinessDashboard() {
 
                           <p className="text-xs text-zinc-300 leading-relaxed pt-2">
                             {analytics?.aiInsights?.peakHoursAnalysis ||
-                              'Midday and evening slots experience the highest footfall concentration. Keep chairs and consultation rooms fully staffed.'}
+                              'Midday and evening slots experience the highest footfall concentration. Keep consultation rooms staffed.'}
                           </p>
                         </div>
 
@@ -2340,22 +2306,22 @@ export default function BusinessDashboard() {
                         </div>
                       </div>
 
-                      {/* 3. BEST EMPLOYEE (BARBER OR DOCTOR) */}
+                      {/* 3. BEST EMPLOYEE */}
                       <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-md">
-                              {analytics?.aiInsights?.bestEmployee?.badge || (isClinic ? 'Doctor of the Month' : 'Barber of the Month')}
+                              {analytics?.aiInsights?.bestEmployee?.badge || 'Doctor of the Month'}
                             </span>
                           </div>
                           <h4 className="text-base font-black text-white">Best Employee</h4>
 
                           <div className="p-3.5 rounded-xl bg-zinc-800/80 border border-zinc-700/60 space-y-1">
                             <p className="text-sm font-black text-indigo-200">
-                              {analytics?.aiInsights?.bestEmployee?.name || analytics?.topEmployee?.name || (isClinic ? 'Senior Doctor' : 'Master Barber')}
+                              {analytics?.aiInsights?.bestEmployee?.name || analytics?.topEmployee?.name || 'Senior Doctor'}
                             </p>
                             <p className="text-xs text-zinc-400 font-medium">
-                              {analytics?.aiInsights?.bestEmployee?.role || analytics?.topEmployee?.role || (isClinic ? 'Consultant' : 'Stylist')}
+                              {analytics?.aiInsights?.bestEmployee?.role || analytics?.topEmployee?.role || 'Consultant'}
                             </p>
                             <div className="flex items-center gap-3 text-xs text-zinc-300 font-semibold pt-1">
                               <span>{analytics?.aiInsights?.bestEmployee?.customersServed ?? analytics?.topEmployee?.customersServed ?? 0} served</span>

@@ -14,7 +14,6 @@ const submittedEmail = req => emailKey(req.body?.email);
 const profileEmail = req => emailKey(req.user.ownerAccess?.applicationId
   ? req.user.email : req.body?.email || req.user.email);
 const profilePhone = req => normalizePhoneNumber(req.body?.phone || req.body?.phoneNumber || req.user.phone);
-const loginPhone = req => normalizePhoneNumber(req.body?.phoneNumber);
 
 const byIp = (name, max, windowMs = minute, failOpen = false) =>
   createRateLimiter({ name: `${name}:ip`, max, windowMs, failOpen });
@@ -28,8 +27,6 @@ const profileOtpUser = byIdentity("profile-otp-send:user", 6, fiveMinutes);
 const profileOtpIp = byIp("profile-otp-send", 20, fiveMinutes);
 export const emailOtpSendLimit = [profileOtpIp, profileOtpUser, byIdentity("email-otp-send:email", 3, fiveMinutes, profileEmail)];
 export const phoneOtpSendLimit = [profileOtpIp, profileOtpUser, byIdentity("phone-otp-send:phone", 3, fiveMinutes, profilePhone)];
-export const loginOtpSendLimit = [byIp("login-otp-send", 20, fiveMinutes), byIdentity("login-otp-send:phone", 3, fiveMinutes, loginPhone)];
-export const loginOtpVerifyLimit = [byIp("login-otp-verify", 30, fiveMinutes), byIdentity("login-otp-verify:phone", 8, fiveMinutes, loginPhone)];
 export const profileOtpVerifyLimit = byIdentity("profile-otp-verify:user", 10, fiveMinutes);
 
 export const resetSendLimit = [byIp("reset-send", 20, fiveMinutes), byIdentity("reset-send:email", 3, fiveMinutes, submittedEmail)];

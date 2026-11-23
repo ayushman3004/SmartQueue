@@ -1,7 +1,7 @@
 import NotificationCenter from '../components/NotificationCenter'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   MapPin,
   ChevronDown,
@@ -9,7 +9,6 @@ import {
   ArrowRight,
   LayoutDashboard,
   Stethoscope,
-  Scissors,
   Sparkle,
   Ticket,
   Calendar,
@@ -33,7 +32,6 @@ import { calculateDistanceKm, formatDistance } from '../utils/geoUtils'
 import CustomerSidebar from '../components/CustomerSidebar'
 import CustomerSearchTools from '../components/CustomerSearchTools'
 import VenueSortDropdown from '../components/VenueSortDropdown'
-import CustomerServiceChoice from '../components/CustomerServiceChoice'
 import './CustomerDashboardPage.css'
 import { filterServiceVenues, filterServiceBookings } from '../utils/customerService'
 import NoServiceState from '../components/NoServiceState'
@@ -48,17 +46,10 @@ import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
 
-// High-quality imagery matching the modern clinic and salon aesthetic in the screenshot
 const DEFAULT_CLINIC_IMAGES = [
   'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=700&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=700&auto=format&fit=crop&q=80',
   'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=700&auto=format&fit=crop&q=80',
-]
-
-const DEFAULT_SALON_IMAGES = [
-  'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=700&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=700&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1600948836101-f9ffda59d250?w=700&auto=format&fit=crop&q=80',
 ]
 
 export default function CustomerDashboardPage() {
@@ -68,7 +59,7 @@ export default function CustomerDashboardPage() {
 
   useSeo({
     title: 'Customer Dashboard & Queues — serveQ',
-    description: 'Join live queues or book appointments at trusted clinics and salons near you.',
+    description: 'Join live queues or book appointments at trusted clinics near you.',
     robots: 'noindex, nofollow',
   })
 
@@ -79,29 +70,10 @@ export default function CustomerDashboardPage() {
   const [joiningBizId, setJoiningBizId] = useState(null)
   const [leavingBizId, setLeavingBizId] = useState(null)
 
-  // Navigation & Filtering
-  const [searchParams] = useSearchParams()
-  const requestedCategory = searchParams.get('category')
-  const savedCategory = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
-  const categoryFilter = searchParams.has('choose') ? 'all'
-    : ['clinic', 'salon'].includes(requestedCategory) ? requestedCategory
-    : ['clinic', 'salon'].includes(savedCategory) ? savedCategory : 'all'
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-  }, [categoryFilter])
-  const businesses = useMemo(() => categoryFilter === 'all' ? discoveredBusinesses : filterServiceVenues(discoveredBusinesses, categoryFilter), [discoveredBusinesses, categoryFilter])
-  const myBookings = useMemo(() => categoryFilter === 'all' ? allMyBookings : filterServiceBookings(allMyBookings, businesses, categoryFilter), [allMyBookings, businesses, categoryFilter])
-  const activeNavTab = categoryFilter === 'clinic' ? 'clinics' : categoryFilter === 'salon' ? 'salons' : 'dashboard'
-  const selectCategory = (category) => {
-    sessionStorage.setItem(`customer-service:${user?._id || user?.id}`, category)
-    setSearch('')
-    navigate(`/customers?category=${category}`)
-  }
-  useEffect(() => {
-    if (['clinic', 'salon'].includes(requestedCategory)) {
-      sessionStorage.setItem(`customer-service:${user?._id || user?.id}`, requestedCategory)
-    }
-  }, [requestedCategory, user?._id, user?.id])
+  const categoryFilter = 'clinic'
+  const businesses = useMemo(() => filterServiceVenues(discoveredBusinesses, categoryFilter), [discoveredBusinesses])
+  const myBookings = useMemo(() => filterServiceBookings(allMyBookings, businesses, categoryFilter), [allMyBookings, businesses])
+  const activeNavTab = 'clinics'
   const [search, setSearch] = useState('')
   const {
     currentLocation,
@@ -347,22 +319,7 @@ export default function CustomerDashboardPage() {
     return active
   }, [businesses, user?._id])
 
-  const clinicsList = useMemo(() => {
-    return businesses.filter(
-      (b) => b.category === 'clinic' || b.category === 'healthcare' || b.category === 'doctor'
-    )
-  }, [businesses])
-
-  const salonsList = useMemo(() => {
-    return businesses.filter(
-      (b) => b.category === 'salon' || b.category === 'barbershop' || b.category === 'beauty'
-    )
-  }, [businesses])
-
   const displayedServices = useMemo(() => {
-    let list = businesses
-    if (categoryFilter === 'clinic') list = clinicsList
-    else if (categoryFilter === 'salon') list = salonsList
 
     const activeCoords =
       currentLocation?.lat && currentLocation?.lng
@@ -372,7 +329,7 @@ export default function CustomerDashboardPage() {
         : null
 
     // Calculate proximity distance for each venue
-    const withDistance = list.map((b) => {
+    const withDistance = businesses.map((b) => {
       let dist = b.distanceKm !== undefined && b.distanceKm !== null ? b.distanceKm : null
       if (dist === null && activeCoords && b.coordinates?.lat && b.coordinates?.lng) {
         if (b.coordinates.lat !== 0 || b.coordinates.lng !== 0) {
@@ -400,7 +357,7 @@ export default function CustomerDashboardPage() {
       }
       return 0
     })
-  }, [categoryFilter, clinicsList, salonsList, businesses, currentLocation, userCoords, sortBy])
+  }, [businesses, currentLocation, userCoords, sortBy])
 
   // Toggle selection of service for a business
   const handleToggleService = (bizId, service) => {
@@ -533,8 +490,8 @@ export default function CustomerDashboardPage() {
         : [
             {
               name: biz.category === 'clinic' ? 'Dr. On-Duty (General Physician)' : 'On-Duty Specialist',
-              role: biz.category === 'clinic' ? 'General Physician' : 'Barber / Stylist',
-              specialties: biz.category === 'clinic' ? 'General Medicine & Primary Care' : 'Hair & Grooming',
+              role: 'General Physician',
+              specialties: 'General Medicine & Primary Care',
               isAvailable: true,
             },
           ]
@@ -684,7 +641,7 @@ export default function CustomerDashboardPage() {
     const photoUrl =
       biz.coverImage ||
       biz.logo ||
-      (biz.category === 'clinic' ? defaultImg || DEFAULT_CLINIC_IMAGES[0] : defaultImg || DEFAULT_SALON_IMAGES[0])
+      defaultImg || DEFAULT_CLINIC_IMAGES[0]
 
     const distanceDisplay =
       biz.distance !== null && biz.distance !== undefined
@@ -734,9 +691,7 @@ export default function CustomerDashboardPage() {
               {biz.isOpen ? 'OPEN' : 'CLOSED'}
             </span>
             <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-zinc-800 bg-white/95 backdrop-blur-xs border border-zinc-200/80 shadow-xs capitalize">
-              {biz.category === 'salon' || biz.category === 'barbershop' || biz.category === 'beauty'
-                ? 'Salon'
-                : 'Clinic'}
+              Clinic
             </span>
           </div>
 
@@ -993,9 +948,6 @@ export default function CustomerDashboardPage() {
     )
   }
 
-  if (categoryFilter === 'all' && user?.role !== 'owner' && user?.role !== 'admin') {
-    return <CustomerServiceChoice onChoose={selectCategory} onSignOut={() => { logOut(); navigate('/login') }} />
-  }
 
   return (
     <div data-service={categoryFilter} className="customer-dashboard min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
@@ -1021,7 +973,7 @@ export default function CustomerDashboardPage() {
           onChangeLocation={openLocationModal}
           search={search}
           onSearchChange={setSearch}
-          placeholder={categoryFilter === 'salon' ? 'Search salons...' : 'Search clinics...'}
+          placeholder={'Search clinics...'}
         />
 
         {/* Right: Notifications, Profile Avatar */}
@@ -1089,12 +1041,9 @@ export default function CustomerDashboardPage() {
         {/* CUSTOMER SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
         <CustomerSidebar
           activeNavTab={activeNavTab}
-          serviceCategory={categoryFilter}
           onSelectTab={(tabId, route) => {
             if (tabId === 'clinics') {
-              selectCategory('clinic')
-            } else if (tabId === 'salons') {
-              selectCategory('salon')
+              navigate('/customers')
             } else if (tabId === 'dashboard') {
               if (user?.role === 'owner') {
                 navigate('/business')
@@ -1132,8 +1081,7 @@ export default function CustomerDashboardPage() {
               navigate(route)
             }
           }}
-          clinicsCount={clinicsList.length}
-          salonsCount={salonsList.length}
+          clinicsCount={businesses.length}
           myActiveQueuesCount={myActiveQueues.length}
           myBookingsCount={myBookings.filter(
             (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
@@ -1202,40 +1150,32 @@ export default function CustomerDashboardPage() {
 
           <section className="customer-welcome" aria-labelledby="customer-welcome-title">
             <div className="customer-welcome-copy">
-              <p className="customer-welcome-eyebrow">{categoryFilter === 'salon' ? 'A LITTLE SELF-CARE' : 'GOOD CARE STARTS HERE'}</p>
-              <h1 id="customer-welcome-title">{categoryFilter === 'salon' ? 'Good hair. Great day.' : 'Feel better, sooner.'}</h1>
-              <p>{categoryFilter === 'salon' ? 'A fresh cut or a little me-time. Find your spot, pick a service and leave the waiting behind.' : 'Your next visit, with a little less waiting. Find a doctor nearby and make time for feeling better.'}</p>
+              <p className="customer-welcome-eyebrow">GOOD CARE STARTS HERE</p>
+              <h1 id="customer-welcome-title">Feel better, sooner.</h1>
+              <p>Your next visit, with a little less waiting. Find a doctor nearby and make time for feeling better.</p>
             </div>
             <div className="customer-welcome-art" aria-hidden="true">
               <Sparkle className="customer-art-spark customer-art-spark-one" size={26} strokeWidth={1.4} />
               <span className="customer-mini-door">
-                <span className="customer-mini-window">{categoryFilter === 'salon' ? <Scissors size={38} strokeWidth={1.5} /> : <Stethoscope size={38} strokeWidth={1.5} />}</span>
+                <span className="customer-mini-window"><Stethoscope size={38} strokeWidth={1.5} /></span>
                 <span className="customer-mini-sign">Come on in.</span>
                 <span className="customer-mini-handle" />
                 <span className="customer-mini-inset" />
               </span>
               <Sparkle className="customer-art-spark customer-art-spark-two" size={32} strokeWidth={1.4} />
-              <span className="customer-welcome-note">{categoryFilter === 'salon' ? 'A fresh start awaits.' : 'You’re in good hands.'}</span>
+              <span className="customer-welcome-note">You’re in good hands.</span>
             </div>
           </section>
 
-          {/* ── SECTION: NEARBY SERVICES (CLINICS + SALONS IN ONE ROW) ── */}
+          {/* ── SECTION: NEARBY CLINICS ── */}
           <section id="services-section" className="space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-200/70 pb-2">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tight">
-                  {categoryFilter === 'clinic'
-                    ? 'Nearby Clinics'
-                    : categoryFilter === 'salon'
-                    ? 'Nearby Salons'
-                    : 'Nearby Services'}
+                  Nearby Clinics
                 </h2>
                 <p className="text-xs text-zinc-500 font-medium">
-                  {categoryFilter === 'clinic'
-                    ? 'Join live queues or book appointments at clinics near you.'
-                    : categoryFilter === 'salon'
-                    ? 'Book appointments or join live queues at top-rated salons near you.'
-                    : 'Join live queues or book appointments at verified clinics, salons & services near you.'}
+                  Join live queues or book appointments at clinics near you.
                 </p>
               </div>
               <VenueSortDropdown value={sortBy} onChange={setSortBy} />
@@ -1252,13 +1192,7 @@ export default function CustomerDashboardPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                 {displayedServices.map((biz, idx) => {
-                  const isSalon =
-                    biz.category === 'salon' || biz.category === 'barbershop' || biz.category === 'beauty'
-                  const photoUrl =
-                    biz.image ||
-                    (isSalon
-                      ? DEFAULT_SALON_IMAGES[idx % DEFAULT_SALON_IMAGES.length]
-                      : DEFAULT_CLINIC_IMAGES[idx % DEFAULT_CLINIC_IMAGES.length])
+                  const photoUrl = biz.image || DEFAULT_CLINIC_IMAGES[idx % DEFAULT_CLINIC_IMAGES.length]
                   return renderBusinessCard(biz, photoUrl)
                 })}
               </div>

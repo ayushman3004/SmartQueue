@@ -1,3 +1,4 @@
+import { isClinic } from "../doctor/doctor-access.js";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import Booking from "../../booking/booking.model.js";
@@ -109,7 +110,7 @@ export const createRazorpayOrderForBooking = async (bookingId, userId) => {
   }
 
   const business = booking.businessId;
-  if (!business) throw new ApiError(404, "Associated business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   // Re-verify that business is active and eligible for online payments
   const isOnlineActive =
@@ -206,7 +207,7 @@ export const createRazorpayOrderForBooking = async (bookingId, userId) => {
  */
 export const connectRazorpayRouteAccount = async (businessId, ownerUser, payload = {}) => {
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   const legalBusinessName = payload.legalBusinessName || business.name;
   const businessType = payload.businessType || "individual";

@@ -13,8 +13,6 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { autocompleteLocations, geocodeAddress, reverseGeocodeCoords } from '../api/maps.api'
-import { useLocation } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
 import './LocationPickerModal.css'
 
 const QUICK_HUBS = [
@@ -63,12 +61,7 @@ export default function LocationPickerModal({
   currentLocation,
   canClose = true,
 }) {
-  const { user } = useAuth()
-  const { search } = useLocation()
   const reduceMotion = useReducedMotion()
-  const requestedCategory = new URLSearchParams(search).get('category')
-  const savedCategory = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
-  const serviceCategory = ['clinic', 'salon'].includes(requestedCategory) ? requestedCategory : savedCategory
   const [searchInput, setSearchInput] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [searching, setSearching] = useState(false)
@@ -239,7 +232,7 @@ export default function LocationPickerModal({
 
   return (
     <AnimatePresence>
-      <div data-service={serviceCategory} className="location-picker fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <div data-service="clinic" className="location-picker fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -265,7 +258,7 @@ export default function LocationPickerModal({
                 <span>Select your location</span>
               </h2>
               <p className="text-xs text-zinc-500">
-                Find {serviceCategory === 'salon' ? 'salons' : serviceCategory === 'clinic' ? 'clinics' : 'clinics and salons'} in your neighborhood.
+                Find clinics in your neighborhood.
               </p>
             </div>
             {canClose && (

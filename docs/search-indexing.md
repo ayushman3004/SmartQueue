@@ -1,4 +1,4 @@
-The production build generates nine public URLs in `public/sitemap.xml`: the homepage, business portal, support, privacy, terms, and four guides (`/how-it-works`, `/virtual-queue`, `/for-clinics`, `/for-salons`). The shared registry is `src/seo/publicPages.js`.
+The production build generates nine public URLs in `public/sitemap.xml`: the homepage, business portal, support, privacy, terms, and three guides (`/how-it-works`, `/virtual-queue`, `/for-clinics`). The shared registry is `src/seo/publicPages.js`.
 
 Run `npm run build` before deploying. This generates a separate HTML document with its own title, description, canonical and social metadata for every public URL. The guides also contain their complete article and navigation in the initial HTML. The five existing interactive pages still render their main content with React.
 

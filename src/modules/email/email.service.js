@@ -317,7 +317,7 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
               </p>
 
               <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.65; color: #334155; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-                ServeQ helps salons, clinics, and service businesses manage appointments and live queues, keep customers informed, and deliver a smoother service experience.
+                ServeQ helps clinics manage live queues and appointments, issue digital prescriptions, and send automatic follow-up reminders.
               </p>
 
               <!-- What happens next? Callout Card -->
@@ -400,7 +400,7 @@ export const sendLaunchConfirmationEmail = async ({ to }) => {
 </html>
 `;
 
-  const text = `Hi there,\n\nThank you for registering your interest in ServeQ. We're excited to have you with us as we prepare to make waiting simpler, smarter, and more convenient.\n\nServeQ helps salons, clinics, and service businesses manage appointments and live queues, keep customers informed, and deliver a smoother service experience.\n\nWhat happens next?\n1. We'll keep you updated on our launch.\n2. You'll hear about important product updates and early access opportunities.\n3. You'll be among the first to discover a smarter way to manage queues and appointments.\n\nWe're building ServeQ to solve real problems for businesses and their customers, and your early interest means a lot to us.\n\nThank you for being part of the journey. We look forward to sharing what's coming next.\n\nBest regards,\nTeam ServeQ\nSmarter queues. Better experiences.\n\nServeQ | support@serveq.tech\nYou're receiving this email because you registered your interest in ServeQ.`;
+  const text = `Hi there,\n\nThank you for registering your interest in ServeQ. We're excited to have you with us as we prepare to make waiting simpler, smarter, and more convenient.\n\nServeQ helps clinics manage live queues and appointments, issue digital prescriptions, and send automatic follow-up reminders.\n\nWhat happens next?\n1. We'll keep you updated on our launch.\n2. You'll hear about important product updates and early access opportunities.\n3. You'll be among the first to discover a smarter way to manage queues and appointments.\n\nWe're building ServeQ to solve real problems for businesses and their customers, and your early interest means a lot to us.\n\nThank you for being part of the journey. We look forward to sharing what's coming next.\n\nBest regards,\nTeam ServeQ\nSmarter queues. Better experiences.\n\nServeQ | support@serveq.tech\nYou're receiving this email because you registered your interest in ServeQ.`;
 
   // 1. Direct Resend HTTPS REST API
   const resendApiKey = (process.env.RESEND_API_KEY || "").trim();

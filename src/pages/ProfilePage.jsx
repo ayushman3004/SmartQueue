@@ -47,7 +47,7 @@ import ForgotPasswordModal from '../components/ForgotPasswordModal'
 import CustomerSidebar from '../components/CustomerSidebar'
 import { prepareAvatar } from '../utils/avatarUpload'
 
-const profileValues = user => ({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', bio: user?.bio || '', location: user?.location || '', avatar: user?.avatar || '' })
+const profileValues = user => ({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', bio: user?.bio || '', location: user?.location || '', avatar: user?.avatar || '', whatsappFollowUpOptIn: Boolean(user?.whatsappFollowUpOptIn) })
 
 export default function ProfilePage() {
   const { user, setUser, logOut } = useAuth()
@@ -612,7 +612,7 @@ export default function ProfilePage() {
                         type="tel"
                         readOnly={!editing}
                         value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        onChange={(e) => setForm({ ...form, phone: e.target.value, whatsappFollowUpOptIn: false })}
                         placeholder="+91 98765 43210"
                         className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
                           editing
@@ -634,6 +634,15 @@ export default function ProfilePage() {
                     )}
                   </div>
                 </div>
+
+                {isCustomer && <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 text-sm font-semibold">
+                    <input type="checkbox" checked={form.whatsappFollowUpOptIn} disabled={!editing || !isPhoneVerified}
+                      onChange={(event) => setForm({ ...form, whatsappFollowUpOptIn: event.target.checked })} />
+                    Receive follow-up reminders on WhatsApp
+                  </label>
+                  <p className="text-xs text-zinc-600">{isPhoneVerified ? 'Reminders go to your verified number.' : 'Verify your phone number to enable WhatsApp reminders.'}</p>
+                </div>}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Location */}
@@ -805,7 +814,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="pt-2 text-[11px] text-[#617168] font-medium leading-relaxed bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
-                  <span className="font-bold text-zinc-800">Privileges Active:</span> Multi-counter live queuing, doctor/barber roster management, and AI predictive wait analytics.
+                  <span className="font-bold text-zinc-800">Privileges Active:</span> Multi-counter live queuing, doctor roster management, and AI predictive wait analytics.
                 </div>
               </div>
             )}
@@ -917,9 +926,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Phone OTP Verification Modal */}
-      <VerifyContactModal
-        isOpen={phoneModalOpen}
-        type="phone"
+      {phoneModalOpen && <VerifyContactModal
         value={form.phone}
         onClose={() => setPhoneModalOpen(false)}
         onSuccess={(updatedUser) => {
@@ -927,7 +934,7 @@ export default function ProfilePage() {
           setPhoneModalOpen(false)
           toast.success('Phone verified successfully!')
         }}
-      />
+      />}
 
       {/* Change / Reset Password Modal */}
       <ForgotPasswordModal

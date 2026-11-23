@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema(
       enum: ["customer", "owner", "admin", "doctor"],
       default: "customer",
     },
-    businessCategories: { type: [String], enum: ["clinic", "salon"], default: [] },
+    businessCategories: { type: [String], default: [] },
     walletBalance: {
       type: Number,
       default: 0,
@@ -55,6 +55,7 @@ const userSchema = new mongoose.Schema(
       phone: String,
       verifiedAt: Date,
     },
+    whatsappFollowUpPhone: { type: String, default: "" },
     isEmailVerified: {
       type: Boolean,
       default: false,

@@ -9,15 +9,15 @@ import LandingTrust from '../components/LandingTrust'
 
 const WAITING_PROBLEMS = [
   { title: '“How much longer will it take?”', problem: 'You arrive without knowing how many people are ahead. A quick visit becomes an uncertain wait.', solutionTitle: 'Know where you stand.', solution: 'Check the live queue and estimated wait on your phone. See your progress as staff serve customers.', Icon: Clock },
-  { title: 'Your day stops in the waiting room.', problem: 'You stay nearby just to protect your place, with little time for anything else.', solutionTitle: 'Keep your place. Keep your freedom.', solution: 'Join a clinic or salon queue online and wait somewhere comfortable. Stay close enough to return when called.', Icon: Users },
+  { title: 'Your day stops in the waiting room.', problem: 'You stay nearby just to protect your place, with little time for anything else.', solutionTitle: 'Keep your place. Keep your freedom.', solution: 'Join a clinic queue online and wait somewhere comfortable. Stay close enough to return when called.', Icon: Users },
   { title: 'Staff spend time managing the line.', problem: 'Handwritten lists and repeated “am I next?” questions make it harder to focus on the service.', solutionTitle: 'One clear queue for everyone.', solution: 'Staff view waiting customers, call the next token, and mark visits complete from one dashboard. Customers follow their own queue status.', Icon: ClipboardList },
 ]
 
 export default function LandingPage() {
   const navigate = useNavigate()
   useSeo({
-    title: 'Live Virtual Queue Management & Online Waiting',
-    description: 'Join virtual queues on your phone, track real-time counter updates, and walk straight in when your turn arrives at salons, clinics, and service venues.',
+    title: 'Clinic Queues, Digital Prescriptions & Follow-up Reminders',
+    description: 'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic follow-up reminders via WhatsApp.',
     robots: 'index, follow',
     canonical: 'https://www.serveq.tech',
   })
@@ -34,14 +34,15 @@ export default function LandingPage() {
       {/* Full-screen statement; navigation stays in the header. */}
       <section className="landing-hero" aria-labelledby="landing-headline">
         <h1 id="landing-headline">
-          <span id="tour-welcome-hero" className="landing-headline-line"><span>Wait from anywhere.</span></span>
-          <span className="landing-headline-line"><span>Not in line.</span></span>
+          <span id="tour-welcome-hero" className="landing-headline-line"><span>Less waiting.</span></span>
+          <span className="landing-headline-line"><span>Better clinic visits.</span></span>
         </h1>
+        <p className="landing-hero-summary">Join a live clinic queue, get your digital prescription, and opt in to automatic follow-up reminders on WhatsApp.</p>
       </section>
 
       <section id="problem-solution" className="waiting-comparison" aria-labelledby="waiting-comparison-title">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <header className="waiting-comparison-heading"><p>THE PROBLEM & THE SOLUTION</p><h2 id="waiting-comparison-title">Waiting shouldn’t take over your day.</h2><p>Less uncertainty for customers. A more organized day for the people serving them.</p></header>
+          <header className="waiting-comparison-heading"><p>THE PROBLEM & THE SOLUTION</p><h2 id="waiting-comparison-title">Waiting shouldn’t take over your day.</h2><p>Less uncertainty for patients and a more organized day for clinic staff.</p></header>
           <div className="waiting-comparison-columns" aria-hidden="true"><span>The problem</span><span>The serveQ solution</span></div>
           <div className="waiting-comparison-rows">
             {WAITING_PROBLEMS.map(({ title, problem, solutionTitle, solution, Icon: _Icon }) => <article key={title} className="waiting-comparison-row">
@@ -69,7 +70,7 @@ export default function LandingPage() {
                 Ready to skip the wait?
               </h2>
               <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                Join a live queue in seconds as a customer, or set up automated virtual queuing for your venue with zero setup fees.
+                See your place in the clinic queue, get your prescription online, and receive automatic follow-up reminders on WhatsApp when you opt in.
               </p>
             </div>
 

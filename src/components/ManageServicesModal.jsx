@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import { updateBusiness } from '../api/business.api'
-import { CATEGORY_METADATA, SERVICE_PRESETS } from '../utils/servicePresets'
+import { SERVICE_PRESETS } from '../utils/servicePresets'
 
 export default function ManageServicesModal({ isOpen, business, onClose, onUpdated }) {
   const [loading, setLoading] = useState(false)
@@ -28,7 +28,6 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
   const dialogRef = useDialog(isOpen, onClose)
   if (!isOpen || !business) return null
 
-  const categoryInfo = CATEGORY_METADATA[business.category] || CATEGORY_METADATA.other
 
   const handleStartEdit = (index) => {
     setEditingIndex(index)
@@ -77,10 +76,10 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
   }
 
   const handleLoadPresets = () => {
-    const presets = SERVICE_PRESETS[business.category] || []
+    const presets = SERVICE_PRESETS[business.category] || SERVICE_PRESETS.clinic
     if (presets.length === 0) return
     setServices([...presets])
-    toast.success(`Loaded standard ${categoryInfo.label} service catalog!`)
+    toast.success("Loaded standard clinic services!")
   }
 
   const handleSaveAll = async () => {
@@ -121,15 +120,12 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200/80 flex items-center justify-center text-2xl shadow-xs">
-                  {categoryInfo.icon}
-                </div>
                 <div>
                   <h2 className="text-xl font-black text-zinc-950 tracking-tight">
-                    Manage Hub Services
+                    Manage Clinic Services
                   </h2>
                   <p className="text-xs text-zinc-500 font-medium truncate max-w-xs sm:max-w-md">
-                    {business.name} &bull; {categoryInfo.label}
+                    {business.name}
                   </p>
                 </div>
               </div>
@@ -269,7 +265,7 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
                 <div className="sm:col-span-6">
                   <input
                     type="text"
-                    placeholder="Service Name (e.g. Keratin Hair Spa)"
+                    placeholder="Service name (e.g. General consultation)"
                     value={newService.name}
                     onChange={(e) => setNewService(s => ({ ...s, name: e.target.value }))}
                     className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs font-medium bg-white focus:outline-none focus:border-teal-600"

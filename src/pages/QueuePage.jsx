@@ -3,13 +3,12 @@ import NotificationCenter from '../components/NotificationCenter'
 import QueueStatusPass from '../components/QueueStatusPass'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams, Navigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
   Stethoscope,
-  Scissors,
   Ticket,
   Calendar,
   Star,
@@ -48,14 +47,13 @@ import { useCustomerService } from '../hooks/useCustomerService'
 import { filterServiceVenues, filterServiceBookings } from '../utils/customerService'
 import { useDebounce } from '../hooks/useDebounce'
 
-const DEFAULT_SALON_IMAGE = '/hubs/salon.png'
 const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 
 export default function QueuePage() {
   const { businessId: paramBizId } = useParams()
   const { user, logOut } = useAuth()
   const { socket } = useSocket()
-  const { serviceCategory, resolvingService, navigate } = useCustomerService(paramBizId)
+  const { serviceCategory, navigate } = useCustomerService(paramBizId)
 
   useSeo({
     title: 'Live Queue Pass & Status | serveQ',
@@ -319,26 +317,26 @@ export default function QueuePage() {
     if (myQueueItem?.assignedStaff?.name) {
       return {
         name: myQueueItem.assignedStaff.name,
-        role: myQueueItem.assignedStaff.role || (serviceCategory === 'clinic' ? 'Doctor / Specialist' : 'Barber / Stylist'),
+        role: myQueueItem.assignedStaff.role || ('Doctor / Specialist'),
       }
     }
     if (servingUser?.assignedStaff?.name) {
       return {
         name: servingUser.assignedStaff.name,
-        role: servingUser.assignedStaff.role || (serviceCategory === 'clinic' ? 'Doctor / Specialist' : 'Barber / Stylist'),
+        role: servingUser.assignedStaff.role || ('Doctor / Specialist'),
       }
     }
     if (activeBusiness?.staff?.length > 0) {
       return {
         name: activeBusiness.staff[0].name,
-        role: activeBusiness.staff[0].role || (serviceCategory === 'clinic' ? 'General Physician' : 'On-Duty Stylist'),
+        role: activeBusiness.staff[0].role || ('General Physician'),
       }
     }
     return {
-      name: serviceCategory === 'clinic' ? 'Dr. On-Duty' : 'On-Duty Stylist',
-      role: serviceCategory === 'clinic' ? 'Physician' : 'Barber / Stylist',
+      name: 'Dr. On-Duty',
+      role: 'Physician',
     }
-  }, [myQueueItem, servingUser, activeBusiness, serviceCategory])
+  }, [myQueueItem, servingUser, activeBusiness])
 
   // Calculated Times for Current Slot & Stepper
   const timeMetrics = useMemo(() => {
@@ -372,8 +370,8 @@ export default function QueuePage() {
     if (myQueueItem?.services?.length > 0) return myQueueItem.services[0].name
     if (servingUser?.serviceType) return servingUser.serviceType
     if (activeBusiness?.services?.length > 0) return activeBusiness.services[0].name
-    return serviceCategory === 'clinic' ? 'Consultation & Checkup' : 'Haircut & Styling'
-  }, [myQueueItem, servingUser, activeBusiness, serviceCategory])
+    return 'Consultation & Checkup'
+  }, [myQueueItem, servingUser, activeBusiness])
 
   const serviceDuration = myQueueItem?.serviceTime || activeBusiness?.averageServiceTime || 30
 
@@ -472,10 +470,8 @@ export default function QueuePage() {
     }
   }
 
-  const categoryLabel = serviceCategory === 'clinic' ? 'Clinic Hub' : 'Salon Hub'
-  const isSalon = serviceCategory === 'salon'
+  const categoryLabel = 'Clinic'
 
-  if (!serviceCategory && !resolvingService) return <Navigate to="/customers?choose=1" replace />
 
   return (
     <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
@@ -501,7 +497,7 @@ export default function QueuePage() {
           onChangeLocation={openLocationModal}
           search={search}
           onSearchChange={setSearch}
-          placeholder={serviceCategory === 'salon' ? 'Search salons...' : 'Search clinics...'}
+          placeholder={'Search clinics...'}
         />
 
         {/* Right: Notifications, Profile Avatar */}
@@ -564,10 +560,8 @@ export default function QueuePage() {
       <div className="flex-1 flex w-full">
         {/* CUSTOMER SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
         <CustomerSidebar
-          serviceCategory={serviceCategory}
           activeNavTab="my-queues"
           clinicsCount={filterServiceVenues(businesses, 'clinic').length}
-          salonsCount={filterServiceVenues(businesses, 'salon').length}
           myActiveQueuesCount={businesses.filter((b) => (b.activeQueue || []).some((u) => (u.userId?._id || u.userId)?.toString() === user?._id?.toString())).length}
           myBookingsCount={myBookings.filter(
             (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
@@ -688,7 +682,6 @@ export default function QueuePage() {
             /* ── VIEW A: USER HAS JOINED QUEUE -> SHOW THE PERSONAL PASS & STATUS ── */
             <QueueStatusPass
               business={activeBusiness}
-              isSalon={isSalon}
               isServing={isUserServing}
               position={myPosition}
               peopleAhead={peopleAhead}
@@ -700,7 +693,7 @@ export default function QueuePage() {
               amount={myQueueItem?.paidAmount ?? (selectedService?.price || activeBusiness.basePrice || 0)}
               paid={myQueueItem?.paymentStatus === 'paid'}
               leaving={leavingQueue}
-              fallbackImage={isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE}
+              fallbackImage={DEFAULT_CLINIC_IMAGE}
               onLeave={handleLeaveQueue}
               onViewQueue={() => setShowLiveStreamModal(true)}
               onBook={() => navigate(`/booking/${activeBusiness._id}`)}
@@ -714,12 +707,12 @@ export default function QueuePage() {
                   <img
                     src={
                       activeBusiness.images?.[0] ||
-                      (isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE)
+                      (DEFAULT_CLINIC_IMAGE)
                     }
                     alt={activeBusiness.name}
                     className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 shrink-0"
                     onError={(e) => {
-                      e.currentTarget.src = isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE
+                      e.currentTarget.src = DEFAULT_CLINIC_IMAGE
                     }}
                   />
                   <div>
@@ -795,7 +788,7 @@ export default function QueuePage() {
                           ? activeBusiness.services
                           : [
                               {
-                                name: activeBusiness.category === 'clinic' ? 'General Consultation' : 'Haircut & Styling',
+                                name: 'General Consultation',
                                 duration: activeBusiness.averageServiceTime || 15,
                                 price: activeBusiness.basePrice || 0,
                               },

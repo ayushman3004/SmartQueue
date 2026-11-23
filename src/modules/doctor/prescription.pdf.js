@@ -6,7 +6,7 @@ const font = readFileSync(new URL('./fonts/NotoSans-Regular.ttf', import.meta.ur
 const fields = [
   ['Symptoms and findings', 'symptoms'], ['Diagnosis', 'diagnosis'],
   ['Medications', 'medications'], ['Investigations', 'investigations'],
-  ['Advice', 'advice'], ['Follow-up', 'followUp'],
+  ['Advice', 'advice'], ['Follow-up', 'followUp'], ['Follow-up date', 'followUpDate'],
 ];
 
 export function prescriptionPdf(prescription) {

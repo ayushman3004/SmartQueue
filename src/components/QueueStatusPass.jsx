@@ -11,7 +11,6 @@ import "../styles/queue-status.css";
 
 export default function QueueStatusPass({
   business,
-  isSalon,
   isServing,
   position,
   peopleAhead,
@@ -42,7 +41,7 @@ export default function QueueStatusPass({
   return (
     <section
       className="queue-status"
-      data-service={isSalon ? "salon" : "clinic"}
+      data-service="clinic"
       aria-label="Your queue pass and visit details"
     >
       <div className="queue-pass-layout">
@@ -74,7 +73,7 @@ export default function QueueStatusPass({
             </span>
             <div>
               <span className="queue-eyebrow">
-                {isSalon ? "Your stylist" : "Your specialist"}
+                Your specialist
               </span>
               <h3>{specialist.name}</h3>
               <p>{specialist.role}</p>
@@ -110,7 +109,7 @@ export default function QueueStatusPass({
             />
             <div className="queue-venue-name">
               <p className="queue-eyebrow">
-                {isSalon ? "Salon" : "Clinic"} · Your visit
+                Clinic · Your visit
               </p>
               <h3 id="queue-venue-heading">{business.name}</h3>
             </div>

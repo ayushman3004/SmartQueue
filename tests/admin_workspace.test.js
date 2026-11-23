@@ -39,21 +39,19 @@ test('workspace preparation is reusable, creates no user accounts, and rejects n
   t.mock.method(User, 'create', () => { throw new Error('Must not create another account'); });
   const first = await ensureAdminWorkspace(admin);
   const second = await ensureAdminWorkspace(admin);
-  assert.equal(venues.size, 2);
+  assert.equal(venues.size, 1);
   assert.equal(first.clinic, second.clinic);
-  assert.equal(first.salon, second.salon);
   assert.equal(first.clinic.subscription.plan, 'PRO');
   assert.equal(first.clinic.staff[0].email, admin.email);
   assert.equal(first.clinic.staff[0].doctorId, 'ADMIN-TEST');
-  assert.equal(first.salon.services[0].price, 0);
   await assert.rejects(ensureAdminWorkspace({ ...admin, role: 'customer' }), /Super admin/);
 });
 
 test('test venues accept only their owning administrator identity', () => {
   const venue = { owner: admin._id, adminTestKind: 'clinic' };
   assert.doesNotThrow(() => assertTestVenueAccess(venue, admin._id));
-  assert.throws(() => assertTestVenueAccess(venue, 'different-account'), /Business not found/);
-  assert.throws(() => assertTestVenueAccess(venue), /Business not found/);
+  assert.throws(() => assertTestVenueAccess(venue, 'different-account'), /Clinic not found/);
+  assert.throws(() => assertTestVenueAccess(venue), /Clinic not found/);
   assert.doesNotThrow(() => assertTestVenueAccess({ owner: admin._id }, 'customer'));
 });
 

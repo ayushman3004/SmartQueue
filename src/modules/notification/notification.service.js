@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { serviceCategories } from '../../utils/customerService.js';
 import Notification from './notification.model.js';
 import Queue from '../../queue/queue.model.js';
 import Business from '../business/business.model.js';
@@ -51,7 +52,7 @@ async function syncCurrentTurns(recipient) {
   try {
     const queues = await Queue.find({ users: { $elemMatch: { userId: recipient, status: 'serving' } } }).select('businessId users').lean();
     if (!queues.length) return;
-    const businesses = await Business.find({ _id: { $in: queues.map(queue => queue.businessId) } }).select('name').lean();
+    const businesses = await Business.find({ _id: { $in: queues.map(queue => queue.businessId) }, category: { $in: serviceCategories.clinic } }).select('name').lean();
     const byId = new Map(businesses.map(business => [String(business._id), business]));
     await Promise.all(queues.map(queue => {
       const business = byId.get(String(queue.businessId));

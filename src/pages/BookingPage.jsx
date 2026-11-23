@@ -2,13 +2,12 @@ import { useDialog } from '../hooks/useDialog'
 import NotificationCenter from '../components/NotificationCenter'
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams, Navigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import {
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
   Stethoscope,
-  Scissors,
   Ticket,
   Calendar,
   Star,
@@ -47,7 +46,6 @@ import {
 } from '../api/booking.api'
 import { validateCoupon } from '../api/coupon.api'
 import { submitReview, updateReview } from '../api/review.api'
-import { STAFF_PRESETS } from '../utils/servicePresets'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
 import { useCustomerService } from '../hooks/useCustomerService'
@@ -55,14 +53,13 @@ import { filterServiceVenues, filterServiceBookings, matchesCustomerService } fr
 import { useDebounce } from '../hooks/useDebounce'
 import { getBookingDateRange, getBookingDateError, getBusinessDate } from '../utils/bookingDates'
 
-const DEFAULT_SALON_IMAGE = '/hubs/salon.png'
 const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 
 export default function BookingPage() {
   const { businessId: paramBizId } = useParams()
   const { user, logOut } = useAuth()
   const { socket } = useSocket()
-  const { serviceCategory, resolvingService, navigate } = useCustomerService(paramBizId)
+  const { serviceCategory, navigate } = useCustomerService(paramBizId)
 
   // Data states
   const [discoveredBusinesses, setBusinesses] = useState([])
@@ -442,15 +439,9 @@ export default function BookingPage() {
     })
   }
 
-  const isClinic = serviceCategory === 'clinic'
-  const isSalon = serviceCategory === 'salon'
-  const staffRoleLabel = isClinic ? 'Doctor / Specialist' : 'Barber / Stylist'
+  const staffRoleLabel = 'Doctor / Specialist'
 
-  // Available staff
-  const availableStaffList = useMemo(() => {
-    if (business?.staff && business.staff.length > 0) return business.staff
-    return STAFF_PRESETS[isClinic ? 'clinic' : 'salon']?.defaults || []
-  }, [business?.staff, isClinic])
+  const availableStaffList = business?.staff || []
 
   // Price calculations
   const totalServiceDuration = selectedServices.reduce(
@@ -461,7 +452,6 @@ export default function BookingPage() {
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0
   const finalPrice = Math.max(0, totalServicePrice - discountAmount)
 
-  if (!serviceCategory && !resolvingService) return <Navigate to="/customers?choose=1" replace />
 
   return (
     <div className="customer-tab min-h-screen app-background-glow text-zinc-900 flex flex-col font-sans relative overflow-x-clip">
@@ -487,7 +477,7 @@ export default function BookingPage() {
           onChangeLocation={openLocationModal}
           search={search}
           onSearchChange={setSearch}
-          placeholder={isSalon ? 'Search salons...' : 'Search clinics...'}
+          placeholder={'Search clinics...'}
         />
 
         {/* Right: Notifications, Profile Avatar */}
@@ -550,10 +540,8 @@ export default function BookingPage() {
       <div className="flex-1 flex w-full">
         {/* CUSTOMER SIDEBAR (DESKTOP + ANIMATED MOBILE DRAWER) */}
         <CustomerSidebar
-          serviceCategory={serviceCategory}
           activeNavTab="appointments"
           clinicsCount={filterServiceVenues(businesses, 'clinic').length}
-          salonsCount={filterServiceVenues(businesses, 'salon').length}
           myActiveQueuesCount={businesses.filter((b) => (b.activeQueue || []).some((u) => (u.userId?._id || u.userId)?.toString() === user?._id?.toString())).length}
           myBookingsCount={myBookings.filter(
             (b) => b.status !== 'completed' && b.status !== 'cancelled' && b.status !== 'refunded'
@@ -571,7 +559,7 @@ export default function BookingPage() {
                 Book an Appointment
               </h1>
               <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
-                Reserve guaranteed priority slots at verified clinics and salons with zero waiting.
+                Book a consultation at a clinic and manage your visit online.
               </p>
             </div>
 
@@ -614,7 +602,7 @@ export default function BookingPage() {
                         isSelected ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500'
                       }`}
                     >
-                      {isClinic ? 'Clinic' : 'Salon'}
+                      Clinic
                     </span>
                   </button>
                 )
@@ -635,7 +623,7 @@ export default function BookingPage() {
               <div className="customer-surface p-12 text-center text-zinc-500 border border-dashed border-zinc-300 rounded-3xl bg-white space-y-3">
                 <Building className="w-10 h-10 text-zinc-400 mx-auto" />
                 <p className="font-bold text-zinc-800 text-base">No venue selected</p>
-                <p className="text-xs text-zinc-500">Please choose a clinic or salon to book your appointment.</p>
+                <p className="text-xs text-zinc-500">Please choose a clinic to book your appointment.</p>
                 <button
                   onClick={() => navigate('/customers')}
                   className="mt-2 px-5 py-2.5 rounded-xl bg-[#114227] text-white font-bold text-xs"
@@ -654,12 +642,12 @@ export default function BookingPage() {
                     <img
                       src={
                         business.images?.[0] ||
-                        (isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE)
+                        (DEFAULT_CLINIC_IMAGE)
                       }
                       alt={business.name}
                       className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 shrink-0"
                       onError={(e) => {
-                        e.currentTarget.src = isSalon ? DEFAULT_SALON_IMAGE : DEFAULT_CLINIC_IMAGE
+                        e.currentTarget.src = DEFAULT_CLINIC_IMAGE
                       }}
                     />
                     <div className="min-w-0 flex-1">
@@ -778,7 +766,7 @@ export default function BookingPage() {
                       >
                         <div>
                           <p className="text-xs font-black text-zinc-950">
-                            Any Available {isClinic ? 'Doctor' : 'Stylist'}
+                            Any Available Doctor
                           </p>
                           <p className="text-[10px] text-zinc-500 mt-0.5">
                             Auto-assigns fastest available on-duty staff at your slot

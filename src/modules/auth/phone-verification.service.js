@@ -23,6 +23,7 @@ export function createPhoneVerification({ verifyToken, users = User }) {
     }
     const user = await users.findById(userId);
     if (!user) throw new ApiError(404, 'User account not found');
+    if (normalizePhoneNumber(user.phone) !== cleanPhone) user.whatsappFollowUpPhone = "";
     user.phone = cleanPhone;
     user.isPhoneVerified = true;
     user.phoneVerification = { provider: 'firebase', phone: cleanPhone, verifiedAt: new Date() };

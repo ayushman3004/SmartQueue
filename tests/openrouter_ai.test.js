@@ -152,20 +152,20 @@ test("OpenRouter & OpenAI SDK Client Architecture", async (t) => {
 test("AI Services & Compatibility Layer with OpenAI SDK / OpenRouter", async (t) => {
   await t.test("generateBusinessAIAnalytics delivers heuristic analytics when no API keys are present", async () => {
     const analytics = await generateBusinessAIAnalytics({
-      businessName: "Downtown Barber Studio",
-      category: "salon",
+      businessName: "Downtown Clinic",
+      category: "clinic",
       bookingsCount: 25,
       cancellationCount: 3,
       averageRating: 4.9,
       recentReviews: [{ comment: "Best fade ever!", rating: 5 }],
-      staffList: [{ name: "Marcus", role: "Master Barber", rating: 4.9 }],
+      staffList: [{ name: "Marcus", role: "Physician", rating: 4.9 }],
     });
 
     assert.equal(analytics.isAiGenerated, false);
     assert.ok(Array.isArray(analytics.peakHours));
     assert.equal(analytics.cancellationRate, "12%");
     assert.equal(analytics.bestEmployee.name, "Marcus");
-    assert.equal(analytics.bestEmployee.badge, "Barber of the Month");
+    assert.equal(analytics.bestEmployee.badge, "Top Doctor");
     assert.ok(analytics.recommendations.length >= 3);
   });
 

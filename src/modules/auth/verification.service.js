@@ -8,7 +8,7 @@ import ApiError from "../../../utils/ApiError.js";
 import { getMailTransporter } from "../email/email.service.js";
 
 /**
- * Robust Email Sender Helper (without Twilio)
+ * Email delivery helper
  * Uses Nodemailer and Resend API to deliver OTPs directly to inbox.
  */
 export const sendEmailWithReceipt = async ({ to, subject, html, text }) => {

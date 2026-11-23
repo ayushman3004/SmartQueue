@@ -3,7 +3,7 @@
 # 🚀 ServeQ — Smart Queue Booking Platform  
 <p align="center">
   <b>Skip the wait. Arrive exactly when it’s your turn.</b><br/>
-  <i>A real-time intelligent queue system for salons, clinics & service businesses</i>
+  <i>Live clinic queues, digital prescriptions, and automatic follow-up reminders</i>
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Frontend-React%20(Vite)-blue?style=for-the-badge"/>
@@ -18,31 +18,21 @@
   <a href="YOUR_GITHUB_LINK"><b>📦 Repository</b></a>
 </p>
 ---
-## 🧠 Overview  
-**ServeQ** is a full-stack MERN application that transforms traditional waiting lines into a **smart, real-time digital queue system**.  
-Instead of waiting physically, users can:
-- 📲 Book services remotely  
-- ⏳ Track their **live queue position**  
-- 🚶 Arrive exactly when their turn is near  
-Businesses benefit from:
-- ⚡ Optimized customer flow  
-- 📉 Reduced crowding  
-- 💼 Better operational efficiency  
----
-## ✨ Features  
-🚶‍♂️ **Real-Time Queue Tracking**  
-→ Live updates of queue position  
-⏳ **Smart Scheduling Engine**  
-→ Automatic buffer time (5–15 mins)  
-🔄 **Dynamic Queue Management**  
-→ Handles cancellations & delays intelligently  
-📍 **ETA Synchronization**  
-→ Aligns arrival time with queue progress  
-⚡ **Express Booking Mode**  
-→ Quick booking for urgent users  
-🧠 **Scalable Backend Design**  
-→ Built for real-world production scenarios  
----
+## Clinic workflows
+
+- Patients join a live clinic queue or book an appointment and follow their estimated wait from their phone.
+- Doctors issue digital prescriptions. Patients can open them in visit history and download a PDF.
+- An optional future date on a prescription schedules an in-app reminder at 9 a.m. IST the day before. If the doctor saves it after that time, the worker picks it up on its next run.
+- Patients can opt in to WhatsApp follow-up reminders from their profile after verifying their phone number. They can turn reminders off from the same setting.
+
+### Phone verification
+
+Patients can verify their phone number from Profile by requesting a Firebase SMS code. Enable Phone sign-in, add your frontend domain to Firebase Authentication, and allow the countries you serve in the SMS region policy. Use the same Firebase project for the frontend and the backend. [Firebase web phone authentication](https://firebase.google.com/docs/auth/web/phone-auth).
+
+### WhatsApp delivery
+
+Set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, and `WHATSAPP_FOLLOW_UP_TEMPLATE` on the backend. Use an approved utility template with no variables, for example, “You have an upcoming follow-up. Sign in to serveQ for details.” Set `WHATSAPP_TEMPLATE_LANGUAGE` if the template uses a language other than `en_US`. In-app reminders work independently of the WhatsApp provider. [Meta WhatsApp Cloud API](https://developers.facebook.com/documentation/business-messaging/whatsapp/overview/).
+
 ## 🏗️ Architecture  
 ```txt
 Client (React + Vite)

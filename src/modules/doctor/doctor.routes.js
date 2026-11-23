@@ -17,6 +17,7 @@ import { sanitize } from '../auth/auth.service.js';
 import { isBusinessSubscriptionActive } from '../subscription/subscription.service.js';
 import * as queueService from '../../queue/queue.service.js';
 import * as bookingService from '../../booking/booking.service.js';
+import { scheduleFollowUp } from './follow-up-reminder.service.js';
 import { prescriptionPdf } from './prescription.pdf.js';
 import { accountSecurityLimit, doctorAccessLimit } from '../../gateway/endpointRateLimits.js';
 
@@ -179,9 +180,13 @@ router.post('/prescriptions', allowRoles('doctor', 'admin'), asyncHandler(async 
     if (fields[key].length > (key === 'followUp' ? 2000 : 10000)) throw new ApiError(400, 'Prescription text is too long.');
   }
   if (!fields.diagnosis) throw new ApiError(400, 'Enter the diagnosis.');
+  const reminder = scheduleFollowUp(req.body.followUpDate);
   try {
-    const prescription = await Prescription.create({ ...fields, booking: booking._id, business: context.business._id, doctor: req.user._id, patient: booking.userId._id, doctorName: context.staff.name, doctorId: context.staff.doctorId, patientName: booking.userId.name, clinicName: context.business.name });
-    res.status(201).json({ data: { prescription } });
+    const prescription = await Prescription.create({ ...fields, ...reminder, booking: booking._id, business: context.business._id, doctor: req.user._id, patient: booking.userId._id, doctorName: context.staff.name, doctorId: context.staff.doctorId, patientName: booking.userId.name, clinicName: context.business.name });
+    const result = prescription.toObject();
+    delete result.reminderNextRunAt;
+    delete result.reminderExpiresAt;
+    res.status(201).json({ data: { prescription: result } });
   } catch (error) { if (error.code === 11000) throw new ApiError(409, 'A prescription is already saved for this consultation.'); throw error; }
 }));
 router.get('/prescriptions/:id/pdf', allowRoles('doctor', 'customer', 'admin'), asyncHandler(async (req, res) => {

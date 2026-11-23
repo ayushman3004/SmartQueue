@@ -12,7 +12,7 @@ test('Editing updates the existing review and ratings without increasing the rev
     _id: 'review', businessId: 'venue', bookingId: 'booking', userId: 'customer', rating: 2,
     comment: 'Original', save: async () => {}, populate: async function () { return this; },
   };
-  const business = { staff: [{ name: 'Dr. Lee' }], save: async () => {} };
+  const business = { category: 'clinic', staff: [{ name: 'Dr. Lee' }], save: async () => {} };
   t.mock.method(Review, 'findOne', async (query) => {
     assert.deepEqual(query, { _id: 'review', userId: 'customer' });
     return review;
@@ -54,7 +54,7 @@ test('Reloaded bookings include the existing review ID, rating, and comment for 
   const bookingId = '507f1f77bcf86cd799439011';
   const storedReview = { _id: 'review', bookingId, rating: 4, comment: 'Saved review' };
   t.mock.method(Booking, 'find', () => ({
-    populate: () => ({ sort: async () => [{ _id: bookingId, businessId: 'venue', status: 'completed' }] }),
+    populate: () => ({ sort: async () => [{ _id: bookingId, businessId: { _id: 'venue', category: 'clinic' }, status: 'completed' }] }),
   }));
   t.mock.method(Queue, 'find', () => ({ populate: async () => [] }));
   t.mock.method(Review, 'find', async () => [storedReview]);

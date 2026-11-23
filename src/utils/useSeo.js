@@ -32,7 +32,7 @@ export function useSeo({
     }
     metaDesc.content =
       description ||
-      'serveQ provides real-time virtual queue management for salons, clinics, and service venues. Join lines virtually and eliminate waiting rooms.'
+      'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic follow-up reminders via WhatsApp.'
 
     // 3. Update Robots Directive
     let metaRobots = document.querySelector('meta[name="robots"]')

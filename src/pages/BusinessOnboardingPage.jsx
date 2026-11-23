@@ -14,7 +14,7 @@ import {
   launchBusiness,
   getMyBusinesses,
 } from '../api/business.api'
-import { CATEGORY_METADATA, SERVICE_PRESETS, STAFF_PRESETS } from '../utils/servicePresets'
+import { SERVICE_PRESETS } from '../utils/servicePresets'
 import { useSeo } from '../utils/useSeo'
 import { sendEmailOtp, verifyEmailOtp } from '../api/auth.api'
 import {
@@ -164,7 +164,7 @@ export default function BusinessOnboardingPage() {
   // Step 1 Form: Business Information
   const [step1, setStep1] = useState({
     name: '',
-    category: 'salon',
+    category: 'clinic',
     description: '',
     email: '',
     phone: '',
@@ -248,7 +248,7 @@ export default function BusinessOnboardingPage() {
     duration: 30,
     price: 250,
     description: '',
-    category: 'salon',
+    category: 'clinic',
     isAvailable: true,
   })
   const [editingServiceIndex, setEditingServiceIndex] = useState(null)
@@ -302,7 +302,7 @@ export default function BusinessOnboardingPage() {
     // Step 1
     setStep1({
       name: biz.name || '',
-      category: biz.category || 'salon',
+      category: biz.category || 'clinic',
       description: biz.description || '',
       email: biz.email || '',
       phone: biz.phone || '',
@@ -594,7 +594,7 @@ export default function BusinessOnboardingPage() {
   }
 
   const handleLoadServicePresets = () => {
-    const presets = SERVICE_PRESETS[step1.category] || SERVICE_PRESETS.salon
+    const presets = SERVICE_PRESETS[step1.category] || SERVICE_PRESETS.clinic
     setServices(presets.map((p) => ({ ...p, isAvailable: true, description: '' })))
     toast.success(`Loaded standard ${step1.category} services!`)
   }
@@ -605,11 +605,11 @@ export default function BusinessOnboardingPage() {
       toast.error('Please enter a staff member name')
       return
     }
-    if (['clinic', 'healthcare'].includes(step1.category) && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newStaff.email?.trim() || '') || !newStaff.doctorId?.trim())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newStaff.email?.trim() || '') || !newStaff.doctorId?.trim()) {
       toast.error('Enter the doctor email and registration ID')
       return
     }
-    const defaultRole = step1.category === 'clinic' ? 'Consultant Doctor' : 'Barber / Stylist'
+    const defaultRole = 'Consultant Doctor'
 
     if (editingStaffIndex !== null) {
       const updated = [...staff]
@@ -654,12 +654,6 @@ export default function BusinessOnboardingPage() {
   const handleDeleteStaff = (idx) => {
     setStaff((prev) => prev.filter((_, i) => i !== idx))
     if (editingStaffIndex === idx) setEditingStaffIndex(null)
-  }
-
-  const handleLoadStaffPresets = () => {
-    const presets = STAFF_PRESETS.salon?.defaults || []
-    setStaff(presets.map((s) => ({ ...s, isAvailable: true })))
-    toast.success(`Loaded recommended staff team!`)
   }
 
   // Save Step Action (Autosaves to MongoDB)
@@ -868,21 +862,21 @@ export default function BusinessOnboardingPage() {
   if (business && !categoryLocked) {
     return <div className="business-page min-h-screen flex items-center justify-center p-6">
       <main className="w-full max-w-xl space-y-6 rounded-3xl border border-zinc-200 bg-white p-6 sm:p-10">
-        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Payment complete · Choose your business</p>
-        <h1 className="text-3xl font-bold">What do you run?</h1>
-        <p className="text-sm text-zinc-600">Choose clinic or salon to continue setup. Once selected, changes and additional venues require admin approval.</p>
-        <div className="grid grid-cols-2 gap-4">
-          {['clinic', 'salon'].map(category => <button key={category} type="button" disabled={saving}
+        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Clinic setup</p>
+        <h1 className="text-3xl font-bold">Confirm your clinic</h1>
+        <p className="text-sm text-zinc-600">Enable clinic access to continue setting up this location.</p>
+        <div>
+          <button type="button" disabled={saving}
             className="rounded-2xl border border-teal-200 bg-teal-50 p-6 text-lg font-bold capitalize text-teal-900 disabled:opacity-50"
             onClick={async () => {
               setSaving(true)
               try {
-                const response = await selectBusinessCategory(business._id, category)
+                const response = await selectBusinessCategory(business._id, 'clinic')
                 populateFromBusiness(response.data.data.business)
               } catch (error) {
                 toast.error(error.response?.data?.message || 'Could not save your business category. Please retry.')
               } finally { setSaving(false) }
-            }}>{category}</button>)}
+            }}>Continue to clinic setup</button>
         </div>
         <Link to="/support" className="block text-sm font-semibold text-teal-700 underline">Ask the admin for help</Link>
       </main>
@@ -1029,29 +1023,23 @@ export default function BusinessOnboardingPage() {
               <div>
                 <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider">Step 01 &bull; Identity</span>
                 <h2 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight mt-1">
-                  Tell us about your business
+                  Tell us about your clinic
                 </h2>
                 <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
-                  This core profile information will represent your venue across ServeQ discovery, queues, and appointments.
+                  Patients see these details when they find your clinic, join your queue, or book an appointment.
                 </p>
-              </div>
-
-              <div className="space-y-2 rounded-2xl border border-zinc-200 p-4">
-                <p className="text-sm font-bold capitalize">{step1.category} business</p>
-                <p className="text-xs text-zinc-500">Your business category is saved. New hubs use an enabled category on your account. Ask the admin to change your business type.</p>
-                <Link to="/support" className="text-sm font-semibold text-teal-700 underline">Request a change or another venue</Link>
               </div>
 
               {/* Form Inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-700">Business / Venue Name *</label>
+                  <label className="text-xs font-bold text-zinc-700">Clinic name *</label>
                   <input
                     type="text"
                     required
                     value={step1.name}
                     onChange={(e) => setStep1({ ...step1, name: e.target.value })}
-                    placeholder="e.g. Blade & Shears Executive Barbershop"
+                    placeholder="e.g. Oakwood Family Clinic"
                     className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-sm font-semibold focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
                   />
                 </div>
@@ -1084,7 +1072,7 @@ export default function BusinessOnboardingPage() {
                     rows={3}
                     value={step1.description}
                     onChange={(e) => setStep1({ ...step1, description: e.target.value })}
-                    placeholder="Premium salon experience offering tailored cuts, beard styling, and revitalizing hot towel treatments."
+                    placeholder="Family clinic offering general consultations and follow-up care."
                     className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:border-teal-600"
                   />
                 </div>
@@ -1470,7 +1458,7 @@ export default function BusinessOnboardingPage() {
                   <div className="sm:col-span-6">
                     <input
                       type="text"
-                      placeholder="Service Name (e.g. Master Fade Cut)"
+                      placeholder="Service name (e.g. General consultation)"
                       value={newService.name}
                       onChange={(e) => setNewService({ ...newService, name: e.target.value })}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs font-semibold bg-white focus:outline-none focus:border-teal-600"
@@ -1555,19 +1543,12 @@ export default function BusinessOnboardingPage() {
                 <div>
                   <span className="text-[10px] font-black uppercase text-teal-700 tracking-wider">Step 04 &bull; Practitioners</span>
                   <h2 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight mt-1">
-                    {step1.category === 'clinic' ? 'Doctors & Medical Specialists' : 'Barbers & Master Stylists'} ({staff.length})
+                    Doctors & Medical Specialists ({staff.length})
                   </h2>
                   <p className="text-xs sm:text-sm text-zinc-500 font-medium mt-1">
                     Configure staff members that can be selected by patrons or auto-assigned during check-in.
                   </p>
                 </div>
-                {!["clinic", "healthcare"].includes(step1.category) && <button
-                  type="button"
-                  onClick={handleLoadStaffPresets}
-                  className="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200 px-3.5 py-2 rounded-xl hover:bg-teal-100 transition-all self-start sm:self-auto flex items-center gap-1.5"
-                >
-                  Load Recommended Team
-                </button>}
               </div>
 
               {/* Staff List */}
@@ -1639,22 +1620,20 @@ export default function BusinessOnboardingPage() {
                   />
                   <input
                     type="text"
-                    placeholder="Role / Title (e.g. Senior Barber)"
+                    placeholder="Role / Title (e.g. Consultant Physician)"
                     value={newStaff.role}
                     onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}
                     className="px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs font-semibold bg-white focus:outline-none focus:border-teal-600"
                   />
                   <input
                     type="text"
-                    placeholder="Specialties (e.g. Fade, Beard)"
+                    placeholder="Specialties (e.g. Family medicine)"
                     value={newStaff.specialties}
                     onChange={(e) => setNewStaff({ ...newStaff, specialties: e.target.value })}
                     className="px-3.5 py-2.5 rounded-xl border border-zinc-200 text-xs font-semibold bg-white focus:outline-none focus:border-teal-600"
                   />
-                  {['clinic', 'healthcare'].includes(step1.category) && <>
-                    <input type="email" aria-label="Doctor email" placeholder="Doctor email" value={newStaff.email || ''} onChange={e => setNewStaff({ ...newStaff, email: e.target.value })} className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm" />
-                    <input aria-label="Doctor registration ID" placeholder="Doctor registration ID" maxLength={100} value={newStaff.doctorId || ''} onChange={e => setNewStaff({ ...newStaff, doctorId: e.target.value })} className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm" />
-                  </>}
+                  <input type="email" aria-label="Doctor email" placeholder="Doctor email" value={newStaff.email || ''} onChange={e => setNewStaff({ ...newStaff, email: e.target.value })} className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm" />
+                  <input aria-label="Doctor registration ID" placeholder="Doctor registration ID" maxLength={100} value={newStaff.doctorId || ''} onChange={e => setNewStaff({ ...newStaff, doctorId: e.target.value })} className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm" />
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
@@ -1755,7 +1734,7 @@ export default function BusinessOnboardingPage() {
                 <div className="p-4 rounded-2xl border border-zinc-200 bg-zinc-50/50 flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm font-bold text-zinc-900">Allow Staff Selection</p>
-                    <p className="text-xs text-zinc-500">Customers can pick specific barbers/doctors</p>
+                    <p className="text-xs text-zinc-500">Patients can choose their doctor</p>
                   </div>
                   <input
                     type="checkbox"

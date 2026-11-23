@@ -7,6 +7,7 @@ import { getAvailableSlots, createBooking } from '../src/booking/booking.service
 
 const now = new Date('2026-11-18T04:25:00Z');
 const venue = {
+  category: "clinic",
   operatingHours: { timezone: 'Asia/Kolkata' },
   bookingSettings: { maxAdvanceBookingDays: 7 },
   subscription: { status: 'ACTIVE', plan: 'PRO' },

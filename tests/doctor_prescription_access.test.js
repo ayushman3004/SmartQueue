@@ -53,7 +53,7 @@ test('prescriptions are saved for the assigned patient and readable only by that
   let activeVisit = visit;
   t.mock.method(Booking, 'findById', () => ({ populate: async () => activeVisit }));
   let saved;
-  t.mock.method(Prescription, 'create', async data => { saved = { ...data, _id: rxId, createdAt: new Date() }; return saved; });
+  t.mock.method(Prescription, 'create', async data => { saved = { ...data, _id: rxId, createdAt: new Date() }; return { toObject: () => ({ ...saved }) }; });
   function matches(filter) { return saved && (!filter.$or || filter.$or.some(clause => clause.doctor === saved.doctor || clause.patient === saved.patient)) && (!filter.patient || filter.patient === saved.patient) && (!filter.doctor || filter.doctor === saved.doctor); }
   t.mock.method(Prescription, 'find', filter => ({ sort: () => ({ select: async () => matches(filter) ? [saved] : [] }) }));
   t.mock.method(Prescription, 'findOne', async filter => matches(filter) ? saved : null);
@@ -80,7 +80,13 @@ test('prescriptions are saved for the assigned patient and readable only by that
   activeVisit = { ...visit, assignedStaff: { staffId: otherDoctorId, name: staff.name } };
   assert.equal((await request(doctorId, '/prescriptions', input)).status, 403);
   activeVisit = visit;
-  assert.equal((await request(doctorId, '/prescriptions', input)).status, 201);
+  const followUpDate = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+  const created = await request(doctorId, '/prescriptions', { ...input, followUpDate });
+  assert.equal(created.status, 201);
+  const prescription = (await created.json()).data.prescription;
+  assert.equal(prescription.followUpDate, followUpDate);
+  assert.equal(prescription.reminderNextRunAt, undefined);
+  assert.ok(saved.reminderNextRunAt instanceof Date);
   assert.equal(saved.patient, patientId);
   assert.equal(saved.doctor, doctorId);
   assert.equal((await (await request(patientId, '/prescriptions')).json()).data.prescriptions.length, 1);

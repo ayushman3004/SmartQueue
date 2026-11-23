@@ -17,7 +17,7 @@ const schema = new mongoose.Schema(
     phone: String,
     businessCategory: {
       type: String,
-      enum: ["salon", "clinic", "healthcare", "other"],
+      enum: ["clinic", "healthcare"],
     },
     businessAddress: String,
     city: String,

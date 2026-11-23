@@ -28,15 +28,15 @@ export default function OwnerCategoryBoundary({ children }) {
   return <main className="business-page min-h-screen flex items-center justify-center p-6">
     <section className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-8 space-y-6">
       <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Business access</p>
-      <h1 className="text-3xl font-bold">{denied ? 'This venue is not available to your account' : 'Choose your business category'}</h1>
-      <p className="text-sm text-zinc-600">Clinic access shows only clinics. Salon access shows only salons. Ask the admin to change your choice or enable another category.</p>
+      <h1 className="text-3xl font-bold">{denied ? 'This venue is not available to your account' : 'Enable clinic access'}</h1>
+      <p className="text-sm text-zinc-600">Enable access to continue setting up your clinic.</p>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      {!denied && !error && <div className="grid grid-cols-2 gap-4">{['clinic', 'salon'].map(category => <button type="button" key={category} disabled={busy} className="rounded-2xl border border-teal-200 bg-teal-50 p-6 font-bold capitalize text-teal-900 disabled:opacity-50" onClick={async () => {
+      {!denied && !error && <div><button type="button" disabled={busy} className="rounded-2xl border border-teal-200 bg-teal-50 p-6 font-bold capitalize text-teal-900 disabled:opacity-50" onClick={async () => {
         setBusy(true)
-        try { await chooseOwnerCategory(category); setRevision(value => value + 1) }
+        try { await chooseOwnerCategory('clinic'); setRevision(value => value + 1) }
         catch (failure) { setError(failure.response?.data?.message || 'Could not save your choice.') }
         finally { setBusy(false) }
-      }}>{category}</button>)}</div>}
+      }}>Enable clinic access</button></div>}
       {error && <button type="button" className="underline" onClick={() => { setError(''); setRevision(value => value + 1) }}>Retry</button>}
       <Link to="/support" className="block text-sm font-semibold text-teal-700 underline">Request admin access</Link>
       {denied && <Link to="/hub/dashboard" className="block text-sm underline">Back to my businesses</Link>}

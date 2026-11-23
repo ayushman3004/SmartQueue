@@ -6,6 +6,7 @@ import app from "./app.js";
 import connectDB from "./config/db.js";
 import { initSocket } from "./realtime/socket.js";
 import { allowedOrigins, isOriginAllowed } from "./config/cors.js";
+import { startFollowUpReminderWorker } from "./src/modules/doctor/follow-up-reminder.service.js";
 import { startBookingCompletionWorker } from "./src/booking/booking.completion.js";
 import { cloudflareOriginGuard } from "./middleware/cloudflare-origin.middleware.js";
 import { configureRateLimitStore } from "./src/gateway/rateLimitStore.js";
@@ -51,6 +52,7 @@ initSocket(io);
 connectDB().then(() => {
   const stopBookingCompletion = startBookingCompletionWorker(io);
   httpServer.on("close", stopBookingCompletion);
+  httpServer.on("close", startFollowUpReminderWorker(io));
   httpServer.listen(PORT, "0.0.0.0", async () => {
     console.log(`\n🚀 Server running on port ${PORT}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || "development"}`);

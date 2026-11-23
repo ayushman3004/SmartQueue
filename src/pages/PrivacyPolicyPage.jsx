@@ -73,7 +73,7 @@ export default function PrivacyPolicyPage() {
             <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-100 text-xs text-zinc-700 space-y-1.5">
               <p className="font-bold text-zinc-900">Why we collect location information:</p>
               <ul className="legal-list">
-                <li>To display nearby salons and other available venues.</li>
+                <li>To display nearby clinics.</li>
                 <li>To help users discover businesses within their selected campus or area.</li>
                 <li>To provide location-based services and navigation.</li>
                 <li>To improve the relevance of venue recommendations.</li>
@@ -190,7 +190,8 @@ export default function PrivacyPolicyPage() {
         <p className="legal-copy">We use collected information for the following purposes:</p>
         <ul className="legal-list">
           <li>Creating and managing user accounts.</li>
-          <li>Displaying available salons, venues and services.</li>
+          <li>Displaying available clinics and services.</li>
+          <li>Making digital prescriptions available to the patient and their prescribing doctor, and sending scheduled follow-up reminders.</li>
           <li>Providing location-based discovery.</li>
           <li>Processing bookings and queue registrations.</li>
           <li>Managing live queue positions and estimated waiting times.</li>
@@ -223,7 +224,7 @@ export default function PrivacyPolicyPage() {
             <strong>Communication Providers:</strong> Email, SMS, WhatsApp or notification service providers, where used, to send booking updates and service communications.
           </li>
           <li>
-            <strong>Business Partners:</strong> Relevant customer booking and service information may be shared with the selected salon or venue so that it can manage and fulfil the booking.
+            <strong>Participating clinics</strong> receive booking information needed to manage the visit. If you opt in to WhatsApp reminders, we share your verified phone number with our messaging provider to send the reminder. Prescription details are available from your signed-in account.
           </li>
           <li>
             <strong>Legal and Regulatory Authorities:</strong> Information may be disclosed when required by applicable law, regulation, court orders or lawful government requests.

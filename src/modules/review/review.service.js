@@ -1,3 +1,4 @@
+import { isClinic } from "../doctor/doctor-access.js";
 import Review from "./review.model.js";
 import Booking from "../../booking/booking.model.js";
 import Business from "../business/business.model.js";
@@ -11,7 +12,7 @@ export const createReview = async ({ bookingId, businessId, userId, rating, comm
 
   // Verify business exists
   const business = await Business.findById(businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
   let booking = null;
   // If bookingId provided, verify it belongs to user and is completed
@@ -47,7 +48,7 @@ export const updateReview = async ({ reviewId, userId, rating, comment }) => {
   const review = await Review.findOne({ _id: reviewId, userId });
   if (!review) throw new ApiError(404, "Review not found");
   const business = await Business.findById(review.businessId);
-  if (!business) throw new ApiError(404, "Business not found");
+  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
   const booking = review.bookingId
     ? await Booking.findOne({ _id: review.bookingId, userId }) : null;
 
@@ -81,6 +82,7 @@ const refreshBusinessRating = async (business, businessId, booking) => {
 };
 
 export const getBusinessReviews = async (businessId) => {
+  if (!isClinic(await Business.findById(businessId).select("category"))) throw new ApiError(404, "Clinic not found");
   const reviews = await Review.find({ businessId })
     .populate("userId", "name avatar")
     .sort({ createdAt: -1 });
@@ -94,7 +96,8 @@ export const getBusinessReviews = async (businessId) => {
 };
 
 export const getMyReviews = async (userId) => {
-  return await Review.find({ userId })
+  const reviews = await Review.find({ userId })
     .populate("businessId", "name category")
     .sort({ createdAt: -1 });
+  return reviews.filter(review => isClinic(review.businessId));
 };

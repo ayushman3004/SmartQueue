@@ -52,7 +52,7 @@ export default function PublicNavbar() {
               <Play size={13} aria-hidden="true" /> Take a tour
             </button>
             <span className="landing-header-divider" aria-hidden="true" />
-            <Link to="/business" className="landing-business-link">For business</Link>
+            <Link to="/business" className="landing-business-link">For clinics</Link>
             <Link to={user ? dashboardPath : '/login'} className="landing-sign-in">{user ? 'Dashboard' : 'Sign in'}</Link>
             <button type="button" onClick={() => navigate('/login')} id="tour-join-queue-btn" className="landing-start-button">
               Get started <ArrowRight size={16} aria-hidden="true" />
@@ -90,7 +90,7 @@ export default function PublicNavbar() {
               <a href={isHome ? '#security' : '/#security'} onClick={() => setMobileMenuOpen(false)}>Security & trust <ArrowRight size={16} aria-hidden="true" /></a>
               <div className="landing-mobile-actions">
                 <button type="button" onClick={() => { setMobileMenuOpen(false); startTour() }}><Play size={14} aria-hidden="true" /> Take a tour</button>
-                <Link to="/business" onClick={() => setMobileMenuOpen(false)}>For business <ArrowRight size={16} aria-hidden="true" /></Link>
+                <Link to="/business" onClick={() => setMobileMenuOpen(false)}>For clinics <ArrowRight size={16} aria-hidden="true" /></Link>
                 <Link to={user ? dashboardPath : '/login'} onClick={() => setMobileMenuOpen(false)}>{user ? 'Dashboard' : 'Sign in'} <ArrowRight size={16} aria-hidden="true" /></Link>
               </div>
             </motion.nav>

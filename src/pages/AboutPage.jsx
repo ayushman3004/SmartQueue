@@ -7,7 +7,7 @@ import './AboutPage.css'
 export default function AboutPage() {
   useSeo({
     title: 'About Us — Our Story & Founders',
-    description: 'Meet Ayushman and Ritika, the founder and cofounder of serveQ, and discover why we are building a better way to wait at clinics and salons.',
+    description: 'Meet Ayushman and Ritika, the founder and cofounder of serveQ, and discover why we are building a better way to wait at clinics.',
     canonical: 'https://www.serveq.tech/about',
     robots: 'index, follow',
   })
@@ -27,7 +27,7 @@ export default function AboutPage() {
         <section className="about-story" aria-labelledby="about-gap-title">
           <div><p className="about-eyebrow">The gap we found</p><h2 id="about-gap-title">Finding a place was easy.<br />Knowing when was harder.</h2></div>
           <div className="about-prose">
-            <p>You can look up a clinic, check a salon’s opening hours, and find your way there. But one important question often stays unanswered: how long will you actually have to wait?</p>
+            <p>You can look up a clinic, check its opening hours, and find your way there. But one important question often stays unanswered: how long will you actually have to wait?</p>
             <p>For customers, that uncertainty makes it hard to plan the day. For the people behind the counter, it means balancing walk-ins, appointments, and a steady stream of “When is my turn?”</p>
             <p>That’s the gap we set out to close. We wanted a clearer connection between the people waiting and the businesses serving them.</p>
           </div>
@@ -50,7 +50,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="about-invitation" aria-labelledby="about-invitation-title"><p className="about-eyebrow">What comes next</p><h2 id="about-invitation-title">A better wait starts here.</h2><p>Find your next clinic or salon, or bring serveQ to your business.</p><div><Link className="about-primary" to="/customers">Find a venue <ArrowRight size={17} aria-hidden="true" /></Link><Link to="/business">For businesses <ArrowRight size={17} aria-hidden="true" /></Link></div></section>
+        <section className="about-invitation" aria-labelledby="about-invitation-title"><p className="about-eyebrow">What comes next</p><h2 id="about-invitation-title">A better wait starts here.</h2><p>Find your next clinic, or bring serveQ to your business.</p><div><Link className="about-primary" to="/customers">Find a clinic <ArrowRight size={17} aria-hidden="true" /></Link><Link to="/business">For clinics <ArrowRight size={17} aria-hidden="true" /></Link></div></section>
       </div>
     </div>
   )

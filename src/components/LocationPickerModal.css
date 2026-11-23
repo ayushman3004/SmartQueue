@@ -4,12 +4,6 @@
   --location-line: #c1d5c7;
   --location-door: #b7d5c2;
 }
-.location-picker[data-service='salon'] {
-  --location-ink: #765546;
-  --location-soft: #f3e9e1;
-  --location-line: #dfcbbd;
-  --location-door: #dfc8bb;
-}
 .location-picker .location-picker-backdrop { background: #17372955; }
 .location-picker .location-picker-dialog { background: #fffffc; border: 1px solid var(--location-line); border-radius: 28px 64px 28px 28px; box-shadow: 0 16px 64px #153c2b26; max-height: calc(var(--visual-viewport-height, 100dvh) - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; }
 .location-picker-heading { background: var(--location-soft); border-color: var(--location-line); padding: 24px; align-items: flex-start; gap: 16px; }

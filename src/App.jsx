@@ -82,9 +82,7 @@ export default function App() {
     (/^\/(customers|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
   const isBusinessWorkspace = Boolean(user && ['owner', 'admin'].includes(user.role) && !isCustomerWorkspace &&
     (/^\/(hub|business|subscription|history|queue|booking|profile|support|help)(\/|$)/).test(location.pathname))
-  const requestedService = new URLSearchParams(location.search).get('category')
-  const storedService = sessionStorage.getItem(`customer-service:${user?._id || user?.id}`)
-  const workspaceService = ['clinic', 'salon'].includes(requestedService) ? requestedService : storedService
+  const workspaceService = 'clinic'
 
 
   // Join user's private socket room for wallet:update and notifications
