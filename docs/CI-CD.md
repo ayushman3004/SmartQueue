@@ -499,6 +499,52 @@ rules and keep their settings recorded for rollback.
 [Rate rule fields and limits](https://developers.cloudflare.com/waf/rate-limiting-rules/) ·
 [Bot feature interactions](https://developers.cloudflare.com/waf/feature-interoperability/)
 
+### Enforcement verification
+
+**Status on November 23, 2026: Cloudflare edge blocking verified for the
+scanner path.** A follow-up check at 13:54 IST returned:
+
+| Request | Result | Cloudflare Ray ID |
+| --- | --- | --- |
+| `GET /live` | `200`, forwarded to Render | `a5eec6920bf60dbf-DEL` |
+| `GET /api/auth/me` without credentials | `401`, with the Express request ID | `a5eec5af090625d9-DEL` |
+| `GET /wp-login.php` | `403`, with the Cloudflare block page and no Render origin response marker | `a5eec694aed97083-DEL` |
+
+The response is consistent with the scanner rule. The exact rule ID and
+enforcement of other WAF policies are still unverified because Cloudflare
+Security Events were unavailable from this session. Look up the latest
+scanner Ray ID in the ServeQ zone to attribute the block.
+
+Earlier checks on November 23 returned:
+
+| Request | Result | Cloudflare Ray ID |
+| --- | --- | --- |
+| `GET /live` | `200`, forwarded to Render | `a5ee72e9492efdc2-SIN` |
+| `GET /api/auth/me` without credentials | `401`, with the Express request ID | `a5ee72ee69bcd976-SIN` |
+| `GET /wp-login.php` | `404`, with Render's origin response marker | `a5ee72fd0fb04d6f-SIN` |
+
+The recommended **ServeQ API scanner paths** rule would block
+`/wp-login.php` if it matched this request in Block mode. The observed Render
+`404` confirms that this request was not blocked by that rule. It does not
+establish whether the rule is absent, disabled, logging, or scoped differently,
+or whether other WAF rules enforce their policies. A Ray ID confirms Cloudflare
+handled the request somewhere in the path. It does not identify the active
+rules or prove that ServeQ's zone took a specific action.
+
+To close the gap, inspect **Security → Security rules** in the `serveq.tech`
+zone and record the enabled rule ID, hostname scope and action. If the scanner
+rule is already intended to block, repeat one request to
+`https://api.serveq.tech/wp-login.php`. In **Security → Analytics → Events**,
+filter by the API hostname, path, narrow time window and Ray ID where available.
+Record the matching rule ID, action and returned status. A `403` attributed to
+the named WAF rule verifies that rule only. If the scanner rule is intentionally
+in observation, use the temporary unused-path canary under
+[Render origin exposure and hardening](#render-origin-exposure-and-hardening)
+and verify the managed and rate-limit policies separately. Sampled logs may
+omit a request. Use a narrow window and do not treat absence as proof.
+
+[Cloudflare Security Events](https://developers.cloudflare.com/waf/analytics/security-events/)
+
 ### Managed rules
 
 1. For Free, confirm the **Cloudflare Free Managed Ruleset** in **Security →
