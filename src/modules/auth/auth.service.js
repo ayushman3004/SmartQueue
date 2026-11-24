@@ -1,6 +1,7 @@
 import { adminEmail, isAdminAccessRequired } from "../../../middleware/admin-access.middleware.js";
 import { effectiveSubscription } from '../../utils/subscription.js';
-import { canSendWhatsAppFollowUps, hasVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
+import { phoneRevisionFilter, recentPhoneAuthorization, whatsappConsentVersion } from './phone-security.js';
+import { hasWhatsAppVerifiedPhone, hasVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import { ownerState, assertOwnerLogin, publicOwnerAccess } from "../business-application/owner-lifecycle.js";
 import { validateInvitation } from "../business-application/business-application.service.js";
 import User from "./auth.model.js";
@@ -202,7 +203,7 @@ export const getProfile = async (userId) => {
 };
 
 // ─── Update Profile ──────────────────────────────────────────
-export const updateProfile = async (userId, data) => {
+export const updateProfile = async (userId, data, authTime) => {
   if (!data || typeof data !== "object" || Array.isArray(data)) throw new ApiError(400, "Invalid profile payload.");
 
   // Copy only own, explicitly editable fields. Never mutate or assign the request body.
@@ -225,7 +226,8 @@ export const updateProfile = async (userId, data) => {
     if (changes.phone === null) throw new ApiError(400, "Invalid phone number. Include its country code.");
   }
 
-  const user = await User.findById(userId);
+  const query = User.findById(userId);
+  const user = await (changes.phone === undefined ? query : query.select("+whatsappAudit"));
   if (!user) throw new ApiError(404, "User not found");
   if (changes.email !== undefined && changes.email !== user.email) {
     if (user.role === "admin" && isAdminAccessRequired() && changes.email !== adminEmail(process.env.CLOUDFLARE_ADMIN_ACCESS_EMAIL)) {
@@ -236,22 +238,33 @@ export const updateProfile = async (userId, data) => {
     if (existing && String(existing._id) !== String(user._id)) throw new ApiError(400, "Email is already taken by another account");
   }
 
-  if (Object.hasOwn(data, "whatsappFollowUpOptIn")) {
-    if (typeof data.whatsappFollowUpOptIn !== "boolean") throw new ApiError(400, "Invalid WhatsApp preference.");
-    if (data.whatsappFollowUpOptIn && (user.role !== "customer" || !hasVerifiedPhone(user) ||
-        (changes.phone !== undefined && changes.phone !== normalizePhoneNumber(user.phone)))) {
-      throw new ApiError(400, "Verify your current phone number to enable WhatsApp reminders.");
-    }
-    user.whatsappFollowUpPhone = data.whatsappFollowUpOptIn ? normalizePhoneNumber(user.phone) : "";
-  }
   if (changes.email !== undefined && changes.email !== user.email) user.isEmailVerified = false;
-  if (changes.phone !== undefined && (!changes.phone || changes.phone !== normalizePhoneNumber(user.phone || "", { allowEmpty: true }))) {
+  if (changes.phone !== undefined && changes.phone !== normalizePhoneNumber(user.phone || "", { allowEmpty: true })) {
+    const previouslyVerified = hasVerifiedPhone(user);
+    if (previouslyVerified && !recentPhoneAuthorization(authTime)) {
+      throw new ApiError(403, "Sign in again before changing your verified phone number.");
+    }
+    user.$where = phoneRevisionFilter(user);
+    user.phoneRevision = (user.phoneRevision || 0) + 1;
     user.isPhoneVerified = false;
-    user.whatsappFollowUpPhone = "";
     user.phoneVerification = undefined;
+    user.whatsappVerifiedAt = undefined;
+    user.whatsappFollowUpPhone = "";
+    if (previouslyVerified || user.whatsappConsent) {
+      const at = new Date();
+      if (user.whatsappConsent) user.whatsappConsentRevokedAt = at;
+      user.whatsappAudit = [...(user.whatsappAudit || []), { action: "phone_changed", at }].slice(-20);
+    }
+    user.whatsappConsent = false;
+    user.whatsappConsentAt = undefined;
+    user.whatsappConsentVersion = undefined;
   }
   for (const key of Object.keys(changes)) user[key] = changes[key];
-  await user.save();
+  try { await user.save(); }
+  catch (error) {
+    if (error.name === 'DocumentNotFoundError') throw new ApiError(409, 'Your phone preference changed. Refresh and try again.');
+    throw error;
+  }
   return sanitize(user);
 };
 
@@ -266,7 +279,10 @@ export const sanitize = (user) => ({
   authProvider: user.authProvider,
   phone: user.phone || "",
   isPhoneVerified: hasVerifiedPhone(user),
-  whatsappFollowUpOptIn: canSendWhatsAppFollowUps(user),
+  phoneVerificationMethod: hasVerifiedPhone(user) ? user.phoneVerification.provider : undefined,
+  phoneVerifiedAt: hasVerifiedPhone(user) ? user.phoneVerification.verifiedAt : undefined,
+  whatsappVerifiedAt: hasWhatsAppVerifiedPhone(user) ? user.whatsappVerifiedAt : undefined,
+  whatsappConsent: Boolean(hasWhatsAppVerifiedPhone(user) && user.whatsappConsent && user.whatsappConsentVersion === whatsappConsentVersion),
   isEmailVerified: Boolean(user.isEmailVerified),
   bio: user.bio || "",
   location: user.location || "",

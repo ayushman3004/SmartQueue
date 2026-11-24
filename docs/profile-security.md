@@ -1,41 +1,17 @@
-Profile updates copy only `name`, `email`, `avatar`, `phone`, `bio`, and `location`
-from the request. Values must be strings; all fields are validated before account
-mutation. Roles, balances, password hashes, OAuth identifiers, subscriptions,
-owner approval, token versions, verification flags, and phone proof metadata
-cannot be assigned through this endpoint. Approved business email changes remain
-restricted. Changing an email clears its verification, including Google-linked
-accounts; a provider name alone no longer implies that a changed email is verified.
+# Profile and contact security
 
-Phone numbers use E.164 format, with support for entering an Indian 10-digit
-mobile number. Clearing or changing a number clears its verification proof.
-Equivalent formatting preserves the existing proof.
+Profile writes explicitly allowlist editable properties. Authentication role,
+password, session revision, patient relationships and proof state are
+server-controlled. A verified phone change requires a session issued in the
+past ten minutes. Changing the number clears its verification and the associated
+notice consent. Changing email clears its verification.
 
-`POST /api/auth/phone/verify-firebase` requires the authenticated ServeQ session,
-the requested phone, and the Firebase ID token returned after SMS confirmation.
-The official Firebase Admin SDK checks signature, issuer, project audience,
-expiry, revocation, and disabled users. The proof must have a phone sign-in
-provider, match the requested number, and have authenticated within ten minutes.
-Only the authenticated account is updated. No Firebase token is persisted.
+WhatsApp phone verification reuses the authenticated profile OTP endpoints.
+Turnstile and Redis are required, and the challenge is bound to the original
+session, normalized number, purpose and contact revision. The code cannot log a
+patient in or transfer an account. Legacy Firebase proof remains valid as
+historical phone verification. A fresh WhatsApp verification and separate opt-in
+are required for prescription availability notices.
 
-The legacy phone sign-in and email-delivered phone verification endpoints return HTTP 410. Phone OTP is available in Profile after signing in with email or Google. An email OTP proves
-email access, not ownership of a phone. Existing boolean-only phone verification
-flags are no longer trusted: users must verify again by SMS to obtain matching
-server-issued proof metadata. There is no bulk account mutation during deployment.
-
-Backend setup before deployment:
-
-- Set `FIREBASE_PROJECT_ID` to the same project as the frontend SMS configuration.
-- Configure Application Default Credentials (`GOOGLE_APPLICATION_CREDENTIALS`),
-  or store the service account JSON in the backend secret variable
-  `FIREBASE_SERVICE_ACCOUNT_JSON`. The service account must be able to read
-  Firebase Authentication users for revocation/disabled-user checks.
-- Keep service account credentials out of the repository, container image, and
-  all `VITE_*` variables. Do not enable `FIREBASE_AUTH_EMULATOR_HOST` for this flow.
-
-Missing configuration or an unavailable verifier fails closed without verifying
-the phone. Live SMS delivery and production IAM configuration must be checked
-after deploying; the automated security tests use offline claims and also ensure
-the real SDK rejects unsigned JWTs.
-
-Run `npm run ci:frontend` for lint, all tests, the frontend build, and artifact
-validation. The production dependency audit remains a separate CI gate.
+See the [WhatsApp integration guide](./whatsapp-integration.md) for API details,
+data handling, deployment settings, and the Firebase decommission checklist.

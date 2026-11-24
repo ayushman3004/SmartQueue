@@ -14,7 +14,7 @@ import {
   forgotPasswordReset,
   sendPhoneVerificationOtp,
   verifyPhoneVerificationOtp,
-  verifyFirebasePhone,
+  setWhatsAppConsent,
   sendEmailVerificationOtp,
   verifyEmailVerificationOtp,
 } from "./auth.controller.js";
@@ -43,9 +43,14 @@ router.post("/upgrade-to-owner", protect, accountSecurityLimit, upgradeToOwner);
 router.post("/change-password", protect, accountSecurityLimit, changePasswordHandler);
 
 // Profile Contact Verification
-router.post("/phone/send-otp", protect, phoneOtpSendLimit, sendPhoneVerificationOtp);
-router.post("/phone/verify-otp", protect, profileOtpVerifyLimit, verifyPhoneVerificationOtp);
-router.post("/phone/verify-firebase", protect, profileOtpVerifyLimit, verifyFirebasePhone);
+const requireWhatsApp = (req, res, next) => req.app.locals.whatsapp?.config.enabled
+  ? next()
+  : res.status(503).json({ message: "WhatsApp phone verification is temporarily unavailable." });
+router.post("/phone/send-otp", protect, requireWhatsApp, phoneOtpSendLimit,
+  (req, res, next) => req.app.locals.whatsapp.verifyTurnstile(req, res, next), sendPhoneVerificationOtp);
+router.post("/phone/verify-otp", protect, requireWhatsApp, profileOtpVerifyLimit, verifyPhoneVerificationOtp);
+router.patch("/phone/whatsapp-consent", protect, accountSecurityLimit,
+  (req, res, next) => req.body?.enabled === true ? requireWhatsApp(req, res, next) : next(), setWhatsAppConsent);
 router.post("/email/send-otp", protect, emailOtpSendLimit, sendEmailVerificationOtp);
 router.post("/email/verify-otp", protect, profileOtpVerifyLimit, verifyEmailVerificationOtp);
 

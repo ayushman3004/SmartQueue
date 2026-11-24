@@ -73,7 +73,7 @@
 <text x="544" y="1558" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Open visit and fetch latest state</text>
 <rect x="984" y="1190" width="400" height="430" rx="18" fill="#FFFFFF" stroke="#C9DAD0" stroke-width="2"/>
 <text x="1008" y="1232" font-size="27" font-weight="600" fill="#17372A" text-anchor="start">External integrations</text>
-<text x="1008" y="1280" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Google OAuth / Firebase Phone</text>
+<text x="1008" y="1280" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Google OAuth / WhatsApp OTP</text>
 <text x="1008" y="1328" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Google Maps / Nominatim</text>
 <text x="1008" y="1376" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">Razorpay orders and webhooks</text>
 <text x="1008" y="1424" font-size="21" font-weight="400" fill="#52665B" text-anchor="start">SMTP or Resend email</text>

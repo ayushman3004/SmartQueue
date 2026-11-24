@@ -1,38 +1,30 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Smartphone, X } from 'lucide-react'
 import { useDialog } from '../hooks/useDialog'
-import { confirmFirebasePhone } from '../api/auth.api.js'
-import { confirmFirebasePhoneOtp, isFirebaseConfigured, sendFirebasePhoneOtp } from '../lib/firebase.js'
+import { sendWhatsAppPhoneOtp, verifyWhatsAppPhoneOtp } from '../api/auth.api.js'
+import TurnstileWidget from './TurnstileWidget.jsx'
 import { normalizePhoneNumber } from '../utils/phoneNumbers.js'
 
-const errors = {
-  'auth/captcha-check-failed': 'The security check failed. Request another code.',
-  'auth/invalid-app-credential': 'The security check could not be verified. Reload the page and try again.',
-  'auth/network-request-failed': 'Could not connect securely to phone verification. Check your connection or try another network.',
-  'auth/invalid-phone-number': 'Enter a valid phone number with its country code.',
-  'auth/billing-not-enabled': 'SMS delivery is unavailable. Please contact support.',
-  'auth/operation-not-allowed': 'SMS verification is unavailable for this number. Please contact support.',
-  'auth/unauthorized-domain': 'Phone verification is unavailable on this domain. Please contact support.',
-  'auth/unauthorized-continue-uri': 'Phone verification is unavailable on this domain. Please contact support.',
-  'auth/quota-exceeded': 'The SMS limit has been reached. Try again later.',
-  'auth/code-expired': 'This code expired. Request another code.',
-  'auth/invalid-verification-code': 'That code is incorrect. Try again.',
-  'auth/too-many-requests': 'Too many requests. Wait a few minutes and try again.',
-}
+const countryCodes = [['+91', 'India'], ['+1', 'US / Canada'], ['+44', 'United Kingdom'], ['+61', 'Australia'], ['+971', 'UAE']]
+const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+const digits = value => value.replace(/\D/g, '').slice(0, 6)
 
 export default function VerifyContactModal({ onClose, value, onSuccess }) {
-  const phone = normalizePhoneNumber(value)
+  const normalized = normalizePhoneNumber(value)
+  const [country, setCountry] = useState(() => normalized ? countryCodes.find(([code]) => normalized.startsWith(code))?.[0] || '' : '+91')
+  const [number, setNumber] = useState(() => normalized ? normalized.slice(country.length) : value || '')
+  const phone = normalizePhoneNumber(number.trim().startsWith('+') ? number : country + number)
   const [otp, setOtp] = useState('')
-  const [confirmation, setConfirmation] = useState(null)
-  const [proof, setProof] = useState(null)
+  const [challenge, setChallenge] = useState(null)
   const [cooldown, setCooldown] = useState(0)
+  const [token, setToken] = useState(null)
+  const [widget, setWidget] = useState(0)
   const [pending, setPending] = useState('')
   const [error, setError] = useState('')
-  const recaptcha = useRef(null)
   const busy = Boolean(pending)
   const close = () => { if (!busy) onClose() }
-  const dialog = useDialog(true, close, false, target => pending === 'send' &&
-    Boolean(target?.matches?.('iframe[src*="/recaptcha/"]')))
+  const dialog = useDialog(true, close, false, target =>
+    Boolean(target?.matches?.('iframe[src*="challenges.cloudflare.com"]')))
 
   useEffect(() => {
     if (!cooldown) return
@@ -41,42 +33,36 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
   }, [cooldown])
 
   async function sendCode() {
-    if (!phone) {
-      setError(errors['auth/invalid-phone-number'])
-      return
-    }
+    if (!phone || !token || busy || cooldown) return
     setPending('send')
     setError('')
     try {
-      const result = await sendFirebasePhoneOtp(phone, recaptcha.current)
-      setConfirmation(result)
+      const { data } = await sendWhatsAppPhoneOtp(phone, token)
+      setChallenge(data.data)
       setOtp('')
-      setProof(null)
-      setCooldown(30)
+      setCooldown(data.data.resendAfterSeconds)
     } catch (failure) {
-      setError(errors[failure.code] || 'Could not send a verification code. Try again or contact support.')
+      const retry = Number(failure.response?.headers?.['retry-after'])
+      if (Number.isFinite(retry) && retry > 0) setCooldown(retry)
+      setError(failure.response?.data?.message || 'Could not request a code. Try again shortly.')
     } finally {
+      setToken(null)
+      setWidget(value => value + 1)
       setPending('')
     }
   }
 
   async function verify(event) {
     event.preventDefault()
-    if (busy || !confirmation || otp.length !== 6) return
+    if (busy || !challenge || otp.length !== 6) return
     setPending('verify')
     setError('')
     try {
-      const token = proof || await confirmFirebasePhoneOtp(confirmation, otp)
-      setProof(token)
-      const response = await confirmFirebasePhone(phone, token)
-      onSuccess(response.data.data.user)
+      const { data } = await verifyWhatsAppPhoneOtp({ phone, otp, challengeId: challenge.challengeId, purpose: challenge.purpose })
+      onSuccess(data.data.user)
     } catch (failure) {
-      if (failure.response?.status === 401) {
-        setConfirmation(null)
-        setProof(null)
-        setOtp('')
-      }
-      setError(failure.response?.data?.message || errors[failure.code] || 'Could not verify your phone. Try again.')
+      setOtp('')
+      setError(failure.response?.data?.message || 'Could not verify your phone. Try again.')
     } finally {
       setPending('')
     }
@@ -90,32 +76,52 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
         className="absolute right-5 top-5 rounded-full bg-slate-100 p-2 text-slate-700 disabled:opacity-50"><X size={16} /></button>
       <header className="space-y-2">
         <Smartphone className="text-teal-700" size={24} aria-hidden="true" />
-        <h2 id="verify-phone-heading" className="text-xl font-bold">Verify your phone</h2>
+        <h2 id="verify-phone-heading" className="text-xl font-bold">Verify your phone on WhatsApp</h2>
         <p className="text-sm text-slate-600">
-          {confirmation ? 'Enter the six-digit code sent to' : 'Send a verification code by SMS to'} <strong>{phone || value}</strong>.
+          {challenge ? <>Enter the six-digit code sent to <strong>{phone}</strong>.</> : 'Enter the mobile number you use on WhatsApp.'}
         </p>
       </header>
-      {isFirebaseConfigured && !confirmation && <p className="text-xs text-slate-600">Firebase sends the SMS. Standard messaging rates may apply.</p>}
-      {!isFirebaseConfigured && <p role="status" className="text-sm text-slate-600">Phone verification is temporarily unavailable.</p>}
+      {!siteKey && <p role="status" className="text-sm text-slate-600">Phone verification is temporarily unavailable.</p>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <form onSubmit={verify} className="space-y-4" aria-busy={busy}>
-        {confirmation && <>
+        {!challenge && <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-2">
+          <label className="text-sm font-medium">Country code
+            <select value={country} onChange={event => setCountry(event.target.value)} disabled={busy}
+              className="mt-2 block w-full rounded-xl border border-zinc-300 px-3 py-3">
+              {countryCodes.map(([code, label]) => <option key={code} value={code}>{label} ({code})</option>)}
+              <option value="">Other country</option>
+            </select>
+          </label>
+          <label className="text-sm font-medium">Mobile number
+            <input type="tel" autoComplete="tel" value={number} onChange={event => setNumber(event.target.value)}
+              disabled={busy} placeholder={country || '+ country code'} maxLength={30}
+              className="mt-2 block w-full rounded-xl border border-zinc-300 px-3 py-3" />
+          </label>
+        </div>}
+        {challenge && <>
           <label className="block text-sm font-medium">
             Verification code
             <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
-              value={otp} disabled={busy || Boolean(proof)} onChange={event => setOtp(event.target.value.replace(/\D/g, ''))}
+              value={otp} disabled={busy} onChange={event => setOtp(digits(event.target.value))}
+              onPaste={event => { event.preventDefault(); setOtp(digits(event.clipboardData.getData('text'))) }}
               className="mt-2 block w-full rounded-xl border border-zinc-300 px-4 py-3 text-lg" />
           </label>
           <button type="submit" disabled={busy || otp.length !== 6}
             className="w-full rounded-xl bg-zinc-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
             {pending === 'verify' ? 'Verifying…' : 'Verify phone'}
           </button>
+          <button type="button" disabled={busy} className="text-sm underline" onClick={() => {
+            setChallenge(null)
+            setOtp('')
+            setError('')
+          }}>Use a different number</button>
         </>}
-        <button type="button" disabled={busy || cooldown > 0 || !isFirebaseConfigured} onClick={sendCode}
+        {cooldown === 0 && <TurnstileWidget action="whatsapp_phone_otp" onToken={setToken} key={widget} />}
+        <button type="button" disabled={busy || cooldown > 0 || !phone || !token} onClick={sendCode}
           className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm font-semibold disabled:opacity-50">
-          {pending === 'send' ? 'Sending…' : cooldown ? `Send again in ${cooldown}s` : confirmation ? 'Send another code' : 'Send code'}
+          {pending === 'send' ? 'Sending…' : cooldown ? `Send again in ${cooldown}s` : challenge ? 'Send another WhatsApp code' : 'Send WhatsApp code'}
         </button>
-        <div ref={recaptcha} />
+        <p className="text-xs text-slate-600">Without WhatsApp, you can still sign in using email or Google and view your prescriptions in ServeQ.</p>
       </form>
     </section>
   </div>

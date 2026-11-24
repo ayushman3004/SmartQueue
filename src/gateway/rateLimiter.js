@@ -5,7 +5,7 @@ import { createMemoryRateLimitStore } from "./rateLimitStore.js";
 const localStore = createMemoryRateLimitStore();
 const localKeySecret = randomBytes(32);
 
-function ipKey(req) {
+export function ipKey(req) {
   const address = req.clientIp || req.ip;
   if (!address || !ipaddr.isValid(address)) return "unknown";
   const ip = ipaddr.process(address);

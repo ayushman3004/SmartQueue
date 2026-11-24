@@ -392,7 +392,7 @@ flowchart LR
     Open -.-> Refresh[Fetch latest authorized snapshot]
 ```
 
-Native push, device registration, and the delivery worker are planned. The existing Firebase integration is for phone authentication, not implemented background messaging. Sockets alone do not provide reliable alerts to a suspended or closed mobile app.
+Native push, device registration, and the delivery worker are planned. WhatsApp phone verification and prescription notices use direct Meta Cloud API calls and a MongoDB outbox backed by BullMQ. Sockets alone do not provide reliable alerts to a suspended or closed mobile app.
 
 On resume or reconnect, the app refreshes its session and active visits, rejoins authorized rooms, and replaces stale estimates. It displays the last update time and a reconnecting state while live data is unavailable.
 
@@ -462,7 +462,7 @@ Other release requirements identified during source review remain applicable: re
 | Owner setup | [business.service.js](../src/modules/business/business.service.js) |
 | Payments and plans | [razorpay.service.js](../src/modules/payment/razorpay.service.js), [subscription.service.js](../src/modules/subscription/subscription.service.js) |
 | Socket rooms | [realtime/socket.js](../realtime/socket.js) |
-| Browser phone verification | [firebase.js](../src/lib/firebase.js) |
+| Browser phone verification | [WhatsApp OTP flow](./whatsapp-integration.md#architecture) |
 | Deployment option | [compose.yaml](../compose.yaml), [nginx.conf](../nginx.conf) |
 
 This is an architecture design and source-based workflow map. It does not change application behavior or certify runtime correctness.

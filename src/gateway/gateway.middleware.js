@@ -135,7 +135,10 @@ export const gatewayErrorHandler = (err, req, res, _next) => {
   }
 
   if (statusCode >= 500) {
-    console.error(`[${req.id}] Server Error:`, err);
+    if (/^\/api\/(?:whatsapp\/|auth\/phone\/|doctors\/prescriptions)/i.test(req.originalUrl || "")) {
+      console.error(`[${req.id}] Sensitive endpoint error (${statusCode})`);
+      if (statusCode === 500) message = "This request could not be completed.";
+    } else console.error(`[${req.id}] Server Error:`, err);
   }
 
   res.status(statusCode).json({

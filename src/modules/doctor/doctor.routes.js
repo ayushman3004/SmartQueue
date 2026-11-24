@@ -9,6 +9,7 @@ import Business from '../business/business.model.js';
 import Queue from '../../queue/queue.model.js';
 import Booking from '../../booking/booking.model.js';
 import Prescription from './prescription.model.js';
+import { prescriptionDeliveryStatus, schedulePrescriptionNotification } from '../whatsapp/prescription-notifications.js';
 import { readPrescription } from './prescription-encryption.js';
 import { doctorContext, ref, isClinic, isAssignedToDoctor, requireAssigned, prescriptionFilter } from './doctor-access.js';
 import { generateInvitationCredentials } from '../business-application/invitation-credentials.js';
@@ -184,9 +185,18 @@ router.post('/prescriptions', allowRoles('doctor', 'admin'), asyncHandler(async 
   if (!fields.diagnosis) throw new ApiError(400, 'Enter the diagnosis.');
   const reminder = scheduleFollowUp(req.body.followUpDate);
   try {
-    const prescription = await Prescription.create({ ...fields, ...reminder, booking: booking._id, business: context.business._id, doctor: req.user._id, patient: booking.userId._id, doctorName: context.staff.name, doctorId: context.staff.doctorId, patientName: booking.userId.name, clinicName: context.business.name });
-    res.status(201).json({ data: { prescription: readPrescription(prescription) } });
+    const notification = req.app.locals.whatsapp?.config.enabled ? schedulePrescriptionNotification() : undefined;
+    const prescription = await Prescription.create({ ...fields, ...reminder, whatsappNotification: notification, booking: booking._id, business: context.business._id, doctor: req.user._id, patient: booking.userId._id, doctorName: context.staff.name, doctorId: context.staff.doctorId, patientName: booking.userId.name, clinicName: context.business.name });
+    res.status(201).json({ data: { prescription: readPrescription(prescription), whatsappNotification: notification ? 'queued' : 'disabled' } });
   } catch (error) { if (error.code === 11000) throw new ApiError(409, 'A prescription is already saved for this consultation.'); throw error; }
+}));
+router.get('/prescriptions/:id/notification', allowRoles('doctor', 'admin'), asyncHandler(async (req, res) => {
+  const context = await doctorContext(req.user);
+  const record = await Prescription.findOne({
+    _id: validId(req.params.id), doctor: req.user._id, business: context.business._id,
+  }).select('_id +whatsappNotification');
+  if (!record) throw new ApiError(404, 'Prescription not found.');
+  res.json({ data: { status: await prescriptionDeliveryStatus(record) || 'disabled' } });
 }));
 router.get('/prescriptions/:id/pdf', allowRoles('doctor', 'customer', 'admin'), asyncHandler(async (req, res) => {
   const prescription = await Prescription.findOne({ _id: validId(req.params.id), ...prescriptionFilter(req.user) });

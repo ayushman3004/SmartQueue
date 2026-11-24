@@ -20,12 +20,11 @@
   "dependencies": {
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
+    "bullmq": "^6.7.10",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "firebase": "^13.0.0",
-    "firebase-admin": "^14.5.1",
     "framer-motion": "^12.38.0",
     "ipaddr.js": "^2.5.0",
     "jsonwebtoken": "^9.0.3",
@@ -61,7 +60,6 @@
     "vite": "^8.0.1"
   },
   "overrides": {
-    "@grpc/grpc-js": "^1.13.6",
     "nodemailer-otp": {
       "nodemailer": "$nodemailer"
     }

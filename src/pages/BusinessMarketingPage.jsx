@@ -8,7 +8,7 @@ export default function BusinessMarketingPage() {
   useSeo({
     title: "ServeQ for Clinics — Apply to join",
     description:
-      "Manage patient queues, appointments, and digital prescriptions. Send automatic follow-up reminders with WhatsApp opt-in.",
+      "Manage patient queues, appointments, and digital prescriptions. Send automatic in-app follow-up reminders.",
     canonical: "https://www.serveq.tech/business",
   });
   const plans = Object.values(SUBSCRIPTION_PLANS);

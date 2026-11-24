@@ -53,13 +53,19 @@ jobs:
             lint) npm run lint ;;
             test)
               docker run -d --rm --name serveq-test-valkey -p 127.0.0.1:6379:6379 valkey/valkey:8-alpine
-              trap 'docker stop serveq-test-valkey' EXIT
+              trap 'docker stop serveq-test-valkey serveq-test-whatsapp-mongo' EXIT
+              docker run -d --rm --name serveq-test-whatsapp-mongo -p 127.0.0.1:27017:27017 mongo:8.0
               for attempt in {1..20}; do
                 if docker exec serveq-test-valkey valkey-cli ping 2>/dev/null | grep -qx PONG; then break; fi
                 sleep 1
               done
               docker exec serveq-test-valkey valkey-cli ping | grep -qx PONG
-              RATE_LIMIT_TEST_REDIS_URL=redis://127.0.0.1:6379 npm test
+              for attempt in {1..30}; do
+                if docker exec serveq-test-whatsapp-mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' | grep -qx 1; then break; fi
+                sleep 1
+              done
+              docker exec serveq-test-whatsapp-mongo mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' | grep -qx 1
+              RATE_LIMIT_TEST_REDIS_URL=redis://127.0.0.1:6379 WHATSAPP_TEST_MONGO_URL=mongodb://127.0.0.1:27017 npm test
               ;;
             build) npm run build && npm run check:build ;;
             audit) npm audit --omit=dev --audit-level=high ;;
@@ -85,6 +91,14 @@ jobs:
           tags: serveq-backend:${{ github.sha }}
           cache-from: type=gha,scope=serveq-backend
           cache-to: type=gha,mode=max,scope=serveq-backend
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=serveq-frontend
+          cache-to: type=gha,scope=serveq-frontend,mode=max
       - name: Check image imports and secret exclusion
         env:
           IMAGE: serveq-backend:${{ github.sha }}

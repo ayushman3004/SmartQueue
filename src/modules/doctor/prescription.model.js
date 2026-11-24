@@ -2,6 +2,12 @@ import mongoose from 'mongoose';
 import { clinicalFields, decryptPrescription, encryptPrescription } from './prescription-encryption.js';
 
 const requiresPlaintext = function () { return this.isNew || this.encryptedClinicalData === undefined; };
+const notificationSchema = new mongoose.Schema({
+  version: Number, state: String, attempts: Number,
+  createdAt: Date, nextAt: Date, expiresAt: Date, lease: String, leaseUntil: Date,
+  callback: String, reason: String,
+}, { _id: false });
+
 const schema = new mongoose.Schema({
   booking: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true, immutable: true },
   business: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true, immutable: true },
@@ -21,7 +27,7 @@ const schema = new mongoose.Schema({
   encryptedClinicalData: { type: String },
   reminderNextRunAt: { type: Date, select: false },
   reminderExpiresAt: { type: Date, select: false },
-  reminderWhatsAppAttemptedAt: { type: Date, select: false },
+  whatsappNotification: { type: notificationSchema, select: false },
 }, { timestamps: true });
 
 schema.pre('save', function () {
@@ -36,6 +42,12 @@ schema.pre('save', function () {
 
 schema.index({ reminderNextRunAt: 1, reminderExpiresAt: 1 }, {
   partialFilterExpression: { reminderNextRunAt: { $exists: true } },
+});
+schema.index({ 'whatsappNotification.state': 1, 'whatsappNotification.nextAt': 1 }, {
+  partialFilterExpression: { 'whatsappNotification.state': { $exists: true } },
+});
+schema.index({ 'whatsappNotification.state': 1, 'whatsappNotification.leaseUntil': 1 }, {
+  partialFilterExpression: { 'whatsappNotification.leaseUntil': { $exists: true } },
 });
 schema.index({ booking: 1, doctor: 1 }, { unique: true });
 export default mongoose.model('Prescription', schema);

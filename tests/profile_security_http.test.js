@@ -30,12 +30,10 @@ test('profile and phone HTTP endpoints reject mass assignment and phone-only ver
     method, headers: { 'content-type': 'application/json', ...(authenticated ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body),
   });
   assert.equal((await request('/me', { role: 'admin' }, false, 'PATCH')).status, 401);
-  for (const idToken of [undefined, '', {}]) {
-    const res = await request('/phone/verify-firebase', { phone: '+919876543210', idToken, isPhoneVerified: true, userId: 'other-account' });
-    assert.equal(res.status, 400);
-  }
-  assert.equal((await request('/phone/send-otp', { phone: '+919876543210' })).status, 410);
-  assert.equal((await request('/phone/verify-otp', { phone: '+919876543210', otp: '123456' })).status, 410);
+  assert.equal((await request('/phone/verify-firebase', { phone: '+919876543210', idToken: 'obsolete' })).status, 404);
+  assert.equal((await request('/phone/send-otp', { phone: '+919876543210' }, false)).status, 401);
+  assert.equal((await request('/phone/send-otp', { phone: '+919876543210' })).status, 503);
+  assert.equal((await request('/phone/verify-otp', { phone: '+919876543210', otp: '123456' })).status, 503);
   for (const path of ['send', 'verify']) {
     const response = await fetch(new URL(`/api/otp/${path}`, base), {
       method: 'POST',

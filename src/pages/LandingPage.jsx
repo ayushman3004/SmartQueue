@@ -17,7 +17,7 @@ export default function LandingPage() {
   const navigate = useNavigate()
   useSeo({
     title: 'Clinic Queues, Digital Prescriptions & Follow-up Reminders',
-    description: 'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic follow-up reminders via WhatsApp.',
+    description: 'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic in-app follow-up reminders.',
     robots: 'index, follow',
     canonical: 'https://www.serveq.tech',
   })
@@ -37,7 +37,7 @@ export default function LandingPage() {
           <span id="tour-welcome-hero" className="landing-headline-line"><span>Less waiting.</span></span>
           <span className="landing-headline-line"><span>Better clinic visits.</span></span>
         </h1>
-        <p className="landing-hero-summary">Join a live clinic queue, get your digital prescription, and opt in to automatic follow-up reminders on WhatsApp.</p>
+        <p className="landing-hero-summary">Join a live clinic queue, get your digital prescription, and get automatic follow-up reminders in ServeQ.</p>
       </section>
 
       <section id="problem-solution" className="waiting-comparison" aria-labelledby="waiting-comparison-title">
@@ -70,7 +70,7 @@ export default function LandingPage() {
                 Ready to skip the wait?
               </h2>
               <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                See your place in the clinic queue, get your prescription online, and receive automatic follow-up reminders on WhatsApp when you opt in.
+                See your place in the clinic queue, get your prescription online, and receive automatic follow-up reminders in ServeQ.
               </p>
             </div>
 

@@ -10,8 +10,10 @@ export const forgotPasswordSendOtp = (email) => api.post("/auth/forgot-password/
 export const forgotPasswordVerifyOtp = (email, otp) => api.post("/auth/forgot-password/verify-otp", { email, otp });
 export const forgotPasswordReset = (data) => api.post("/auth/forgot-password/reset-password", data);
 
-// Phone verification requires a Firebase SMS proof; email uses backend OTPs.
-export const confirmFirebasePhone = (phone, idToken) => api.post("/auth/phone/verify-firebase", { phone, idToken });
+export const sendWhatsAppPhoneOtp = (phone, turnstileToken) =>
+  api.post("/auth/phone/send-otp", { phone, turnstileToken });
+export const verifyWhatsAppPhoneOtp = data => api.post("/auth/phone/verify-otp", data);
+export const setWhatsAppConsent = (enabled, version) => api.patch("/auth/phone/whatsapp-consent", { enabled, version });
 export const sendEmailOtp = (email) => api.post("/auth/email/send-otp", { email });
 export const verifyEmailOtp = (email, otp) => api.post("/auth/email/verify-otp", { email, otp });
 

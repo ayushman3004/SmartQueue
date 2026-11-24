@@ -51,9 +51,20 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     phoneVerification: {
-      provider: { type: String, enum: ["firebase"] },
+      provider: { type: String, enum: ["firebase", "whatsapp"] },
       phone: String,
       verifiedAt: Date,
+    },
+    phoneRevision: { type: Number, default: 0 },
+    whatsappVerifiedAt: Date,
+    whatsappConsent: { type: Boolean, default: false },
+    whatsappConsentAt: Date,
+    whatsappConsentVersion: String,
+    whatsappConsentRevokedAt: Date,
+    whatsappAudit: {
+      type: [{ _id: false, action: String, at: Date, version: String }],
+      select: false,
+      default: undefined,
     },
     whatsappFollowUpPhone: { type: String, default: "" },
     isEmailVerified: {
@@ -126,6 +137,14 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+export const whatsappPhoneIndex = { "phoneVerification.phone": 1 };
+export const whatsappPhoneIndexOptions = {
+  name: "unique_whatsapp_verified_phone",
+  unique: true,
+  partialFilterExpression: { "phoneVerification.provider": "whatsapp", "phoneVerification.phone": { $type: "string" } },
+};
+userSchema.index(whatsappPhoneIndex, whatsappPhoneIndexOptions);
 
 const User = mongoose.model("User", userSchema);
 export default User;

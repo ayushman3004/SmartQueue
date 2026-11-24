@@ -191,7 +191,7 @@ export default function PrivacyPolicyPage() {
         <ul className="legal-list">
           <li>Creating and managing user accounts.</li>
           <li>Displaying available clinics and services.</li>
-          <li>Making digital prescriptions available to the patient and their prescribing doctor, and sending scheduled follow-up reminders.</li>
+          <li>Making digital prescriptions available to the patient and their prescribing doctor, and sending scheduled in-app follow-up reminders.</li>
           <li>Providing location-based discovery.</li>
           <li>Processing bookings and queue registrations.</li>
           <li>Managing live queue positions and estimated waiting times.</li>
@@ -224,7 +224,7 @@ export default function PrivacyPolicyPage() {
             <strong>Communication Providers:</strong> Email, SMS, WhatsApp or notification service providers, where used, to send booking updates and service communications.
           </li>
           <li>
-            <strong>Participating clinics</strong> receive booking information needed to manage the visit. If you opt in to WhatsApp reminders, we share your verified phone number with our messaging provider to send the reminder. Prescription details are available from your signed-in account.
+            <strong>Participating clinics</strong> receive booking information needed to manage the visit. When you request verification on WhatsApp, Meta receives your phone number and a one-time code. If you opt in to prescription notices, Meta receives your verified number and a generic notice with a link to ServeQ. You can withdraw consent in Profile. Prescription details are available from your signed-in account.
           </li>
           <li>
             <strong>Legal and Regulatory Authorities:</strong> Information may be disclosed when required by applicable law, regulation, court orders or lawful government requests.

@@ -1,9 +1,7 @@
-import { configuredWhatsAppSender } from './whatsapp.service.js';
 import ApiError from '../../../utils/ApiError.js';
 import User from '../auth/auth.model.js';
 import { createNotification } from '../notification/notification.service.js';
 import { getBusinessDate } from '../../utils/bookingDates.js';
-import { canSendWhatsAppFollowUps, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import Prescription from './prescription.model.js';
 import { readPrescription } from './prescription-encryption.js';
 
@@ -25,9 +23,9 @@ export function scheduleFollowUp(value, now = new Date()) {
   };
 }
 
-async function deliverReminder(prescription, leaseUntil, io, sendWhatsApp) {
+async function deliverReminder(prescription, leaseUntil, io) {
   const patient = await User.findById(prescription.patient)
-    .select('role phone phoneVerification isPhoneVerified whatsappFollowUpPhone');
+    .select('_id');
   if (patient) {
     const { followUpDate } = readPrescription(prescription);
     const day = new Intl.DateTimeFormat('en-IN', { dateStyle: 'long', timeZone: 'UTC' })
@@ -41,26 +39,13 @@ async function deliverReminder(prescription, leaseUntil, io, sendWhatsApp) {
       eventKey: `prescription:follow-up:${prescription._id}`,
     }, io);
 
-    if (sendWhatsApp && canSendWhatsAppFollowUps(patient)) {
-      // Claim the external send first. A network timeout can still mean Meta accepted the message.
-      const claim = await Prescription.updateOne({
-        _id: prescription._id, reminderNextRunAt: leaseUntil, reminderWhatsAppAttemptedAt: null,
-      }, { $set: { reminderWhatsAppAttemptedAt: new Date() } });
-      if (claim.modifiedCount) {
-        try {
-          await sendWhatsApp(normalizePhoneNumber(patient.phone));
-        } catch (error) {
-          console.error('WhatsApp follow-up reminder failed', { prescription: String(prescription._id), providerCode: error.code || error.status });
-        }
-      }
-    }
   }
   await Prescription.updateOne({ _id: prescription._id, reminderNextRunAt: leaseUntil }, {
     $unset: { reminderNextRunAt: '', reminderExpiresAt: '' },
   });
 }
 
-export async function deliverDueFollowUps(io, sendWhatsApp, now = new Date()) {
+export async function deliverDueFollowUps(io, now = new Date()) {
   const due = { reminderNextRunAt: { $exists: true, $lte: now }, reminderExpiresAt: { $gte: now } };
   const reminders = await Prescription.find(due).select('booking business doctor patient followUpDate encryptedClinicalData').sort({ reminderNextRunAt: 1 }).limit(50).lean();
   for (const reminder of reminders) {
@@ -68,7 +53,7 @@ export async function deliverDueFollowUps(io, sendWhatsApp, now = new Date()) {
     const claim = await Prescription.updateOne({ _id: reminder._id, ...due }, { $set: { reminderNextRunAt: leaseUntil } });
     if (!claim.modifiedCount) continue;
     try {
-      await deliverReminder(reminder, leaseUntil, io, sendWhatsApp);
+      await deliverReminder(reminder, leaseUntil, io);
     } catch (error) {
       console.error('Follow-up reminder processing failed', { prescription: String(reminder._id), code: error.code });
     }
@@ -76,13 +61,12 @@ export async function deliverDueFollowUps(io, sendWhatsApp, now = new Date()) {
 }
 
 export function startFollowUpReminderWorker(io) {
-  const sendWhatsApp = configuredWhatsAppSender();
   let running = false;
   const tick = async () => {
     if (running) return;
     running = true;
     try {
-      await deliverDueFollowUps(io, sendWhatsApp);
+      await deliverDueFollowUps(io);
     } catch (error) {
       console.error('Follow-up reminder worker failed', { code: error.code });
     } finally {

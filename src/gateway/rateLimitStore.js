@@ -52,6 +52,7 @@ export function createRedisRateLimitStore(url) {
     connect: () => client.connect(),
     close: () => { if (client.isOpen) client.destroy(); },
     reportUnavailable,
+    execute,
     async consume(key, { max, windowMs }) {
       const [allowed, count, now, retryMs] = await execute(redis => redis.eval(
         SLIDING_WINDOW,

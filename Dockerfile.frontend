@@ -8,9 +8,10 @@ RUN npm ci
 COPY . .
 
 ARG VITE_API_URL=https://api.serveq.tech
+ARG PUBLIC_TURNSTILE_SITE
 ENV VITE_API_URL=$VITE_API_URL
 
-RUN npm run ci:frontend
+RUN VITE_TURNSTILE_SITE_KEY="$PUBLIC_TURNSTILE_SITE" npm run ci:frontend
 
 FROM nginx:alpine
 

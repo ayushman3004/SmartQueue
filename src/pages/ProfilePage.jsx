@@ -1,3 +1,4 @@
+import { setWhatsAppConsent } from '../api/auth.api.js'
 import './ProfilePage.css'
 import Prescriptions from '../components/Prescriptions'
 import { usePrescriptions } from '../hooks/usePrescriptions'
@@ -49,7 +50,7 @@ import ForgotPasswordModal from '../components/ForgotPasswordModal'
 import CustomerSidebar from '../components/CustomerSidebar'
 import { prepareAvatar } from '../utils/avatarUpload'
 
-const profileValues = user => ({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', bio: user?.bio || '', location: user?.location || '', avatar: user?.avatar || '', whatsappFollowUpOptIn: Boolean(user?.whatsappFollowUpOptIn) })
+const profileValues = user => ({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', bio: user?.bio || '', location: user?.location || '', avatar: user?.avatar || '' })
 
 export default function ProfilePage() {
   const feedback = useNotificationFeedback()
@@ -74,6 +75,7 @@ export default function ProfilePage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // Phone modal
+  const [savingWhatsAppConsent, setSavingWhatsAppConsent] = useState(false)
   const [phoneModalOpen, setPhoneModalOpen] = useState(false)
 
   // Inline Email Verification State
@@ -106,6 +108,21 @@ export default function ProfilePage() {
   const isPhoneVerified = Boolean(
     user?.isPhoneVerified && form.phone && normalizePhoneNumber(form.phone) === normalizePhoneNumber(user.phone)
   )
+
+  const isWhatsAppVerified = isPhoneVerified && Boolean(user?.whatsappVerifiedAt)
+
+  async function handleWhatsAppConsent(enabled) {
+    setSavingWhatsAppConsent(true)
+    try {
+      const { data } = await setWhatsAppConsent(enabled, 'prescription-v1')
+      setUser(data.data.user)
+      feedback.success(enabled ? 'WhatsApp notifications enabled.' : 'WhatsApp notifications disabled.')
+    } catch (error) {
+      feedback.error(error.response?.data?.message || 'Could not save the WhatsApp preference.')
+    } finally {
+      setSavingWhatsAppConsent(false)
+    }
+  }
 
   const role = user?.role || 'customer'
   const isOwner = role === 'owner'
@@ -609,7 +626,7 @@ export default function ProfilePage() {
                         type="tel"
                         readOnly={!editing}
                         value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value, whatsappFollowUpOptIn: false })}
+                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
                         placeholder="+91 98765 43210"
                         className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
                           editing
@@ -619,26 +636,28 @@ export default function ProfilePage() {
                       />
                     </div>
 
-                    {form.phone && !isPhoneVerified && (
+                    {!isWhatsAppVerified && (
                       <button
                         type="button"
                         onClick={() => setPhoneModalOpen(true)}
                         className="px-4 py-3 rounded-2xl profile-primary bg-[#315b45] hover:bg-[#254a36] text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-xs"
                       >
                         <Smartphone className="w-3.5 h-3.5" />
-                        <span>Verify Phone</span>
+                        <span>Verify on WhatsApp</span>
                       </button>
                     )}
                   </div>
                 </div>
 
                 {isCustomer && <div className="space-y-1.5">
+                  {isWhatsAppVerified && <p className="text-xs text-teal-700">Phone verified on WhatsApp</p>}
                   <label className="flex items-center gap-2 text-sm font-semibold">
-                    <input type="checkbox" checked={form.whatsappFollowUpOptIn} disabled={!editing || !isPhoneVerified}
-                      onChange={(event) => setForm({ ...form, whatsappFollowUpOptIn: event.target.checked })} />
-                    Receive follow-up reminders on WhatsApp
+                    <input type="checkbox" checked={Boolean(user?.whatsappConsent)}
+                      disabled={savingWhatsAppConsent || (!isWhatsAppVerified && !user?.whatsappConsent)}
+                      onChange={event => handleWhatsAppConsent(event.target.checked)} />
+                    Receive prescription availability notices on WhatsApp
                   </label>
-                  <p className="text-xs text-zinc-600">{isPhoneVerified ? 'Reminders go to your verified number.' : 'Verify your phone number to enable WhatsApp reminders.'}</p>
+                  <p className="text-xs text-zinc-600">Optional. WhatsApp receives your number and a generic notice. Your prescription stays in ServeQ. You can turn notices off anytime.</p>
                 </div>}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -918,7 +937,7 @@ export default function ProfilePage() {
             <span>Sign Out</span>
           </button>
         </div>
-          {user?.role === 'customer' && <Prescriptions result={prescriptions} />}
+          {user?.role === 'customer' && <div id="prescriptions"><Prescriptions result={prescriptions} /></div>}
         </main>
       </div>
 
@@ -929,7 +948,7 @@ export default function ProfilePage() {
         onSuccess={(updatedUser) => {
           setUser(updatedUser)
           setPhoneModalOpen(false)
-          feedback.success('Phone verified successfully!')
+          feedback.success('Phone verified on WhatsApp.')
         }}
       />}
 

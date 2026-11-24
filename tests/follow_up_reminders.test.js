@@ -16,7 +16,7 @@ test('follow-up reminders use the previous morning in IST or run immediately if 
   assert.equal(scheduleFollowUp('2026-11-24', now).reminderNextRunAt.toISOString(), now.toISOString());
 });
 
-test('competing workers send one private inbox reminder and use WhatsApp only for the verified opted-in number', async t => {
+test('competing workers send one private inbox reminder for encrypted and legacy prescriptions', async t => {
   const due = new Date('2026-11-23T09:00:00Z');
   const originalKey = process.env.PRESCRIPTION_ENCRYPTION_KEY;
   process.env.PRESCRIPTION_ENCRYPTION_KEY = randomBytes(32).toString('hex');
@@ -39,50 +39,15 @@ test('competing workers send one private inbox reminder and use WhatsApp only fo
       pending.delete(filter._id);
       return { modifiedCount: 1 };
     }
-    if (update.$set.reminderWhatsAppAttemptedAt) return { modifiedCount: 1 };
     if (!pending.has(filter._id) || claimed.has(filter._id)) return { modifiedCount: 0 };
     claimed.add(filter._id);
     return { modifiedCount: 1 };
   });
-  const phone = '+919876543210';
-  t.mock.method(User, 'findById', id => ({ select: async () => ({
-    role: 'customer', phone, isPhoneVerified: true,
-    phoneVerification: { provider: 'firebase', phone, verifiedAt: due },
-    whatsappFollowUpPhone: id === 'opt-in' ? phone : '+919876543211',
-  }) }));
+  t.mock.method(User, 'findById', id => ({ select: async () => ({ _id: id }) }));
   const inbox = [];
   t.mock.method(Notification, 'create', async payload => { inbox.push(payload); return payload; });
-  const phoneNumbers = [];
-  const sendWhatsApp = async recipient => phoneNumbers.push(recipient);
-  await Promise.all([deliverDueFollowUps(null, sendWhatsApp, due), deliverDueFollowUps(null, sendWhatsApp, due)]);
+  await Promise.all([deliverDueFollowUps(null, due), deliverDueFollowUps(null, due)]);
   assert.deepEqual(inbox.map(item => item.eventKey).sort(), ['prescription:follow-up:first', 'prescription:follow-up:second']);
   assert.ok(inbox.every(item => item.href === '/history'));
-  assert.deepEqual(phoneNumbers, [phone]);
   assert.equal(pending.size, 0);
-});
-
-test('WhatsApp uses an approved Meta template without sending prescription information', async () => {
-  const { configuredWhatsAppSender } = await import('../src/modules/doctor/whatsapp.service.js');
-  assert.equal(configuredWhatsAppSender({}), null);
-  const environment = {
-    WHATSAPP_ACCESS_TOKEN: 'test-token',
-    WHATSAPP_PHONE_NUMBER_ID: '123456',
-    WHATSAPP_FOLLOW_UP_TEMPLATE: 'serveq_follow_up',
-    WHATSAPP_GRAPH_API_VERSION: 'v27.0',
-  };
-  const send = configuredWhatsAppSender(environment, async (url, options) => {
-    assert.equal(url, 'https://graph.facebook.com/v27.0/123456/messages');
-    assert.equal(options.method, 'POST');
-    assert.equal(options.headers.Authorization, 'Bearer test-token');
-    assert.deepEqual(JSON.parse(options.body), {
-      messaging_product: 'whatsapp',
-      to: '919876543210',
-      type: 'template',
-      template: { name: 'serveq_follow_up', language: { code: 'en_US' } },
-    });
-    return new Response('', { status: 200 });
-  });
-  await send('+919876543210');
-  const rejected = configuredWhatsAppSender(environment, async () => new Response('private provider response', { status: 400 }));
-  await assert.rejects(rejected('+919876543210'), { status: 400, message: 'WhatsApp message rejected' });
 });

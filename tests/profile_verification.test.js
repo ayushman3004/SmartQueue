@@ -1,3 +1,4 @@
+import { createPhoneVerification } from '../src/modules/auth/phone-verification.service.js';
 import test from "node:test";
 import assert from "node:assert/strict";
 import Otp from "../src/modules/auth/otp.model.js";
@@ -104,8 +105,14 @@ test("Profile Contact Verification Flow - Phone & Email OTP (nodemailer-otp & No
     let writes = 0;
     Otp.findOneAndUpdate = async () => { writes++; };
     User.findById = async () => { writes++; return mockUser; };
-    await assert.rejects(verificationService.sendPhoneVerificationOtp({ phone: mockUser.phone, userId: mockUser._id }), { statusCode: 410 });
-    await assert.rejects(verificationService.verifyPhoneVerificationOtp({ phone: mockUser.phone, otp: "654321", userId: mockUser._id }), { statusCode: 410 });
+    const phone = createPhoneVerification({
+      config: {}, store: { read: async () => null },
+      users: { findOneAndUpdate: async () => { writes++; } },
+    });
+    await assert.rejects(phone.verify({
+      user: mockUser, phone: mockUser.phone, session: "test-session",
+      otp: "654321", purpose: "verify_phone", challengeId: "00000000-0000-0000-0000-000000000000",
+    }), { statusCode: 400 });
     assert.equal(writes, 0);
     assert.equal(mockUser.isPhoneVerified, false);
   });

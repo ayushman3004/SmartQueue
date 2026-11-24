@@ -4,11 +4,26 @@ import AdminWorkspaceSwitcher from '../components/AdminWorkspaceSwitcher'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { signin } from '../api/auth.api'
-import { changeDoctorPassword, doctorVisitAction, getDoctorDashboard, savePrescription } from '../api/doctor.api'
+import { changeDoctorPassword, doctorVisitAction, getDoctorDashboard, getPrescriptionNotification, savePrescription } from '../api/doctor.api'
 import { useAuth } from '../context/AuthContext'
 import Prescriptions from '../components/Prescriptions'
 import { prescriptionFields, usePrescriptions } from '../hooks/usePrescriptions'
 import '../styles/business-admission.css'
+
+const notificationText = {
+  queued: 'WhatsApp notification queued.',
+  pending: 'WhatsApp notification queued.',
+  claimed: 'WhatsApp notification queued.',
+  sending: 'Sending WhatsApp notification.',
+  accepted: 'WhatsApp accepted the notification.',
+  sent: 'WhatsApp notification sent.',
+  delivered: 'WhatsApp notification delivered.',
+  read: 'WhatsApp notification read.',
+  skipped: 'WhatsApp notification was skipped.',
+  failed: 'WhatsApp notification could not be delivered.',
+  unknown: 'WhatsApp delivery could not be confirmed.',
+  disabled: 'WhatsApp notifications are disabled.',
+}
 
 const errorText = error => error.response?.data?.message || 'Unable to complete this action. Please retry.'
 const button = 'rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900 disabled:opacity-50'
@@ -78,6 +93,20 @@ function DoctorWorkspace() {
   const [busy, setBusy] = useState(false)
   const [visit, setVisit] = useState(null)
   const prescriptionDialog = useDialog(Boolean(visit), () => setVisit(null))
+  const [recentPrescription, setRecentPrescription] = useState(null)
+  const recentPrescriptionId = recentPrescription?.id
+  const notificationPending = ['queued', 'pending', 'claimed', 'sending'].includes(recentPrescription?.status)
+  useEffect(() => {
+    if (!recentPrescriptionId || !notificationPending) return
+    let active = true
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await getPrescriptionNotification(recentPrescriptionId)
+        if (active) setRecentPrescription({ id: recentPrescriptionId, status: data.data.status })
+      } catch { /* Keep the save confirmation visible during a status outage. */ }
+    }, 5000)
+    return () => { active = false; clearInterval(timer) }
+  }, [recentPrescriptionId, notificationPending])
   const [revision, setRevision] = useState(0)
   const [extension, setExtension] = useState(5)
   const prescriptions = usePrescriptions(user._id, revision)
@@ -150,6 +179,7 @@ function DoctorWorkspace() {
         <section className={panel}><h2 className="text-xl font-bold">My live queue</h2>{data.queue.length ? data.queue.map(row => visitCard(row, 'queue')) : <p>No patients assigned in the queue.</p>}</section>
         <section className={panel}><h2 className="text-xl font-bold">My appointments and visits</h2>{data.bookings.filter(row => !data.queue.some(entry => String(entry.bookingId) === String(row._id))).map(row => visitCard(row, 'bookings'))}{!data.bookings.length && <p>No appointments assigned.</p>}</section>
       </div>
+      {recentPrescription && <p role="status">Prescription saved. {notificationText[recentPrescription.status]}</p>}
       <Prescriptions result={prescriptions} />
     </>}
     {data && visit && <div className="app-modal-layer fixed inset-0 z-100 flex items-center justify-center bg-black/40 p-4">
@@ -158,7 +188,8 @@ function DoctorWorkspace() {
         setBusy(true)
         setError('')
         try {
-          await savePrescription({ ...Object.fromEntries(new FormData(event.currentTarget)), bookingId: visit.booking })
+          const { data: response } = await savePrescription({ ...Object.fromEntries(new FormData(event.currentTarget)), bookingId: visit.booking })
+          setRecentPrescription({ id: response.data.prescription._id, status: response.data.whatsappNotification })
           setVisit(null)
           setRevision(value => value + 1)
         } catch (failure) { setError(errorText(failure)) }

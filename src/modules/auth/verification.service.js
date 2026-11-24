@@ -267,11 +267,3 @@ export const verifyEmailVerificationOtp = async ({ email, otp, userId, ownerToke
     user: sanitize(activatedUser || user),
   };
 };
-
-// Email delivery cannot prove control of a phone. Legacy routes fail closed.
-export const sendPhoneVerificationOtp = async () => {
-  throw new ApiError(410, "Use SMS phone verification. Email codes cannot verify phone ownership.");
-};
-export const verifyPhoneVerificationOtp = async () => {
-  throw new ApiError(410, "Use SMS phone verification. Email codes cannot verify phone ownership.");
-};

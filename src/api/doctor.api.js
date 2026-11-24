@@ -6,6 +6,7 @@ export const changeDoctorAccess = (business, staff, action) => api.post(`/doctor
 export const changeDoctorPassword = data => api.post('/doctors/password', data);
 export const doctorVisitAction = (kind, id, action, data) => api.post(`/doctors/${kind}/${id}/${action}`, data);
 export const getPrescriptions = () => api.get('/doctors/prescriptions');
+export const getPrescriptionNotification = id => api.get(`/doctors/prescriptions/${id}/notification`);
 export const savePrescription = data => api.post('/doctors/prescriptions', data);
 
 export async function downloadPrescription(id) {

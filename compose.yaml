@@ -19,9 +19,13 @@ services:
     ports:
       - "3001:3001"
     restart: unless-stopped
+    stop_grace_period: 30s
 
   rate-limit-store:
     image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - rate-limit-data:/data
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
@@ -33,8 +37,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        PUBLIC_TURNSTILE_SITE: ${VITE_TURNSTILE_SITE_KEY:-}
     ports:
       - "8080:80"
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  rate-limit-data:

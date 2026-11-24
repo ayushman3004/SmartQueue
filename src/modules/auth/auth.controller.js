@@ -1,3 +1,4 @@
+import { ipKey } from '../../gateway/rateLimiter.js';
 import { isAdminAccessRequired } from "../../../middleware/admin-access.middleware.js";
 import ApiError from "../../../utils/ApiError.js";
 import { revokeSession, sessionTokenFrom } from "./session-security.js";
@@ -6,7 +7,7 @@ import * as forgotPasswordService from "./forgotPassword.service.js";
 import * as verificationService from "./verification.service.js";
 import User from "./auth.model.js";
 import { oauthClientUrl, oauthResponseHeaders } from "./oauth-security.js";
-import { verifyFirebasePhone as verifyPhoneProof } from "./phone-verification.service.js";
+import { updateWhatsAppConsent } from "./whatsapp-consent.service.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
 import { generateToken, setTokenCookie, clearTokenCookie, responseToken } from "../auth.utils.js";
@@ -62,7 +63,7 @@ export const getMe = asyncHandler(async (req, res) => {
 });
 
 export const updateMe = asyncHandler(async (req, res) => {
-  const user = await authService.updateProfile(req.user._id, req.body);
+  const user = await authService.updateProfile(req.user._id, req.body, req.authTime);
   res.json(new ApiResponse(200, { user }, "Profile updated successfully"));
 });
 
@@ -101,24 +102,28 @@ export const forgotPasswordReset = asyncHandler(async (req, res) => {
 });
 
 // ─── Profile Contact Verification Controllers ─────────────────
+const phoneVerificationInput = req => ({
+  user: req.user, session: sessionTokenFrom(req), authTime: req.authTime,
+  phone: req.body?.phone ?? req.body?.phoneNumber ?? req.user.phone,
+});
+
 export const sendPhoneVerificationOtp = asyncHandler(async (req, res) => {
-  const phone = req.body.phone || req.body.phoneNumber || req.user.phone;
-  const result = await verificationService.sendPhoneVerificationOtp({
-    phone,
-    userId: req.user._id,
+  const result = await req.app.locals.whatsapp.phone.send({
+    ...phoneVerificationInput(req), ip: ipKey(req),
   });
-  res.status(200).json(new ApiResponse(200, result, result.message));
+  res.json(new ApiResponse(200, result, "If WhatsApp can reach this number, a code will arrive shortly."));
 });
 
 export const verifyPhoneVerificationOtp = asyncHandler(async (req, res) => {
-  const phone = req.body.phone || req.body.phoneNumber || req.user.phone;
-  const { otp } = req.body;
-  const result = await verificationService.verifyPhoneVerificationOtp({
-    phone,
-    otp,
-    userId: req.user._id,
+  const result = await req.app.locals.whatsapp.phone.verify({
+    ...phoneVerificationInput(req), otp: req.body?.otp, challengeId: req.body?.challengeId, purpose: req.body?.purpose,
   });
-  res.status(200).json(new ApiResponse(200, result, result.message));
+  res.json(new ApiResponse(200, result, "Phone verified on WhatsApp."));
+});
+
+export const setWhatsAppConsent = asyncHandler(async (req, res) => {
+  const result = await updateWhatsAppConsent(req.user, req.body?.enabled, req.body?.version);
+  res.json(new ApiResponse(200, result));
 });
 
 export const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
@@ -149,10 +154,4 @@ export const verifyEmailVerificationOtp = asyncHandler(async (req, res) => {
   }
   res.status(200).json(new ApiResponse(200, result, result.message));
 });
-
-export const verifyFirebasePhone = asyncHandler(async (req, res) => {
-  const result = await verifyPhoneProof({ userId: req.user._id, phone: req.body.phone, idToken: req.body.idToken });
-  res.status(200).json(new ApiResponse(200, result, "Phone number verified successfully."));
-});
-
 

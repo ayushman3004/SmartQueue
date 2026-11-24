@@ -2,8 +2,8 @@ export const SITE_URL = 'https://www.serveq.tech'
 
 // Shared by the router, build output and sitemap so discovery cannot drift.
 export const publicPages = [
-  { path: '/', title: 'Clinic Queues, Digital Prescriptions & Follow-up Reminders', description: 'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic follow-up reminders via WhatsApp.' },
-  { path: '/business', title: 'ServeQ for Clinics — Apply to Join', description: 'Manage patient queues, appointments, and digital prescriptions. Send automatic follow-up reminders with WhatsApp opt-in.' },
+  { path: '/', title: 'Clinic Queues, Digital Prescriptions & Follow-up Reminders', description: 'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic in-app follow-up reminders.' },
+  { path: '/business', title: 'ServeQ for Clinics — Apply to Join', description: 'Manage patient queues, appointments, and digital prescriptions. Send automatic in-app follow-up reminders.' },
   { path: '/support', title: 'Help & Support — ServeQ', description: 'Get in touch with the ServeQ support team for help with your queues, appointments, and business account.' },
   { path: '/privacy', title: 'Privacy Policy — serveQ', description: 'Learn how serveQ collects, uses, stores, processes, and protects your personal information, venue data, and payment details.' },
   { path: '/terms', title: 'Terms and Conditions', description: 'Review the terms and conditions for using serveQ, including virtual queue tokens, appointments, cancellations, and venue management.' },

@@ -22,7 +22,7 @@ Uncommitted application changes were preserved.
 | Docker | Repository root context `.` and `Dockerfile.backend`; `node:24-alpine`, `npm ci --omit=dev`, `NODE_ENV=production`, `npm start`. Runtime sources are copied explicitly rather than copying the whole repository. `EXPOSE 3001` is metadata; Render's runtime `PORT` takes precedence. |
 | Frontend Docker | `Dockerfile.frontend` builds Vite and serves `dist` with nginx. It is a local alternative, not the Vercel production deployment. Its `VITE_API_URL` build argument defaults to the canonical production API. Use an empty build argument to test through the local Nginx proxy. |
 | Compose | `compose.yaml` builds both Dockerfiles from root and uses a local `.env` for the backend, port 3001, frontend port 8080 and a localhost client origin. Not used for Render deployment. |
-| Node | The previous `>=18` engine was inaccurate. Firebase's locked app/auth/firestore packages require `>=24.12.0`, which is stricter than Vite's and OpenAI's requirements. Root manifest and lockfile declare `>=24.12.0`; CI and both Dockerfiles use Node 24. Set the existing Vercel project's Node version to 24.x if it is pinned to an older major. |
+| Node | Keep Node 24.x on CI, Docker and Vercel. The repository declares Node >=24.12.0. |
 | Installation | `npm ci` for validation; `npm ci --omit=dev` in the backend image. No separate backend manifest or registry configuration. |
 | Lint | `npm run lint` → `eslint .`. Existing ESLint configuration excludes backend paths and tests; this workflow preserves that scope. |
 | Tests | `NODE_ENV=test npm test` → `node --test tests/*.test.js`. Existing tests mock model/service operations or use schema objects and local HTTP servers. No MongoDB service, Atlas URI, or external service credentials are required. These are not full integration tests of MongoDB, OAuth, email, payments or WebSockets. |
@@ -53,8 +53,7 @@ The fixes preserve all validation gates:
 - Exclude every `.env` variant, including the example; explicitly copy runtime sources in `Dockerfile.backend` so repository-root environment files are not copied even if ignore rules regress.
 - Remove unused page bindings and obsolete local location-picker handlers. Document intentional storage/geocoding fallbacks instead of leaving empty catches. Auth loading already initializes from token presence, so its redundant synchronous effect update was removed.
 - Refresh the lockfile using compatible dependency security updates, including patched Mongoose, Express dependencies, Socket.IO dependencies and Nodemailer.
-- Override `@grpc/grpc-js` to a patched 1.x version because Firebase still requests `~1.9.0`. Override `nodemailer-otp`'s Nodemailer to the root dependency because the wrapper otherwise installs vulnerable Nodemailer 6. Its use of `createTransport` and `sendMail` is verified by an offline transport compatibility test. Do not force-downgrade Firebase as suggested by npm's broad audit remediation.
-- Align Node with Firebase's actual `>=24.12.0` requirement.
+- Override `nodemailer-otp`'s Nodemailer to the root dependency. An offline transport compatibility test covers its use of `createTransport` and `sendMail`.
 
 Final local verification on Node **24.22.3**:
 
@@ -79,7 +78,7 @@ The complete executable workflow is [`.github/workflows/ci-cd.yml`](../.github/w
 | --- | --- |
 | `ServeQ lint` | Node 24, npm cache, clean installation, existing lint command. |
 | `ServeQ test` | Same installation, all `tests/*.test.js`, `NODE_ENV=test`, no application credentials. |
-| `ServeQ build` | Same installation, existing build with canonical public API URL. Firebase/payment public variables are optional for compilation; this is build verification, not a functional test of those integrations. |
+| `ServeQ build` | Same installation, existing build with canonical public API URL. Turnstile and payment public variables are optional for compilation. Provider calls in tests are mocked. |
 | `ServeQ audit` | Audits production dependencies and blocks high/critical vulnerabilities. Moderate issues remain visible. Since both apps share dependencies, this includes frontend packages shipped in the backend image. |
 | `ServeQ backend Docker` | Buildx builds `linux/amd64` from `Dockerfile.backend`, using GitHub Actions cache. Loads an ephemeral SHA-tagged image, checks secret-file exclusions, imports `app.js` without MongoDB. Does not push an image or start the production server. |
 | `ServeQ CI gate` | Always evaluates validation results and fails if any matrix task or Docker job failed, was canceled, or was skipped. Stable required check for branch protection. |
@@ -148,7 +147,7 @@ Before enabling deployment, inspect the **new service** in Render and confirm:
 | `CLIENT_URL=https://serveq.tech` | OAuth redirects and allowed frontend origin. |
 | `SERVER_URL=https://api.serveq.tech` | Ensures Google callback uses the custom API domain instead of a Render subdomain. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Keep existing Google credentials; authorized Google redirect URI must be `https://api.serveq.tech/api/auth/google/callback`. |
-| Existing integration credentials | Preserve `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, OpenRouter keys/model settings, Resend/SMTP/Gmail settings, and optional WhatsApp Cloud API credentials as used by the application. |
+| Existing integration credentials | Preserve `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, OpenRouter keys/model settings, Resend/SMTP/Gmail settings, and the backend-only WhatsApp variables in the [integration guide](./whatsapp-integration.md). |
 | Administrator accounts | Sign-in authenticates existing database accounts only. There are no default administrator credentials or environment-based account bootstrap. Remove obsolete `ADMIN_EMAIL` / `ADMIN_PASSWORD` settings and review any previously bootstrapped accounts separately. |
 
 The script does not read or log Render environment values. Dashboard verification
@@ -186,10 +185,10 @@ they cannot be inferred from `vercel.json` alone.
 
 Set the Production environment value **`VITE_API_URL=https://api.serveq.tech`**
 with no trailing slash or `/api` suffix. Keep the existing public
-`VITE_RAZORPAY_KEY_ID` and `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-`VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` if those features are
-enabled. Vite embeds all `VITE_*` variables in public browser assets; never prefix
-backend credentials with `VITE_`.
+`VITE_RAZORPAY_KEY_ID` when configured and the public `VITE_TURNSTILE_SITE_KEY`
+for the WhatsApp OTP flow or other Turnstile forms. Follow the
+[WhatsApp cutover and Firebase retirement checklist](./whatsapp-integration.md).
+Vite embeds all `VITE_*` variables in public browser assets.
 
 **Changing `VITE_API_URL` requires a new frontend build/deployment.** The workflow's
 build variable does not update Vercel's configuration. Check Preview values too
@@ -785,7 +784,7 @@ in staging and after cutover.
 | General `/api` | 180/min per IP. CORS preflight, health routes, Socket.IO and the signed Razorpay delivery route are outside the visitor quota. |
 | `POST /api/auth/signin` | 20/min per IP and 6/min per normalized email, including retries and successful submissions. |
 | `POST /api/auth/signup` | 10/min per IP and 3/min per normalized email. |
-| OTP sends | Legacy login OTP: 20/5 min per IP and 3/5 min per normalized phone. Profile phone/email sends share 20/5 min per IP and 6/5 min per signed-in user, with an additional 3/5 min per recipient within the corresponding flow. Firebase sends SMS from the client; the backend limits its proof verification alongside other profile verification. |
+| OTP sends | Profile phone/email sends use 20/5 min per IP and 6/5 min per signed-in user, with an additional 3/5 min per recipient. WhatsApp adds mandatory Turnstile, Redis resend cooldown and shared daily caps. |
 | OTP verification | Legacy login OTP: 30/5 min per IP and 8/5 min per phone. Signed-in profile verification: 10/5 min per user. Existing per-code attempt and cooldown checks still apply. |
 | Password recovery | Send and complete each have 20/5 min per IP and 3/5 min per email. Verify has 30/5 min per IP and 8/5 min per email. The old and new URLs share the same bucket for each stage. |
 | Selected authenticated sensitive writes | 5/min per user within each family: password/owner upgrade, doctor access invite/revoke, and payment settings. Regular queue and booking activity uses the general quota. |
@@ -861,7 +860,7 @@ from Phase 3, with its existing method behavior, for the fifth rule.
 | Sign-in | `/api/auth/signin` | 60/min |
 | Registration | `/api/auth/signup` | 30/min |
 | OTP and reset sends | `/api/auth/email/send-otp`, `/api/auth/phone/send-otp`, `/api/auth/forgot-password`, `/api/auth/forgot-password/send-otp` | 90/5 min |
-| Verify and complete | `/api/auth/phone/verify-otp`, `/api/auth/phone/verify-firebase`, `/api/auth/email/verify-otp`, `/api/auth/verify-otp`, `/api/auth/forgot-password/verify-otp`, `/api/auth/reset-password`, `/api/auth/forgot-password/reset-password` | 120/5 min |
+| Verify and complete | `/api/auth/phone/verify-otp`, `/api/auth/email/verify-otp`, `/api/auth/verify-otp`, `/api/auth/forgot-password/verify-otp`, `/api/auth/reset-password`, `/api/auth/forgot-password/reset-password` | 120/5 min |
 | Costly public API | Phase 3 Maps, chatbot, support, waitlist, and business application rule | 240/min |
 
 The edge ceilings intentionally leave room for shared networks and do not

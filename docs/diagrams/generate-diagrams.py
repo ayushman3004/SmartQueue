@@ -219,7 +219,7 @@ def architecture():
 
     d.rect(984, 1190, 400, 430, fill="#FFFFFF", stroke=BORDER, radius=18)
     d.text(1008, 1232, "External integrations", 27, INK, 600)
-    d.lines(1008, 1280, ["Google OAuth / Firebase Phone", "Google Maps / Nominatim", "Razorpay orders and webhooks", "SMTP or Resend email", "WhatsApp Cloud API", "OpenRouter assistance / analytics"], size=21, gap=48)
+    d.lines(1008, 1280, ["Google OAuth / WhatsApp OTP", "Google Maps / Nominatim", "Razorpay orders and webhooks", "SMTP or Resend email", "WhatsApp Cloud API", "OpenRouter assistance / analytics"], size=21, gap=48)
 
     # Dedicated outer return rail avoids intersecting modules and their labels.
     d.path([(920, 1288), (952, 1288), (952, 1150), (1415, 1150), (1415, 226), (552, 226), (552, 268)], color=LINE, dashed=True)

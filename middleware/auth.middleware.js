@@ -43,6 +43,7 @@ export const protect = asyncHandler(async (req, _res, next) => {
     if (user.doctorAccess?.mustChangePassword && !["/api/auth/me", "/api/doctors/password", "/api/auth/logout"].includes(path)) throw new ApiError(403, "Change your temporary doctor password first.");
   }
   req.user = user;
+  req.authTime = decoded.iat;
   next();
 });
 

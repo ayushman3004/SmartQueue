@@ -1,3 +1,4 @@
+import whatsappWebhook from '../modules/whatsapp/whatsapp-webhook.routes.js';
 import { requireAdminAccess } from "../../middleware/admin-access.middleware.js";
 import { adminSignin, checkAdminAccess } from "../modules/auth/auth.controller.js";
 import doctorRoutes from '../modules/doctor/doctor.routes.js';
@@ -78,6 +79,7 @@ export const createGatewayRouter = () => {
   // Gateway base middleware
   router.use(requestIdMiddleware);
   router.use("/health", healthRoutes);
+  router.use("/whatsapp/webhook", whatsappWebhook);
   router.use((req, res, next) => {
     // Provider delivery uses raw-body signature verification, not a visitor IP quota.
     if (req.method === "POST" && /^\/payments\/webhook\/?$/i.test(req.path)) return next();

@@ -32,7 +32,7 @@ export function useSeo({
     }
     metaDesc.content =
       description ||
-      'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic follow-up reminders via WhatsApp.'
+      'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic in-app follow-up reminders.'
 
     // 3. Update Robots Directive
     let metaRobots = document.querySelector('meta[name="robots"]')

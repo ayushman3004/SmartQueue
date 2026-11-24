@@ -1,5 +1,6 @@
 import "dotenv/config";
 import http from "http";
+import mongoose from "mongoose";
 import cors from "cors";
 import { Server } from "socket.io";
 import app from "./app.js";
@@ -11,11 +12,14 @@ import { startBookingCompletionWorker } from "./src/booking/booking.completion.j
 import { cloudflareOriginGuard } from "./middleware/cloudflare-origin.middleware.js";
 import { configureRateLimitStore } from "./src/gateway/rateLimitStore.js";
 
+import { configureWhatsApp, ensureWhatsAppIndexes } from "./src/modules/whatsapp/whatsapp.runtime.js";
+import { startPrescriptionNotificationWorker } from "./src/modules/whatsapp/prescription-notifications.js";
+
 const PORT = process.env.PORT || 3001;
 
 const httpServer = http.createServer(app);
 const rateLimitStore = configureRateLimitStore(app);
-httpServer.on("close", () => rateLimitStore?.close());
+const whatsapp = configureWhatsApp(app, rateLimitStore);
 
 // Export for use in app.js / route handlers
 app.set("allowedOrigins", allowedOrigins);
@@ -49,7 +53,25 @@ app.set("io", io);
 
 initSocket(io);
 
-connectDB().then(() => {
+connectDB().then(async () => {
+  if (whatsapp) await ensureWhatsAppIndexes();
+  const stopWhatsApp = whatsapp && startPrescriptionNotificationWorker(whatsapp);
+  let closing = false;
+  const shutdown = async () => {
+    if (closing) return;
+    closing = true;
+    try {
+      await stopWhatsApp?.();
+      await new Promise(resolve => io.close(resolve));
+      rateLimitStore?.close();
+      await mongoose.disconnect();
+    } catch {
+      console.error("Could not complete backend shutdown");
+      process.exitCode = 1;
+    }
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
   const stopBookingCompletion = startBookingCompletionWorker(io);
   httpServer.on("close", stopBookingCompletion);
   httpServer.on("close", startFollowUpReminderWorker(io));
@@ -59,4 +81,8 @@ connectDB().then(() => {
     console.log(`🔌 Socket.IO ready`);
     console.log(`📦 MongoDB connected\n`);
   });
+}).catch(() => {
+  console.error("Backend initialization failed");
+  rateLimitStore?.close();
+  void mongoose.disconnect().finally(() => { process.exitCode = 1; });
 });
