@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { useSessionFeedback } from '../modules/notification/useNotificationFeedback'
 import { useSeo } from '../utils/useSeo'
 import { getMyBusinesses } from '../api/business.api'
 import BusinessSubscriptionPlans from '../components/BusinessSubscriptionPlans'
@@ -10,6 +10,7 @@ import BusinessSetupProgress from '../components/BusinessSetupProgress'
 import { hasActiveSubscription } from '../utils/subscription'
 
 export default function SubscriptionPage() {
+  const feedback = useSessionFeedback()
   const navigate = useNavigate()
   const { user } = useAuth()
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function SubscriptionPage() {
     <main className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
       <BusinessSetupProgress current={2} />
       <div className="business-pricing-intro space-y-3"><p className="business-eyebrow">YOUR BUSINESS, AT ITS BEST</p><h1 className="text-3xl sm:text-4xl">A little less waiting.<br />More room to grow.</h1><p className="text-sm text-zinc-600">Choose your plan, complete payment, then continue setting up your venue.</p></div>
-      <BusinessSubscriptionPlans onSuccess={async (result) => { toast.success('Subscription activated.'); await continueToBusiness(result) }} />
+      <BusinessSubscriptionPlans onSuccess={async (result) => { feedback.success('Subscription activated.'); await continueToBusiness(result) }} />
       {hasActiveSubscription(user?.subscription) && <button type="button" onClick={continueToBusiness} className="text-sm font-semibold underline">Continue to my business</button>}
     </main>
   </div>

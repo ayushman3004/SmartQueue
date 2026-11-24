@@ -3,7 +3,8 @@ import DoctorPage, { DoctorLogin } from './pages/DoctorPage'
 import OwnerCategoryBoundary from './components/OwnerCategoryBoundary'
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, matchPath, useLocation } from 'react-router-dom'
-import { Toaster, toast } from 'react-hot-toast'
+import { PageNotificationStatus } from './modules/notification/NotificationStatus'
+import { createNotificationFeedback, dismissFeedback, getFeedbackRevision, pageNotificationScope, queueNotificationScope } from './modules/notification/browser-feedback'
 import { useAuth } from './context/AuthContext'
 import { useSocket } from './context/SocketContext'
 import Navbar from './components/Navbar'
@@ -73,6 +74,7 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [location.pathname, location.search])
+  useEffect(() => () => dismissFeedback(pageNotificationScope(location.pathname)), [location.pathname])
   const isHubPage = location.pathname.startsWith('/hub')
   const isOnboarding = location.pathname.startsWith('/business/onboarding')
   const isVenueDashboard = !isOnboarding && location.pathname !== '/business/apply' &&
@@ -91,23 +93,24 @@ export default function App() {
       joinUser(user._id)
     }
   }, [user?._id, joinUser, connected])
-  
   useEffect(() => {
-    if (!socket) return
-    const handleNear = (data) => {
-      toast(data.message, {
-        style: {
-          borderRadius: '16px', background: '#111', color: '#fff', border: '1px solid #7B61FF', padding: '16px', fontSize: '14px', fontWeight: 'bold'
-        },
-        duration: 5000,
-      })
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification("serveQ", { body: data.message })
+    if (!socket || !user?._id) return
+    const revision = getFeedbackRevision()
+    const feedback = createNotificationFeedback(queueNotificationScope, revision)
+    const showQueueActivity = notification => {
+      if (revision !== getFeedbackRevision() || String(notification?.recipient) !== String(user._id)) return
+      const approaching = notification.eventKey?.startsWith('queue:near:')
+      if (!approaching && !notification.eventKey?.startsWith('turn:serving:')) return
+
+      const href = /^\/queue\/[a-f\d]{24}$/i.test(notification.href) ? notification.href : ''
+      feedback.info(notification.message, { href })
+      if (approaching && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('ServeQ', { body: notification.message })
       }
     }
-    socket.on('notification:near', handleNear)
-    return () => socket.off('notification:near', handleNear)
-  }, [socket])
+    socket.on('notification:created', showQueueActivity)
+    return () => socket.off('notification:created', showQueueActivity)
+  }, [socket, user?._id])
 
 
 
@@ -152,6 +155,10 @@ export default function App() {
     isVenueDashboard || (!isHubPage && !isCustomerWorkspace)
   )
   const hasPublicPageHeader = ['/privacy', '/terms', '/about'].includes(location.pathname)
+  const hasWorkspaceNotificationStatus = user && (isOnboarding || isVenueDashboard ||
+    ['/customers', '/history', '/profile', '/hub/dashboard', '/admin', '/admin/login', '/admin/dashboard', '/admin/applications',
+      '/queue', '/queue/:businessId', '/booking', '/booking/:businessId']
+      .some(path => matchPath({ path, end: true }, location.pathname)))
 
   if (authLoading) {
     return <LoadingScreen />
@@ -174,20 +181,6 @@ export default function App() {
   return (
     <div data-service={isCustomerWorkspace ? workspaceService : undefined} className={`page-wrapper ${user ? 'app-workspace' : ''} ${bgClass} ${isCustomerWorkspace ? 'customer-workspace' : ''} ${location.pathname === '/' ? 'landing-shell' : ''} ${isBusinessWorkspace ? 'business-page' : ''} ${location.pathname.startsWith('/admin') && user?.role === 'admin' ? 'admin-shell' : ''}`}>
       {!isStandalonePage && <AmbientBackground variant={bgVariant} />}
-      <Toaster 
-        position="top-right"
-        containerStyle={{ top: 'calc(16px + env(safe-area-inset-top, 0px))', right: 'max(12px, env(safe-area-inset-right, 0px))', left: 'max(12px, env(safe-area-inset-left, 0px))' }}
-        toastOptions={{
-          style: {
-            background: '#ffffff',
-            color: '#09090b',
-            border: '1px solid #f4f4f5',
-            borderRadius: '12px',
-            fontSize: '14px',
-            fontWeight: '600'
-          },
-        }}
-      />
       {user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !hasPublicPageHeader && <Navbar />}
       {user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !hasPublicPageHeader && (
         <>
@@ -197,6 +190,7 @@ export default function App() {
       {user && !isOnboarding && !isStandalonePage && <AIDesistant />}
       {user?.role === 'owner' && user.ownerAccess?.mustChangePassword && ['ACTIVE','PASSWORD_REQUIRED'].includes(user.ownerAccess.status) && <aside className="owner-password-banner" role="status">Change your temporary password by {new Date(user.ownerAccess.passwordChangeDeadline).toLocaleString()}. <a href="/hub/change-password">Change password</a></aside>}
       <main className={user && !isOnboarding && !isHubPage && !isCustomerDashboard && !isStandalonePage && !hasPublicPageHeader ? "main-content flex-1 flex flex-col min-h-[calc(100dvh-140px)]" : "flex-1 flex flex-col min-h-[calc(100dvh-140px)]"}>
+        {!hasWorkspaceNotificationStatus && <PageNotificationStatus />}
         <Routes>
           {guidePages.map(page => <Route key={page.path} path={page.path} element={<PublicGuidePage page={page} />} />)}
           <Route path="/business/apply" element={<BusinessApplicationPage />} />

@@ -8,7 +8,9 @@ import AdminFreeSubscriptionCoupon from '../components/AdminFreeSubscriptionCoup
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
+import NotificationStatus, { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import { publishFeedback, sessionNotificationScope } from '../modules/notification/browser-feedback'
+import { useInlineFeedback, useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import axios from '../api/axios'
 import NotFoundPage from './NotFoundPage'
 import { useAuth } from '../context/AuthContext'
@@ -53,6 +55,7 @@ import {
 
 // ─── Embedded Admin Login View ──────────────────────────────────
 function AdminLoginForm({ onLoginSuccess }) {
+  const [feedback, loginFeedbackScope] = useInlineFeedback()
   const { user, logOut } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -63,12 +66,12 @@ function AdminLoginForm({ onLoginSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!email || !password) {
-      toast.error('Please enter admin email and password')
+      feedback.error('Please enter admin email and password')
       return
     }
 
     if (!isValidEmail(email.trim())) {
-      toast.error('Please enter a valid email address (e.g. admin@serveq.tech)')
+      feedback.error('Please enter a valid email address (e.g. admin@serveq.tech)')
       return
     }
 
@@ -78,11 +81,11 @@ function AdminLoginForm({ onLoginSuccess }) {
         email: email.trim(),
         password,
       })
-      toast.success('Admin authentication successful! Access granted.')
       onLoginSuccess(res.data.data.user)
+      publishFeedback(sessionNotificationScope, 'success', 'Admin authentication successful! Access granted.')
     } catch (err) {
       const msg = err.response?.data?.message || 'Admin authentication failed. Please verify credentials.'
-      toast.error(msg)
+      feedback.error(msg)
     } finally {
       setLoading(false)
     }
@@ -137,6 +140,7 @@ function AdminLoginForm({ onLoginSuccess }) {
           )}
 
           <form onSubmit={handleSubmit} className="customer-auth-form">
+            <NotificationStatus scope={loginFeedbackScope} />
             <div className="customer-auth-field">
               <label htmlFor="admin-email">Email address</label>
               <input
@@ -220,6 +224,7 @@ export default function AdminAccessGate() {
 }
 
 function AdminDashboard() {
+  const feedback = useNotificationFeedback()
   const { user, loading: authLoading, logIn, logOut } = useAuth()
   const { socket } = useSocket()
   const navigate = useNavigate()
@@ -264,14 +269,17 @@ function AdminDashboard() {
   const [selectedBusinessDetail, setSelectedBusinessDetail] = useState(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const detailDialog = useDialog(Boolean(detailModalOpen), () => setDetailModalOpen(false))
+  const [detailFeedback, detailFeedbackScope] = useInlineFeedback(Boolean(detailModalOpen))
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const [hubToDelete, setHubToDelete] = useState(null)
   const deleteHubDialog = useDialog(Boolean(hubToDelete), () => setHubToDelete(null))
+  const [deleteHubFeedback, deleteHubFeedbackScope] = useInlineFeedback(Boolean(hubToDelete))
   const [deletingHub, setDeletingHub] = useState(false)
 
   const [customerToDelete, setCustomerToDelete] = useState(null)
   const deleteCustomerDialog = useDialog(Boolean(customerToDelete), () => setCustomerToDelete(null))
+  const [deleteCustomerFeedback, deleteCustomerFeedbackScope] = useInlineFeedback(Boolean(customerToDelete))
   const [deletingCustomer, setDeletingCustomer] = useState(false)
 
   // Fetch telemetry from API
@@ -292,11 +300,11 @@ function AdminDashboard() {
       setUsersList(usersRes.data.data.users || [])
       setPrelaunchCustomers(prelaunchRes.data.data.customers || [])
     } catch {
-      if (!silent) toast.error('Failed to load administration data')
+      if (!silent) feedback.error('Failed to load administration data')
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [user, debouncedHubSearch, debouncedUserSearch, debouncedPrelaunchSearch])
+  }, [user, debouncedHubSearch, debouncedUserSearch, debouncedPrelaunchSearch, feedback])
 
   useEffect(() => {
     if (user?.role === 'admin') {
@@ -338,15 +346,16 @@ function AdminDashboard() {
 
   // Moderation Handler
   const handleModerate = async (id, action) => {
+    const moderationFeedback = detailModalOpen ? detailFeedback : feedback
     try {
       const res = await axios.patch(`/admin/business/${id}/moderate`, { action })
-      toast.success(res.data.message || `Action ${action} succeeded`)
+      moderationFeedback.success(res.data.message || `Action ${action} succeeded`)
       fetchAdminData(true)
       if (selectedBusinessDetail?.business?._id === id) {
         viewBusinessDetails(id)
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Moderation action failed')
+      moderationFeedback.error(err.response?.data?.message || 'Moderation action failed')
     }
   }
 
@@ -356,12 +365,12 @@ function AdminDashboard() {
     setDeletingHub(true)
     try {
       await axios.delete(`/admin/business/${hubToDelete._id}`)
-      toast.success(`Hub "${hubToDelete.name}" permanently removed`)
+      feedback.success(`Hub "${hubToDelete.name}" permanently removed`)
       setHubToDelete(null)
       setDetailModalOpen(false)
       fetchAdminData(true)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to remove hub')
+      deleteHubFeedback.error(err.response?.data?.message || 'Failed to remove hub')
     } finally {
       setDeletingHub(false)
     }
@@ -374,7 +383,7 @@ function AdminDashboard() {
       const res = await axios.get(`/admin/business/${id}`)
       setSelectedBusinessDetail(res.data.data)
     } catch {
-      toast.error('Failed to fetch business details')
+      feedback.error('Failed to fetch business details')
       setDetailModalOpen(false)
     } finally {
       setLoadingDetail(false)
@@ -401,11 +410,11 @@ function AdminDashboard() {
     setDeletingCustomer(true)
     try {
       await axios.delete(`/admin/prelaunch-customers/${customerToDelete._id}`)
-      toast.success(`Prelaunch customer "${customerToDelete.email}" removed`)
+      feedback.success(`Prelaunch customer "${customerToDelete.email}" removed`)
       setCustomerToDelete(null)
       fetchAdminData(true)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to remove prelaunch customer')
+      deleteCustomerFeedback.error(err.response?.data?.message || 'Failed to remove prelaunch customer')
     } finally {
       setDeletingCustomer(false)
     }
@@ -413,7 +422,7 @@ function AdminDashboard() {
 
   const exportPrelaunchCSV = () => {
     if (!filteredPrelaunchCustomers || filteredPrelaunchCustomers.length === 0) {
-      toast.error('No prelaunch customers to export')
+      feedback.error('No prelaunch customers to export')
       return
     }
 
@@ -438,22 +447,22 @@ function AdminDashboard() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    toast.success(`Exported ${filteredPrelaunchCustomers.length} prelaunch customers to CSV`)
+    feedback.success(`Exported ${filteredPrelaunchCustomers.length} prelaunch customers to CSV`)
   }
 
   const copyAllPrelaunchEmails = () => {
     if (!filteredPrelaunchCustomers || filteredPrelaunchCustomers.length === 0) {
-      toast.error('No emails to copy')
+      feedback.error('No emails to copy')
       return
     }
     const emails = filteredPrelaunchCustomers.map((c) => c.email).join(', ')
     navigator.clipboard.writeText(emails)
-    toast.success(`Copied ${filteredPrelaunchCustomers.length} emails to clipboard!`)
+    feedback.success(`Copied ${filteredPrelaunchCustomers.length} emails to clipboard!`)
   }
 
   const copySingleEmail = (email) => {
     navigator.clipboard.writeText(email)
-    toast.success(`Copied ${email}`)
+    feedback.success(`Copied ${email}`)
   }
 
   // Filter Hubs
@@ -737,6 +746,7 @@ function AdminDashboard() {
           </div>
         </div>
       </header>
+      <PageNotificationStatus belowHeader />
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
@@ -1312,6 +1322,7 @@ function AdminDashboard() {
               exit={{ scale: 0.95 }}
               ref={deleteHubDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Delete hub" className="app-dialog admin-surface w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
             >
+              <NotificationStatus scope={deleteHubFeedbackScope} />
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
                 <Trash2 className="w-6 h-6" />
               </div>
@@ -1359,6 +1370,7 @@ function AdminDashboard() {
               exit={{ scale: 0.95 }}
               ref={deleteCustomerDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Delete customer" className="app-dialog admin-surface w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 text-left"
             >
+              <NotificationStatus scope={deleteCustomerFeedbackScope} />
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center">
                 <Trash2 className="w-6 h-6" />
               </div>
@@ -1406,6 +1418,7 @@ function AdminDashboard() {
               exit={{ scale: 0.95 }}
               ref={detailDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Business details" className="app-dialog admin-surface w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-6 text-left my-8"
             >
+              <NotificationStatus scope={detailFeedbackScope} />
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
                 <div>
                   <span className="text-[10px] font-black uppercase text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">

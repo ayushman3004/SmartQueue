@@ -2,22 +2,21 @@ import {
   createContext,
   useContext,
   useEffect,
-  useRef,
   useState,
   useCallback,
 } from "react";
 import socket from "../lib/socket";
 import { waitForBrowserLogout } from "../utils/browserSession.js";
-import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import { publishFeedback, sessionNotificationScope } from "../modules/notification/browser-feedback";
 
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children, setUser, user }) => {
-  const userRef = useRef(user);
+  const navigate = useNavigate();
   const [connected, setConnected] = useState(() => socket.connected);
 
   useEffect(() => {
-    userRef.current = user;
     socket.disconnect();
     let cancelled = false;
     waitForBrowserLogout().then(cleared => {
@@ -41,97 +40,25 @@ export const SocketProvider = ({ children, setUser, user }) => {
       console.error("Socket connection error:", err.message);
     };
 
-    const onQueueJoined = (data) => {
-      if (data.userId === userRef.current?._id) toast.success("You joined the queue successfully", { id: "q-join" });
-      else toast("Someone joined the queue", { id: "q-join-other" });
-    };
-
-    const onQueueLeft = (data) => {
-      if (data.userId === userRef.current?._id) toast.success("You left the queue", { id: "q-left" });
-      else toast("Someone left the queue", { id: "q-left-other", icon: "ℹ️" });
-    };
-
-    const onQueueUpdated = () => {
-      toast.success("Your position has been updated", { id: "q-update" });
-    };
-
-    const onQueueEtaUpdated = () => {
-      toast("Your ETA has been updated", { id: "q-eta", icon: "ℹ️" });
-    };
-
-    const onQueueServiceStarted = () => {
-      toast.success("Service started for the next user", { id: "q-started" });
-    };
-
-    const onQueueServiceCompleted = () => {
-      toast.success("Service completed", { id: "q-completed" });
-    };
-
-    const onExtensionFree = (data) => {
-      toast(`Service delayed: Time extended by ${data.minutes} mins`, { id: "ext-free", icon: "⏱️" });
-    };
-
-    const onExtensionPaid = (data) => {
-      toast(`Service delayed due to extension: ${data.minutes} mins`, { id: "ext-paid", icon: "⏱️" });
-    };
-
-    const onServiceCreated = () => {
-      toast.success("New business service created", { id: "s-created" });
-    };
-
-    const onServiceUpdated = () => {
-      toast.success("Business service updated", { id: "s-updated" });
-    };
-
-    const onServiceDeleted = () => {
-      toast.success("Business service deleted", { id: "s-deleted" });
-    };
-
     const onForceLogout = (data) => {
       localStorage.removeItem("serveq_last_active");
       if (typeof setUser === "function") setUser(null);
-      toast(data?.message || "Session expired or logged out by administrator.", { icon: "🔒", duration: 5000 });
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
-      }
+      publishFeedback(sessionNotificationScope, "info", data?.message || "Session expired or logged out by administrator.");
+      if (window.location.pathname !== "/login") navigate("/login", { replace: true });
     };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
     socket.on("auth:force_logout", onForceLogout);
-    socket.on("queue:joined", onQueueJoined);
-    socket.on("queue:left", onQueueLeft);
-    socket.on("queue:updated", onQueueUpdated);
-    socket.on("queue:etaUpdated", onQueueEtaUpdated);
-    socket.on("queue:serviceStarted", onQueueServiceStarted);
-    socket.on("queue:serviceCompleted", onQueueServiceCompleted);
-    socket.on("extension:free", onExtensionFree);
-    socket.on("extension:paid", onExtensionPaid);
-    socket.on("service:created", onServiceCreated);
-    socket.on("service:updated", onServiceUpdated);
-    socket.on("service:deleted", onServiceDeleted);
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
       socket.off("auth:force_logout", onForceLogout);
-      socket.off("queue:joined", onQueueJoined);
-      socket.off("queue:left", onQueueLeft);
-      socket.off("queue:updated", onQueueUpdated);
-      socket.off("queue:etaUpdated", onQueueEtaUpdated);
-      socket.off("queue:serviceStarted", onQueueServiceStarted);
-      socket.off("queue:serviceCompleted", onQueueServiceCompleted);
-      socket.off("extension:free", onExtensionFree);
-      socket.off("extension:paid", onExtensionPaid);
-      socket.off("service:created", onServiceCreated);
-      socket.off("service:updated", onServiceUpdated);
-      socket.off("service:deleted", onServiceDeleted);
     };
-  }, [setUser]);
+  }, [navigate, setUser]);
 
   const joinRoom = useCallback((businessId) => {
     socket.emit("join:room", { businessId });

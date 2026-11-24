@@ -1,3 +1,4 @@
+import { PageNotificationStatus } from '../modules/notification/NotificationStatus'
 import { useEffect, useRef } from 'react'
 import { ArrowRight, Check, Loader2, Mail } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -10,6 +11,7 @@ export default function BusinessEmailVerification({ email, sent, code, onCodeCha
   const busy = sending || verifying
   return <div className="business-email-screen app-background-glow">
     <header className="business-email-header"><Link to="/" aria-label="serveQ home"><img src="/serveq-logo.png" alt="serveQ" /></Link><button type="button" onClick={onSignOut}>Sign out</button></header>
+    <PageNotificationStatus />
     <main className="business-email-main">
       <BusinessSetupProgress current={1} />
       <section className="business-email-card" aria-labelledby="business-email-title">

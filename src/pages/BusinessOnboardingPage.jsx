@@ -4,7 +4,8 @@ import BusinessEmailVerification from '../components/BusinessEmailVerification'
 import { hasActiveSubscription } from '../utils/subscription'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
+import { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import { useNotificationFeedback, useSessionFeedback } from '../modules/notification/useNotificationFeedback'
 import { useAuth } from '../context/AuthContext'
 import {
   getOnboardingDraft,
@@ -74,6 +75,8 @@ const STEPS = [
 ]
 
 export default function BusinessOnboardingPage() {
+  const feedback = useNotificationFeedback()
+  const sessionFeedback = useSessionFeedback()
   const { user, setUser, logOut } = useAuth()
   const navigate = useNavigate()
 
@@ -117,7 +120,7 @@ export default function BusinessOnboardingPage() {
 
   const handleSendEmailOtp = async () => {
     if (!user?.email) {
-      toast.error('No email address associated with your account')
+      feedback.error('No email address associated with your account')
       return
     }
     setSendingEmailOtp(true)
@@ -125,9 +128,9 @@ export default function BusinessOnboardingPage() {
       const res = await sendEmailOtp(user.email)
       setEmailOtpSent(true)
       setOtpCooldown(30)
-      toast.success(res.data?.message || `Verification OTP sent to ${user.email}`)
+      feedback.success(res.data?.message || `Verification OTP sent to ${user.email}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send verification code')
+      feedback.error(err.response?.data?.message || 'Failed to send verification code')
     } finally {
       setSendingEmailOtp(false)
     }
@@ -137,7 +140,7 @@ export default function BusinessOnboardingPage() {
     e?.preventDefault()
     const code = emailOtp.trim()
     if (!code || code.length < 6) {
-      toast.error('Please enter the 6-digit OTP code')
+      feedback.error('Please enter the 6-digit OTP code')
       return
     }
     setVerifyingEmailOtp(true)
@@ -146,11 +149,11 @@ export default function BusinessOnboardingPage() {
       if (res.data?.success || res.data?.data?.user) {
         const updated = res.data?.data?.user || { ...user, isEmailVerified: true }
         setUser(updated)
-        toast.success('Email verified successfully! Please choose your subscription plan to begin onboarding.', { icon: '🎉' })
+        sessionFeedback.success('Email verified successfully! Please choose your subscription plan to begin onboarding.')
         navigate('/subscription')
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid or expired OTP code')
+      feedback.error(err.response?.data?.message || 'Invalid or expired OTP code')
     } finally {
       setVerifyingEmailOtp(false)
     }
@@ -233,7 +236,7 @@ export default function BusinessOnboardingPage() {
             lng: Number(geo.lng),
           },
         }))
-        toast.success(`Coordinates verified for ${geo.city || geo.state || 'Address'}`)
+        feedback.success(`Coordinates verified for ${geo.city || geo.state || 'Address'}`)
       }
     } catch (err) {
       console.warn('Address geocoding error:', err)
@@ -422,12 +425,12 @@ export default function BusinessOnboardingPage() {
         }
       } catch (err) {
         console.error('Failed to initialize onboarding draft:', err)
-        toast.error('Could not load onboarding draft. Creating a new session...')
+        feedback.error('Could not load onboarding draft. Creating a new session...')
         try {
           const fallbackRes = await initOnboarding({ name: `${user?.name || 'My'}'s Hub`, createNew: true })
           if (isMounted) populateFromBusiness(fallbackRes.data.data.business)
         } catch {
-          toast.error('Initialization error. Please refresh.')
+          feedback.error('Initialization error. Please refresh.')
         }
       } finally {
         if (isMounted) setLoading(false)
@@ -436,7 +439,7 @@ export default function BusinessOnboardingPage() {
 
     init()
     return () => { isMounted = false }
-  }, [targetBizId, populateFromBusiness, user?.name, isEmailVerified, isSubscribed])
+  }, [targetBizId, populateFromBusiness, user?.name, isEmailVerified, isSubscribed, feedback])
 
   // Helper for image upload preview (data URL or external URL)
   const handleImageFile = (e, field) => {
@@ -444,12 +447,12 @@ export default function BusinessOnboardingPage() {
     if (!file) return
 
     if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(file.type)) {
-      toast.error('Only JPG, PNG, and WebP images are supported')
+      feedback.error('Only JPG, PNG, and WebP images are supported')
       return
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image size must be under 2MB')
+      feedback.error('Image size must be under 2MB')
       return
     }
 
@@ -457,7 +460,7 @@ export default function BusinessOnboardingPage() {
     reader.onload = (uploadEvent) => {
       const result = uploadEvent.target.result
       setStep1((prev) => ({ ...prev, [field]: result }))
-      toast.success(`${field === 'logo' ? 'Logo' : 'Cover image'} updated!`)
+      feedback.success(`${field === 'logo' ? 'Logo' : 'Cover image'} updated!`)
     }
     reader.readAsDataURL(file)
   }
@@ -490,7 +493,7 @@ export default function BusinessOnboardingPage() {
   // Detect Venue GPS Location
   const detectVenueLocation = () => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser')
+      feedback.error('Geolocation is not supported by your browser')
       return
     }
     setDetectingGps(true)
@@ -503,7 +506,7 @@ export default function BusinessOnboardingPage() {
           coordinates: { lat, lng },
         }))
         setDetectingGps(false)
-        toast.success('Current location captured')
+        feedback.success('Current location captured')
 
         try {
           const rev = await reverseGeocodeCoords(lat, lng)
@@ -529,9 +532,9 @@ export default function BusinessOnboardingPage() {
         const coords = getCoordinatesForLocation(fallbackQuery)
         if (coords) {
           setStep2((prev) => ({ ...prev, coordinates: coords }))
-          toast.info(`Set estimated location for ${fallbackQuery}`)
+          feedback.info(`Set estimated location for ${fallbackQuery}`)
         } else {
-          toast.error('Unable to retrieve device location. Please enable location permissions in your browser.')
+          feedback.error('Unable to retrieve device location. Please enable location permissions in your browser.')
         }
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -541,7 +544,7 @@ export default function BusinessOnboardingPage() {
   // Step 3 Service Actions
   const handleAddService = () => {
     if (!newService.name.trim()) {
-      toast.error('Please enter a service name')
+      feedback.error('Please enter a service name')
       return
     }
     const duration = Math.max(1, Number(newService.duration) || 15)
@@ -557,7 +560,7 @@ export default function BusinessOnboardingPage() {
       }
       setServices(updated)
       setEditingServiceIndex(null)
-      toast.success(`Service "${newService.name.trim()}" updated!`)
+      feedback.success(`Service "${newService.name.trim()}" updated!`)
     } else {
       setServices((prev) => [
         ...prev,
@@ -568,7 +571,7 @@ export default function BusinessOnboardingPage() {
           price,
         },
       ])
-      toast.success(`Service "${newService.name.trim()}" added to catalog!`)
+      feedback.success(`Service "${newService.name.trim()}" added to catalog!`)
     }
 
     setNewService({
@@ -588,7 +591,7 @@ export default function BusinessOnboardingPage() {
 
   const handleDeleteService = (idx) => {
     if (services.length <= 1) {
-      toast.error('A business must offer at least one active service')
+      feedback.error('A business must offer at least one active service')
       return
     }
     setServices((prev) => prev.filter((_, i) => i !== idx))
@@ -598,17 +601,17 @@ export default function BusinessOnboardingPage() {
   const handleLoadServicePresets = () => {
     const presets = SERVICE_PRESETS[step1.category] || SERVICE_PRESETS.clinic
     setServices(presets.map((p) => ({ ...p, isAvailable: true, description: '' })))
-    toast.success(`Loaded standard ${step1.category} services!`)
+    feedback.success(`Loaded standard ${step1.category} services!`)
   }
 
   // Step 4 Staff Actions
   const handleAddStaff = () => {
     if (!newStaff.name.trim()) {
-      toast.error('Please enter a staff member name')
+      feedback.error('Please enter a staff member name')
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newStaff.email?.trim() || '') || !newStaff.doctorId?.trim()) {
-      toast.error('Enter the doctor email and registration ID')
+      feedback.error('Enter the doctor email and registration ID')
       return
     }
     const defaultRole = 'Consultant Doctor'
@@ -622,7 +625,7 @@ export default function BusinessOnboardingPage() {
       }
       setStaff(updated)
       setEditingStaffIndex(null)
-      toast.success(`Staff member "${newStaff.name.trim()}" updated!`)
+      feedback.success(`Staff member "${newStaff.name.trim()}" updated!`)
     } else {
       setStaff((prev) => [
         ...prev,
@@ -634,7 +637,7 @@ export default function BusinessOnboardingPage() {
           customersServed: 0,
         },
       ])
-      toast.success(`Staff member "${newStaff.name.trim()}" added to roster!`)
+      feedback.success(`Staff member "${newStaff.name.trim()}" added to roster!`)
     }
 
     setNewStaff({
@@ -668,7 +671,7 @@ export default function BusinessOnboardingPage() {
 
       if (stepNum === 1) {
         if (!step1.name.trim()) {
-          toast.error('Business Name is required')
+          feedback.error('Business Name is required')
           setSaving(false)
           return
         }
@@ -683,13 +686,13 @@ export default function BusinessOnboardingPage() {
         }
       } else if (stepNum === 2) {
         if (!step2.address.trim() && !step2.city.trim() && !step2.location.trim()) {
-          toast.error('Please enter an address or city for your venue')
+          feedback.error('Please enter an address or city for your venue')
           setSaving(false)
           return
         }
         for (const s of step2.weeklySchedule) {
           if (s.isOpen && s.open && s.close && s.open >= s.close) {
-            toast.error(`Closing time (${s.close}) must be after opening time (${s.open}) on ${s.day}`)
+            feedback.error(`Closing time (${s.close}) must be after opening time (${s.open}) on ${s.day}`)
             setSaving(false)
             return
           }
@@ -710,7 +713,7 @@ export default function BusinessOnboardingPage() {
           }
         }
         if (!finalCoords || (!finalCoords.lat && !finalCoords.lng)) {
-          toast.error('Please select an address from suggestions or use GPS to pin your venue coordinates.')
+          feedback.error('Please select an address from suggestions or use GPS to pin your venue coordinates.')
           setSaving(false)
           return
         }
@@ -728,7 +731,7 @@ export default function BusinessOnboardingPage() {
         }
       } else if (stepNum === 3) {
         if (services.length === 0) {
-          toast.error('You must add at least one service to your catalog')
+          feedback.error('You must add at least one service to your catalog')
           setSaving(false)
           return
         }
@@ -752,14 +755,14 @@ export default function BusinessOnboardingPage() {
 
       const res = await saveOnboardingStep(business._id, stepNum, payload)
       setBusiness(res.data.data.business)
-      toast.success(`Step ${stepNum} saved successfully!`)
+      feedback.success(`Step ${stepNum} saved successfully!`)
 
       if (advance && stepNum < 7) {
         setCurrentStep(stepNum + 1)
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || `Failed to save Step ${stepNum}`)
+      feedback.error(err.response?.data?.message || `Failed to save Step ${stepNum}`)
     } finally {
       setSaving(false)
     }
@@ -770,9 +773,7 @@ export default function BusinessOnboardingPage() {
     if (!business?._id) return
 
     if (!hasActiveSubscription(user?.subscription) && !hasActiveSubscription(business?.subscription)) {
-      toast.error('An active ServeQ subscription (Basic ₹799 or Pro ₹1,499) is required to launch your business.', {
-        duration: 5000,
-      })
+      feedback.error('An active ServeQ subscription (Basic ₹799 or Pro ₹1,499) is required to launch your business.')
       setSubscriptionModalOpen(true)
       return
     }
@@ -782,20 +783,10 @@ export default function BusinessOnboardingPage() {
       const res = await launchBusiness(business._id)
       const launched = res.data.data.business
       setBusiness(launched)
-      toast.success('Your business is ready on ServeQ!', {
-        duration: 6000,
-        style: {
-          borderRadius: '16px',
-          background: '#09090b',
-          color: '#ffffff',
-          border: '1px solid #14b8a6',
-          padding: '16px',
-          fontWeight: 'bold',
-        },
-      })
+      sessionFeedback.success('Your business is ready on ServeQ!', { inbox: false })
       navigate(launched?._id ? `/business/${launched._id}` : '/hub/dashboard')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Pre-flight launch validation failed')
+      feedback.error(err.response?.data?.message || 'Pre-flight launch validation failed')
     } finally {
       setSaving(false)
     }
@@ -816,6 +807,7 @@ export default function BusinessOnboardingPage() {
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-[#BDE8CB] text-center space-y-6 text-zinc-900"
         >
+          <PageNotificationStatus />
           {/* Header Icon */}
           <div className="w-16 h-16 rounded-2xl bg-[#EAF7EE] border border-[#BDE8CB] text-[#114227] flex items-center justify-center mx-auto shadow-xs">
             <Crown className="w-8 h-8 text-[#16A34A]" />
@@ -864,6 +856,7 @@ export default function BusinessOnboardingPage() {
   if (business && !categoryLocked) {
     return <div className="business-page min-h-screen flex items-center justify-center p-6">
       <main className="w-full max-w-xl space-y-6 rounded-3xl border border-zinc-200 bg-white p-6 sm:p-10">
+        <PageNotificationStatus />
         <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Clinic setup</p>
         <h1 className="text-3xl font-bold">Confirm your clinic</h1>
         <p className="text-sm text-zinc-600">Enable clinic access to continue setting up this location.</p>
@@ -876,7 +869,7 @@ export default function BusinessOnboardingPage() {
                 const response = await selectBusinessCategory(business._id, 'clinic')
                 populateFromBusiness(response.data.data.business)
               } catch (error) {
-                toast.error(error.response?.data?.message || 'Could not save your business category. Please retry.')
+                feedback.error(error.response?.data?.message || 'Could not save your business category. Please retry.')
               } finally { setSaving(false) }
             }}>Continue to clinic setup</button>
         </div>
@@ -935,6 +928,8 @@ export default function BusinessOnboardingPage() {
             </button>
           </div>
         </div>
+
+        <PageNotificationStatus />
 
         {/* Modal Progress Stepper Bar: Line & Circle Stepper */}
         <div className="business-onboarding-steps flex-shrink-0 bg-white border-b border-zinc-200/80 px-6 sm:px-12 py-5 overflow-x-auto">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
+import { useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import {
   Mail,
   Clock,
@@ -23,6 +23,7 @@ import { sendSupportMessage } from '../api/support.api'
 import TurnstileWidget from '../components/TurnstileWidget'
 
 export default function HelpSupportPage() {
+  const feedback = useNotificationFeedback()
   const { user } = useAuth()
 
   useSeo({
@@ -75,19 +76,19 @@ export default function HelpSupportPage() {
     e.preventDefault()
 
     if (!form.name.trim()) {
-      toast.error('Please enter your full name')
+      feedback.error('Please enter your full name')
       return
     }
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) {
-      toast.error('Please enter a valid email address')
+      feedback.error('Please enter a valid email address')
       return
     }
     if (!form.subject || form.subject === '') {
-      toast.error('Please select a subject for your request')
+      feedback.error('Please select a subject for your request')
       return
     }
     if (!form.message.trim()) {
-      toast.error('Please describe your query or issue')
+      feedback.error('Please describe your query or issue')
       return
     }
 
@@ -107,26 +108,18 @@ export default function HelpSupportPage() {
           subject: form.subject,
           email: form.email.trim(),
         })
-        toast.success('Your message has been sent to ServeQ Support!', {
-          icon: '✅',
-          style: {
-            borderRadius: '16px',
-            background: '#ffffff',
-            color: '#09090b',
-            border: '1px solid #10b981',
-          },
-        })
+        feedback.success('Your message has been sent to ServeQ Support!')
         setForm((prev) => ({
           ...prev,
           subject: '',
           message: '',
         }))
       } else {
-        toast.error(res.data?.message || 'Could not send message. Please try again.')
+        feedback.error(res.data?.message || 'Could not send message. Please try again.')
       }
     } catch (err) {
       if (err.response?.data?.code === 'TURNSTILE_REQUIRED') setNeedsSecurityCheck(true)
-      toast.error(err.response?.data?.message || 'Failed to send message. Please email support@serveq.tech directly.')
+      feedback.error(err.response?.data?.message || 'Failed to send message. Please email support@serveq.tech directly.')
     } finally {
       if (showSecurityCheck && turnstileToken) {
         setTurnstileToken(null)

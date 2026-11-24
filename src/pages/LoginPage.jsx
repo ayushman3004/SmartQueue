@@ -13,7 +13,9 @@ import "../styles/customer-auth.css";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { signup, signin } from "../api/auth.api";
-import { toast } from "react-hot-toast";
+import { useInlineFeedback } from "../modules/notification/useNotificationFeedback";
+import NotificationStatus from "../modules/notification/NotificationStatus";
+import { publishFeedback, sessionNotificationScope } from "../modules/notification/browser-feedback";
 import { useSeo } from "../utils/useSeo";
 import { isValidEmail, validatePasswordStrength } from "../utils/validators";
 import { useDebounce } from "../hooks/useDebounce";
@@ -21,6 +23,7 @@ import { safeReturnTo } from "../utils/authRedirect";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 export default function LoginPage() {
+  const [feedback, feedbackScope] = useInlineFeedback();
   const [tab, setTab] = useState("signin"); // 'signin' or 'signup'
   const [form, setForm] = useState({
     name: "",
@@ -29,7 +32,6 @@ export default function LoginPage() {
     role: "customer",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [ownerMismatch, setOwnerMismatch] = useState(null);
@@ -65,24 +67,24 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setOwnerMismatch(null);
-    setError("");
+    feedback.dismiss();
 
     if (!acceptPrivacy) {
-      toast.error(
+      feedback.error(
         "Please click the checkbox to accept our Privacy Policy to continue.",
       );
       return;
     }
 
     if (!isValidEmail(form.email)) {
-      toast.error("Please enter a valid email address (e.g. name@example.com)");
+      feedback.error("Please enter a valid email address (e.g. name@example.com)");
       return;
     }
 
     if (tab === "signup") {
       const strength = validatePasswordStrength(form.password);
       if (!strength.isValid) {
-        toast.error(
+        feedback.error(
           "Password must contain at least 8 characters, numbers, capital letters, and symbols.",
         );
         return;
@@ -111,25 +113,19 @@ export default function LoginPage() {
 
       if (user?.role === "owner") {
         setOwnerMismatch({ email: form.email });
-        toast.error(
+        feedback.error(
           "This account is registered as a Hub Owner, not a Customer.",
         );
         return;
       }
 
       logIn(user);
-      toast.success(
+      publishFeedback(
+        sessionNotificationScope,
+        "success",
         tab === "signin"
           ? "Welcome back! Logged in successfully."
-          : "Welcome to serveQ! Account created.",
-        {
-          style: {
-            borderRadius: "14px",
-            background: "#ffffff",
-            color: "#09090b",
-            border: "1px solid #e4e4e7",
-          },
-        },
+          : "Welcome to serveQ! Account created."
       );
       navigate(
         safeReturnTo(
@@ -149,15 +145,7 @@ export default function LoginPage() {
       ) {
         setOwnerMismatch({ email: form.email });
       }
-      setError(msg);
-      toast.error(msg, {
-        style: {
-          borderRadius: "14px",
-          background: "#ffffff",
-          color: "#09090b",
-          border: "1px solid #fee2e2",
-        },
-      });
+      feedback.error(msg);
     } finally {
       setLoading(false);
     }
@@ -165,7 +153,7 @@ export default function LoginPage() {
 
   const handleGoogleAuth = () => {
     if (!acceptPrivacy) {
-      toast.error(
+      feedback.error(
         "Please click the checkbox to accept our Privacy Policy to continue.",
       );
       return;
@@ -180,7 +168,7 @@ export default function LoginPage() {
 
   const changeTab = (next) => {
     setTab(next);
-    setError("");
+    feedback.dismiss();
     setOwnerMismatch(null);
     setShowPassword(false);
   };
@@ -403,11 +391,7 @@ export default function LoginPage() {
                 .
               </span>
             </label>
-            {error && !ownerMismatch && (
-              <p className="customer-auth-error" role="alert">
-                {error}
-              </p>
-            )}
+            <NotificationStatus scope={feedbackScope} />
             <button
               type="submit"
               className="customer-auth-submit"

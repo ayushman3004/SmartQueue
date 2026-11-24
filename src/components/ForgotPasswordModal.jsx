@@ -1,11 +1,13 @@
 import { useDialog } from '../hooks/useDialog'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'react-hot-toast'
+import NotificationStatus from '../modules/notification/NotificationStatus'
+import { useInlineFeedback } from '../modules/notification/useNotificationFeedback'
 import { forgotPasswordSendOtp, forgotPasswordVerifyOtp, forgotPasswordReset } from '../api/auth.api'
 import { isValidEmail, validatePasswordStrength } from '../utils/validators'
 
 export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = '', className = '' }) {
+  const [feedback, feedbackScope] = useInlineFeedback(isOpen)
   // Steps: 'email' (1) -> 'otp' (2) -> 'password' (3) -> 'success' (4)
   const [step, setStep] = useState('email')
   const [email, setEmail] = useState('')
@@ -47,16 +49,14 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
     if (cooldown > 0) return
     const trimmedEmail = email.trim()
     if (!isValidEmail(trimmedEmail)) {
-      toast.error('Please enter a valid email address')
+      feedback.error('Please enter a valid email address')
       return
     }
 
     setLoading(true)
     try {
       await forgotPasswordSendOtp(trimmedEmail)
-      toast.success('Verification code sent to your email!', {
-        style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
-      })
+      feedback.success('Verification code sent to your email!')
       setStep('otp')
       setCooldown(30)
     } catch (err) {
@@ -66,7 +66,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
         const seconds = match ? parseInt(match[1], 10) : (err.response?.data?.retryAfterSeconds || 30)
         setCooldown(seconds)
       }
-      toast.error(msg)
+      feedback.error(msg)
     } finally {
       setLoading(false)
     }
@@ -77,7 +77,7 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
     e?.preventDefault()
     const cleanOtp = otp.trim()
     if (!cleanOtp || cleanOtp.length !== 6) {
-      toast.error('Please enter the 6-digit verification code')
+      feedback.error('Please enter the 6-digit verification code')
       return
     }
 
@@ -86,13 +86,11 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
       const res = await forgotPasswordVerifyOtp(email.trim(), cleanOtp)
       const token = res.data?.data?.resetToken
       setResetToken(token)
-      toast.success('Code verified! Set your new password.', {
-        style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
-      })
+      feedback.success('Code verified! Set your new password.')
       setStep('password')
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid or expired verification code'
-      toast.error(msg)
+      feedback.error(msg)
     } finally {
       setLoading(false)
     }
@@ -103,12 +101,12 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
     e?.preventDefault()
     const strength = validatePasswordStrength(newPassword)
     if (!strength.isValid) {
-      toast.error('Password must contain at least 8 characters, numbers, capital letters, and symbols.')
+      feedback.error('Password must contain at least 8 characters, numbers, capital letters, and symbols.')
       return
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match')
+      feedback.error('Passwords do not match')
       return
     }
 
@@ -120,13 +118,11 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
         otp: otp.trim(),
         newPassword,
       })
-      toast.success('Password updated successfully!', {
-        style: { borderRadius: '12px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
-      })
+      feedback.success('Password updated successfully!')
       setStep('success')
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to reset password'
-      toast.error(msg)
+      feedback.error(msg)
     } finally {
       setLoading(false)
     }
@@ -172,6 +168,8 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail = ''
             Reset Password
           </h3>
         </div>
+
+        <NotificationStatus scope={feedbackScope} />
 
         <AnimatePresence mode="wait">
           {/* STEP 1: Enter Email */}

@@ -374,6 +374,7 @@ export const extendBooking = async (bookingId, extraMinutes, requesterId, reques
   }).sort({ startTime: 1 }).populate("userId", "name email");
 
   const affectedUsers = [];
+  const delayNotifications = [];
 
   for (const fb of futureBookings) {
     if (doctor && !isAssignedToDoctor(fb, doctor)) continue;
@@ -395,6 +396,14 @@ export const extendBooking = async (bookingId, extraMinutes, requesterId, reques
       totalDelay: fb.delayMinutes,
       reward: rewardAmount,
     });
+    delayNotifications.push(notifyUser({
+      recipient: fb.userId._id,
+      type: 'booking',
+      title: 'Appointment delayed',
+      message: `Your appointment at ${business.name} was delayed by ${mins} minutes. We credited ₹${rewardAmount} to your wallet.`,
+      href: `/booking/${booking.businessId}`,
+      eventKey: `booking:delay:${fb._id}:${fb.startTime.getTime()}`,
+    }, io));
   }
 
   if (io) {
@@ -410,6 +419,7 @@ export const extendBooking = async (bookingId, extraMinutes, requesterId, reques
     }
   }
 
+  await Promise.all(delayNotifications);
   return { booking, affectedUsers };
 };
 

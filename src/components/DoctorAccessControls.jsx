@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { changeDoctorAccess, checkDoctorDelivery } from '../api/doctor.api'
-import { toast } from 'react-hot-toast'
+import { useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 
 export default function DoctorAccessControls({ businessId, staffId, doctors, onUpdate }) {
+  const feedback = useNotificationFeedback()
   const [busy, setBusy] = useState(false)
   const record = doctors.find(doctor => doctor.staffId === staffId)
   if (!record) return null
@@ -11,10 +12,10 @@ export default function DoctorAccessControls({ businessId, staffId, doctors, onU
     setBusy(true)
     try {
       const { data } = await changeDoctorAccess(businessId, staffId, action)
-      if (data.data?.delivery === 'FAILED') toast.error('Invitation email failed. Retry after checking email delivery.')
-      else toast.success(action === 'revoke' ? 'Access revoked.' : 'Email provider accepted the invitation.')
+      if (data.data?.delivery === 'FAILED') feedback.error('Invitation email failed. Retry after checking email delivery.')
+      else feedback.success(action === 'revoke' ? 'Access revoked.' : 'Email provider accepted the invitation.')
       await onUpdate()
-    } catch (error) { toast.error(error.response?.data?.message || 'Could not update doctor access.') }
+    } catch (error) { feedback.error(error.response?.data?.message || 'Could not update doctor access.') }
     finally { setBusy(false) }
   }
 
@@ -23,7 +24,7 @@ export default function DoctorAccessControls({ businessId, staffId, doctors, onU
     try {
       await checkDoctorDelivery(businessId, staffId)
       await onUpdate()
-    } catch (error) { toast.error(error.response?.data?.message || 'Could not check email delivery.') }
+    } catch (error) { feedback.error(error.response?.data?.message || 'Could not check email delivery.') }
     finally { setBusy(false) }
   }
 

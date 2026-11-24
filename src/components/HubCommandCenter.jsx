@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { getAccessibleBusinesses as getMyBusinesses, initOnboarding } from '../api/business.api'
-import { toast } from 'react-hot-toast'
+import { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import { useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import ManageServicesModal from './ManageServicesModal'
 import { HubCommandCenterSkeleton } from './Skeleton'
 import './HubCommandCenter.css'
@@ -33,6 +34,7 @@ import {
 } from 'lucide-react'
 
 export default function HubCommandCenter() {
+  const feedback = useNotificationFeedback()
   const { user, logOut } = useAuth()
   const { onBusinessStatus } = useSocket()
   const navigate = useNavigate()
@@ -55,7 +57,7 @@ export default function HubCommandCenter() {
   const handleRegisterHubClick = async () => {
     if (registeringHub) return
     if (!isEmailVerified) {
-      toast.error('Please verify your email before registering a hub.')
+      feedback.error('Please verify your email before registering a hub.')
       navigate('/business/onboarding')
       return
     }
@@ -64,7 +66,7 @@ export default function HubCommandCenter() {
       const res = await initOnboarding({ createNew: true })
       navigate(`/business/onboarding/${res.data.data.business._id}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not start hub registration. Please retry.')
+      feedback.error(err.response?.data?.message || 'Could not start hub registration. Please retry.')
     } finally {
       setRegisteringHub(false)
     }
@@ -492,6 +494,7 @@ export default function HubCommandCenter() {
           </div>
         </div>
       </header>
+      <PageNotificationStatus belowHeader />
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
@@ -828,7 +831,6 @@ export default function HubCommandCenter() {
             prev.map((b) => (b._id === updatedBiz._id ? updatedBiz : b))
           )
           setManageServicesBiz(null)
-          toast.success('Services updated successfully!')
         }}
       />
 

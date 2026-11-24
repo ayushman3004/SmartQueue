@@ -1,11 +1,14 @@
 import { useDialog } from '../hooks/useDialog'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'react-hot-toast'
+import NotificationStatus from '../modules/notification/NotificationStatus'
+import { useInlineFeedback, useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import { updateBusiness } from '../api/business.api'
 import { SERVICE_PRESETS } from '../utils/servicePresets'
 
 export default function ManageServicesModal({ isOpen, business, onClose, onUpdated }) {
+  const [feedback, feedbackScope] = useInlineFeedback(isOpen)
+  const pageFeedback = useNotificationFeedback()
   const [loading, setLoading] = useState(false)
   const [services, setServices] = useState([])
   const [editingIndex, setEditingIndex] = useState(null)
@@ -36,7 +39,7 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
 
   const handleSaveInlineEdit = () => {
     if (!editForm.name.trim()) {
-      toast.error('Service name cannot be empty')
+      feedback.error('Service name cannot be empty')
       return
     }
     const updated = [...services]
@@ -55,7 +58,7 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
 
   const handleAddService = () => {
     if (!newService.name.trim()) {
-      toast.error('Enter service name')
+      feedback.error('Enter service name')
       return
     }
     const duration = Math.max(1, Number(newService.duration) || 15)
@@ -63,12 +66,12 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
 
     setServices(prev => [...prev, { name: newService.name.trim(), duration, price }])
     setNewService({ name: '', duration: 20, price: 150 })
-    toast.success(`Added "${newService.name.trim()}" to staging`)
+    feedback.success(`Added "${newService.name.trim()}" to staging`)
   }
 
   const handleRemoveService = (index) => {
     if (services.length <= 1) {
-      toast.error('Every hub must keep at least one active service')
+      feedback.error('Every hub must keep at least one active service')
       return
     }
     setServices(prev => prev.filter((_, i) => i !== index))
@@ -79,12 +82,12 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
     const presets = SERVICE_PRESETS[business.category] || SERVICE_PRESETS.clinic
     if (presets.length === 0) return
     setServices([...presets])
-    toast.success("Loaded standard clinic services!")
+    feedback.success("Loaded standard clinic services!")
   }
 
   const handleSaveAll = async () => {
     if (services.length === 0) {
-      toast.error('At least one service is required')
+      feedback.error('At least one service is required')
       return
     }
 
@@ -94,11 +97,11 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
         services,
       })
       const updatedBusiness = res.data.data.business
-      toast.success('Services updated successfully!')
+      pageFeedback.success('Services updated successfully!')
       onUpdated?.(updatedBusiness)
       onClose()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update services')
+      feedback.error(err.response?.data?.message || 'Failed to update services')
     } finally {
       setLoading(false)
     }
@@ -116,6 +119,7 @@ export default function ManageServicesModal({ isOpen, business, onClose, onUpdat
           onClick={(e) => e.stopPropagation()}
         >
           <div className="app-dialog bezel-core p-6 sm:p-8 bg-white border border-zinc-200/90 rounded-3xl max-h-[90dvh] overflow-y-auto custom-scrollbar space-y-6">
+            <NotificationStatus scope={feedbackScope} sticky />
             
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-zinc-100">

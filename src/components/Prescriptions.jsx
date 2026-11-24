@@ -1,11 +1,13 @@
 import { prescriptionFields } from '../hooks/usePrescriptions'
 import { useRef, useState } from 'react'
 import { downloadPrescription } from '../api/doctor.api'
-import { toast } from 'react-hot-toast'
+import NotificationStatus from '../modules/notification/NotificationStatus'
+import { useInlineFeedback } from '../modules/notification/useNotificationFeedback'
 
 export default function Prescriptions({ result, bookingId, compact = false }) {
   const dialog = useRef(null)
   const [selected, setSelected] = useState(null)
+  const [feedback, feedbackScope] = useInlineFeedback(Boolean(selected))
   const records = (result?.records || []).filter(record => !bookingId || String(record.booking) === String(bookingId))
   if (compact && (!bookingId || !records.length)) return null
   return <section aria-label="Prescriptions" className={compact ? 'flex flex-wrap gap-2' : 'rounded-3xl border border-zinc-200 bg-white p-6 space-y-3'}>
@@ -15,7 +17,7 @@ export default function Prescriptions({ result, bookingId, compact = false }) {
       onClick={() => { setSelected(record); dialog.current.showModal() }}>
       {compact ? 'View prescription' : `${record.clinicName} · ${record.doctorName} · ${new Date(record.createdAt).toLocaleDateString()}`}
     </button>)}
-    <dialog ref={dialog} aria-label="Prescription preview" className="m-auto max-h-[88dvh] w-[min(92vw,42rem)] overflow-y-auto rounded-3xl border border-zinc-200 bg-white p-6 text-zinc-900 backdrop:bg-black/40">
+    <dialog ref={dialog} onClose={() => setSelected(null)} aria-label="Prescription preview" className="m-auto max-h-[88dvh] w-[min(92vw,42rem)] overflow-y-auto rounded-3xl border border-zinc-200 bg-white p-6 text-zinc-900 backdrop:bg-black/40">
       {selected && <div className="space-y-4 text-left">
         <header className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-bold">Prescription</h2>
@@ -25,7 +27,8 @@ export default function Prescriptions({ result, bookingId, compact = false }) {
         <p className="text-sm text-zinc-600">{selected.doctorName} · {selected.doctorId} · {new Date(selected.createdAt).toLocaleDateString()}</p>
         {prescriptionFields.map(([key, title]) => selected[key] && <div key={key}><h3 className="font-semibold">{title}</h3><p className="whitespace-pre-wrap break-words text-sm">{selected[key]}</p></div>)}
         {selected.followUpDate && <p className="text-sm"><strong>Follow-up date</strong> {new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeZone: "UTC" }).format(new Date(selected.followUpDate))}</p>}
-        <button type="button" className="rounded-xl bg-emerald-900 px-4 py-2 font-semibold text-white" onClick={() => downloadPrescription(selected._id).catch(() => toast.error('Could not download the prescription.'))}>Download PDF</button>
+        <NotificationStatus scope={feedbackScope} />
+        <button type="button" className="rounded-xl bg-emerald-900 px-4 py-2 font-semibold text-white" onClick={() => downloadPrescription(selected._id).catch(() => feedback.error('Could not download the prescription.'))}>Download PDF</button>
       </div>}
     </dialog>
   </section>

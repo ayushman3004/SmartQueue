@@ -571,9 +571,8 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
     // QueueDS rebuilds subdocument IDs; booking/join time survives reordering.
     const visit = entry.bookingId || new Date(entry.joinedAt).getTime();
     const message = `Your turn is near! You are at position ${index + 1} at ${business.name}.`;
-    const notification = await notifyUser({ recipient, type: 'queue', title: 'Your turn is coming up', message,
+    await notifyUser({ recipient, type: 'queue', title: 'Your turn is coming up', message,
       href: `/queue/${businessId}`, eventKey: `queue:near:${businessId}:${visit}:${recipient}` }, io);
-    if (notification) io?.to(`user:${recipient}`).emit('notification:near', { message, businessName: business.name, position: index + 1 });
   }));
 
   return queue;
@@ -667,21 +666,22 @@ export const extendTime = async (businessId, userId, minutes = 5, requesterId, r
   queue.users = queueDS.toArray();
   await queue.save();
 
-  if (io) {
-    publishQueue(io, businessId, queue);
+  if (io) publishQueue(io, businessId, queue);
 
-    let reachedTarget = false;
-    for (const u of queue.users) {
-      const uId = (u.userId?._id || u.userId)?.toString();
-      if (reachedTarget && (!doctor || isAssignedToDoctor(u, doctor))) {
-        io.to(`user:${uId}`).emit("booking:delayed", {
-          message: `The queue has been extended by ${minutes} minutes. Thank you for your patience.`,
-          delay: minutes,
-        });
-      }
-      if (uId === userId.toString()) reachedTarget = true;
-    }
-  }
+  const targetIndex = queue.users.findIndex(user => String(user.userId?._id || user.userId) === String(userId));
+  if (targetIndex === -1) return queue;
+  const targetVisit = new Date(node.joinedAt).getTime();
+  const affected = queue.users.slice(targetIndex + 1).filter(user => user.status === 'waiting' && (!doctor || isAssignedToDoctor(user, doctor)));
+  await Promise.all(affected.map(user => {
+    const recipient = user.userId?._id || user.userId;
+    const message = `The queue has been extended by ${minutes} minutes. Thank you for your patience.`;
+    io?.to(`user:${recipient}`).emit("booking:delayed", { message, delay: minutes });
+    return notifyUser({
+      recipient, type: 'queue', title: 'Queue delayed', message,
+      href: `/queue/${businessId}`,
+      eventKey: `queue:delay:${businessId}:${userId}:${targetVisit}:${node.serviceTime}:${new Date(user.joinedAt).getTime()}`,
+    }, io);
+  }));
 
   return queue;
 };

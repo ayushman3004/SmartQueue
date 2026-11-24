@@ -1,14 +1,14 @@
-import { toast } from 'react-hot-toast'
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Building2, CalendarCheck, CheckCheck, Clock3, X } from 'lucide-react'
+import { Bell, Building2, CalendarCheck, CheckCheck, CircleCheck, Clock3, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import socket from '../lib/socket'
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notification.api'
+import { getNotificationFeedback, readSessionFeedback, subscribeToFeedback } from '../modules/notification/browser-feedback'
 import './NotificationCenter.css'
 
-const icons = { hub: Building2, booking: CalendarCheck, queue: Clock3, account: Bell }
+const icons = { hub: Building2, booking: CalendarCheck, queue: Clock3, account: Bell, feedback: CircleCheck }
 const timestamp = value => new Date(value).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
 function NotificationInbox() {
@@ -24,6 +24,10 @@ function NotificationInbox() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [top, setTop] = useState(64)
+  const sessionInbox = useSyncExternalStore(subscribeToFeedback, () => getNotificationFeedback().inbox)
+  const unreadCount = data.unreadCount + sessionInbox.filter(entry => !entry.readAt).length
+  const notifications = [...data.notifications, ...sessionInbox.filter(entry => !unreadOnly || !entry.readAt)]
+    .sort((first, second) => +new Date(second.createdAt) - +new Date(first.createdAt))
 
   const load = useCallback(async (before) => {
     request.current?.abort()
@@ -45,14 +49,8 @@ function NotificationInbox() {
 
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') void load() }
-    const receive = notification => {
-      if (notification?.title === 'It’s your turn!' && document.visibilityState === 'visible') {
-        toast(notification.message, { icon: '🔔', id: notification._id, duration: 8000 })
-      }
-      refresh()
-    }
     void load()
-    socket.on('notification:created', receive)
+    socket.on('notification:created', refresh)
     socket.on('notification:read', refresh)
     socket.on('connect', refresh)
     document.addEventListener('visibilitychange', refresh)
@@ -60,7 +58,7 @@ function NotificationInbox() {
     return () => {
       request.current?.abort()
       clearInterval(interval)
-      socket.off('notification:created', receive)
+      socket.off('notification:created', refresh)
       socket.off('notification:read', refresh)
       socket.off('connect', refresh)
       document.removeEventListener('visibilitychange', refresh)
@@ -94,6 +92,10 @@ function NotificationInbox() {
 
   const read = async (notification) => {
     if (busy) return
+    if (notification.type === 'feedback') {
+      readSessionFeedback(notification._id)
+      return
+    }
     setBusy(true)
     try {
       if (!notification.readAt) await markNotificationRead(notification._id)
@@ -109,6 +111,8 @@ function NotificationInbox() {
   }
 
   const readAll = async () => {
+    readSessionFeedback()
+    if (!data.unreadCount) return
     setBusy(true)
     try { await markAllNotificationsRead(); await load() }
     catch { setError('Could not mark notifications as read. Please retry.') }
@@ -116,13 +120,13 @@ function NotificationInbox() {
   }
 
   return <>
-    <button ref={trigger} type="button" className="notification-bell" aria-label={`Notifications${data.unreadCount ? `, ${data.unreadCount} unread` : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? panelId : undefined}
+    <button ref={trigger} type="button" className="notification-bell" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? panelId : undefined}
       onClick={() => { setOpen(value => !value); if (!open) void load() }}>
       <Bell size={19} aria-hidden="true" />
-      {data.unreadCount > 0 && <span className="notification-count" aria-hidden="true">{data.unreadCount > 99 ? '99+' : data.unreadCount}</span>}
+      {unreadCount > 0 && <span className="notification-count" aria-hidden="true">{unreadCount > 99 ? '99+' : unreadCount}</span>}
     </button>
     {open && createPortal(<section ref={panel} id={panelId} role="dialog" aria-label="Notifications" className="notification-panel" style={{ top, maxHeight: `calc(100dvh - ${top + 12}px - env(safe-area-inset-bottom))` }}>
-      <div className="notification-heading"><div><h2>Notifications</h2><p>{error ? 'Updates unavailable' : loading ? 'Checking for updates…' : data.unreadCount ? `${data.unreadCount} unread updates` : 'You’re all caught up'}</p></div>
+      <div className="notification-heading"><div><h2>Notifications</h2><p>{unreadCount ? `${unreadCount} unread updates` : error ? 'Updates unavailable' : loading ? 'Checking for updates…' : 'You’re all caught up'}</p></div>
         <button type="button" className="notification-close" aria-label="Close notifications" onClick={() => { setOpen(false); trigger.current?.focus() }}><X size={18} /></button>
       </div>
       <div className="notification-toolbar">
@@ -130,12 +134,12 @@ function NotificationInbox() {
           <button type="button" aria-pressed={!unreadOnly} onClick={() => { if (unreadOnly) { setData(previous => ({ ...previous, notifications: [], nextCursor: null })); setUnreadOnly(false) } }}>All</button>
           <button type="button" aria-pressed={unreadOnly} onClick={() => { if (!unreadOnly) { setData(previous => ({ ...previous, notifications: [], nextCursor: null })); setUnreadOnly(true) } }}>Unread</button>
         </div>
-        <button type="button" className="notification-read-all" disabled={busy || !data.unreadCount} onClick={readAll}><CheckCheck size={15} /> Mark all read</button>
+        <button type="button" className="notification-read-all" disabled={busy || !unreadCount} onClick={readAll}><CheckCheck size={15} /> Mark all read</button>
       </div>
       {error && <div className="notification-error" role="alert">{error}<button type="button" onClick={() => load()}>Retry</button></div>}
       <div className="notification-list" aria-busy={loading}>
-        {loading && !data.notifications.length ? <p className="notification-empty" role="status">Loading notifications…</p> : !data.notifications.length && !error ? <div className="notification-empty"><Bell size={26} /><h3>{unreadOnly ? 'No unread notifications' : 'No notifications yet'}</h3><p>Hub, booking, and queue updates will appear here.</p></div> : null}
-        {data.notifications.map(notification => {
+        {loading && !notifications.length ? <p className="notification-empty" role="status">Loading notifications…</p> : !notifications.length && !error ? <div className="notification-empty"><Bell size={26} /><h3>{unreadOnly ? 'No unread notifications' : 'No notifications yet'}</h3><p>Hub, booking, and queue updates will appear here.</p></div> : null}
+        {notifications.map(notification => {
           const Icon = icons[notification.type] || Bell
           return <button key={notification._id} type="button" className="notification-item" data-unread={!notification.readAt} disabled={busy} onClick={() => read(notification)}>
             <span className="notification-icon"><Icon size={18} /></span>

@@ -5,7 +5,9 @@ import { normalizePhoneNumber } from '../utils/phoneNumbers'
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
+import { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import NotificationCenter from '../components/NotificationCenter'
+import { useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import {
   CheckCircle2,
   Mail,
@@ -50,6 +52,7 @@ import { prepareAvatar } from '../utils/avatarUpload'
 const profileValues = user => ({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', bio: user?.bio || '', location: user?.location || '', avatar: user?.avatar || '', whatsappFollowUpOptIn: Boolean(user?.whatsappFollowUpOptIn) })
 
 export default function ProfilePage() {
+  const feedback = useNotificationFeedback()
   const { user, setUser, logOut } = useAuth()
   const navigate = useNavigate()
   const prescriptions = usePrescriptions(user?.role === 'customer' ? user._id : null)
@@ -120,7 +123,7 @@ export default function ProfilePage() {
   const handleSendEmailOtp = async (customEmail) => {
     const targetEmail = (customEmail || form.email || user?.email || '').trim()
     if (!targetEmail || !isValidEmail(targetEmail)) {
-      toast.error('Please enter a valid email address (e.g. name@domain.com)')
+      feedback.error('Please enter a valid email address (e.g. name@domain.com)')
       return
     }
 
@@ -129,11 +132,9 @@ export default function ProfilePage() {
       const res = await sendEmailOtp(targetEmail)
       setEmailOtpSent(true)
       setOtpCooldown(30)
-      toast.success(res.data?.message || `Verification code sent to ${targetEmail}`, {
-        style: { borderRadius: '16px', background: '#ffffff', color: '#09090b', border: '1px solid #14b8a6' },
-      })
+      feedback.success(res.data?.message || `Verification code sent to ${targetEmail}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send email verification OTP')
+      feedback.error(err.response?.data?.message || 'Failed to send email verification OTP')
     } finally {
       setSendingEmailOtp(false)
     }
@@ -147,7 +148,7 @@ export default function ProfilePage() {
     const code = emailOtp.trim()
 
     if (!code || code.length < 6) {
-      toast.error('Please enter the complete 6-digit OTP code')
+      feedback.error('Please enter the complete 6-digit OTP code')
       return
     }
 
@@ -160,13 +161,10 @@ export default function ProfilePage() {
         setForm((prev) => ({ ...prev, email: updated.email }))
         setEmailOtpSent(false)
         setEmailOtp('')
-        toast.success('Email address verified successfully!', {
-          style: { borderRadius: '16px', background: '#ffffff', color: '#09090b', border: '1px solid #10b981' },
-          icon: '🎉',
-        })
+        feedback.success('Email address verified successfully!')
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid or expired OTP code')
+      feedback.error(err.response?.data?.message || 'Invalid or expired OTP code')
     } finally {
       setVerifyingEmailOtp(false)
     }
@@ -193,7 +191,7 @@ export default function ProfilePage() {
   const handleSaveProfile = async (e) => {
     e?.preventDefault()
     if (form.email && !isValidEmail(form.email.trim())) {
-      toast.error('Please provide a valid email format')
+      feedback.error('Please provide a valid email format')
       return
     }
 
@@ -202,13 +200,11 @@ export default function ProfilePage() {
       const res = await api.patch('/auth/me', form)
       if (res.data.success) {
         setUser(res.data.data.user)
-        toast.success('Profile updated successfully!', {
-          style: { borderRadius: '16px', background: '#ffffff', color: '#09090b', border: '1px solid #f4f4f5' },
-        })
+        feedback.success('Profile updated successfully!')
         setEditing(false)
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update profile')
+      feedback.error(err.response?.data?.message || 'Failed to update profile')
     } finally {
       setSaving(false)
     }
@@ -236,7 +232,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-
+          <NotificationCenter />
           <span
             className={`hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
               isAdmin
@@ -262,6 +258,7 @@ export default function ProfilePage() {
           </button>
         </div>
       </header>
+      <PageNotificationStatus belowHeader />
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">
@@ -932,7 +929,7 @@ export default function ProfilePage() {
         onSuccess={(updatedUser) => {
           setUser(updatedUser)
           setPhoneModalOpen(false)
-          toast.success('Phone verified successfully!')
+          feedback.success('Phone verified successfully!')
         }}
       />}
 

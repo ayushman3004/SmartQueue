@@ -46,7 +46,8 @@ import {
 } from '../api/booking.api'
 import { validateCoupon } from '../api/coupon.api'
 import { submitReview, updateReview } from '../api/review.api'
-import { toast } from 'react-hot-toast'
+import NotificationStatus, { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import { useInlineFeedback, useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import { useSeo } from '../utils/useSeo'
 import { useCustomerService } from '../hooks/useCustomerService'
 import { filterServiceVenues, filterServiceBookings, matchesCustomerService } from '../utils/customerService'
@@ -56,6 +57,7 @@ import { getBookingDateRange, getBookingDateError, getBusinessDate } from '../ut
 const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 
 export default function BookingPage() {
+  const feedback = useNotificationFeedback()
   const { businessId: paramBizId } = useParams()
   const { user, logOut } = useAuth()
   const { socket } = useSocket()
@@ -85,12 +87,14 @@ export default function BookingPage() {
   const [validatingCoupon, setValidatingCoupon] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const paymentDialog = useDialog(Boolean(paymentModalOpen), () => setPaymentModalOpen(false))
+  const [paymentFeedback, paymentFeedbackScope] = useInlineFeedback(Boolean(paymentModalOpen))
   const [bookingInProgress, setBookingInProgress] = useState(false)
   const [isSubscriptionInactive, setIsSubscriptionInactive] = useState(false)
 
   // Review Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const reviewDialog = useDialog(Boolean(reviewModalOpen), () => setReviewModalOpen(false))
+  const [reviewFeedback, reviewFeedbackScope] = useInlineFeedback(Boolean(reviewModalOpen))
   const [selectedBookingForReview, setSelectedBookingForReview] = useState(null)
   const [rating, setRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
@@ -243,12 +247,12 @@ export default function BookingPage() {
       if (err.response?.status === 403 && err.response?.data?.message?.includes('subscription')) {
         setIsSubscriptionInactive(true)
       } else {
-        toast.error('Unable to fetch appointment slots')
+        feedback.error('Unable to fetch appointment slots')
       }
     } finally {
       if (request === bookingRequest.current) setLoading(false)
     }
-  }, [selectedBizId, selectedDate, serviceCategory, navigate])
+  }, [selectedBizId, selectedDate, serviceCategory, navigate, feedback])
 
   useEffect(() => {
     fetchData()
@@ -260,8 +264,7 @@ export default function BookingPage() {
     if (!socket) return
 
     const handleDelay = (data) => {
-      if (data.userId === user?._id) {
-        toast(data.message)
+      if (String(data.userId) === String(user?._id)) {
         fetchData()
       }
     }
@@ -288,7 +291,7 @@ export default function BookingPage() {
       const exists = prev.some((s) => s.name === svc.name)
       if (exists) {
         if (prev.length <= 1) {
-          toast.error('Please keep at least one service selected')
+          feedback.error('Please keep at least one service selected')
           return prev
         }
         return prev.filter((s) => s.name !== svc.name)
@@ -305,9 +308,9 @@ export default function BookingPage() {
     try {
       const res = await validateCoupon(couponCode.trim(), selectedBizId)
       setAppliedCoupon(res.data.data)
-      toast.success(`Coupon applied! Saved ₹${res.data.data.discountAmount}`)
+      feedback.success(`Coupon applied! Saved ₹${res.data.data.discountAmount}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid coupon')
+      feedback.error(err.response?.data?.message || 'Invalid coupon')
       setAppliedCoupon(null)
     } finally {
       setValidatingCoupon(false)
@@ -318,11 +321,11 @@ export default function BookingPage() {
   const handleSlotSelect = (slot) => {
     const dateError = getBookingDateError(getBusinessDate(slot.startTime, business), business)
     if (dateError) {
-      toast.error(dateError)
+      feedback.error(dateError)
       return
     }
     if (selectedServices.length === 0) {
-      toast.error('Please select at least one service before choosing a time slot')
+      feedback.error('Please select at least one service before choosing a time slot')
       return
     }
     setSelectedSlot(slot)
@@ -334,14 +337,14 @@ export default function BookingPage() {
     if (!selectedSlot || !selectedBizId) return
     const dateError = getBookingDateError(getBusinessDate(selectedSlot.startTime, business), business)
     if (dateError) {
-      toast.error(dateError)
+      feedback.error(dateError)
       setPaymentModalOpen(false)
       setSelectedSlot(null)
       fetchData()
       return
     }
     if (selectedServices.length === 0) {
-      toast.error('Please select at least one service')
+      paymentFeedback.error('Please select at least one service')
       return
     }
 
@@ -365,18 +368,18 @@ export default function BookingPage() {
       const booking = res.data.data?.booking || res.data.data
       const assigned = res.data.data?.assignedStaff || booking?.assignedStaff
       if (assigned?.name) {
-        toast.success(
-          `Booking confirmed! Assigned to ${assigned.name}${assigned.autoAssigned ? ' (On-Duty)' : ''}`
+        feedback.success(
+          `Booking confirmed! Assigned to ${assigned.name}${assigned.autoAssigned ? ' (On-Duty)' : ''}`, { inbox: false }
         )
       } else {
-        toast.success(res.data.message || 'Booking confirmed! Pay at counter upon arrival.')
+        feedback.success(res.data.message || 'Booking confirmed! Pay at counter upon arrival.', { inbox: false })
       }
 
       setPaymentModalOpen(false)
       setSelectedSlot(null)
       fetchData()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Booking failed')
+      paymentFeedback.error(err.response?.data?.message || 'Booking failed')
     } finally {
       setBookingInProgress(false)
     }
@@ -387,10 +390,10 @@ export default function BookingPage() {
     if (!window.confirm('Cancel this booking?')) return
     try {
       const res = await cancelBooking(id)
-      toast.success(res.data.message || 'Booking cancelled')
+      feedback.success(res.data.message || 'Booking cancelled', { inbox: false })
       fetchData()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Cancel failed')
+      feedback.error(err.response?.data?.message || 'Cancel failed')
     }
   }
 
@@ -420,11 +423,11 @@ export default function BookingPage() {
       setMyBookings((bookings) => bookings.map((booking) =>
         booking._id === selectedBookingForReview._id ? { ...booking, review: savedReview } : booking
       ))
-      toast.success(selectedBookingForReview.review ? 'Your review has been updated.' : 'Thank you! Review submitted successfully.')
+      feedback.success(selectedBookingForReview.review ? 'Your review has been updated.' : 'Thank you! Review submitted successfully.')
       setReviewModalOpen(false)
       fetchData()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit review')
+      reviewFeedback.error(err.response?.data?.message || 'Failed to submit review')
     } finally {
       setSubmittingReview(false)
     }
@@ -535,6 +538,7 @@ export default function BookingPage() {
           </div>
         </div>
       </header>
+      <PageNotificationStatus belowHeader />
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS (UNIFIED DESIGN) ── */}
       <div className="flex-1 flex w-full">
@@ -794,7 +798,7 @@ export default function BookingPage() {
                             key={member._id || idx}
                             onClick={() => {
                               if (isOccupied) {
-                                toast(
+                                feedback.info(
                                   `${member.name} is currently with a patron. If still occupied at slot time, auto-fallback will assign an on-duty specialist.`
                                 )
                               }
@@ -975,7 +979,7 @@ export default function BookingPage() {
                         onChange={(e) => {
                           const dateError = getBookingDateError(e.target.value, business || {})
                           if (dateError) {
-                            toast.error(dateError)
+                            feedback.error(dateError)
                             return
                           }
                           if (e.target.value === selectedDate) return
@@ -1124,6 +1128,7 @@ export default function BookingPage() {
               exit={{ scale: 0.95, y: 20, opacity: 0 }}
               ref={paymentDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Confirm appointment" className="app-dialog bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-5"
             >
+              <NotificationStatus scope={paymentFeedbackScope} />
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
                   <h3 className="text-lg font-black text-zinc-950">Confirm Appointment</h3>
@@ -1232,6 +1237,7 @@ export default function BookingPage() {
               exit={{ scale: 0.95, y: 20, opacity: 0 }}
               ref={reviewDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Review service" className="app-dialog bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-zinc-200 space-y-5"
             >
+              <NotificationStatus scope={reviewFeedbackScope} />
               <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
                 <div>
                   <h3 className="text-lg font-black text-zinc-950">{selectedBookingForReview?.review ? 'Edit your review' : 'Leave a Verified Review'}</h3>

@@ -55,10 +55,12 @@ import {
 import { collectCounterPayment, updatePaymentModes } from '../api/payment.api'
 import { getBusinessAnalytics, generateAIAnalyticsReview } from '../api/analytics.api'
 import { SERVICE_PRESETS } from '../utils/servicePresets'
-import { toast } from 'react-hot-toast'
+import { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import { useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import { useSeo } from '../utils/useSeo'
 
 export default function BusinessDashboard() {
+  const feedback = useNotificationFeedback()
   const { businessId } = useParams()
   const { user, logOut } = useAuth()
   const { joinAdmin, joinRoom, leaveRoom, socket } = useSocket()
@@ -139,11 +141,11 @@ export default function BusinessDashboard() {
     setCollectingPayment(true)
     try {
       await collectCounterPayment(bookingId)
-      toast.success('Counter payment recorded as collected!')
+      feedback.success('Counter payment recorded as collected!')
       const bkRes = await getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } }))
       setBookings(bkRes.data.data.bookings || [])
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to record counter payment')
+      feedback.error(err.response?.data?.message || 'Failed to record counter payment')
     } finally { setCollectingPayment(false) }
   }
 
@@ -152,14 +154,14 @@ export default function BusinessDashboard() {
     setCollectingPayment(true)
     try {
       const res = await collectQueuePayment(businessId, userId)
-      toast.success('Queue counter payment accepted and marked as paid!')
+      feedback.success('Queue counter payment accepted and marked as paid!')
       if (res.data?.data?.queue) {
         setQueue(res.data.data.queue)
       }
       const bkRes = await getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } }))
       setBookings(bkRes.data.data.bookings || [])
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to record queue payment')
+      feedback.error(err.response?.data?.message || 'Failed to record queue payment')
     } finally { setCollectingPayment(false) }
   }
 
@@ -172,9 +174,9 @@ export default function BusinessDashboard() {
         upiId: upiVpa.trim(),
       })
       setBusiness(res.data.data.business)
-      toast.success('Counter UPI VPA updated successfully!')
+      feedback.success('Counter UPI VPA updated successfully!')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update counter UPI')
+      feedback.error(err.response?.data?.message || 'Failed to update counter UPI')
     } finally {
       setSavingUpi(false)
     }
@@ -184,8 +186,8 @@ export default function BusinessDashboard() {
   const clinicalOwner = isClinic && user?.role === 'owner'
   const visibleTab = activeTab
   useEffect(() => {
-    if (clinicalOwner) refreshDoctors().catch(() => toast.error('Could not load doctor access.'))
-  }, [clinicalOwner, refreshDoctors])
+    if (clinicalOwner) refreshDoctors().catch(() => feedback.error('Could not load doctor access.'))
+  }, [clinicalOwner, refreshDoctors, feedback])
 
 
   const fetchDashboardData = useCallback(async () => {
@@ -260,7 +262,7 @@ export default function BusinessDashboard() {
     const handleDoctorCall = event => {
       if (String(event.businessId) !== String(businessId)) return
       setDoctorCall(event)
-      toast.success(`${event.doctorName || 'Doctor'} called the next person`)
+      feedback.success(`${event.doctorName || 'Doctor'} called the next person`)
     }
     const reconnect = () => {
       if (user?.role === 'admin') joinAdmin(businessId)
@@ -279,16 +281,16 @@ export default function BusinessDashboard() {
       socket?.off('doctor:called-next', handleDoctorCall)
       socket?.off('connect', reconnect)
     }
-  }, [businessId, fetchDashboardData, joinAdmin, joinRoom, leaveRoom, socket, user?.role])
+  }, [businessId, fetchDashboardData, joinAdmin, joinRoom, leaveRoom, socket, user?.role, feedback])
 
   // Load analytics whenever analytics tab is active
   useEffect(() => {
     if (activeTab === 'analytics') {
       getBusinessAnalytics(businessId)
         .then(res => setAnalytics(res.data.data))
-        .catch(err => toast.error(err.response?.data?.message || "Failed to load analytics"))
+        .catch(err => feedback.error(err.response?.data?.message || "Failed to load analytics"))
     }
-  }, [activeTab, businessId])
+  }, [activeTab, businessId, feedback])
 
   const handleCallNext = async () => {
     if (calling || !queue?.users?.length) return
@@ -296,11 +298,11 @@ export default function BusinessDashboard() {
     try {
       const res = await callNext(businessId)
       setQueue(res.data.data.queue)
-      toast.success('Service completed & called next customer')
+      feedback.success('Service completed & called next customer')
       getBusinessAnalytics(businessId).then(r => setAnalytics(r.data.data)).catch(() => { })
       getBusinessBookings(businessId).then(r => setBookings(r.data.data.bookings || [])).catch(() => { })
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to call next')
+      feedback.error(err.response?.data?.message || 'Failed to call next')
     } finally {
       setCalling(false)
     }
@@ -310,9 +312,9 @@ export default function BusinessDashboard() {
     try {
       const res = await extendUserTime(businessId, userId, mins)
       setQueue(res.data.data.queue)
-      toast.success(`Extended by ${mins}m`)
+      feedback.success(`Extended by ${mins}m`)
     } catch {
-      toast.error('Error extending time')
+      feedback.error('Error extending time')
     }
   }
 
@@ -320,9 +322,9 @@ export default function BusinessDashboard() {
     try {
       const res = await assignQueueStaff(businessId, userId, staffName)
       setQueue(res.data.data.queue)
-      toast.success(`Assigned to ${staffName}`)
+      feedback.success(`Assigned to ${staffName}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error assigning doctor/staff')
+      feedback.error(err.response?.data?.message || 'Error assigning doctor/staff')
     }
   }
 
@@ -331,9 +333,9 @@ export default function BusinessDashboard() {
     try {
       const res = await toggleBusiness(businessId)
       setBusiness(res.data.data.business)
-      toast.success(`Business is now ${res.data.data.business.isOpen ? 'OPEN' : 'CLOSED'}`)
+      feedback.success(`Business is now ${res.data.data.business.isOpen ? 'OPEN' : 'CLOSED'}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error toggling status')
+      feedback.error(err.response?.data?.message || 'Error toggling status')
     } finally {
       setToggling(false)
     }
@@ -343,22 +345,22 @@ export default function BusinessDashboard() {
   const handleStartBooking = async (id) => {
     try {
       await startBookingService(id)
-      toast.success("Service started for appointment")
+      feedback.success("Service started for appointment")
       fetchDashboardData()
       getBusinessAnalytics(businessId).then(r => setAnalytics(r.data.data)).catch(() => { })
     } catch (err) {
-      toast.error(err.response?.data?.message || "Could not start service")
+      feedback.error(err.response?.data?.message || "Could not start service")
     }
   }
 
   const handleCompleteBooking = async (id) => {
     try {
       await completeBookingService(id)
-      toast.success("Service completed!")
+      feedback.success("Service completed!")
       fetchDashboardData()
       getBusinessAnalytics(businessId).then(r => setAnalytics(r.data.data)).catch(() => { })
     } catch (err) {
-      toast.error(err.response?.data?.message || "Could not complete service")
+      feedback.error(err.response?.data?.message || "Could not complete service")
     }
   }
 
@@ -367,10 +369,10 @@ export default function BusinessDashboard() {
     if (!mins) return
     try {
       await extendBooking(id, Number(mins))
-      toast.success(`Appointment extended by ${mins}m`)
+      feedback.success(`Appointment extended by ${mins}m`)
       fetchDashboardData()
     } catch (err) {
-      toast.error(err.response?.data?.message || "Could not extend booking")
+      feedback.error(err.response?.data?.message || "Could not extend booking")
     }
   }
 
@@ -381,9 +383,9 @@ export default function BusinessDashboard() {
     try {
       const res = await updateBusiness(businessId, profileForm)
       setBusiness(res.data.data.business)
-      toast.success("Business profile & services updated successfully!")
+      feedback.success("Business profile & services updated successfully!")
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update profile")
+      feedback.error(err.response?.data?.message || "Failed to update profile")
     } finally {
       setSavingProfile(false)
     }
@@ -391,7 +393,7 @@ export default function BusinessDashboard() {
 
   const handleAddService = () => {
     if (!newService.name.trim()) {
-      toast.error('Please specify a service name')
+      feedback.error('Please specify a service name')
       return
     }
     const duration = Math.max(1, Number(newService.duration) || 15)
@@ -402,12 +404,12 @@ export default function BusinessDashboard() {
       services: [...prev.services, { name: newService.name.trim(), duration, price }],
     }))
     setNewService({ name: '', duration: 20, price: 150 })
-    toast.success(`Added "${newService.name.trim()}" to catalog staging`)
+    feedback.success(`Added "${newService.name.trim()}" to catalog staging`)
   }
 
   const handleRemoveService = (index) => {
     if (profileForm.services.length <= 1) {
-      toast.error('Every hub must keep at least one active service')
+      feedback.error('Every hub must keep at least one active service')
       return
     }
     setProfileForm(prev => ({
@@ -424,7 +426,7 @@ export default function BusinessDashboard() {
 
   const handleSaveInlineService = () => {
     if (!editServiceForm.name.trim()) {
-      toast.error('Service name cannot be empty')
+      feedback.error('Service name cannot be empty')
       return
     }
     const updated = [...profileForm.services]
@@ -448,21 +450,21 @@ export default function BusinessDashboard() {
       ...prev,
       services: [...presets],
     }))
-    toast.success(`Loaded standard ${business?.category} services catalog!`)
+    feedback.success(`Loaded standard ${business?.category} services catalog!`)
   }
 
   const handleSaveServicesOnly = async () => {
     if (profileForm.services.length === 0) {
-      toast.error('At least one service is required')
+      feedback.error('At least one service is required')
       return
     }
     setSavingServices(true)
     try {
       const res = await updateBusiness(businessId, { services: profileForm.services })
       setBusiness(res.data.data.business)
-      toast.success('Service catalog saved and deployed live!')
+      feedback.success('Service catalog saved and deployed live!')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save services')
+      feedback.error(err.response?.data?.message || 'Failed to save services')
     } finally {
       setSavingServices(false)
     }
@@ -474,11 +476,11 @@ export default function BusinessDashboard() {
     try {
       const res = await updateBusiness(businessId, { staff: updatedStaff })
       setBusiness(res.data.data.business)
-      if (clinicalOwner) await refreshDoctors().catch(() => toast.error("Could not refresh doctor access."))
-      toast.success('Doctor roster updated successfully!')
+      if (clinicalOwner) await refreshDoctors().catch(() => feedback.error("Could not refresh doctor access."))
+      feedback.success('Doctor roster updated successfully!')
       return true
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update team')
+      feedback.error(err.response?.data?.message || 'Failed to update team')
       return false
     } finally {
       setSavingStaff(false)
@@ -488,7 +490,7 @@ export default function BusinessDashboard() {
   const handleAddStaffMember = async (e) => {
     e?.preventDefault()
     if (!newStaff.name.trim()) {
-      toast.error('Please enter the doctor name')
+      feedback.error('Please enter the doctor name')
       return
     }
     const defaultRole = 'Doctor / Specialist'
@@ -533,9 +535,9 @@ export default function BusinessDashboard() {
     try {
       const res = await generateAIAnalyticsReview(businessId)
       setAnalytics(res.data.data)
-      toast.success('AI Executive Review updated live!')
+      feedback.success('AI Executive Review updated live!')
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to generate AI review')
+      feedback.error(err.response?.data?.message || 'Failed to generate AI review')
     } finally {
       setLoadingAIReview(false)
     }
@@ -918,6 +920,7 @@ export default function BusinessDashboard() {
           </div>
         </div>
       </header>
+      <PageNotificationStatus belowHeader />
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS ── */}
       <div className="flex-1 flex w-full">

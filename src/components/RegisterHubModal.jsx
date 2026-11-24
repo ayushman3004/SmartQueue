@@ -1,11 +1,14 @@
 import { useDialog } from '../hooks/useDialog'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'react-hot-toast'
+import NotificationStatus from '../modules/notification/NotificationStatus'
+import { useInlineFeedback, useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import { createBusiness } from '../api/business.api'
 import { SERVICE_PRESETS } from '../utils/servicePresets'
 
 export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
+  const [feedback, feedbackScope] = useInlineFeedback(isOpen)
+  const pageFeedback = useNotificationFeedback()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     name: '',
@@ -27,7 +30,7 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
 
   const handleAddService = () => {
     if (!newService.name.trim()) {
-      toast.error('Please specify a service name')
+      feedback.error('Please specify a service name')
       return
     }
     const duration = Math.max(1, Number(newService.duration) || 15)
@@ -42,7 +45,7 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
 
   const handleRemoveService = (index) => {
     if (form.services.length <= 1) {
-      toast.error('A hub must offer at least one service')
+      feedback.error('A hub must offer at least one service')
       return
     }
     setForm(prev => ({
@@ -58,17 +61,17 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
       ...prev,
       services: [...presets],
     }))
-    toast.success('Loaded standard clinic services!')
+    feedback.success('Loaded standard clinic services!')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) {
-      toast.error('Hub name is required')
+      feedback.error('Hub name is required')
       return
     }
     if (form.services.length === 0) {
-      toast.error('Please add at least one service to your hub')
+      feedback.error('Please add at least one service to your hub')
       return
     }
 
@@ -89,11 +92,11 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
 
       const res = await createBusiness(payload)
       const created = res.data.data.business
-      toast.success(`Hub "${created.name}" established with ${created.services?.length || 0} services!`)
+      pageFeedback.success(`Hub "${created.name}" established with ${created.services?.length || 0} services!`, { inbox: false })
       onCreated?.(created)
       onClose()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to register hub')
+      feedback.error(err.response?.data?.message || 'Failed to register hub')
     } finally {
       setLoading(false)
     }
@@ -111,6 +114,7 @@ export default function RegisterHubModal({ isOpen, onClose, onCreated }) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="app-dialog bezel-core p-6 sm:p-8 bg-white border border-zinc-200/90 rounded-3xl max-h-[90dvh] overflow-y-auto custom-scrollbar space-y-6">
+            <NotificationStatus scope={feedbackScope} sticky />
             
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-zinc-100">

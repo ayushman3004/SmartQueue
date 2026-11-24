@@ -43,7 +43,8 @@ import { useCustomerLocation } from '../context/LocationContext'
 import { getAllBusinesses } from '../api/business.api'
 import { joinQueue, leaveQueue, subscribeToQueueChanges } from '../api/queue.api'
 import { getMyBookings } from '../api/booking.api'
-import { toast } from 'react-hot-toast'
+import { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import { useNotificationFeedback, useSessionFeedback } from '../modules/notification/useNotificationFeedback'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
 
@@ -54,6 +55,8 @@ const DEFAULT_CLINIC_IMAGES = [
 ]
 
 export default function CustomerDashboardPage() {
+  const feedback = useNotificationFeedback()
+  const sessionFeedback = useSessionFeedback()
   const { user, logOut } = useAuth()
   const navigate = useNavigate()
   const { onBusinessStatus, socket, connected } = useSocket()
@@ -156,11 +159,11 @@ export default function CustomerDashboardPage() {
       })
     } catch (err) {
       console.error('Customer Dashboard fetch error:', err)
-      toast.error('Could not refresh present queues')
+      feedback.error('Could not refresh present queues')
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, categoryFilter, currentLocation, userCoords])
+  }, [debouncedSearch, categoryFilter, currentLocation, userCoords, feedback])
 
   useEffect(() => {
     fetchData()
@@ -341,7 +344,7 @@ export default function CustomerDashboardPage() {
       const exists = curList.some((s) => s.name === service.name)
       if (exists) {
         if (curList.length <= 1) {
-          toast('At least one service must be selected')
+          feedback.info('At least one service must be selected')
           return prev
         }
         return {
@@ -360,11 +363,11 @@ export default function CustomerDashboardPage() {
   // Quick Join Queue Handler (supports optional overrideStaff e.g. from Live Queue modal)
   const handleJoinQueue = async (biz, overrideStaff) => {
     if (biz.queueSettings?.enableLiveQueue === false) {
-      toast.error('Live queue is currently disabled for this business.')
+      feedback.error('Live queue is currently disabled for this business.')
       return
     }
     if (!biz.isOpen) {
-      toast.error('This business is currently closed for check-ins.')
+      feedback.error('This business is currently closed for check-ins.')
       return
     }
 
@@ -409,17 +412,17 @@ export default function CustomerDashboardPage() {
         .then((myBkRes) => setMyBookings(myBkRes.data?.data?.bookings || []))
         .catch(() => {})
 
-      toast.success(
+      feedback.success(
         preferredStaffName
           ? `You joined ${preferredStaffName}'s queue at ${biz.name}!`
           : `You joined the live queue at ${biz.name}!`
       )
     } catch (err) {
       if (err.response?.status === 400 || err.response?.data?.message?.includes('already')) {
-        toast('You are already registered in this queue.')
+        sessionFeedback.info('You are already registered in this queue.')
         navigate(`/queue/${biz._id}`)
       } else {
-        toast.error(err.response?.data?.message || 'Failed to join queue')
+        feedback.error(err.response?.data?.message || 'Failed to join queue')
       }
     } finally {
       setJoiningBizId(null)
@@ -447,9 +450,9 @@ export default function CustomerDashboardPage() {
         .then((myBkRes) => setMyBookings(myBkRes.data?.data?.bookings || []))
         .catch(() => {})
 
-      toast.success(`Left queue at ${bizName}`)
+      feedback.success(`Left queue at ${bizName}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not leave queue')
+      feedback.error(err.response?.data?.message || 'Could not leave queue')
     } finally {
       setLeavingBizId(null)
     }
@@ -1010,6 +1013,7 @@ export default function CustomerDashboardPage() {
           </div>
         </div>
       </header>
+      <PageNotificationStatus belowHeader />
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS (FULL SCREEN) ── */}
       <div className="flex-1 flex w-full">

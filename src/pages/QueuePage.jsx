@@ -41,7 +41,8 @@ import { useCustomerLocation } from '../context/LocationContext'
 import { joinQueue, leaveQueue, subscribeToQueueChanges } from '../api/queue.api'
 import { getAllBusinesses } from '../api/business.api'
 import { getMyBookings } from '../api/booking.api'
-import { toast } from 'react-hot-toast'
+import { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import { useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import { useSeo } from '../utils/useSeo'
 import { useCustomerService } from '../hooks/useCustomerService'
 import { filterServiceVenues, filterServiceBookings } from '../utils/customerService'
@@ -50,6 +51,7 @@ import { useDebounce } from '../hooks/useDebounce'
 const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 
 export default function QueuePage() {
+  const feedback = useNotificationFeedback()
   const { businessId: paramBizId } = useParams()
   const { user, logOut } = useAuth()
   const { socket, connected } = useSocket()
@@ -143,11 +145,11 @@ export default function QueuePage() {
     } catch (err) {
       if (request !== queueRequest.current) return
       console.error('Failed to load queue data:', err)
-      toast.error('Unable to fetch live queues')
+      feedback.error('Unable to fetch live queues')
     } finally {
       if (request === queueRequest.current) setLoading(false)
     }
-  }, [currentLocation, userCoords, paramBizId, selectedBizId, serviceCategory])
+  }, [currentLocation, userCoords, paramBizId, selectedBizId, serviceCategory, feedback])
 
   useEffect(() => {
     fetchData()
@@ -354,11 +356,11 @@ export default function QueuePage() {
   const handleJoinQueue = async (biz = activeBusiness) => {
     if (!biz) return
     if (biz.queueSettings?.enableLiveQueue === false) {
-      toast.error('Live queue is currently disabled for this business.')
+      feedback.error('Live queue is currently disabled for this business.')
       return
     }
     if (!biz.isOpen) {
-      toast.error('This business is currently closed for check-ins.')
+      feedback.error('This business is currently closed for check-ins.')
       return
     }
 
@@ -394,14 +396,14 @@ export default function QueuePage() {
           )
         )
       }
-      toast.success(`You joined the live queue at ${biz.name}!`)
+      feedback.success(`You joined the live queue at ${biz.name}!`)
       await fetchData()
     } catch (err) {
       if (err.response?.status === 400 || err.response?.data?.message?.includes('already')) {
-        toast('You are already registered in this queue.')
+        feedback.info('You are already registered in this queue.')
         await fetchData()
       } else {
-        toast.error(err.response?.data?.message || 'Failed to join queue')
+        feedback.error(err.response?.data?.message || 'Failed to join queue')
       }
     } finally {
       setJoiningQueue(false)
@@ -436,10 +438,10 @@ export default function QueuePage() {
         })
       )
 
-      toast.success(`You stepped out of the queue at ${activeBusiness.name}`)
+      feedback.success(`You stepped out of the queue at ${activeBusiness.name}`)
       await fetchData()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not leave queue')
+      feedback.error(err.response?.data?.message || 'Could not leave queue')
     } finally {
       setLeavingQueue(false)
     }
@@ -530,6 +532,7 @@ export default function QueuePage() {
           </div>
         </div>
       </header>
+      <PageNotificationStatus belowHeader />
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS (MATCHING SCREENSHOT) ── */}
       <div className="flex-1 flex w-full">

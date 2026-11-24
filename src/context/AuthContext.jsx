@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
-import { toast } from "react-hot-toast";
+import { createContext, useContext, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { publishFeedback, sessionNotificationScope, setFeedbackAccount } from "../modules/notification/browser-feedback";
 import { getMe } from "../api/auth.api.js";
 import api from "../api/axios.js";
 import { clearBrowserBearer, logoutBrowserSession } from "../utils/browserSession.js";
@@ -13,32 +14,43 @@ export { INACTIVITY_TIMEOUT_MS, ACTIVITY_THROTTLE_MS, LAST_ACTIVE_KEY };
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+  const navigateRef = useRef(navigate);
+  const [user, updateUser] = useState(null);
+  const currentUser = useRef(null);
   const [loading, setLoading] = useState(() => window.location.pathname !== "/auth/callback");
   const lastActivityRef = useRef(0);
   const timerRef = useRef(null);
   const sessionRevision = useRef(0);
 
+  useLayoutEffect(() => { navigateRef.current = navigate; }, [navigate]);
+
+  const setUser = useCallback((value) => {
+    const next = typeof value === "function" ? value(currentUser.current) : value;
+    currentUser.current = next;
+    setFeedbackAccount(next?._id);
+    updateUser(next);
+  }, []);
+
   const logOut = useCallback(async (reason) => {
-    sessionRevision.current += 1;
+    const revision = ++sessionRevision.current;
     const cleared = logoutBrowserSession(api, localStorage);
     localStorage.removeItem(LAST_ACTIVE_KEY);
     setUser(null);
-    if (!await cleared) {
-      toast.error("Could not clear your server session. Reconnect and sign out again.");
+    const signedOut = await cleared;
+    if (revision !== sessionRevision.current) return;
+    if (!signedOut) {
+      publishFeedback(sessionNotificationScope, "error", "Could not clear your server session. Reconnect and sign out again.");
       return;
     }
     localStorage.setItem("serveq_logout_at", String(Date.now()));
     if (reason === "inactivity") {
-      toast("You have been logged out due to 10 minutes of inactivity.", {
-        icon: "⏱️",
-        duration: 6000,
-      });
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        window.location.href = "/login";
+      publishFeedback(sessionNotificationScope, "info", "You have been logged out due to 10 minutes of inactivity.");
+      if (window.location.pathname !== "/login") {
+        navigateRef.current("/login", { replace: true });
       }
     }
-  }, []);
+  }, [setUser]);
 
   useEffect(() => {
     if (window.location.pathname === "/auth/callback") return;
@@ -54,14 +66,14 @@ export const AuthProvider = ({ children }) => {
         if (revision === sessionRevision.current) setUser(null);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [setUser]);
 
   const logIn = useCallback((userData) => {
     sessionRevision.current += 1;
     setUser(userData);
     setLoading(false);
     localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
-  }, []);
+  }, [setUser]);
 
   // 10-Minute Inactivity Auto-Logout Tracker
   useEffect(() => {
@@ -145,7 +157,7 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener("focus", handleVisibilityChange);
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, [user, logOut]);
+  }, [user, logOut, setUser]);
 
   return (
     <AuthContext.Provider value={{ user, loading, logIn, logOut, setUser }}>

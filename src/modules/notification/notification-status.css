@@ -1,0 +1,70 @@
+.notification-status-page {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 39;
+  align-self: center;
+  width: min(100% - 24px, 72rem);
+  margin-inline: auto;
+}
+
+.notification-status-page[data-below-header='true'] {
+  top: 64px;
+}
+
+.notification-status-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.notification-status-page:not(:has(.notification-status-message)),
+.notification-status:not(:has(.notification-status-message)) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+}
+
+.notification-status-message {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-block: 8px;
+  padding: 8px 12px;
+  border: 1px solid #c1d5c7;
+  border-radius: 12px;
+  background: #f4f9f4;
+  color: #214731;
+  font-size: .875rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.notification-status-message[data-level='error'] {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.notification-status-message a {
+  display: inline-block;
+  margin-inline-start: 8px;
+  font-weight: 650;
+  text-decoration: underline;
+}
+
+.notification-status-message button {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.notification-status-message button:focus-visible, .notification-status-message a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

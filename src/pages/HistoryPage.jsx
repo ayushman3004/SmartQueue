@@ -37,7 +37,8 @@ import { useSocket } from '../context/SocketContext'
 import { getAllBusinesses } from '../api/business.api'
 import { getMyBookings, cancelBooking } from '../api/booking.api'
 import { submitReview, updateReview } from '../api/review.api'
-import { toast } from 'react-hot-toast'
+import NotificationStatus, { PageNotificationStatus } from '../modules/notification/NotificationStatus'
+import { useInlineFeedback, useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
 import { useSeo } from '../utils/useSeo'
 import { useDebounce } from '../hooks/useDebounce'
 import { useCustomerService } from '../hooks/useCustomerService'
@@ -45,6 +46,7 @@ import { filterServiceVenues, filterServiceBookings } from '../utils/customerSer
 import { buildHistoryRecords } from '../utils/historyRecords'
 
 export default function HistoryPage() {
+  const feedback = useNotificationFeedback()
   const { user, logOut } = useAuth()
   const prescriptions = usePrescriptions(user?.role === 'customer' ? user._id : null)
   const { socket } = useSocket()
@@ -80,6 +82,7 @@ export default function HistoryPage() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const reviewDialog = useDialog(Boolean(reviewModalOpen), () => setReviewModalOpen(false))
+  const [reviewFeedback, reviewFeedbackScope] = useInlineFeedback(Boolean(reviewModalOpen))
   const [selectedBookingForReview, setSelectedBookingForReview] = useState(null)
   const [rating, setRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
@@ -119,11 +122,11 @@ export default function HistoryPage() {
       setBusinesses(allRes.data?.data?.businesses || [])
     } catch (err) {
       console.error('Failed to load history data:', err)
-      toast.error('Unable to load history records')
+      feedback.error('Unable to load history records')
     } finally {
       setLoading(false)
     }
-  }, [currentLocation, userCoords, refreshBookings])
+  }, [currentLocation, userCoords, refreshBookings, feedback])
 
   useEffect(() => {
     fetchData()
@@ -218,11 +221,11 @@ export default function HistoryPage() {
       setMyBookings((bookings) => bookings.map((booking) =>
         booking._id === selectedBookingForReview._id ? { ...booking, review: savedReview } : booking
       ))
-      toast.success(selectedBookingForReview.review ? 'Your review has been updated.' : 'Thank you! Review submitted successfully.')
+      feedback.success(selectedBookingForReview.review ? 'Your review has been updated.' : 'Thank you! Review submitted successfully.')
       setReviewModalOpen(false)
       fetchData()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit review')
+      reviewFeedback.error(err.response?.data?.message || 'Failed to submit review')
     } finally {
       setSubmittingReview(false)
     }
@@ -233,10 +236,10 @@ export default function HistoryPage() {
     if (!window.confirm('Are you sure you want to cancel this booking?')) return
     try {
       const res = await cancelBooking(bookingId)
-      toast.success(res.data.message || 'Booking cancelled')
+      feedback.success(res.data.message || 'Booking cancelled', { inbox: false })
       fetchData()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to cancel booking')
+      feedback.error(err.response?.data?.message || 'Failed to cancel booking')
     }
   }
 
@@ -346,6 +349,7 @@ export default function HistoryPage() {
           </div>
         </div>
       </header>
+      <PageNotificationStatus belowHeader />
 
       {/* ── BODY: SIDEBAR + MAIN CANVAS (MATCHING IMAGE 2) ── */}
       <div className="flex-1 flex w-full">
@@ -857,6 +861,7 @@ export default function HistoryPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               ref={reviewDialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Review service" className="app-dialog bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5"
             >
+              <NotificationStatus scope={reviewFeedbackScope} />
               <h3 className="text-lg font-black text-zinc-950">{selectedBookingForReview?.review ? 'Edit your review' : 'Leave a Verified Review'}</h3>
               <form onSubmit={handleSubmitReview} className="space-y-4">
                 <div>
