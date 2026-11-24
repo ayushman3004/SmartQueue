@@ -74,7 +74,6 @@ export default function HistoryPage() {
   // UI Menus & Modals
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const {
-    currentLocation,
     selectedCity,
     userCoords,
     openLocationModal,
@@ -102,12 +101,7 @@ export default function HistoryPage() {
     try {
       setLoading(true)
       const params = { includeAll: false }
-      const activeCoords =
-        currentLocation?.lat && currentLocation?.lng
-          ? { lat: currentLocation.lat, lng: currentLocation.lng }
-          : userCoords?.lat && userCoords?.lng
-          ? userCoords
-          : null
+      const activeCoords = userCoords
 
       if (activeCoords) {
         params.lat = activeCoords.lat
@@ -126,7 +120,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [currentLocation, userCoords, refreshBookings, feedback])
+  }, [userCoords, refreshBookings, feedback])
 
   useEffect(() => {
     fetchData()

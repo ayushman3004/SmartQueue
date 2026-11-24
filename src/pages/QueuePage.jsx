@@ -85,7 +85,6 @@ export default function QueuePage() {
 
   // Header & Navigation states
   const {
-    currentLocation,
     selectedCity,
     userCoords,
     updateLocation,
@@ -116,12 +115,7 @@ export default function QueuePage() {
     try {
       setLoading(true)
       const params = { includeAll: false, category: serviceCategory }
-      const activeCoords =
-        currentLocation?.lat && currentLocation?.lng
-          ? { lat: currentLocation.lat, lng: currentLocation.lng }
-          : userCoords?.lat && userCoords?.lng
-          ? userCoords
-          : null
+      const activeCoords = userCoords
 
       if (activeCoords) {
         params.lat = activeCoords.lat
@@ -149,7 +143,7 @@ export default function QueuePage() {
     } finally {
       if (request === queueRequest.current) setLoading(false)
     }
-  }, [currentLocation, userCoords, paramBizId, selectedBizId, serviceCategory, feedback])
+  }, [userCoords, paramBizId, selectedBizId, serviceCategory, feedback])
 
   useEffect(() => {
     fetchData()

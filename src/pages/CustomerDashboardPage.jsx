@@ -80,7 +80,6 @@ export default function CustomerDashboardPage() {
   const activeNavTab = 'clinics'
   const [search, setSearch] = useState('')
   const {
-    currentLocation,
     selectedCity,
     userCoords,
     updateLocation: handleSelectLocation,
@@ -107,12 +106,7 @@ export default function CustomerDashboardPage() {
         includeAll: false,
       }
 
-      const activeCoords =
-        currentLocation?.lat && currentLocation?.lng
-          ? { lat: currentLocation.lat, lng: currentLocation.lng }
-          : userCoords?.lat && userCoords?.lng
-          ? userCoords
-          : null
+      const activeCoords = userCoords
 
       if (activeCoords) {
         params.lat = activeCoords.lat
@@ -163,7 +157,7 @@ export default function CustomerDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, categoryFilter, currentLocation, userCoords, feedback])
+  }, [debouncedSearch, categoryFilter, userCoords, feedback])
 
   useEffect(() => {
     fetchData()
@@ -181,12 +175,7 @@ export default function CustomerDashboardPage() {
 
   // Periodic background fallback sync every 12 seconds
   useEffect(() => {
-    const activeCoords =
-      currentLocation?.lat && currentLocation?.lng
-        ? { lat: currentLocation.lat, lng: currentLocation.lng }
-        : userCoords?.lat && userCoords?.lng
-        ? userCoords
-        : null
+    const activeCoords = userCoords
 
     const timer = setInterval(() => {
       const syncParams = {
@@ -217,7 +206,7 @@ export default function CustomerDashboardPage() {
     }, 12000)
 
     return () => clearInterval(timer)
-  }, [debouncedSearch, categoryFilter, currentLocation, userCoords])
+  }, [debouncedSearch, categoryFilter, userCoords])
 
   // Real-time socket listeners
   useEffect(() => {
@@ -299,12 +288,7 @@ export default function CustomerDashboardPage() {
 
   const displayedServices = useMemo(() => {
 
-    const activeCoords =
-      currentLocation?.lat && currentLocation?.lng
-        ? { lat: currentLocation.lat, lng: currentLocation.lng }
-        : userCoords?.lat && userCoords?.lng
-        ? userCoords
-        : null
+    const activeCoords = userCoords
 
     // Calculate proximity distance for each venue
     const withDistance = businesses.map((b) => {
@@ -335,7 +319,7 @@ export default function CustomerDashboardPage() {
       }
       return 0
     })
-  }, [businesses, currentLocation, userCoords, sortBy])
+  }, [businesses, userCoords, sortBy])
 
   // Toggle selection of service for a business
   const handleToggleService = (bizId, service) => {

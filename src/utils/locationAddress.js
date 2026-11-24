@@ -18,6 +18,25 @@ export function getLocationLabel(location) {
   return addressText(location.name) || address || 'Selected Location'
 }
 
+export function getLocationCityLabel(location) {
+  if (!location) return ''
+  const parts = [location.city, location.state].map(addressText).filter(Boolean)
+  return [...new Set(parts)].join(', ') || getLocationLabel(location)
+}
+
+export function getLocationCoordinates(location) {
+  const lat = location?.lat
+  const lng = location?.lng
+  if (![lat, lng].every(value =>
+    typeof value === 'number' || (typeof value === 'string' && value.trim())
+  )) return null
+  const coordinates = { lat: Number(lat), lng: Number(lng) }
+  if (!Number.isFinite(coordinates.lat) || Math.abs(coordinates.lat) > 90 ||
+      !Number.isFinite(coordinates.lng) || Math.abs(coordinates.lng) > 180 ||
+      (coordinates.lat === 0 && coordinates.lng === 0)) return null
+  return coordinates
+}
+
 export function resolveGpsLocation(result, lat, lng) {
   const address = getLocationAddress(result)
   if (!address) return null

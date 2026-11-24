@@ -1,8 +1,8 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import LocationPickerModal from '../components/LocationPickerModal'
 import { useAuth } from './AuthContext'
 import { reverseGeocodeCoords } from '../api/maps.api'
-import { getLocationAddress, getLocationLabel, resolveGpsLocation } from '../utils/locationAddress'
+import { getLocationAddress, getLocationCoordinates, getLocationLabel, resolveGpsLocation } from '../utils/locationAddress'
 
 export const LocationContext = createContext(null)
 
@@ -24,53 +24,27 @@ export function LocationProvider({ children }) {
 
   const selectedCity = getLocationLabel(currentLocation)
 
-  const [userCoords, setUserCoords] = useState(() => {
-    try {
-      const savedLoc = localStorage.getItem('serveq_selected_location')
-      if (savedLoc) {
-        const parsed = JSON.parse(savedLoc)
-        if (parsed.lat && parsed.lng) {
-          return { lat: Number(parsed.lat), lng: Number(parsed.lng) }
-        }
-      }
-      const savedCoords = localStorage.getItem('serveq_user_coords')
-      if (savedCoords) return JSON.parse(savedCoords)
-    } catch {
-      // Coordinates are optional when storage is unavailable or invalid.
-    }
-    return null
-  })
+  const userCoords = useMemo(() => getLocationCoordinates(currentLocation), [currentLocation])
 
   const updateLocation = useCallback((loc) => {
-    if (!loc) return
     setCurrentLocation(loc)
-
-    let coords = null
-    if (loc.lat && loc.lng) {
-      coords = { lat: Number(loc.lat), lng: Number(loc.lng) }
-      setUserCoords(coords)
-    }
+    setLocationModalRequested(false)
 
     try {
-      localStorage.setItem('serveq_selected_location', JSON.stringify(loc))
-      if (coords) {
-        localStorage.setItem('serveq_user_coords', JSON.stringify(coords))
-      }
-      // Broadcast location change to all tabs and same-window components
-      window.dispatchEvent(new CustomEvent('serveq:location_change', { detail: loc }))
-    } catch (err) {
-      console.warn('Failed to save selected location:', err)
+      if (loc) localStorage.setItem('serveq_selected_location', JSON.stringify(loc))
+      else localStorage.removeItem('serveq_selected_location')
+      localStorage.removeItem('serveq_user_coords')
+    } catch {
+      // The selection still applies in this tab when browser storage is unavailable.
     }
-
-    setLocationModalRequested(false)
   }, [])
 
   // Repair GPS selections saved by clients that persisted coordinates as an address.
   useEffect(() => {
     if (authLoading || locationModalRequested || user?.role !== 'customer' ||
         !currentLocation?.isGps || getLocationAddress(currentLocation)) return
-    const { lat, lng } = currentLocation
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+    if (!userCoords) return
+    const { lat, lng } = userCoords
     let cancelled = false
     reverseGeocodeCoords(lat, lng).then(result => {
       const resolved = resolveGpsLocation(result, lat, lng)
@@ -79,7 +53,7 @@ export function LocationProvider({ children }) {
       // Leave the saved proximity pin in place and let the user retry in the picker.
     })
     return () => { cancelled = true }
-  }, [authLoading, locationModalRequested, user?.role, currentLocation, updateLocation])
+  }, [authLoading, locationModalRequested, user?.role, currentLocation, updateLocation, userCoords])
 
   const openLocationModal = useCallback(() => {
     setLocationModalRequested(true)
@@ -89,31 +63,18 @@ export function LocationProvider({ children }) {
     setLocationModalRequested(false)
   }, [])
 
-  // Synchronize location changes across storage and window events
   useEffect(() => {
-    const handleSync = (e) => {
+    const handleSync = (event) => {
+      if (event.key !== 'serveq_selected_location' && event.key !== null) return
       try {
-        let loc = e?.detail
-        if (!loc && e?.key === 'serveq_selected_location') {
-          loc = e.newValue ? JSON.parse(e.newValue) : null
-        }
-        if (loc) {
-          setCurrentLocation(loc)
-          if (loc.lat && loc.lng) {
-            setUserCoords({ lat: Number(loc.lat), lng: Number(loc.lng) })
-          }
-        }
+        setCurrentLocation(event.newValue ? JSON.parse(event.newValue) : null)
       } catch {
-        // Ignore malformed cross-tab updates and retain the current location.
+        // Ignore malformed cross-tab updates.
       }
     }
 
     window.addEventListener('storage', handleSync)
-    window.addEventListener('serveq:location_change', handleSync)
-    return () => {
-      window.removeEventListener('storage', handleSync)
-      window.removeEventListener('serveq:location_change', handleSync)
-    }
+    return () => window.removeEventListener('storage', handleSync)
   }, [])
 
   return (

@@ -42,6 +42,9 @@ import {
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+import { useCustomerLocation } from '../context/LocationContext'
+import { geocodeAddress } from '../api/maps.api'
+import { getLocationCityLabel, getLocationCoordinates } from '../utils/locationAddress'
 import { useSeo } from '../utils/useSeo'
 import { isValidEmail } from '../utils/validators'
 import { sendEmailOtp, verifyEmailOtp } from '../api/auth.api'
@@ -55,6 +58,7 @@ const profileValues = user => ({ name: user?.name || '', email: user?.email || '
 export default function ProfilePage() {
   const feedback = useNotificationFeedback()
   const { user, setUser, logOut } = useAuth()
+  const { currentLocation, openLocationModal, showLocationModal, updateLocation } = useCustomerLocation()
   const navigate = useNavigate()
   const prescriptions = usePrescriptions(user?.role === 'customer' ? user._id : null)
 
@@ -87,6 +91,11 @@ export default function ProfilePage() {
 
   // Form data
   const [form, setForm] = useState(() => profileValues(user))
+  const [locationDraft, setLocationDraft] = useState(null)
+
+  useEffect(() => {
+    setLocationDraft(null)
+  }, [currentLocation, user?._id])
 
   useEffect(() => {
     if (user) setForm(profileValues(user))
@@ -128,6 +137,7 @@ export default function ProfilePage() {
   const isOwner = role === 'owner'
   const isAdmin = role === 'admin'
   const isCustomer = role === 'customer'
+  const profileLocation = (isCustomer && getLocationCityLabel(currentLocation)) || user?.location || ''
 
   // Back navigation path based on role
   const backPath = useMemo(() => {
@@ -214,8 +224,24 @@ export default function ProfilePage() {
 
     setSaving(true)
     try {
-      const res = await api.patch('/auth/me', form)
+      const locationEdited = isCustomer && locationDraft !== null && locationDraft.trim() !== profileLocation
+      const enteredLocation = locationEdited ? locationDraft.trim() : ''
+      let selection = null
+      if (enteredLocation) {
+        const result = await geocodeAddress({ address: enteredLocation }).catch(() => null)
+        const coords = getLocationCoordinates(result)
+        if (!coords) {
+          feedback.error('Could not find that location. Try another city or use the location picker.')
+          return
+        }
+        selection = { ...result, ...coords, name: getLocationCityLabel(result), isGps: false }
+      }
+      const res = await api.patch('/auth/me', locationEdited ? {
+        ...form, location: selection?.name || '',
+      } : form)
       if (res.data.success) {
+        if (locationEdited) updateLocation(selection)
+        setLocationDraft(null)
         setUser(res.data.data.user)
         feedback.success('Profile updated successfully!')
         setEditing(false)
@@ -351,10 +377,10 @@ export default function ProfilePage() {
                   {user?.email}
                 </p>
 
-                {user?.location && (
+                {profileLocation && (
                   <div className="flex items-center gap-1 pt-1 text-[11px] text-[#617168] font-medium">
                     <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                    {user.location}
+                    {profileLocation}
                   </div>
                 )}
               </div>
@@ -368,6 +394,7 @@ export default function ProfilePage() {
                 onClick={() => {
                   if (editing) {
                     setForm(profileValues(user))
+                    setLocationDraft(null)
                     setAvatarError('')
                     setEmailOtpSent(false)
                     setEmailOtp('')
@@ -663,21 +690,41 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Location */}
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
+                    <label htmlFor="profile-location" className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
                       City / Location
                     </label>
-                    <input
-                      type="text"
-                      readOnly={!editing}
-                      value={form.location}
-                      onChange={(e) => setForm({ ...form, location: e.target.value })}
-                      placeholder="e.g. Mumbai, Maharashtra"
-                      className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
-                        editing
-                          ? 'bg-white border border-zinc-300 focus:outline-none focus:border-[#114227]'
-                          : 'bg-zinc-50 border border-zinc-100 text-zinc-800 cursor-default'
-                      }`}
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="profile-location"
+                        type="text"
+                        readOnly={!editing}
+                        value={isCustomer ? (locationDraft ?? profileLocation) : form.location}
+                        onChange={(e) => {
+                          if (isCustomer) setLocationDraft(e.target.value)
+                          else setForm({ ...form, location: e.target.value })
+                        }}
+                        placeholder="e.g. Mumbai, Maharashtra"
+                        className={`min-w-0 w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all ${
+                          editing
+                            ? 'bg-white border border-zinc-300 focus:outline-none focus:border-[#114227]'
+                            : 'bg-zinc-50 border border-zinc-100 text-zinc-800 cursor-default'
+                        }`}
+                      />
+                      {isCustomer && (
+                        <button
+                          type="button"
+                          onClick={openLocationModal}
+                          disabled={saving}
+                          aria-label="Choose location"
+                          aria-haspopup="dialog"
+                          aria-expanded={showLocationModal}
+                          title="Choose location"
+                          className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-2xl border border-[#b9d1c0] bg-[#e4efe7] text-[#315b45] hover:bg-[#d5e7da]"
+                        >
+                          <MapPin size={18} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Avatar upload */}

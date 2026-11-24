@@ -102,7 +102,6 @@ export default function BookingPage() {
 
   // Header & Navigation states
   const {
-    currentLocation,
     selectedCity,
     userCoords,
     updateLocation,
@@ -133,12 +132,7 @@ export default function BookingPage() {
     if (!serviceCategory) return
     let current = true
     const params = { includeAll: false, category: serviceCategory }
-    const activeCoords =
-      currentLocation?.lat && currentLocation?.lng
-        ? { lat: currentLocation.lat, lng: currentLocation.lng }
-        : userCoords?.lat && userCoords?.lng
-        ? userCoords
-        : null
+    const activeCoords = userCoords
 
     if (activeCoords) {
       params.lat = activeCoords.lat
@@ -159,7 +153,7 @@ export default function BookingPage() {
       })
       .catch(() => {})
     return () => { current = false }
-  }, [currentLocation, userCoords, paramBizId, serviceCategory])
+  }, [userCoords, paramBizId, serviceCategory])
 
   // Sync selectedBizId with paramBizId if URL changes
   useEffect(() => {

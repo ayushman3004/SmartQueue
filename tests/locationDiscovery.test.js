@@ -2,7 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateHaversineKm } from '../src/modules/business/business.service.js';
 import { autocompleteLocations, geocodeAddress, reverseGeocode } from '../src/modules/maps/maps.service.js';
-import { getLocationLabel, resolveGpsLocation } from '../src/utils/locationAddress.js';
+import { getLocationCityLabel, getLocationCoordinates, getLocationLabel, resolveGpsLocation } from '../src/utils/locationAddress.js';
+
+test('profile shows the city while discovery uses the coordinates of the current selection', () => {
+  const selection = {
+    city: 'Jalandhar', state: 'Punjab', formattedAddress: 'Model Town, Jalandhar, Punjab',
+    lat: '31.3056', lng: '75.5794', isGps: true,
+  };
+  assert.equal(getLocationCityLabel(selection), 'Jalandhar, Punjab');
+  assert.deepEqual(getLocationCoordinates(selection), { lat: 31.3056, lng: 75.5794 });
+  assert.equal(getLocationCoordinates({ city: 'Mumbai' }), null);
+  assert.equal(getLocationCoordinates({ lat: ' ', lng: 75 }), null);
+  assert.equal(getLocationCoordinates({ lat: 91, lng: 75 }), null);
+  assert.equal(getLocationCoordinates({ lat: 0, lng: 0 }), null);
+  assert.deepEqual(getLocationCoordinates({ lat: 0, lng: 75 }), { lat: 0, lng: 75 });
+});
 
 test('GPS labels show the returned address and hide old coordinate fallbacks', () => {
   const lat = 31.3056;
