@@ -38,7 +38,7 @@ import { QueuePageSkeleton } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { useCustomerLocation } from '../context/LocationContext'
-import { joinQueue, leaveQueue } from '../api/queue.api'
+import { joinQueue, leaveQueue, subscribeToQueueChanges } from '../api/queue.api'
 import { getAllBusinesses } from '../api/business.api'
 import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
@@ -52,7 +52,7 @@ const DEFAULT_CLINIC_IMAGE = '/hubs/clinic.png'
 export default function QueuePage() {
   const { businessId: paramBizId } = useParams()
   const { user, logOut } = useAuth()
-  const { socket } = useSocket()
+  const { socket, connected } = useSocket()
   const { serviceCategory, navigate } = useCustomerService(paramBizId)
 
   useSeo({
@@ -154,50 +154,25 @@ export default function QueuePage() {
     return () => { queueRequest.current += 1 }
   }, [fetchData])
 
-  // Join socket rooms for live queue broadcasts
+  const queueRoomIds = businesses.map(business => business._id).filter(Boolean).join(' ')
   useEffect(() => {
-    if (!socket || businesses.length === 0) return
-    businesses.forEach((b) => {
-      if (b._id) {
-        socket.emit('join:room', { businessId: b._id })
-      }
+    if (!socket || !connected || !queueRoomIds) return
+    const ids = queueRoomIds.split(' ')
+    for (const businessId of ids) socket.emit('join:room', { businessId })
+
+    const unsubscribe = subscribeToQueueChanges(socket, (queue) => {
+      setBusinesses(prev => prev.map(business =>
+        String(business._id) === String(queue.businessId)
+          ? { ...business, activeQueue: queue.users, queueLength: queue.users.length }
+          : business
+      ))
     })
 
-    const handleQueueUpdate = (payload) => {
-      if (!payload) return
-      const updatedQ = payload.queue || payload
-      const targetBizId = (updatedQ.businessId?._id || updatedQ.businessId || payload.businessId)?.toString()
-
-      setBusinesses((prev) =>
-        prev.map((b) => {
-          if (b._id.toString() === targetBizId || b._id.toString() === updatedQ._id?.toString()) {
-            return {
-              ...b,
-              activeQueue: updatedQ.users || [],
-              queueLength: (updatedQ.users || []).length,
-            }
-          }
-          return b
-        })
-      )
-    }
-
-    socket.on('queue:update', handleQueueUpdate)
-    socket.on('queue:updated', handleQueueUpdate)
-    socket.on('queue:joined', handleQueueUpdate)
-    socket.on('queue:left', handleQueueUpdate)
-    socket.on('service:started', handleQueueUpdate)
-    socket.on('service:completed', handleQueueUpdate)
-
     return () => {
-      socket.off('queue:update', handleQueueUpdate)
-      socket.off('queue:updated', handleQueueUpdate)
-      socket.off('queue:joined', handleQueueUpdate)
-      socket.off('queue:left', handleQueueUpdate)
-      socket.off('service:started', handleQueueUpdate)
-      socket.off('service:completed', handleQueueUpdate)
+      unsubscribe()
+      for (const businessId of ids) if (socket.connected) socket.emit('leave:room', { businessId })
     }
-  }, [socket, businesses, selectedBizId])
+  }, [socket, connected, queueRoomIds])
 
   // Identify businesses that ACTUALLY have active queue participants
   const businessesWithActiveQueue = useMemo(() => {

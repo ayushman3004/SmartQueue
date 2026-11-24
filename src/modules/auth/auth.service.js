@@ -120,7 +120,7 @@ export const upgradeToOwner = async () => {
 };
 
 // ─── Google OAuth (called by Passport) ───────────────────────
-export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, role }) => {
+export const findOrCreateGoogleUser = async ({ googleId, email, emailVerified, name, avatar, role }) => {
   const selectedRole = role === "owner" ? "owner" : "customer";
   const normalizedEmail = (email || "").toLowerCase().trim();
 
@@ -135,34 +135,40 @@ export const findOrCreateGoogleUser = async ({ googleId, email, name, avatar, ro
       );
     }
     if (user.role === "owner" && user.ownerAccess?.applicationId && ownerState(user) !== "ACTIVE") throw new ApiError(403, "Complete your invitation using password login and email OTP.");
-    if (normalizedEmail === user.email && ["google", "both"].includes(user.authProvider) && !user.isEmailVerified) {
+    if (emailVerified && normalizedEmail === user.email && ["google", "both"].includes(user.authProvider) && !user.isEmailVerified) {
       user.isEmailVerified = true;
       await user.save();
     }
     return user;
   }
 
-  // Check if email matches an existing local or Google account
-  if (normalizedEmail) {
-    user = await User.findOne({ email: normalizedEmail });
-    if (user) {
-      // If existing user is customer, do not allow Hub Owner login
-      if (selectedRole === "owner" && user.role === "customer") {
-        throw new ApiError(
-          403,
-          "This email is registered as a Customer. Hub Owner login is not allowed for customer accounts."
-        );
-      }
-      if (user.role === "owner" && user.ownerAccess?.applicationId && ownerState(user) !== "ACTIVE") throw new ApiError(403, "Complete your invitation using password login and email OTP.");
-      user.googleId = googleId;
-      if (user.authProvider === "local") {
-        user.authProvider = "both";
-      }
-      user.isEmailVerified = true;
-      if (!user.avatar && avatar) user.avatar = avatar;
-      await user.save();
-      return user;
+  // Only a verified Google email can create an account or link to an existing identity.
+  if (!emailVerified || !EMAIL_REGEX.test(normalizedEmail)) throw new ApiError(401, "Google did not verify this email address.");
+  user = await User.findOne({ email: normalizedEmail });
+  if (user) {
+    // If existing user is customer, do not allow Hub Owner login
+    if (selectedRole === "owner" && user.role === "customer") {
+      throw new ApiError(
+        403,
+        "This email is registered as a Customer. Hub Owner login is not allowed for customer accounts."
+      );
     }
+    if (user.role === "owner" && user.ownerAccess?.applicationId && ownerState(user) !== "ACTIVE") throw new ApiError(403, "Complete your invitation using password login and email OTP.");
+    const verifyAccount = () => new ApiError(401, "Sign in with your existing method and verify your ServeQ email first.");
+    if (!user.isEmailVerified || user.googleId) throw verifyAccount();
+    const linked = await User.findOneAndUpdate({
+      _id: user._id,
+      email: normalizedEmail,
+      isEmailVerified: true,
+      authProvider: user.authProvider,
+      $or: [{ googleId: null }, { googleId: "" }],
+    }, { $set: {
+      googleId,
+      ...(user.authProvider === "local" && { authProvider: "both" }),
+      ...(!user.avatar && avatar && { avatar }),
+    } }, { returnDocument: "after" });
+    if (!linked) throw verifyAccount();
+    return linked;
   }
 
   if (selectedRole === "owner") throw new ApiError(403, "Business registration is invitation-only. Apply at /business/apply.");

@@ -1,6 +1,6 @@
 import { ownerState } from "../modules/business-application/owner-lifecycle.js";
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
+import { isCurrentSession, sessionTokenFrom, verifySessionToken } from "../modules/auth/session-security.js";
 import User from "../modules/auth/auth.model.js";
 
 /**
@@ -20,13 +20,7 @@ export const requestIdMiddleware = (req, res, next) => {
  */
 export const gatewayAuthenticate = async (req, res, next) => {
   try {
-    let token = null;
-
-    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
-      token = req.headers.authorization.split(" ")[1];
-    } else if (req.cookies?.token) {
-      token = req.cookies.token;
-    }
+    const token = sessionTokenFrom(req);
 
     if (!token) {
       return res.status(401).json({
@@ -37,8 +31,8 @@ export const gatewayAuthenticate = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-password");
+    const decoded = verifySessionToken(token);
+    const user = await User.findById(decoded.id).select("-password +revokedSessions");
 
     if (!user) {
       return res.status(401).json({
@@ -49,7 +43,7 @@ export const gatewayAuthenticate = async (req, res, next) => {
       });
     }
 
-    if ((decoded.tokenVersion || 0) !== (user.tokenVersion || 0) || decoded.purpose === "activation" || ownerState(user) !== "ACTIVE") return res.status(403).json({success:false,message:"Account activation or password change required."});
+    if (!isCurrentSession(user, decoded, token) || decoded.purpose === "activation" || ownerState(user) !== "ACTIVE") return res.status(403).json({success:false,message:"Account activation or password change required."});
     req.user = user;
     next();
   } catch (err) {
@@ -69,18 +63,12 @@ export const gatewayAuthenticate = async (req, res, next) => {
  */
 export const gatewayOptionalAuth = async (req, res, next) => {
   try {
-    let token = null;
-
-    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
-      token = req.headers.authorization.split(" ")[1];
-    } else if (req.cookies?.token) {
-      token = req.cookies.token;
-    }
+    const token = sessionTokenFrom(req);
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select("-password");
-      if (user && (decoded.tokenVersion || 0) === (user.tokenVersion || 0) && decoded.purpose !== "activation" && ownerState(user) === "ACTIVE") req.user = user;
+      const decoded = verifySessionToken(token);
+      const user = await User.findById(decoded.id).select("-password +revokedSessions");
+      if (isCurrentSession(user, decoded, token) && decoded.purpose !== "activation" && ownerState(user) === "ACTIVE") req.user = user;
     }
   } catch (_err) {
     // Continue silently if invalid or expired

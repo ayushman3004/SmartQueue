@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import { createHash } from 'node:crypto'
 import { publicPages, guidePages, canonicalUrl, escapeHtml, SITE_URL } from '../src/seo/publicPages.js'
 import { routeHtml } from '../src/seo/routeHtml.js'
 import { safeReturnTo } from '../src/utils/authRedirect.js'
@@ -19,10 +20,24 @@ test('host routing agrees with the production www domain without redirecting sta
   }
   const cors = config.headers.find(rule => rule.source === '/assets/:path*')
   assert.ok(cors.headers.some(header => header.key === 'Access-Control-Allow-Origin' && header.value === '*'))
-  assert.ok(config.headers.every(rule => rule.source.startsWith('/assets/')), 'public asset headers must not affect authenticated APIs')
+  assert.ok(config.headers.filter(rule => rule.headers.some(header => header.key.toLowerCase() === 'access-control-allow-origin')).every(rule => rule.source === '/assets/:path*'), 'wildcard asset CORS must be scoped to assets')
   for (const page of ['LandingPage', 'BusinessPortalPage', 'LoginPage', 'PrivacyPolicyPage', 'TermsPage']) {
     assert.ok(!read(`src/pages/${page}.jsx`).includes("canonical: 'https://serveq.tech"), page)
   }
+})
+
+test('Vercel and Nginx enforce matching browser security policies', () => {
+  const headers = config.headers.find(rule => rule.source === '/:path*').headers
+  const header = key => headers.find(entry => entry.key === key)?.value
+  const policy = header('Content-Security-Policy')
+  const scriptSource = policy.split('; ').find(value => value.startsWith('script-src '))
+  const jsonLd = read('index.html').match(/<script type="application\/ld\+json">([\s\S]+?)<\/script>/)[1]
+  assert.ok(scriptSource.includes(`'sha256-${createHash('sha256').update(jsonLd).digest('base64')}'`))
+  assert.ok(!/unsafe-inline|unsafe-eval/.test(scriptSource))
+  assert.ok(policy.includes("frame-ancestors 'none'"))
+  assert.equal(header('X-Frame-Options'), 'DENY')
+  assert.equal(header('X-Content-Type-Options'), 'nosniff')
+  for (const { key, value } of headers) assert.ok(read('nginx.conf').includes(`add_header ${key} "${value}" always;`))
 })
 
 test('entry assets and icons bypass the old permanent-redirect cache', () => {

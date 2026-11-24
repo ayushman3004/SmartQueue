@@ -107,7 +107,7 @@ export default function LoginPage() {
             };
 
       const res = await apiFn(payload);
-      const { user, token } = res.data.data;
+      const { user } = res.data.data;
 
       if (user?.role === "owner") {
         setOwnerMismatch({ email: form.email });
@@ -117,7 +117,7 @@ export default function LoginPage() {
         return;
       }
 
-      logIn(user, token);
+      logIn(user);
       toast.success(
         tab === "signin"
           ? "Welcome back! Logged in successfully."

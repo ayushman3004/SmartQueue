@@ -28,6 +28,11 @@ const app = express();
 app.set("trust proxy", false);
 app.disable("x-powered-by");
 app.use(cloudflareOriginGuard);
+app.use((_req, res, next) => {
+  res.set("X-Content-Type-Options", "nosniff");
+  if (process.env.NODE_ENV === "production") res.set("Strict-Transport-Security", "max-age=31536000");
+  next();
+});
 
 // ─── CORS Configuration ──────────────────────────────────────────
 app.set("allowedOrigins", allowedOrigins);

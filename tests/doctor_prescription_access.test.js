@@ -112,7 +112,7 @@ test('prescriptions are saved for the assigned patient and readable only by that
   assert.equal(next.status, 200, await next.text());
   const announcements = events.filter(entry => entry.event === 'doctor:called-next');
   assert.equal(announcements.length, 1);
-  assert.equal(announcements[0].room, `business:${clinicId}:admin`);
+  assert.deepEqual(announcements[0].room, [`business:${clinicId}:admin`, `user:${clinic.owner}`]);
   assert.equal(announcements[0].payload.doctorName, staff.name);
   assert.equal(announcements[0].payload.businessId, clinicId);
   assert.ok(Number.isFinite(Date.parse(announcements[0].payload.calledAt)));

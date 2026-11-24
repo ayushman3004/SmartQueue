@@ -1,6 +1,6 @@
 # OAuth sessions and cookies
 
-Google login now redirects to `/auth/callback` without a session JWT in the URL, fragment, or response body. The API sets a host-only HttpOnly session cookie. The browser callback clears stale bearer credentials and loads `/api/auth/me` with credentials; it does not copy the OAuth session into localStorage. Reloading the app restores the cookie session. Existing password and OTP bearer-token responses remain supported.
+Google login now redirects to `/auth/callback` without a session JWT in the URL, fragment, or response body. The API sets a host-only HttpOnly session cookie. The browser callback clears stale bearer credentials and loads `/api/auth/me` with credentials; it does not copy the OAuth session into localStorage. Reloading the app restores the cookie session. The web application requests cookie-only responses for password sign-in, registration, activation and password changes using `X-ServeQ-Session: cookie`. Native and existing API clients can continue to receive bearer tokens. The web app removes legacy bearer tokens from local storage on startup.
 
 OAuth starts with a fresh random state nonce and a signed, HttpOnly, ten-minute state cookie scoped to `/api/auth/google`. The callback validates the nonce against that cookie before invoking Passport, then clears the state cookie. Role intent comes from the signed state cookie. The previous literal `owner`/`customer` state values are rejected. Cookies are required for OAuth; provider authorization codes still supply Google's code replay protection.
 
@@ -10,6 +10,6 @@ Session cookies use `HttpOnly`, `Path=/`, no `Domain`, and `SameSite=Lax` by def
 
 Set `CLIENT_URL` to the HTTPS frontend origin in production and `SERVER_URL` to the HTTPS API origin. Register `${SERVER_URL}/api/auth/google/callback` in Google's authorized redirect URIs. Never configure a client-supplied redirect destination. OAuth's temporary state cookie remains Lax so it can accompany Google's top-level callback navigation.
 
-Browser logout now calls the server to clear the HttpOnly cookie. Socket reconnection waits for that request; a failed logout reports an error and leaves reconnection blocked. Cookie-authenticated writes retain the existing trusted-Origin checks. Socket.IO now checks origins at the WebSocket handshake as well as through CORS.
+Logout records the submitted session’s digest in MongoDB until the JWT expires, clears the HttpOnly cookie, and disconnects sockets using that session on the current backend. Other device sessions stay active. Sockets on other backend instances pick up the revocation on their next authorization check. Socket reconnection waits for that request; a failed logout reports an error and leaves reconnection blocked. Cookie-authenticated writes retain the existing trusted-Origin checks. Socket.IO now checks origins at the WebSocket handshake as well as through CORS.
 
 Tests cover local HTTP requests with mocked Passport and database calls, plus browser session helpers. A real Google consent round trip and deployed browser cookie delivery require the configured deployment and were not exercised by these tests.

@@ -17,11 +17,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(() => window.location.pathname !== "/auth/callback");
   const lastActivityRef = useRef(0);
   const timerRef = useRef(null);
+  const sessionRevision = useRef(0);
 
   const logOut = useCallback(async (reason) => {
+    sessionRevision.current += 1;
     const cleared = logoutBrowserSession(api, localStorage);
     localStorage.removeItem(LAST_ACTIVE_KEY);
-    delete api.defaults.headers.common["Authorization"];
     setUser(null);
     if (!await cleared) {
       toast.error("Could not clear your server session. Reconnect and sign out again.");
@@ -41,36 +42,26 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (window.location.pathname === "/auth/callback") return;
-    const token = localStorage.getItem("token");
-    if (token) api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    clearBrowserBearer(api, localStorage);
+    const revision = sessionRevision.current;
     getMe()
       .then((res) => {
+        if (revision !== sessionRevision.current) return;
         setUser(res.data.data.user);
         localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
       })
       .catch(() => {
-        localStorage.removeItem("token");
-        delete api.defaults.headers.common["Authorization"];
-        setUser(null);
+        if (revision === sessionRevision.current) setUser(null);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const storeToken = useCallback((token) => {
-    if (token) {
-      localStorage.setItem("token", token);
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    } else {
-      clearBrowserBearer(api, localStorage);
-    }
-  }, []);
-
-  const logIn = useCallback((userData, token) => {
-    storeToken(token);
+  const logIn = useCallback((userData) => {
+    sessionRevision.current += 1;
     setUser(userData);
     setLoading(false);
     localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
-  }, [storeToken]);
+  }, []);
 
   // 10-Minute Inactivity Auto-Logout Tracker
   useEffect(() => {
@@ -139,9 +130,9 @@ export const AuthProvider = ({ children }) => {
             timerRef.current = setTimeout(checkInactivity, INACTIVITY_TIMEOUT_MS - idleTime);
           }
         }
-      } else if ((e.key === "token" && !e.newValue) || e.key === "serveq_logout_at") {
+      } else if (e.key === "serveq_logout_at") {
         // User logged out in another tab
-        clearBrowserBearer(api, localStorage);
+        sessionRevision.current += 1;
         setUser(null);
       }
     };

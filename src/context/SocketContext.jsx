@@ -18,7 +18,6 @@ export const SocketProvider = ({ children, setUser, user }) => {
 
   useEffect(() => {
     userRef.current = user;
-    socket.auth = { token: localStorage.getItem("token") };
     socket.disconnect();
     let cancelled = false;
     waitForBrowserLogout().then(cleared => {
@@ -89,7 +88,6 @@ export const SocketProvider = ({ children, setUser, user }) => {
     };
 
     const onForceLogout = (data) => {
-      localStorage.removeItem("token");
       localStorage.removeItem("serveq_last_active");
       if (typeof setUser === "function") setUser(null);
       toast(data?.message || "Session expired or logged out by administrator.", { icon: "🔒", duration: 5000 });

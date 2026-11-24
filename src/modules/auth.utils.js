@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -13,7 +14,7 @@ export const generateToken = (user) => {
   return jwt.sign(
     { id: user._id || user, role: user.role || "user", tokenVersion: user.tokenVersion || 0, purpose: user.ownerAccess?.status === "INVITED" ? "activation" : "session" },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "7d", jwtid: randomUUID() }
   );
 };
 
@@ -27,6 +28,9 @@ export const tokenCookieOptions = (req = null) => {
 export const setTokenCookie = (res, token, req = null) => {
   res.cookie("token", token, { ...tokenCookieOptions(req), maxAge: 7 * 24 * 60 * 60 * 1000 });
 };
+
+export const responseToken = (req, token) =>
+  req.get("X-ServeQ-Session") === "cookie" ? {} : { token };
 
 export const clearTokenCookie = (res, req = null) => {
   res.clearCookie("token", tokenCookieOptions(req));

@@ -10,7 +10,9 @@ import { io } from "socket.io-client";
  * When VITE_API_URL is empty/undefined, Socket.IO connects to the same origin,
  * which works with the Vite dev proxy.
  */
-const SOCKET_URL = import.meta.env.VITE_API_URL || undefined;
+const SOCKET_URL = import.meta.env.VITE_API_URL || (
+  !["localhost", "127.0.0.1"].includes(window.location.hostname) ? "https://api.serveq.tech" : undefined
+);
 
 const socket = io(SOCKET_URL, {
   withCredentials: true,
@@ -20,7 +22,7 @@ const socket = io(SOCKET_URL, {
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   timeout: 20000,
-  autoConnect: true,
+  autoConnect: false,
 });
 
 export default socket;

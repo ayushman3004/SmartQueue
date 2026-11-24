@@ -41,7 +41,7 @@ import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { useCustomerLocation } from '../context/LocationContext'
 import { getAllBusinesses } from '../api/business.api'
-import { joinQueue, leaveQueue } from '../api/queue.api'
+import { joinQueue, leaveQueue, subscribeToQueueChanges } from '../api/queue.api'
 import { getMyBookings } from '../api/booking.api'
 import { toast } from 'react-hot-toast'
 import { useSeo } from '../utils/useSeo'
@@ -56,7 +56,7 @@ const DEFAULT_CLINIC_IMAGES = [
 export default function CustomerDashboardPage() {
   const { user, logOut } = useAuth()
   const navigate = useNavigate()
-  const { onBusinessStatus, socket } = useSocket()
+  const { onBusinessStatus, socket, connected } = useSocket()
 
   useSeo({
     title: 'Customer Dashboard & Queues — serveQ',
@@ -166,15 +166,15 @@ export default function CustomerDashboardPage() {
     fetchData()
   }, [fetchData])
 
-  // Join socket rooms for all businesses to ensure live queue reception
+  const queueRoomIds = businesses.map(business => business._id).filter(Boolean).join(' ')
   useEffect(() => {
-    if (!socket || businesses.length === 0) return
-    businesses.forEach((b) => {
-      if (b._id) {
-        socket.emit('join:room', { businessId: b._id })
-      }
-    })
-  }, [socket, businesses])
+    if (!socket || !connected || !queueRoomIds) return
+    const ids = queueRoomIds.split(' ')
+    for (const businessId of ids) socket.emit('join:room', { businessId })
+    return () => {
+      for (const businessId of ids) if (socket.connected) socket.emit('leave:room', { businessId })
+    }
+  }, [socket, connected, queueRoomIds])
 
   // Periodic background fallback sync every 12 seconds
   useEffect(() => {
@@ -228,31 +228,15 @@ export default function CustomerDashboardPage() {
       )
     })
 
-    const handleQueueChange = (payload) => {
-      if (!payload) return
-      const updatedQueue = payload.queue || payload
-      const targetBizId = (updatedQueue.businessId?._id || updatedQueue.businessId || payload.businessId)?.toString()
-
-      setBusinesses((prev) =>
-        prev.map((b) => {
-          if (b._id.toString() === targetBizId || b._id.toString() === updatedQueue._id?.toString()) {
-            const users = updatedQueue.users || []
-            let waitMins = 0
-            if (users.length > 0) {
-              const totalMins = users.reduce((acc, u) => acc + (u.serviceTime || 15), 0)
-              waitMins = totalMins + users.length * 15
-            }
-            return {
-              ...b,
-              queueLength: users.length,
-              estimatedWait: waitMins,
-              activeQueue: users,
-            }
-          }
-          return b
-        })
-      )
-    }
+    const unsubscribeQueue = subscribeToQueueChanges(socket, (queue) => {
+      const users = queue.users
+      const waitMins = users.reduce((total, row) => total + (row.serviceTime || 15) + 15, 0)
+      setBusinesses(prev => prev.map(business =>
+        String(business._id) === String(queue.businessId)
+          ? { ...business, queueLength: users.length, estimatedWait: waitMins, activeQueue: users }
+          : business
+      ))
+    })
 
     const handleBookingsChange = () => {
       getMyBookings()
@@ -260,26 +244,14 @@ export default function CustomerDashboardPage() {
         .catch(() => {})
     }
 
-    socket.on('queue:update', handleQueueChange)
-    socket.on('queue:updated', handleQueueChange)
-    socket.on('queue:joined', handleQueueChange)
-    socket.on('queue:left', handleQueueChange)
-    socket.on('service:started', handleQueueChange)
-    socket.on('service:completed', (data) => {
-      handleQueueChange(data)
-      handleBookingsChange()
-    })
+    socket.on('service:completed', handleBookingsChange)
     socket.on('bookings:updated', handleBookingsChange)
     socket.on('booking:confirmed', handleBookingsChange)
 
     return () => {
       unsubStatus?.()
-      socket.off('queue:update', handleQueueChange)
-      socket.off('queue:updated', handleQueueChange)
-      socket.off('queue:joined', handleQueueChange)
-      socket.off('queue:left', handleQueueChange)
-      socket.off('service:started', handleQueueChange)
-      socket.off('service:completed')
+      unsubscribeQueue()
+      socket.off('service:completed', handleBookingsChange)
       socket.off('bookings:updated', handleBookingsChange)
       socket.off('booking:confirmed', handleBookingsChange)
     }

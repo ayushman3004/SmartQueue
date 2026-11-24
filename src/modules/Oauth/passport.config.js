@@ -25,6 +25,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           const user = await findOrCreateGoogleUser({
             googleId: profile.id,
             email: profile.emails?.[0]?.value,
+            emailVerified: profile.emails?.[0]?.verified === true,
             name: profile.displayName,
             avatar: profile.photos?.[0]?.value,
             role,

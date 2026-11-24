@@ -11,7 +11,7 @@ import {
   changeOwnerPassword,
 } from "./business-application.service.js";
 import { protect, allowRoles } from "../../../middleware/auth.middleware.js";
-import { generateToken, setTokenCookie } from "../auth.utils.js";
+import { generateToken, setTokenCookie, responseToken } from "../auth.utils.js";
 import { sanitize } from "../auth/auth.service.js";
 import { protectWithTurnstile } from "../../../middleware/turnstile.middleware.js";
 export const applicationRoutes = Router();
@@ -70,7 +70,7 @@ export const changePasswordHandler = asyncHandler(async (req, res) => {
       200,
       {
         user: sanitize(user),
-        token,
+        ...responseToken(req, token),
       },
       "Password changed. All previous sessions have been invalidated.",
     ),

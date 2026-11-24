@@ -9,10 +9,9 @@ const otpSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
-    otp: {
-      type: String,
-      required: true,
-    },
+    otp: String,
+    challenge: String,
+    accountTokenVersion: Number,
     purpose: {
       type: String,
       enum: [

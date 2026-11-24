@@ -6,10 +6,12 @@ Clients send resource IDs, never room names. All join and leave handlers accept 
 | --- | --- |
 | `business:<id>` | Public queue subscriptions, including guests |
 | `user:<id>` | The authenticated user only; automatically joined on connection |
-| `business:<id>:admin` | An administrator, or the owner of that approved business; business must exist |
-| `booking:<id>` | The booking's customer, an administrator, or the owner of its approved business; booking must exist |
+| `business:<id>:admin` | Administrators for an existing clinic |
+| `booking:<id>` | The booking’s customer and administrators for an existing booking |
 
-JWTs are verified with HS256. Supplied invalid, expired, activation, deleted-user, or stale-version credentials fail the connection rather than silently becoming guest connections. Roles come from the current user record, never the token's role claim. Tokenless guest connections remain available for public updates.
+Public clinic events carry anonymous queue rows or a clinic ID. The HTTP queue endpoint returns each patient’s own visit details and authorizes full queues for eligible clinic owners and admins. Current queue data comes from that endpoint after a change notification.
+
+JWTs are verified with HS256. Supplied invalid, expired, activation, deleted-user, or stale-version or revoked credentials fail the connection rather than silently becoming guest connections. Roles come from the current user record, never the token's role claim. Tokenless guest connections remain available for public updates.
 
 Each private-room join revalidates the token, user token version, owner lifecycle, and resource permission. Connected sessions and existing private-room grants are checked every 30 seconds, so idle clients lose access after session revocation, role changes, business ownership changes, or approval withdrawal. This periodic check permits a revocation delay of up to 30 seconds, plus database latency. Failed session checks disconnect the socket and remove presence; lost resource permissions remove the corresponding room and business presence.
 

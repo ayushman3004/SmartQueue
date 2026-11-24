@@ -30,7 +30,7 @@ export function DoctorLogin() {
       try {
         const form = Object.fromEntries(new FormData(event.currentTarget))
         const { data } = await signin({ ...form, requiredRole: 'doctor' })
-        logIn(data.data.user, data.data.token)
+        logIn(data.data.user)
         navigate('/doctor/dashboard', { replace: true })
       } catch (failure) { setError(errorText(failure)) }
       finally { setBusy(false) }
@@ -57,7 +57,7 @@ function DoctorPassword() {
       setError('')
       try {
         const { data } = await changeDoctorPassword(Object.fromEntries(new FormData(event.currentTarget)))
-        logIn(data.data.user, data.data.token)
+        logIn(data.data.user)
       } catch (failure) { setError(errorText(failure)) }
       finally { setBusy(false) }
     }}>

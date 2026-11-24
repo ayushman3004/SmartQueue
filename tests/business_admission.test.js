@@ -596,6 +596,7 @@ test("application and owner activation lifecycle", async (t) => {
         findOrCreateGoogleUser({
           email: input.email,
           googleId: "abc",
+          emailVerified: true,
           name: "Asha",
           role: "owner",
         }),
@@ -805,11 +806,12 @@ test("application and owner activation lifecycle", async (t) => {
         verified: true,
         expiresAt: new Date(Date.now() + 10000),
       }));
-      t.mock.method(Otp, "deleteMany", async () => {});
+      t.mock.method(Otp, "exists", async () => true);
+      t.mock.method(Otp, "findOneAndDelete", async () => ({ _id: "reset" }));
       const version = store.user.tokenVersion;
       await resetPassword({
         rawEmail: store.user.email,
-        resetToken: "test-reset",
+        resetToken: "a".repeat(64),
         newPassword: "RecoveredPassword!123",
       });
       assert.equal(store.user.ownerAccess.mustChangePassword, false);

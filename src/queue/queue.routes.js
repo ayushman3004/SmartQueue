@@ -1,14 +1,18 @@
 import { Router } from "express";
 import { getQueue, join, leave, callNext, estimate, extend, cancelDelay, assignStaff, collectPayment } from "./queue.controller.js";
-import { protect, allowRoles } from "../../middleware/auth.middleware.js";
+import { protect, optionalAuth, allowRoles } from "../../middleware/auth.middleware.js";
 
 const router = Router();
+router.use((_req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  next();
+});
 
 // ⚠️ IMPORTANT: /estimate MUST be before /:businessId to prevent param capture
 router.get("/estimate/:businessId", protect, estimate);
 
 // Public — anyone can view a queue
-router.get("/:businessId", getQueue);
+router.get("/:businessId", optionalAuth, getQueue);
 
 // User only — join & leave
 router.post("/:businessId/join", protect, allowRoles("customer", "admin"), join);

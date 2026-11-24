@@ -1,3 +1,4 @@
+import { publishQueue } from "../queue/queue.view.js";
 import { notifyUser, turnNotificationPayload } from '../modules/notification/notification.service.js';
 import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
 import { isClinic, isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
@@ -823,13 +824,7 @@ export const collectCounterPayment = async (bookingId, staffUser, io = null, doc
       });
       if (queueUpdated) {
         await queueDoc.save();
-        if (io) {
-          io.to(`business:${business._id || business}`).emit("queue:updated", {
-            businessId: business._id || business,
-            queue: queueDoc,
-          });
-          io.to(`business:${business._id || business}`).emit("queue:update", queueDoc);
-        }
+        publishQueue(io, business._id || business, queueDoc);
       }
     }
   } catch (qErr) {

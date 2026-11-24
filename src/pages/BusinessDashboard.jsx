@@ -44,7 +44,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { getQueue, callNext, extendUserTime, assignQueueStaff, collectQueuePayment } from '../api/queue.api'
+import { getQueue, subscribeToQueueChanges, callNext, extendUserTime, assignQueueStaff, collectQueuePayment } from '../api/queue.api'
 import { getBusiness, updateBusiness, toggleBusiness } from '../api/business.api'
 import {
   getBusinessBookings,
@@ -61,7 +61,7 @@ import { useSeo } from '../utils/useSeo'
 export default function BusinessDashboard() {
   const { businessId } = useParams()
   const { user, logOut } = useAuth()
-  const { joinAdmin, leaveRoom, onQueueUpdate, socket } = useSocket()
+  const { joinAdmin, joinRoom, leaveRoom, socket } = useSocket()
   const navigate = useNavigate()
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -247,11 +247,10 @@ export default function BusinessDashboard() {
 
   useEffect(() => {
     fetchDashboardData()
-    joinAdmin(businessId)
+    if (user?.role === 'admin') joinAdmin(businessId)
+    joinRoom(businessId)
 
-    const unsub = onQueueUpdate((updatedQueue) => {
-      if (String(updatedQueue.businessId?._id || updatedQueue.businessId) === String(businessId)) setQueue(updatedQueue)
-    })
+    const unsub = socket && subscribeToQueueChanges(socket, setQueue, businessId)
 
     const handleBookingUpdate = () => {
       getBusinessBookings(businessId).then(res => setBookings(res.data.data.bookings || [])).catch(() => { })
@@ -264,7 +263,8 @@ export default function BusinessDashboard() {
       toast.success(`${event.doctorName || 'Doctor'} called the next person`)
     }
     const reconnect = () => {
-      joinAdmin(businessId)
+      if (user?.role === 'admin') joinAdmin(businessId)
+      joinRoom(businessId)
       getQueue(businessId).then(res => setQueue(res.data.data.queue)).catch(() => {})
       handleBookingUpdate()
     }
@@ -279,7 +279,7 @@ export default function BusinessDashboard() {
       socket?.off('doctor:called-next', handleDoctorCall)
       socket?.off('connect', reconnect)
     }
-  }, [businessId, fetchDashboardData, joinAdmin, leaveRoom, onQueueUpdate, socket])
+  }, [businessId, fetchDashboardData, joinAdmin, joinRoom, leaveRoom, socket, user?.role])
 
   // Load analytics whenever analytics tab is active
   useEffect(() => {

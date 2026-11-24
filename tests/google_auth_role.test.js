@@ -22,6 +22,7 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
 
     await assert.rejects(findOrCreateGoogleUser({
       googleId: "google-111",
+      emailVerified: true,
       email: "owner@example.com",
       name: "Owner John",
       avatar: "https://avatar.com/1",
@@ -40,6 +41,7 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
 
     const user = await findOrCreateGoogleUser({
       googleId: "google-222",
+      emailVerified: true,
       email: "cust@example.com",
       name: "Customer Jane",
       avatar: "https://avatar.com/2",
@@ -67,6 +69,7 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
       () =>
         findOrCreateGoogleUser({
           googleId: "google-333",
+          emailVerified: true,
           email: "customer@example.com",
           name: "Customer User",
           role: "owner",
@@ -95,6 +98,7 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
       () =>
         findOrCreateGoogleUser({
           googleId: "google-new-id",
+          emailVerified: true,
           email: "cust-email@example.com",
           name: "Customer By Email",
           role: "owner",
@@ -105,6 +109,15 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
         return true;
       }
     );
+  });
+
+  await t.test("requires a verified Google email for registration and a verified ServeQ email for linking", async () => {
+    const email = "customer@example.com";
+    const candidate = { email, googleId: "unlinked-google-id", role: "customer" };
+    User.findOne = async query => query.email === email ? { email, role: "customer", isEmailVerified: false } : null;
+    User.create = async () => assert.fail("An ineligible sign-in must not create an account");
+    await assert.rejects(findOrCreateGoogleUser(candidate), /Google did not verify/);
+    await assert.rejects(findOrCreateGoogleUser({ ...candidate, emailVerified: true }), /verify your ServeQ email/);
   });
 
   await t.test("does not demote existing owner account to customer", async () => {
@@ -126,6 +139,7 @@ test("Google Auth - Role Selection & User Creation", async (t) => {
 
     const user = await findOrCreateGoogleUser({
       googleId: "google-444",
+      emailVerified: true,
       email: "alreadyowner@example.com",
       name: "Already Owner",
       role: "customer",

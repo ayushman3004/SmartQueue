@@ -26,16 +26,12 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Attach JWT from localStorage on every request
+const cookieSessionEndpoints = new Set([
+  "/auth/signup", "/auth/signin", "/auth/change-password", "/auth/email/verify-otp", "/doctors/password",
+]);
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    if (config.headers && typeof config.headers.set === "function") {
-      config.headers.set("Authorization", `Bearer ${token}`);
-    } else {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  if (config.method === "post" && cookieSessionEndpoints.has(config.url)) {
+    config.headers.set("X-ServeQ-Session", "cookie");
   }
   return config;
 });
@@ -52,7 +48,6 @@ api.interceptors.response.use(
 
     // Don't hijack login/signup errors or initial profile fetch
     if (err.response?.status === 401 && !isAuthEndpoint) {
-      localStorage.removeItem("token");
       localStorage.removeItem("serveq_last_active");
       if (typeof window !== "undefined") {
         const path = window.location.pathname;

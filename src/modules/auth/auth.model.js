@@ -69,6 +69,11 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
     tokenVersion: { type: Number, default: 0 },
+    revokedSessions: {
+      type: [{ _id: false, digest: String, expiresAt: Date }],
+      select: false,
+      default: undefined,
+    },
     doctorAccess: {
       businessId: { type: mongoose.Schema.Types.ObjectId, ref: "Business" },
       staffId: mongoose.Schema.Types.ObjectId,

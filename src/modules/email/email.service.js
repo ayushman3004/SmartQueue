@@ -208,8 +208,7 @@ export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
 
   // 2. Fallback to Nodemailer SMTP
   if (!transporter) {
-    console.warn(`\n⚠️ [Nodemailer] Cannot send email to ${to}: SMTP credentials not configured.`);
-    console.log(`🔑 [ServeQ Password Reset OTP for ${to}]: ${otp}\n`);
+    console.warn("[email] Password recovery SMTP credentials are unavailable.");
     return {
       sent: false,
       simulated: true,

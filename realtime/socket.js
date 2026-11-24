@@ -2,7 +2,7 @@ import { isClinic } from "../src/modules/doctor/doctor-access.js";
 import Booking from "../src/booking/booking.model.js";
 import User from "../src/modules/auth/auth.model.js";
 import { ownerState } from "../src/modules/business-application/owner-lifecycle.js";
-import jwt from "jsonwebtoken";
+import { isCurrentSession, verifySessionToken } from "../src/modules/auth/session-security.js";
 import { getQueue } from "../src/queue/queue.service.js";
 import Business from "../src/modules/business/business.model.js";
 
@@ -88,11 +88,11 @@ const refId = value => String(value?._id || value);
 
 const refreshSession = async socket => {
   if (!socket.authToken) throw new Error("Authentication required");
-  const decoded = jwt.verify(socket.authToken, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+  const decoded = verifySessionToken(socket.authToken);
   const id = roomId(decoded.id);
   if (!id || decoded.purpose === "activation") throw new Error("Invalid session");
-  const user = await User.findById(id);
-  if (!user || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0) || ownerState(user) !== "ACTIVE") throw new Error("Account activation or password change required.");
+  const user = await User.findById(id, "+revokedSessions");
+  if (!isCurrentSession(user, decoded, socket.authToken) || ownerState(user) !== "ACTIVE") throw new Error("Account activation or password change required.");
   socket.user = { _id: id, id, role: user.role, businessCategories: user.businessCategories || [] };
   return user;
 };

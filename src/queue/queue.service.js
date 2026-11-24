@@ -1,3 +1,5 @@
+import { publishQueue, queueForViewer } from "./queue.view.js";
+import { canAccessOwnerCategory } from "../utils/ownerCategory.js";
 import { notifyUser, notifyServingTurns } from '../modules/notification/notification.service.js';
 import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
 import { isClinic, isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
@@ -531,9 +533,6 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
       const uId = previousHead.userId?._id || previousHead.userId;
       io.to(`business:${businessId}`).emit("service:completed", {
         businessId,
-        userId: uId,
-        booking: completedBooking,
-        queue,
       });
       if (uId) {
         io.to(`user:${uId}`).emit("bookings:updated");
@@ -553,16 +552,12 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
     if (newServing) {
       io.to(`business:${businessId}`).emit("service:started", {
         businessId,
-        userId: newServing.userId,
-        queue,
       });
     }
 
     // 3. Emit queue updated
-    io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue });
-    io.to(`business:${businessId}`).emit("queue:update", queue);
+    publishQueue(io, businessId, queue);
     io.to(`business:${businessId}:admin`).emit("bookings:updated");
-    io.to(`business:${businessId}:admin`).emit("queue:update", queue);
     for (const user of queue.users) {
       io.to(`user:${user.userId?._id || user.userId}`).emit("bookings:updated");
     }
@@ -585,10 +580,10 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
 };
 
 //  GET QUEUE
-export const getQueue = async (businessId, io = null, requesterId = null) => {
+export const getQueue = async (businessId, io = null, viewer = null) => {
   const business = await Business.findById(businessId);
   if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
-  assertTestVenueAccess(business, requesterId);
+  assertTestVenueAccess(business, viewer?._id);
   let queue = await Queue.findOne({ businessId });
   if (!queue) {
     queue = await Queue.create({ businessId, users: [] });
@@ -601,14 +596,17 @@ export const getQueue = async (businessId, io = null, requesterId = null) => {
     queue.users = queueDS.toArray();
     await queue.save();
 
-    if (io) {
-      io.to(`business:${businessId}`).emit("queue:update", queue);
-      io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue });
-    }
+    publishQueue(io, businessId, queue);
   }
 
   if (wasCleaned) await notifyServingTurns(business, queue.users, io);
-  return queue;
+  const managesQueue = viewer?.role === "admin" || (
+    viewer?.role === "owner" && business.approvalStatus === "approved" &&
+    String(business.owner) === String(viewer._id) && canAccessOwnerCategory(viewer, business)
+  );
+  return managesQueue
+    ? queue.populate("users.userId", "name email phone")
+    : queueForViewer(queue, viewer?.role === "customer" ? viewer._id : undefined);
 };
 
 //  ESTIMATE WAIT TIME
@@ -670,8 +668,7 @@ export const extendTime = async (businessId, userId, minutes = 5, requesterId, r
   await queue.save();
 
   if (io) {
-    io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue });
-    io.to(`business:${businessId}`).emit("queue:update", queue);
+    publishQueue(io, businessId, queue);
 
     let reachedTarget = false;
     for (const u of queue.users) {
@@ -703,8 +700,7 @@ export const handleCancelDelay = async (businessId, userId, io = null) => {
   await queueDoc.save();
 
   if (io) {
-    io.to(`business:${businessId}`).emit("queue:left", { businessId, userId, queue: queueDoc });
-    io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue: queueDoc });
+    io.to(`user:${userId}`).emit("queue:left", { businessId, userId });
   }
 
   return { queue: queueDoc, totalCredited: 0 };
@@ -776,8 +772,7 @@ export const assignStaff = async (businessId, userId, staffName, requesterId, re
   );
 
   if (io) {
-    io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue: populatedQueue });
-    io.to(`business:${businessId}`).emit("queue:update", populatedQueue);
+    publishQueue(io, businessId, populatedQueue);
   }
 
   return populatedQueue;
@@ -849,8 +844,7 @@ export const collectQueuePayment = async (businessId, userId, staffUser, io = nu
   );
 
   if (io) {
-    io.to(`business:${businessId}`).emit("queue:updated", { businessId, queue: populatedQueue });
-    io.to(`business:${businessId}`).emit("queue:update", populatedQueue);
+    publishQueue(io, businessId, populatedQueue);
     io.to(`business:${businessId}`).emit("bookings:updated");
     io.to(`user:${userId}`).emit("queue:payment_collected", {
       businessId,

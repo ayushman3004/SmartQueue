@@ -3,7 +3,7 @@ import { ownerState } from "../src/modules/business-application/owner-lifecycle.
 import { canAccessOwnerCategory } from "../src/utils/ownerCategory.js";
 import Booking from "../src/booking/booking.model.js";
 import Business from "../src/modules/business/business.model.js";
-import jwt from "jsonwebtoken";
+import { isCurrentSession, sessionTokenFrom, verifySessionToken } from "../src/modules/auth/session-security.js";
 import ApiError from "../utils/ApiError.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import User from "../src/modules/auth/auth.model.js";
@@ -12,24 +12,14 @@ import User from "../src/modules/auth/auth.model.js";
  * Verify JWT and attach user to req.user
  */
 export const protect = asyncHandler(async (req, _res, next) => {
-  let token;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer ")
-  ) {
-    token = req.headers.authorization.split(" ")[1];
-  } else if (req.cookies?.token) {
-    token = req.cookies.token;
-  }
-
+  const token = sessionTokenFrom(req);
   if (!token) throw new ApiError(401, "Not authenticated");
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.id).select("-password");
+  const decoded = verifySessionToken(token);
+  const user = await User.findById(decoded.id).select("-password +revokedSessions");
   if (!user) throw new ApiError(401, "User not found");
 
-  if ((decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) throw new ApiError(401, "Your session changed. Please sign in again.");
+  if (!isCurrentSession(user, decoded, token)) throw new ApiError(401, "Your session changed. Please sign in again.");
   if (user.role === "owner" && user.ownerAccess?.applicationId) {
     const state = ownerState(user);
     const path = req.originalUrl.split("?")[0];
@@ -61,22 +51,13 @@ export const protect = asyncHandler(async (req, _res, next) => {
  * but allows unauthenticated requests to proceed.
  */
 export const optionalAuth = asyncHandler(async (req, _res, next) => {
-  let token;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer ")
-  ) {
-    token = req.headers.authorization.split(" ")[1];
-  } else if (req.cookies?.token) {
-    token = req.cookies.token;
-  }
+  const token = sessionTokenFrom(req);
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select("-password");
-      if (user && (decoded.tokenVersion || 0) === (user.tokenVersion || 0) && ownerState(user) === "ACTIVE" && decoded.purpose !== "activation") req.user = user;
+      const decoded = verifySessionToken(token);
+      const user = await User.findById(decoded.id).select("-password +revokedSessions");
+      if (isCurrentSession(user, decoded, token) && ownerState(user) === "ACTIVE" && decoded.purpose !== "activation") req.user = user;
     } catch {
       // Continue as guest
     }
@@ -119,7 +100,7 @@ export const allowRoles = (...roles) =>
  */
 export const requireVerifiedEmail = asyncHandler(async (req, _res, next) => {
   if (!req.user) throw new ApiError(401, "Not authenticated");
-  const isVerified = Boolean(req.user.isEmailVerified || req.user.authProvider === "google");
+  const isVerified = req.user.isEmailVerified === true;
   if (!isVerified) {
     throw new ApiError(
       403,

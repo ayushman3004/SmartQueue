@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import User from "../src/modules/auth/auth.model.js";
 import Otp from "../src/modules/auth/otp.model.js";
 import {
@@ -9,197 +10,99 @@ import {
 } from "../src/modules/auth/forgotPassword.service.js";
 import { comparePassword } from "../src/modules/auth.utils.js";
 
-process.env.NODE_ENV = "test";
+process.env.JWT_SECRET = "password-recovery-fixture-key";
 
-test("Forgot Password Flow - Nodemailer OTP Verification & Password Reset", async (t) => {
-  const originalUserFindOne = User.findOne;
-  const originalOtpFindOne = Otp.findOne;
-  const originalOtpFindOneAndUpdate = Otp.findOneAndUpdate;
-  const originalOtpDeleteMany = Otp.deleteMany;
-
-  t.afterEach(() => {
-    User.findOne = originalUserFindOne;
-    Otp.findOne = originalOtpFindOne;
-    Otp.findOneAndUpdate = originalOtpFindOneAndUpdate;
-    Otp.deleteMany = originalOtpDeleteMany;
+test("password recovery stores digests and consumes one credential through either flow", async t => {
+  const email = "user@serveq.tech";
+  const user = { _id: "610000000000000000000000", email, name: "Test User", password: "previous", tokenVersion: 0 };
+  let record, deliveredCode;
+  t.mock.method(User, "findOne", ({ email: requested }) => {
+    const value = requested === email ? user : null;
+    return { select: async () => value, then: resolve => Promise.resolve(value).then(resolve) };
+  });
+  t.mock.method(User, "findOneAndUpdate", async (filter, update) => {
+    assert.equal(filter._id, user._id);
+    assert.equal(filter.email, email);
+    assert.equal(filter.password, user.password);
+    Object.assign(user, update.$set);
+    user.tokenVersion += update.$inc.tokenVersion;
+    return user;
+  });
+  const oldApiKey = process.env.RESEND_API_KEY;
+  process.env.RESEND_API_KEY = "recovery-test-key";
+  t.after(() => {
+    if (oldApiKey === undefined) delete process.env.RESEND_API_KEY;
+    else process.env.RESEND_API_KEY = oldApiKey;
+  });
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    deliveredCode = JSON.parse(options.body).text.match(/\b\d{6}\b/)[0];
+    return Response.json({ id: "test-mail" });
   });
 
-  await t.test("Rejects OTP request for invalid or empty email", async () => {
-    await assert.rejects(
-      () => sendPasswordResetOtp(""),
-      /Email address is required/i
-    );
-
-    await assert.rejects(
-      () => sendPasswordResetOtp("invalid-email"),
-      /valid email address/i
-    );
+  const matchesProof = query => record?._id === query._id &&
+    record.email === query.email && record.accountTokenVersion === query.accountTokenVersion &&
+    record.verified === query.verified && record.resetToken === query.resetToken;
+  t.mock.method(Otp, "exists", async query => matchesProof(query));
+  t.mock.method(Otp, "findOneAndDelete", async query => {
+    if (!matchesProof(query)) return null;
+    const consumed = record;
+    record = undefined;
+    return consumed;
+  });
+  t.mock.method(Otp, "findOne", async query => (
+    record && record.email === query.email && query.otp.test(record.otp) && record.expiresAt > query.expiresAt.$gt ? { ...record } : null
+  ));
+  t.mock.method(Otp, "findOneAndUpdate", async (query, update, options) => {
+    if (options.upsert) {
+      if (record?.lastResentAt > query.$or[0].lastResentAt.$lte) {
+        throw Object.assign(new Error("atomic cooldown collision"), { code: 11000 });
+      }
+      record = { _id: query._id, ...update.$set };
+      return record;
+    }
+    if (!record || query.challenge !== record.challenge || record.verified || record.attempts >= query.attempts.$lt) return null;
+    if (update.$inc) record.attempts += update.$inc.attempts;
+    if (update.$set) Object.assign(record, update.$set);
+    if (update.$unset?.otp) delete record.otp;
+    return record;
   });
 
-  await t.test("Rejects OTP request if user account does not exist", async () => {
-    User.findOne = async () => null;
+  const proposed = "NewSecurePassword123!";
+  const reset = args => resetPassword({ rawEmail: email, newPassword: proposed, ...args });
+  const wrongCode = () => deliveredCode === "123456" ? "123457" : "123456";
+  await assert.rejects(sendPasswordResetOtp("invalid"), { statusCode: 400 });
+  await assert.rejects(sendPasswordResetOtp("other@serveq.tech"), { statusCode: 404 });
+  await assert.rejects(verifyPasswordResetOtp(email, "123456"), { statusCode: 400 });
+  await assert.rejects(reset({ resetToken: "example", newPassword: "short" }), /at least 8 characters/);
 
-    await assert.rejects(
-      () => sendPasswordResetOtp("notfound@example.com"),
-      /No account found with this email/i
-    );
-  });
+  await sendPasswordResetOtp(email);
+  assert.match(deliveredCode, /^\d{6}$/);
+  assert.match(record.otp, /^[a-f0-9]{64}$/);
+  assert.notEqual(record.otp, deliveredCode);
+  await assert.rejects(sendPasswordResetOtp(email), { statusCode: 429 });
+  await assert.rejects(reset({ otp: wrongCode() }), { statusCode: 400 });
+  const attempts = await Promise.allSettled(Array.from({ length: 6 }, () => verifyPasswordResetOtp(email, wrongCode())));
+  assert.ok(attempts.every(attempt => attempt.status === "rejected"));
+  assert.equal(record.attempts, 5);
+  await assert.rejects(reset({ otp: deliveredCode }), { statusCode: 429 });
 
-  await t.test("Generates 6-digit OTP and creates Otp record for existing user", async () => {
-    const existingUser = {
-      _id: "user-123",
-      email: "user@serveq.tech",
-      name: "Test User",
-    };
-    User.findOne = async () => existingUser;
+  record.lastResentAt = new Date(0);
+  await sendPasswordResetOtp(email);
+  const exchanges = await Promise.allSettled([verifyPasswordResetOtp(email, deliveredCode), verifyPasswordResetOtp(email, deliveredCode)]);
+  const [exchange] = exchanges.filter(result => result.status === "fulfilled");
+  assert.equal(exchanges.filter(result => result.status === "fulfilled").length, 1);
+  const { resetToken } = exchange.value;
+  assert.equal(record.otp, undefined);
+  assert.equal(record.resetToken, createHash("sha256").update(resetToken).digest("hex"));
+  assert.notEqual(record.resetToken, resetToken);
 
-    let upsertPayload = null;
-    Otp.findOne = async () => null;
-    Otp.findOneAndUpdate = async (query, update) => {
-      upsertPayload = { query, update };
-      return { ...update, ...query };
-    };
+  const results = await Promise.allSettled([reset({ resetToken }), reset({ resetToken })]);
+  assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+  assert.equal(user.tokenVersion, 1);
+  assert.equal(await comparePassword(proposed, user.password), true);
 
-    const result = await sendPasswordResetOtp("user@serveq.tech");
-
-    assert.equal(result.email, "user@serveq.tech");
-    assert.equal(upsertPayload.query.email, "user@serveq.tech");
-    assert.equal(upsertPayload.query.purpose, "forgot_password");
-    assert.match(upsertPayload.update.otp, /^\d{6}$/);
-    assert.equal(upsertPayload.update.attempts, 0);
-    assert.equal(upsertPayload.update.verified, false);
-  });
-
-  await t.test("Enforces 30-second cooldown on consecutive OTP requests", async () => {
-    User.findOne = async () => ({ _id: "u-1", email: "user@serveq.tech", name: "User" });
-    Otp.findOne = async () => ({
-      email: "user@serveq.tech",
-      purpose: "forgot_password",
-      lastResentAt: new Date(), // requested right now
-    });
-
-    await assert.rejects(
-      () => sendPasswordResetOtp("user@serveq.tech"),
-      /Please wait \d+ seconds/i
-    );
-  });
-
-  await t.test("Rejects OTP verification if code has expired or is missing", async () => {
-    Otp.findOne = async () => null;
-
-    await assert.rejects(
-      () => verifyPasswordResetOtp("user@serveq.tech", "123456"),
-      /expired or was not requested/i
-    );
-  });
-
-  await t.test("Increments attempts on incorrect OTP and rejects", async () => {
-    const otpDoc = {
-      email: "user@serveq.tech",
-      otp: "999888",
-      attempts: 0,
-      expiresAt: new Date(Date.now() + 600000),
-      save: async function () {},
-    };
-    Otp.findOne = async () => otpDoc;
-
-    await assert.rejects(
-      () => verifyPasswordResetOtp("user@serveq.tech", "111222"),
-      /Invalid verification code/i
-    );
-
-    assert.equal(otpDoc.attempts, 1);
-  });
-
-  await t.test("Successfully verifies valid OTP and returns resetToken", async () => {
-    const otpDoc = {
-      email: "user@serveq.tech",
-      otp: "543210",
-      attempts: 0,
-      expiresAt: new Date(Date.now() + 600000),
-      verified: false,
-      resetToken: null,
-      save: async function () {},
-    };
-    Otp.findOne = async () => otpDoc;
-
-    const result = await verifyPasswordResetOtp("user@serveq.tech", "543210");
-
-    assert.equal(result.email, "user@serveq.tech");
-    assert.ok(result.resetToken);
-    assert.equal(result.resetToken.length, 64); // 32 hex bytes
-    assert.equal(otpDoc.verified, true);
-    assert.equal(otpDoc.resetToken, result.resetToken);
-  });
-
-  await t.test("Rejects password reset if new password does not meet complexity guidelines", async () => {
-    await assert.rejects(
-      () =>
-        resetPassword({
-          rawEmail: "user@serveq.tech",
-          resetToken: "valid-token",
-          newPassword: "short",
-        }),
-      /at least 8 characters/i
-    );
-
-    await assert.rejects(
-      () =>
-        resetPassword({
-          rawEmail: "user@serveq.tech",
-          resetToken: "valid-token",
-          newPassword: "nouppercase123!",
-        }),
-      /capital letter/i
-    );
-
-    await assert.rejects(
-      () =>
-        resetPassword({
-          rawEmail: "user@serveq.tech",
-          resetToken: "valid-token",
-          newPassword: "NoSymbols12345",
-        }),
-      /special symbol/i
-    );
-  });
-
-  await t.test("Successfully updates password with valid resetToken and clears OTP record", async () => {
-    const activeOtpDoc = {
-      _id: "otp-doc-1",
-      email: "user@serveq.tech",
-      resetToken: "test-valid-token-123",
-      verified: true,
-      expiresAt: new Date(Date.now() + 600000),
-    };
-    Otp.findOne = async () => activeOtpDoc;
-
-    let deleted = false;
-    Otp.deleteMany = async () => {
-      deleted = true;
-    };
-
-    const userDoc = {
-      _id: "user-1",
-      email: "user@serveq.tech",
-      password: "old-hashed-password",
-      authProvider: "local",
-      save: async function () {},
-    };
-    User.findOne = () => ({ select: async () => userDoc });
-
-    const result = await resetPassword({
-      rawEmail: "user@serveq.tech",
-      resetToken: "test-valid-token-123",
-      newPassword: "NewSecurePassword123!",
-    });
-
-    assert.equal(result.success, true);
-    assert.equal(deleted, true);
-    // Verify password was hashed and changed
-    assert.notEqual(userDoc.password, "old-hashed-password");
-    assert.notEqual(userDoc.password, "NewSecurePassword123!");
-    const isMatch = await comparePassword("NewSecurePassword123!", userDoc.password);
-    assert.equal(isMatch, true);
-  });
+  await sendPasswordResetOtp(email);
+  await reset({ otp: deliveredCode });
+  assert.equal(user.tokenVersion, 2);
+  await assert.rejects(reset({ otp: deliveredCode }), { statusCode: 400 });
 });

@@ -6,8 +6,9 @@ import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import authRoutes from '../src/modules/auth/auth.routes.js';
 import User from '../src/modules/auth/auth.model.js';
-import { tokenCookieOptions, setTokenCookie, clearTokenCookie } from '../src/modules/auth.utils.js';
+import { tokenCookieOptions, setTokenCookie, clearTokenCookie, hashPassword } from '../src/modules/auth.utils.js';
 import { OAUTH_STATE_COOKIE, oauthClientUrl } from '../src/modules/auth/oauth-security.js';
+import { requireVerifiedEmail } from '../middleware/auth.middleware.js';
 import { cookieOriginGuard } from '../middleware/cookie-origin.middleware.js';
 import { restoreOAuthSession, logoutBrowserSession, waitForBrowserLogout } from '../src/utils/browserSession.js';
 
@@ -19,6 +20,12 @@ test('OAuth uses browser-bound state and HttpOnly cookie sessions', async t => {
   delete process.env.AUTH_COOKIE_SAME_SITE;
   const user = { _id: '111111111111111111111111', role: 'customer', name: 'OAuth Customer', email: 'customer@example.com', tokenVersion: 0, isEmailVerified: true };
   t.mock.method(User, 'findById', id => ({ select: async () => id === user._id ? user : null, then: (resolve, reject) => Promise.resolve(id === user._id ? user : null).then(resolve, reject) }));
+  t.mock.method(User, 'updateOne', async (filter, pipeline, options) => {
+    assert.deepEqual(filter, { _id: user._id });
+    assert.equal(options.updatePipeline, true);
+    const [_, sessions] = pipeline[0].$set.revokedSessions.$concatArrays;
+    user.revokedSessions = sessions;
+  });
   let callbackCount = 0;
   let oauthError = null;
   let callbackRole;
@@ -31,6 +38,7 @@ test('OAuth uses browser-bound state and HttpOnly cookie sessions', async t => {
   const app = express();
   app.use(express.json(), cookieParser(), cookieOriginGuard);
   app.use('/api/auth', authRoutes);
+  app.get('/verified', (req, _res, next) => { req.user = user; next(); }, requireVerifiedEmail, (_req, res) => res.sendStatus(204));
   app.use((error, _req, res, _next) => res.status(error.statusCode || 500).json({ error: error.message }));
   const server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
@@ -129,7 +137,38 @@ test('OAuth uses browser-bound state and HttpOnly cookie sessions', async t => {
     const logout = await request('/api/auth/logout', { method: 'POST', headers: { cookie: sessionCookie, origin: 'https://serveq.tech' } });
     assert.equal(logout.status, 200);
     const cookie = logout.headers.get('set-cookie');
+    const reusedCookie = await request('/api/auth/me', { headers: { cookie: sessionCookie } });
+    assert.equal(reusedCookie.status, 401);
+    const independent = await start();
+    const fresh = await finish(independent.state, independent.cookie);
+    const freshSession = fresh.headers.getSetCookie().find(value => value.startsWith('token=')).split(';')[0];
+    assert.equal((await request('/api/auth/me', { headers: { cookie: freshSession } })).status, 200);
     assert.match(cookie, /^token=;/); assert.match(cookie, /Secure/); assert.match(cookie, /HttpOnly/); assert.match(cookie, /SameSite=Lax/); assert.match(cookie, /Path=\//);
+  });
+
+  await t.test('browser password sign-in issues only a cookie while native sign-in retains bearer support', async () => {
+    const password = 'FixturePassword123!';
+    user.password = await hashPassword(password);
+    t.mock.method(User, 'findOne', () => ({ select: async () => user }));
+    const login = extraHeaders => request('/api/auth/signin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({ email: user.email, password }),
+    });
+    const browser = await login({ 'X-ServeQ-Session': 'cookie' });
+    assert.equal(browser.status, 200);
+    assert.match(browser.headers.get('set-cookie'), /HttpOnly/);
+    assert.equal((await browser.json()).data.token, undefined);
+    const native = await login();
+    assert.equal(native.status, 200);
+    assert.equal(jwt.verify((await native.json()).data.token, process.env.JWT_SECRET).id, user._id);
+  });
+
+  await t.test('a Google provider label alone cannot satisfy verified-email authorization', async () => {
+    user.authProvider = 'google';
+    user.isEmailVerified = false;
+    assert.equal((await request('/verified')).status, 403);
+    user.isEmailVerified = true;
+    assert.equal((await request('/verified')).status, 204);
   });
 
   await t.test('production security cannot be downgraded by insecure or missing proxy headers', () => {

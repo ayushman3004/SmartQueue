@@ -1,3 +1,4 @@
+import { publishQueue } from "../../queue/queue.view.js";
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { protect, allowRoles, requireVerifiedEmail } from '../../../middleware/auth.middleware.js';
@@ -12,7 +13,7 @@ import { doctorContext, ref, isClinic, isAssignedToDoctor, requireAssigned, pres
 import { generateInvitationCredentials } from '../business-application/invitation-credentials.js';
 import { validateOwnerPassword } from '../business-application/owner-lifecycle.js';
 import { sendBusinessNotice } from '../business-application/business-application.email.js';
-import { hashPassword, comparePassword, generateToken, setTokenCookie } from '../auth.utils.js';
+import { hashPassword, comparePassword, generateToken, setTokenCookie, responseToken } from '../auth.utils.js';
 import { sanitize } from '../auth/auth.service.js';
 import { isBusinessSubscriptionActive } from '../subscription/subscription.service.js';
 import * as queueService from '../../queue/queue.service.js';
@@ -106,7 +107,7 @@ router.post('/password', allowRoles('doctor'), accountSecurityLimit, asyncHandle
   if (!updated) throw new ApiError(409, 'Your access changed. Sign in again.');
   const token = generateToken(updated);
   setTokenCookie(res, token, req);
-  res.json({ data: { user: sanitize(updated), token } });
+  res.json({ data: { user: sanitize(updated), ...responseToken(req, token) } });
 }));
 router.get('/dashboard', allowRoles('doctor', 'admin'), asyncHandler(async (req, res) => {
   const context = await doctorContext(req.user);
@@ -137,14 +138,13 @@ router.post('/queue/:patientId/:action', allowRoles('doctor', 'admin'), asyncHan
   if (req.params.action === 'next') {
     if (row.status !== 'serving') throw new ApiError(400, 'Only the current consultation can be completed.');
     await queueService.callNext(businessId, ownerId, 'owner', req.app.get('io'), context.staff.name, req.params.patientId, null, context);
-    req.app.get('io')?.to(`business:${businessId}:admin`).emit('doctor:called-next', {
-      businessId, doctorName: context.staff.name, calledAt: new Date().toISOString(),
-    });
+    const event = { businessId, doctorName: context.staff.name, calledAt: new Date().toISOString() };
+    const io = req.app.get('io');
+    io?.to([ `business:${businessId}:admin`, `user:${ownerId}` ]).emit('doctor:called-next', event);
   } else if (req.params.action === 'extend') await queueService.extendTime(businessId, req.params.patientId, minutes(req.body.minutes), ownerId, 'owner', req.app.get('io'), context);
   else if (req.params.action === 'payment') await queueService.collectQueuePayment(businessId, req.params.patientId, { _id: ownerId, role: 'owner' }, null, context);
   else throw new ApiError(400, 'Unknown queue action.');
-  const updatedQueue = await Queue.findOne({ businessId });
-  req.app.get('io')?.to(`business:${businessId}`).emit('queue:updated', { businessId, queue: updatedQueue });
+  if (req.params.action === 'payment') publishQueue(req.app.get('io'), businessId, await Queue.findOne({ businessId }));
   notify(req, businessId);
   res.json({ message: 'Patient updated.' });
 }));

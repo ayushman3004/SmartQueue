@@ -88,11 +88,8 @@ export const startService = asyncHandler(async (req, res) => {
   const booking = await bookingService.startService(req.params.id, req.user._id, req.user.role, null, req.app.get('io'));
   const io = req.app.get("io");
   if (io) {
-    io.to(`business:${booking.businessId}`).emit("service:started", {
-      businessId: booking.businessId,
-      bookingId: booking._id,
-      booking,
-    });
+    io.to(`business:${booking.businessId}`).emit("service:started", { businessId: booking.businessId });
+    io.to(`user:${booking.userId?._id || booking.userId}`).emit("service:started", { businessId: booking.businessId, bookingId: booking._id, booking });
     io.to(`business:${booking.businessId}`).emit("bookings:updated");
   }
   res.json(new ApiResponse(200, { booking }, "Service started"));
@@ -103,11 +100,8 @@ export const completeService = asyncHandler(async (req, res) => {
   const booking = await bookingService.completeService(req.params.id, req.user._id, req.user.role);
   const io = req.app.get("io");
   if (io) {
-    io.to(`business:${booking.businessId}`).emit("service:completed", {
-      businessId: booking.businessId,
-      bookingId: booking._id,
-      booking,
-    });
+    io.to(`business:${booking.businessId}`).emit("service:completed", { businessId: booking.businessId });
+    io.to(`user:${booking.userId?._id || booking.userId}`).emit("service:completed", { businessId: booking.businessId, bookingId: booking._id, booking });
     io.to(`business:${booking.businessId}`).emit("bookings:updated");
   }
   res.json(new ApiResponse(200, { booking }, "Service completed"));

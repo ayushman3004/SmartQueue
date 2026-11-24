@@ -51,7 +51,7 @@ export const completeOverdueBookings = async (io, now = new Date()) => {
       if (io) {
         const payload = { businessId: booking.businessId, bookingId: booking._id, booking };
         for (const room of [`business:${booking.businessId}`, `business:${booking.businessId}:admin`, `user:${booking.userId}`]) {
-          io.to(room).emit('service:completed', payload);
+          io.to(room).emit('service:completed', room.endsWith(':admin') || room.startsWith('user:') ? payload : { businessId: booking.businessId });
           io.to(room).emit('bookings:updated');
         }
       }

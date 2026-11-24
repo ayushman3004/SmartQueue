@@ -1,12 +1,6 @@
 import { notifyUser } from '../notification/notification.service.js';
 import { assertTestVenueAccess } from '../admin/admin-workspace.service.js';
-const publicBusiness = business => {
-  const value = business.toObject?.() || business;
-  return { ...value, staff: value.staff?.map(member => {
-    const { email: _email, doctorId: _doctorId, ...publicMember } = member.toObject?.() || member;
-    return publicMember;
-  }) };
-};
+import { queueRowsForViewer } from "../../queue/queue.view.js";
 
 import { canAccessOwnerCategory, resolveOwnerHubCategory } from "../../utils/ownerCategory.js";
 import BusinessApplication from "../business-application/business-application.model.js";
@@ -14,6 +8,32 @@ import ApiError from "../../../utils/ApiError.js";
 import * as businessService from "./business.service.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
+
+const publicBusiness = (business, viewerId, manage = false) => {
+  const value = business.toObject?.() || business;
+  const owner = value.owner?._id && typeof value.owner?.toHexString !== "function" ? {
+    _id: value.owner._id,
+    name: value.owner.name,
+    avatar: value.owner.avatar,
+    subscription: value.owner.subscription,
+    role: value.owner.role,
+  } : value.owner;
+  return {
+    ...value,
+    owner,
+    ...(value.paymentConfiguration && !manage && {
+      paymentConfiguration: {
+        paymentMode: value.paymentConfiguration.paymentMode,
+        onlinePaymentStatus: value.paymentConfiguration.onlinePaymentStatus,
+      },
+    }),
+    ...(value.activeQueue && { activeQueue: queueRowsForViewer(value.activeQueue, viewerId) }),
+    staff: value.staff?.map(member => {
+      const { email: _email, doctorId: _doctorId, currentService: _visitService, ...publicMember } = member.toObject?.() || member;
+      return publicMember;
+    }),
+  };
+};
 
 export const create = asyncHandler(async (req, res) => {
   const category = resolveOwnerHubCategory(req.user, req.body.category);
@@ -42,13 +62,20 @@ export const getAll = asyncHandler(async (req, res) => {
     radius,
     onlyWithinRadius,
   });
-  res.json(new ApiResponse(200, { businesses: businesses.map(publicBusiness) }));
+  res.set("Cache-Control", "private, no-store");
+  res.json(new ApiResponse(200, { businesses: businesses.map(business => publicBusiness(business, req.user?._id)) }));
 });
 
 export const getOne = asyncHandler(async (req, res) => {
   const business = await businessService.getBusinessById(req.params.id);
   assertTestVenueAccess(business, req.user?._id);
-  res.json(new ApiResponse(200, { business: publicBusiness(business) }));
+  res.set("Cache-Control", "private, no-store");
+  const viewer = req.user;
+  const canManage = viewer?.role === "admin" || (
+    viewer?.role === "owner" && business.approvalStatus === "approved" &&
+    String(business.owner?._id || business.owner) === String(viewer._id) && canAccessOwnerCategory(viewer, business)
+  );
+  res.json(new ApiResponse(200, { business: publicBusiness(business, viewer?._id, canManage) }));
 });
 
 export const getMine = asyncHandler(async (req, res) => {

@@ -1,3 +1,4 @@
+import { revokeSession, sessionTokenFrom } from "./session-security.js";
 import * as authService from "./auth.service.js";
 import * as forgotPasswordService from "./forgotPassword.service.js";
 import * as verificationService from "./verification.service.js";
@@ -6,20 +7,20 @@ import { oauthClientUrl, oauthResponseHeaders } from "./oauth-security.js";
 import { verifyFirebasePhone as verifyPhoneProof } from "./phone-verification.service.js";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
-import { generateToken, setTokenCookie, clearTokenCookie } from "../auth.utils.js";
+import { generateToken, setTokenCookie, clearTokenCookie, responseToken } from "../auth.utils.js";
 
 export const signup = asyncHandler(async (req, res) => {
   const { name, email, password, role } = req.body;
   const { user, token } = await authService.register({ name, email, password, role });
   setTokenCookie(res, token, req);
-  res.status(201).json(new ApiResponse(201, { user, token }, "Registered successfully"));
+  res.status(201).json(new ApiResponse(201, { user, ...responseToken(req, token) }, "Registered successfully"));
 });
 
 export const signin = asyncHandler(async (req, res) => {
   const { email, password, requiredRole, activationCredential } = req.body;
   const { user, token } = await authService.login({ email, password, requiredRole, activationCredential });
   setTokenCookie(res, token, req);
-  res.json(new ApiResponse(200, { user, token }, "Logged in successfully"));
+  res.json(new ApiResponse(200, { user, ...responseToken(req, token) }, "Logged in successfully"));
 });
 
 export const upgradeToOwner = asyncHandler(async (req, res) => {
@@ -46,6 +47,7 @@ export const updateMe = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
+  await revokeSession(sessionTokenFrom(req), req.app.get("io"));
   clearTokenCookie(res, req);
   res.set("Cache-Control", "no-store");
   res.json(new ApiResponse(200, {}, "Logged out successfully"));
@@ -123,7 +125,7 @@ export const verifyEmailVerificationOtp = asyncHandler(async (req, res) => {
     const token = generateToken(result.activatedUser);
     setTokenCookie(res, token, req);
     delete result.activatedUser;
-    result.token = token;
+    Object.assign(result, responseToken(req, token));
   }
   res.status(200).json(new ApiResponse(200, result, result.message));
 });

@@ -40,7 +40,10 @@ test('Overdue appointments complete without connected clients, persist, and broa
   assert.equal(booking.paidAmount, 100);
   assert.equal(booking.paymentStatus, 'pending');
   assert.equal(business.staff[0].customersServed, 1);
-  assert.equal(io.events.filter((e) => e.name === 'service:completed').length, 3);
+  const notifications = io.events.filter(event => event.name === 'service:completed');
+  assert.equal(notifications.length, 3);
+  assert.deepEqual(notifications.find(event => event.room === 'business:venue').payload, { businessId: 'venue' });
+  assert.equal(notifications.find(event => event.room === 'user:customer').payload.bookingId, booking._id);
   assert.ok(io.events.some((e) => e.room === 'user:customer' && e.name === 'bookings:updated'));
 });
 

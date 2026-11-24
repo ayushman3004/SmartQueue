@@ -32,7 +32,7 @@ export function OwnerPasswordPage() {
     setBusy(true);
     try {
       const response = await api.post("/auth/change-password", data);
-      logIn(response.data.data.user, response.data.data.token);
+      logIn(response.data.data.user);
       navigate("/hub/dashboard", {
         replace: true,
       });
@@ -151,7 +151,7 @@ export default function HubLoginPage() {
         ...data,
         requiredRole: "owner",
       });
-      logIn(response.data.data.user, response.data.data.token);
+      logIn(response.data.data.user);
     } catch (error) {
       if (error.response?.data?.code === "OWNER_ACTIVATION_REQUIRED") {
         setActivationRequested(true);
@@ -193,7 +193,7 @@ export default function HubLoginPage() {
       const response = await api.post("/auth/email/verify-otp", {
         otp: code,
       });
-      logIn(response.data.data.user, response.data.data.token);
+      logIn(response.data.data.user);
       navigate("/hub/change-password", {
         replace: true,
       });

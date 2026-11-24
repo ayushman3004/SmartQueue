@@ -80,7 +80,7 @@ function AdminLoginForm({ onLoginSuccess }) {
         requiredRole: 'admin',
       })
       toast.success('Admin authentication successful! Access granted.')
-      onLoginSuccess(res.data.data.user, res.data.data.token)
+      onLoginSuccess(res.data.data.user)
     } catch (err) {
       const msg = err.response?.data?.message || 'Admin authentication failed. Please verify credentials.'
       toast.error(msg)
@@ -362,9 +362,7 @@ export default function AdminDashboard() {
   if (!user || user.role !== 'admin') {
     return (
       <AdminLoginForm
-        onLoginSuccess={(userData, token) => {
-          logIn(userData, token)
-        }}
+        onLoginSuccess={logIn}
       />
     )
   }

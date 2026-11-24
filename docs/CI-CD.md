@@ -16,11 +16,11 @@ Uncommitted application changes were preserved.
 | --- | --- |
 | Application | One ESM npm package, shared frontend/backend dependencies and lockfile; Express modular monolith with an internal API gateway, not independently deployed microservices. |
 | Frontend | React 19, Vite 8, Tailwind; production `https://serveq.tech` on Vercel per the deployment brief. `vercel.json` routes API and health requests to `https://api.serveq.tech`, then applies the SPA fallback. |
-| REST | `src/api/axios.js` appends `/api` to `VITE_API_URL`, sends credentials and bearer tokens, and falls back to the production API host outside localhost. |
-| Realtime | `src/lib/socket.js` uses `VITE_API_URL` directly, credentials, WebSocket and polling. Without that variable it uses the frontend origin; Vercel's rewrites do **not** configure a Socket.IO proxy. |
+| REST | `src/api/axios.js` appends `/api` to `VITE_API_URL`, sends credentials using the web session cookie, and falls back to the production API host outside localhost. |
+| Realtime | `src/lib/socket.js` uses `VITE_API_URL` directly, credentials, WebSocket and polling. Without that variable it uses the frontend origin on localhost and the production API host elsewhere. |
 | Backend | `npm start` → `node server.js`, HTTP + Socket.IO, binds `0.0.0.0` on `process.env.PORT` or 3001. It starts listening only after MongoDB connects. |
 | Docker | Repository root context `.` and `Dockerfile.backend`; `node:24-alpine`, `npm ci --omit=dev`, `NODE_ENV=production`, `npm start`. Runtime sources are copied explicitly rather than copying the whole repository. `EXPOSE 3001` is metadata; Render's runtime `PORT` takes precedence. |
-| Frontend Docker | `Dockerfile.frontend` builds Vite and serves `dist` with nginx. It is a local alternative, not the Vercel production deployment. It has no `VITE_API_URL` build argument; Compose therefore does not reproduce the production environment automatically. |
+| Frontend Docker | `Dockerfile.frontend` builds Vite and serves `dist` with nginx. It is a local alternative, not the Vercel production deployment. Its `VITE_API_URL` build argument defaults to the canonical production API. Use an empty build argument to test through the local Nginx proxy. |
 | Compose | `compose.yaml` builds both Dockerfiles from root and uses a local `.env` for the backend, port 3001, frontend port 8080 and a localhost client origin. Not used for Render deployment. |
 | Node | The previous `>=18` engine was inaccurate. Firebase's locked app/auth/firestore packages require `>=24.12.0`, which is stricter than Vite's and OpenAI's requirements. Root manifest and lockfile declare `>=24.12.0`; CI and both Dockerfiles use Node 24. Set the existing Vercel project's Node version to 24.x if it is pinned to an older major. |
 | Installation | `npm ci` for validation; `npm ci --omit=dev` in the backend image. No separate backend manifest or registry configuration. |
@@ -28,7 +28,7 @@ Uncommitted application changes were preserved.
 | Tests | `NODE_ENV=test npm test` → `node --test tests/*.test.js`. Existing tests mock model/service operations or use schema objects and local HTTP servers. No MongoDB service, Atlas URI, or external service credentials are required. These are not full integration tests of MongoDB, OAuth, email, payments or WebSockets. |
 | Build | `npm run build` generates `public/sitemap.xml` and `public/robots.txt`, then runs Vite. Sitemap generation changes dates in the working tree; CI does not commit them. |
 | Health | `/health`, `/api/health`, `/healthz` return 200 with database state, even when disconnected. `/live` checks the HTTP process. `/ready` and `/health/ready` require a connected MongoDB and a successful database ping, returning 503 otherwise. Use `/ready` for deployment readiness. |
-| OAuth/cookies | `SERVER_URL` overrides `RENDER_EXTERNAL_URL` for `/api/auth/google/callback`; redirect goes to `CLIENT_URL/auth/callback`. Express trusts one proxy; secure production token cookies depend on forwarded HTTPS and use `SameSite=None`. |
+| OAuth/cookies | `SERVER_URL` overrides `RENDER_EXTERNAL_URL` for `/api/auth/google/callback`; redirect goes to `CLIENT_URL/auth/callback`. Express ignores generic forwarding headers. Production token cookies are `Secure` with `SameSite=Lax` by default. |
 | CORS | REST and Socket.IO share `config/cors.js`, allow `https://serveq.tech` and credentials. Existing broad preview-domain allowances were preserved. |
 | Prior deployment material | No existing `.github` workflows, Render Blueprint, service ID, registry image reference or deployment script. README still describes an older EC2 deployment. Stale old-backend examples were corrected in `.env.example` and the Axios comment only. |
 
