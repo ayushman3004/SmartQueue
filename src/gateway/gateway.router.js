@@ -1,3 +1,5 @@
+import { requireAdminAccess } from "../../middleware/admin-access.middleware.js";
+import { adminSignin, checkAdminAccess } from "../modules/auth/auth.controller.js";
 import doctorRoutes from '../modules/doctor/doctor.routes.js';
 import notificationRoutes from '../modules/notification/notification.routes.js';
 import { applicationRoutes, adminApplicationRoutes } from "../modules/business-application/business-application.routes.js";
@@ -25,7 +27,7 @@ import {
 } from "../modules/payment/standardCheckout.controller.js";
 
 import { globalLimiter } from "./rateLimiter.js";
-import { legacyOrderLimit, mapsLimit } from "./endpointRateLimits.js";
+import { legacyOrderLimit, mapsLimit, signInLimit } from "./endpointRateLimits.js";
 import { requestIdMiddleware } from "./gateway.middleware.js";
 
 /**
@@ -81,6 +83,10 @@ export const createGatewayRouter = () => {
     if (req.method === "POST" && /^\/payments\/webhook\/?$/i.test(req.path)) return next();
     return globalLimiter(req, res, next);
   });
+
+  router.use("/admin", requireAdminAccess);
+  router.get("/admin/access", checkAdminAccess);
+  router.post("/admin/signin", signInLimit, adminSignin);
 
   // Domain Routes Registration
   router.use("/business-applications", applicationRoutes);

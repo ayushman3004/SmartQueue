@@ -82,6 +82,7 @@
     },
     {
       "source": "/admin",
+      "has": [{ "type": "host", "value": "www\\.serveq\\.tech" }],
       "destination": "/app"
     },
     {
@@ -102,6 +103,7 @@
     },
     {
       "source": "/admin/:path*",
+      "has": [{ "type": "host", "value": "www\\.serveq\\.tech" }],
       "destination": "/app"
     }
   ],

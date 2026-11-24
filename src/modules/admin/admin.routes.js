@@ -1,3 +1,4 @@
+import { matchAdminAccessIdentity } from "../../../middleware/admin-access.middleware.js";
 import express from "express";
 import * as adminController from "./admin.controller.js";
 import { protect, allowRoles } from "../../../middleware/auth.middleware.js";
@@ -5,7 +6,7 @@ import { protect, allowRoles } from "../../../middleware/auth.middleware.js";
 const router = express.Router();
 
 router.use(protect);
-router.use(allowRoles("admin"));
+router.use(allowRoles("admin"), matchAdminAccessIdentity);
 
 router.post("/workspace", adminController.prepareWorkspace);
 

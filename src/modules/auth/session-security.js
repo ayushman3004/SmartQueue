@@ -1,3 +1,4 @@
+import { adminEmail, isAdminAccessRequired } from "../../../middleware/admin-access.middleware.js";
 import { createHash } from "node:crypto";
 import jwt from "jsonwebtoken";
 import User from "./auth.model.js";
@@ -12,6 +13,13 @@ const sessionDigest = token => createHash("sha256").update(token).digest("hex");
 
 export function isCurrentSession(user, claims, token) {
   if (!user || (claims.tokenVersion || 0) !== (user.tokenVersion || 0)) return false;
+  if (user.role === "admin" && isAdminAccessRequired()) {
+    const expectedEmail = adminEmail(process.env.CLOUDFLARE_ADMIN_ACCESS_EMAIL);
+    if (!expectedEmail || claims.adminAccessEmail !== expectedEmail || adminEmail(user.email) !== expectedEmail ||
+      !Number.isSafeInteger(claims.exp) ||
+      !claims.adminAccessTeam || claims.adminAccessTeam !== process.env.CLOUDFLARE_ADMIN_ACCESS_TEAM ||
+      !claims.adminAccessAudience || claims.adminAccessAudience !== process.env.CLOUDFLARE_ADMIN_ACCESS_AUD) return false;
+  }
   if (!user.revokedSessions?.length) return true;
   const digest = sessionDigest(token);
   return !user.revokedSessions.some(session => session.digest === digest);

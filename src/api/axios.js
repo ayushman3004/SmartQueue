@@ -44,7 +44,8 @@ api.interceptors.response.use(
     const isAuthEndpoint =
       url.includes("/auth/signin") ||
       url.includes("/auth/signup") ||
-      url.includes("/auth/me");
+      url.includes("/auth/me") ||
+      url === "/admin/signin" || url === "/admin/access";
 
     // Don't hijack login/signup errors or initial profile fetch
     if (err.response?.status === 401 && !isAuthEndpoint) {

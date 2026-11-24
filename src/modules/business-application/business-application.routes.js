@@ -1,3 +1,4 @@
+import { matchAdminAccessIdentity } from "../../../middleware/admin-access.middleware.js";
 import { Router } from "express";
 import asyncHandler from "../../../utils/asyncHandler.js";
 import ApiResponse from "../../../utils/ApiResponse.js";
@@ -25,7 +26,7 @@ applicationRoutes.post(
   }),
 );
 export const adminApplicationRoutes = Router();
-adminApplicationRoutes.use(protect, allowRoles("admin"));
+adminApplicationRoutes.use(protect, allowRoles("admin"), matchAdminAccessIdentity);
 adminApplicationRoutes.get(
   "/",
   asyncHandler(async (req, res) =>

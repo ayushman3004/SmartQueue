@@ -1,3 +1,5 @@
+import { isAdminAccessRequired } from "../../../middleware/admin-access.middleware.js";
+import ApiError from "../../../utils/ApiError.js";
 import { revokeSession, sessionTokenFrom } from "./session-security.js";
 import * as authService from "./auth.service.js";
 import * as forgotPasswordService from "./forgotPassword.service.js";
@@ -23,12 +25,30 @@ export const signin = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { user, ...responseToken(req, token) }, "Logged in successfully"));
 });
 
+export const checkAdminAccess = asyncHandler(async (req, res) => {
+  if (req.adminAccess && !await User.exists({ email: req.adminAccess.email, role: "admin" })) {
+    throw new ApiError(403, "Administrator access is required.");
+  }
+  if (req.query.return === "1") return res.redirect(oauthClientUrl("/admin/login"));
+  res.sendStatus(204);
+});
+
+export const adminSignin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body || {};
+  const { user, token } = await authService.login({ email, password, requiredRole: "admin", adminAccess: req.adminAccess });
+  setTokenCookie(res, token, req, req.adminAccess);
+  res.json(new ApiResponse(200, { user }, "Logged in successfully"));
+});
+
 export const upgradeToOwner = asyncHandler(async (req, res) => {
   const user = await authService.upgradeToOwner(req.user._id);
   res.json(new ApiResponse(200, { user }, "Account successfully upgraded to Hub Owner"));
 });
 
 export const googleCallback = asyncHandler(async (req, res) => {
+  if (req.user.role === "admin" && isAdminAccessRequired()) {
+    return res.redirect(oauthClientUrl("/admin/login"));
+  }
   // User attached by Passport
   const token = generateToken(req.user);
   setTokenCookie(res, token, req);
@@ -102,7 +122,7 @@ export const verifyPhoneVerificationOtp = asyncHandler(async (req, res) => {
 });
 
 export const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
-  const email = req.user.ownerAccess?.applicationId ? req.user.email : (req.body.email || req.user.email);
+  const email = (req.user.ownerAccess?.applicationId || (req.user.role === "admin" && isAdminAccessRequired())) ? req.user.email : (req.body.email || req.user.email);
   const result = await verificationService.sendEmailVerificationOtp({
     email,
     userId: req.user._id,
@@ -113,7 +133,7 @@ export const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
 });
 
 export const verifyEmailVerificationOtp = asyncHandler(async (req, res) => {
-  const email = req.user.ownerAccess?.applicationId ? req.user.email : (req.body.email || req.user.email);
+  const email = (req.user.ownerAccess?.applicationId || (req.user.role === "admin" && isAdminAccessRequired())) ? req.user.email : (req.body.email || req.user.email);
   const { otp } = req.body;
   const result = await verificationService.verifyEmailVerificationOtp({
     email,

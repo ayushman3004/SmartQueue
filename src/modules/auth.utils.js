@@ -10,11 +10,18 @@ export const comparePassword = async (password, hashed) => {
   return await bcrypt.compare(password, hashed);
 };
 
-export const generateToken = (user) => {
+export const generateToken = (user, adminAccess) => {
   return jwt.sign(
-    { id: user._id || user, role: user.role || "user", tokenVersion: user.tokenVersion || 0, purpose: user.ownerAccess?.status === "INVITED" ? "activation" : "session" },
+    { id: user._id || user, role: user.role || "user", tokenVersion: user.tokenVersion || 0, purpose: user.ownerAccess?.status === "INVITED" ? "activation" : "session",
+      ...(adminAccess && {
+        adminAccessEmail: adminAccess.email,
+        adminAccessTeam: adminAccess.team,
+        adminAccessAudience: adminAccess.audience,
+        exp: adminAccess.expiresAt,
+      }),
+    },
     process.env.JWT_SECRET,
-    { expiresIn: "7d", jwtid: randomUUID() }
+    { ...(!adminAccess && { expiresIn: "7d" }), jwtid: randomUUID() }
   );
 };
 
@@ -25,8 +32,8 @@ export const tokenCookieOptions = (req = null) => {
   return { httpOnly: true, secure: process.env.NODE_ENV === "production" || Boolean(req?.secure) || sameSite === "none", sameSite, path: "/" };
 };
 
-export const setTokenCookie = (res, token, req = null) => {
-  res.cookie("token", token, { ...tokenCookieOptions(req), maxAge: 7 * 24 * 60 * 60 * 1000 });
+export const setTokenCookie = (res, token, req = null, adminAccess) => {
+  res.cookie("token", token, { ...tokenCookieOptions(req), maxAge: adminAccess ? Math.max(0, adminAccess.expiresAt * 1000 - Date.now()) : 7 * 24 * 60 * 60 * 1000 });
 };
 
 export const responseToken = (req, token) =>

@@ -1,3 +1,4 @@
+import { adminEmail, isAdminAccessRequired } from "../../../middleware/admin-access.middleware.js";
 import { effectiveSubscription } from '../../utils/subscription.js';
 import { canSendWhatsAppFollowUps, hasVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import { ownerState, assertOwnerLogin, publicOwnerAccess } from "../business-application/owner-lifecycle.js";
@@ -51,7 +52,7 @@ export const register = async ({ name, email, password, role }) => {
 };
 
 // ─── Login ────────────────────────────────────────────────────
-export const login = async ({ email, password, requiredRole, activationCredential }) => {
+export const login = async ({ email, password, requiredRole, activationCredential, adminAccess }) => {
   if (!email || !password) throw new ApiError(400, "Email and password are required");
 
   const normEmail = (email || "").trim().toLowerCase();
@@ -67,6 +68,12 @@ export const login = async ({ email, password, requiredRole, activationCredentia
   if (!user.password) throw new ApiError(401, "Invalid credentials. Use your existing sign-in method.");
   const valid = await comparePassword(password, user.password);
   if (!valid) throw new ApiError(401, "Invalid credentials");
+
+  if (user.role === "admin" && isAdminAccessRequired() &&
+    (requiredRole !== "admin" || !adminAccess || adminAccess.email !== normEmail ||
+      adminAccess.expiresAt <= Math.floor(Date.now() / 1000))) {
+    throw new ApiError(403, "Use the Cloudflare-protected administrator sign-in.");
+  }
 
   if (requiredRole === "doctor" && !["doctor", "admin"].includes(user.role)) throw new ApiError(403, "Use a doctor account to sign in here.");
   if (user.role === "doctor") {
@@ -107,7 +114,7 @@ export const login = async ({ email, password, requiredRole, activationCredentia
       await validateInvitation(user, activationCredential);
     }
   }
-  const token = generateToken(user);
+  const token = generateToken(user, user.role === "admin" ? adminAccess : undefined);
   return { user: sanitize(user), token };
 };
 
@@ -127,6 +134,7 @@ export const findOrCreateGoogleUser = async ({ googleId, email, emailVerified, n
   // Check if user already exists by googleId
   let user = await User.findOne({ googleId });
   if (user) {
+    if (user.role === "admin" && isAdminAccessRequired()) throw new ApiError(403, "Use the protected administrator sign-in.");
     // If account exists as customer, do not allow Hub Owner login
     if (selectedRole === "owner" && user.role === "customer") {
       throw new ApiError(
@@ -146,6 +154,7 @@ export const findOrCreateGoogleUser = async ({ googleId, email, emailVerified, n
   if (!emailVerified || !EMAIL_REGEX.test(normalizedEmail)) throw new ApiError(401, "Google did not verify this email address.");
   user = await User.findOne({ email: normalizedEmail });
   if (user) {
+    if (user.role === "admin" && isAdminAccessRequired()) throw new ApiError(403, "Use the protected administrator sign-in.");
     // If existing user is customer, do not allow Hub Owner login
     if (selectedRole === "owner" && user.role === "customer") {
       throw new ApiError(
@@ -219,6 +228,9 @@ export const updateProfile = async (userId, data) => {
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, "User not found");
   if (changes.email !== undefined && changes.email !== user.email) {
+    if (user.role === "admin" && isAdminAccessRequired() && changes.email !== adminEmail(process.env.CLOUDFLARE_ADMIN_ACCESS_EMAIL)) {
+      throw new ApiError(403, "Administrator email is managed through Cloudflare Access.");
+    }
     if (user.ownerAccess?.applicationId) throw new ApiError(403, "Contact ServeQ to change an approved business login email.");
     const existing = await User.findOne({ email: changes.email });
     if (existing && String(existing._id) !== String(user._id)) throw new ApiError(400, "Email is already taken by another account");

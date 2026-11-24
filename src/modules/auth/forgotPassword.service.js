@@ -1,3 +1,4 @@
+import { isAdminAccessRequired } from "../../../middleware/admin-access.middleware.js";
 import crypto from "node:crypto";
 import { ownerState } from "../business-application/owner-lifecycle.js";
 import { comparePassword, hashPassword } from "../auth.utils.js";
@@ -21,7 +22,7 @@ export const sendPasswordResetOtp = async (rawEmail) => {
   if (!EMAIL_REGEX.test(email)) throw new ApiError(400, "Please enter a valid email address");
 
   const user = await User.findOne({ email });
-  if (!user) throw new ApiError(404, "No account found with this email address");
+  if (!user || (user.role === "admin" && isAdminAccessRequired())) throw new ApiError(404, "No account found with this email address");
 
   const otp = crypto.randomInt(100000, 1000000).toString();
   const challenge = crypto.randomBytes(16).toString("hex");
@@ -98,7 +99,7 @@ export const resetPassword = async ({ rawEmail, resetToken, otp, newPassword }) 
 
   const invalid = () => new ApiError(400, "Invalid or expired password reset session. Please request a new verification code.");
   const user = await User.findOne({ email }).select("+password");
-  if (!user) throw invalid();
+  if (!user || (user.role === "admin" && isAdminAccessRequired())) throw invalid();
   if (user.ownerAccess?.applicationId && !["ACTIVE", "PASSWORD_REQUIRED"].includes(ownerState(user))) {
     throw new ApiError(403, "Complete invitation activation before resetting your password. Ask ServeQ to reissue an expired invitation.");
   }

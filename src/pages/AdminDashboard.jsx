@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import axios from '../api/axios'
-import { signin } from '../api/auth.api'
+import NotFoundPage from './NotFoundPage'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { useSeo } from '../utils/useSeo'
@@ -74,10 +74,9 @@ function AdminLoginForm({ onLoginSuccess }) {
 
     setLoading(true)
     try {
-      const res = await signin({
+      const res = await axios.post('/admin/signin', {
         email: email.trim(),
         password,
-        requiredRole: 'admin',
       })
       toast.success('Admin authentication successful! Access granted.')
       onLoginSuccess(res.data.data.user)
@@ -191,7 +190,36 @@ function AdminLoginForm({ onLoginSuccess }) {
   )
 }
 
-export default function AdminDashboard() {
+export default function AdminAccessGate() {
+  const [access, setAccess] = useState('checking')
+  const canonical = window.location.hostname === 'www.serveq.tech'
+  const local = import.meta.env.DEV && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
+
+  useEffect(() => {
+    if (!canonical && !local) return
+    const controller = new AbortController()
+    axios.get('/admin/access', { signal: controller.signal })
+      .then(response => { if (!controller.signal.aborted) setAccess(response.status === 204 ? 'granted' : 'required') })
+      .catch(() => { if (!controller.signal.aborted) setAccess('required') })
+    return () => controller.abort()
+  }, [canonical, local])
+
+  if (!canonical && !local) return <NotFoundPage />
+  if (access === 'checking') return <AdminDashboardSkeleton />
+  if (access === 'required') {
+    const accessUrl = axios.getUri({ url: '/admin/access', params: { return: '1' } })
+    return (
+      <section className="customer-auth-card mx-auto my-12 max-w-md">
+        <h1>Administrator access</h1>
+        <p>Verify your administrator email through Cloudflare Access to continue.</p>
+        <a href={accessUrl}>Continue with Cloudflare Access</a>
+      </section>
+    )
+  }
+  return <AdminDashboard />
+}
+
+function AdminDashboard() {
   const { user, loading: authLoading, logIn, logOut } = useAuth()
   const { socket } = useSocket()
   const navigate = useNavigate()

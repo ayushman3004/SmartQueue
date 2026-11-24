@@ -1083,3 +1083,21 @@ needs to run in GitHub Actions.
 - [Render retrieve-service API](https://api-docs.render.com/reference/retrieve-service)
 - [Render public OpenAPI schema](https://api-docs.render.com/openapi/render-public-api-1.json)
 - [Vercel Deployment Checks](https://vercel.com/docs/deployment-checks)
+
+## Cloudflare Access for the administrator portal
+
+Production administrator sign-in and API access require a signed Cloudflare Access application token. The email in that token must match both the Render allowlist and an existing ServeQ account with the administrator role. The administrator then signs in with their existing ServeQ password. The ServeQ admin session expires no later than the Access token that authorized it. Customer, owner, and doctor sign-in keep their existing routes.
+
+1. In **Cloudflare One → Access controls → Applications**, create one **Self-hosted** application named **ServeQ Admin**. Add these paths to the same application.
+
+   | Proxied hostname | Paths |
+   | --- | --- |
+   | `www.serveq.tech` | `/admin`, `/admin/*` |
+   | `api.serveq.tech` | `/api/admin`, `/api/admin/*` |
+
+   Keep the apex redirect to `www.serveq.tech`. Both hostnames must be proxied through the ServeQ Cloudflare zone. Omit login links to this application from the Access App Launcher if you want it unlisted.
+2. Add one **Allow** policy with **Include → Emails** set to `admin@serveq.tech`, the existing ServeQ administrator. Use the approved identity provider, or add and enable the One-time PIN login method for that email. Keep the default denial for other identities. Use **Eager redirect cookie** to establish the API host’s Access cookie alongside the web host’s cookie. Set **Bypass OPTIONS requests to origin** so the API can answer browser preflight using its existing CORS policy. Actual API operations still require Access. Enable **HttpOnly** for the Access cookie.
+3. Copy the application’s **Audience (AUD) tag** and the organization’s team hostname. Set `CLOUDFLARE_ADMIN_ACCESS_TEAM`, `CLOUDFLARE_ADMIN_ACCESS_AUD`, and `CLOUDFLARE_ADMIN_ACCESS_EMAIL` on Render before rolling out the frontend and backend. Set `CLIENT_URL=https://www.serveq.tech` and the frontend’s `VITE_API_URL=https://api.serveq.tech`. Keep the existing Cloudflare origin-authentication header rule on the API hostname. Production admin access fails closed while the Access settings are incomplete. Public password recovery is unavailable for admin accounts.
+4. Verify from a signed-out browser that `/admin` and `/admin/login` are intercepted by Cloudflare and that an ordinary customer cannot enter. Verify the intended administrator can complete Access and ServeQ sign-in, load the dashboard and applications, and submit an authorized admin action. Verify customer sign-in still works. A direct request to the API origin or a deployment alias must never expose admin data without both credentials.
+
+[Self-hosted Access applications](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/) · [Multi-domain Access cookies](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/) · [Access CORS](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/cors/) · [Origin token verification](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)
