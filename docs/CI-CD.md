@@ -143,6 +143,7 @@ Before enabling deployment, inspect the **new service** in Render and confirm:
 | `NODE_ENV=production` | Secure production behavior. |
 | `PORT` | Render-provided/configured listening port. No fixed-port change required. |
 | `MONGO_URI` | Existing Atlas URI and database; allow Render outbound connectivity in Atlas using the deployment's actual network configuration. Never point CI at production Atlas. |
+| `PRESCRIPTION_ENCRYPTION_KEY` | Backend secret for prescription reads and writes. Generate a 32-byte hex key with `openssl rand -hex 32`. Use the same key across backend instances that share a database and keep a secure backup with access separate from MongoDB. Losing or replacing the key makes existing encrypted prescriptions unreadable. |
 | `JWT_SECRET` | Preserve existing strong value; changing it invalidates sessions. |
 | `CLIENT_URL=https://serveq.tech` | OAuth redirects and allowed frontend origin. |
 | `SERVER_URL=https://api.serveq.tech` | Ensures Google callback uses the custom API domain instead of a Render subdomain. |

@@ -9,6 +9,7 @@ import Business from '../business/business.model.js';
 import Queue from '../../queue/queue.model.js';
 import Booking from '../../booking/booking.model.js';
 import Prescription from './prescription.model.js';
+import { readPrescription } from './prescription-encryption.js';
 import { doctorContext, ref, isClinic, isAssignedToDoctor, requireAssigned, prescriptionFilter } from './doctor-access.js';
 import { generateInvitationCredentials } from '../business-application/invitation-credentials.js';
 import { validateOwnerPassword } from '../business-application/owner-lifecycle.js';
@@ -166,7 +167,8 @@ router.post('/bookings/:bookingId/:action', allowRoles('doctor', 'admin'), async
 router.get('/prescriptions', allowRoles('doctor', 'customer', 'admin'), asyncHandler(async (req, res) => {
   const filter = prescriptionFilter(req.user);
   if (req.query.booking) filter.booking = validId(req.query.booking);
-  res.json({ data: { prescriptions: await Prescription.find(filter).sort({ createdAt: -1 }).select('-__v') } });
+  const prescriptions = await Prescription.find(filter).sort({ createdAt: -1 }).select('-__v');
+  res.json({ data: { prescriptions: prescriptions.map(readPrescription) } });
 }));
 router.post('/prescriptions', allowRoles('doctor', 'admin'), asyncHandler(async (req, res) => {
   const context = await doctorContext(req.user);
@@ -183,16 +185,13 @@ router.post('/prescriptions', allowRoles('doctor', 'admin'), asyncHandler(async 
   const reminder = scheduleFollowUp(req.body.followUpDate);
   try {
     const prescription = await Prescription.create({ ...fields, ...reminder, booking: booking._id, business: context.business._id, doctor: req.user._id, patient: booking.userId._id, doctorName: context.staff.name, doctorId: context.staff.doctorId, patientName: booking.userId.name, clinicName: context.business.name });
-    const result = prescription.toObject();
-    delete result.reminderNextRunAt;
-    delete result.reminderExpiresAt;
-    res.status(201).json({ data: { prescription: result } });
+    res.status(201).json({ data: { prescription: readPrescription(prescription) } });
   } catch (error) { if (error.code === 11000) throw new ApiError(409, 'A prescription is already saved for this consultation.'); throw error; }
 }));
 router.get('/prescriptions/:id/pdf', allowRoles('doctor', 'customer', 'admin'), asyncHandler(async (req, res) => {
   const prescription = await Prescription.findOne({ _id: validId(req.params.id), ...prescriptionFilter(req.user) });
   if (!prescription) throw new ApiError(404, 'Prescription not found.');
-  const pdf = await prescriptionPdf(prescription);
+  const pdf = await prescriptionPdf(readPrescription(prescription));
   res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="prescription-${prescription._id}.pdf"`, 'X-Content-Type-Options': 'nosniff' });
   res.send(pdf);
 }));

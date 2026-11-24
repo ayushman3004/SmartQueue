@@ -5,6 +5,7 @@ import { createNotification } from '../notification/notification.service.js';
 import { getBusinessDate } from '../../utils/bookingDates.js';
 import { canSendWhatsAppFollowUps, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import Prescription from './prescription.model.js';
+import { readPrescription } from './prescription-encryption.js';
 
 export function scheduleFollowUp(value, now = new Date()) {
   if (value === undefined || value === '') return {};
@@ -28,8 +29,9 @@ async function deliverReminder(prescription, leaseUntil, io, sendWhatsApp) {
   const patient = await User.findById(prescription.patient)
     .select('role phone phoneVerification isPhoneVerified whatsappFollowUpPhone');
   if (patient) {
+    const { followUpDate } = readPrescription(prescription);
     const day = new Intl.DateTimeFormat('en-IN', { dateStyle: 'long', timeZone: 'UTC' })
-      .format(new Date(`${prescription.followUpDate}T00:00:00Z`));
+      .format(new Date(`${followUpDate}T00:00:00Z`));
     await createNotification({
       recipient: prescription.patient,
       type: 'account',
@@ -60,7 +62,7 @@ async function deliverReminder(prescription, leaseUntil, io, sendWhatsApp) {
 
 export async function deliverDueFollowUps(io, sendWhatsApp, now = new Date()) {
   const due = { reminderNextRunAt: { $exists: true, $lte: now }, reminderExpiresAt: { $gte: now } };
-  const reminders = await Prescription.find(due).select('patient followUpDate').sort({ reminderNextRunAt: 1 }).limit(50).lean();
+  const reminders = await Prescription.find(due).select('booking business doctor patient followUpDate encryptedClinicalData').sort({ reminderNextRunAt: 1 }).limit(50).lean();
   for (const reminder of reminders) {
     const leaseUntil = new Date(Math.max(Date.now(), now.getTime()) + 60_000);
     const claim = await Prescription.updateOne({ _id: reminder._id, ...due }, { $set: { reminderNextRunAt: leaseUntil } });

@@ -16,12 +16,6 @@ export const getAvailable = asyncHandler(async (req, res) => {
 
 export const create = asyncHandler(async (req, res) => {
   const { code, amount, businessId, expiryDays } = req.body;
-  const coupon = await couponService.createCoupon({
-    code,
-    amount,
-    businessId,
-    userId: null,
-    expiryDays,
-  });
+  const coupon = await couponService.createCoupon({ code, amount, businessId, expiryDays }, req.user);
   res.status(201).json(new ApiResponse(201, { coupon }, "Coupon created"));
 });

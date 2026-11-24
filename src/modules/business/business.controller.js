@@ -38,19 +38,21 @@ const publicBusiness = (business, viewerId, manage = false) => {
 export const create = asyncHandler(async (req, res) => {
   const category = resolveOwnerHubCategory(req.user, req.body.category);
   if (!category) throw new ApiError(403, "Ask the admin to enable this business category.");
-  const business = await businessService.createBusiness(req.user._id, { ...req.body, category });
+  const business = await businessService.createBusiness(req.user._id, { ...req.body, category }, req.user.role);
   const io = req.app.get("io");
-  if (io) {
+  if (io && business.isActive) {
     io.emit("service:created", { businessId: business._id, business: publicBusiness(business) });
   }
   await notifyUser({ recipient: req.user._id, type: 'hub', title: 'Hub registered',
-    message: `${business.name} has been added to your account.`, href: `/business/${business._id}`,
+    message: business.isActive ? `${business.name} has been added to your account.` : `${business.name} is awaiting admin approval.`,
+    href: business.isActive ? `/business/${business._id}` : '/profile',
     eventKey: `hub:registered:${business._id}` }, io);
   res.status(201).json(new ApiResponse(201, { business }, "Business created"));
 });
 
 export const getAll = asyncHandler(async (req, res) => {
-  const { search, category, location, onlyOpen, lat, lng, radius, onlyWithinRadius } = req.query;
+  const { search, category, location, onlyOpen, lat, lng, radius, onlyWithinRadius, page = "1" } = req.query;
+  if (typeof page !== "string" || !/^[1-9]\d*$/.test(page)) throw new ApiError(400, "Invalid discovery page");
   const businesses = await businessService.getAllBusinesses({
     testOwner: req.user?.role === "admin" ? req.user._id : undefined,
     search,
@@ -61,9 +63,14 @@ export const getAll = asyncHandler(async (req, res) => {
     lng,
     radius,
     onlyWithinRadius,
+    page: Number(page),
   });
+  const size = businessService.DISCOVERY_PAGE_SIZE;
   res.set("Cache-Control", "private, no-store");
-  res.json(new ApiResponse(200, { businesses: businesses.map(business => publicBusiness(business, req.user?._id)) }));
+  res.json(new ApiResponse(200, {
+    businesses: businesses.slice(0, size).map(business => publicBusiness(business, req.user?._id)),
+    nextPage: businesses.length > size ? Number(page) + 1 : null,
+  }));
 });
 
 export const getOne = asyncHandler(async (req, res) => {
@@ -71,9 +78,12 @@ export const getOne = asyncHandler(async (req, res) => {
   assertTestVenueAccess(business, req.user?._id);
   res.set("Cache-Control", "private, no-store");
   const viewer = req.user;
+  const isOwner = viewer?.role === "owner" && String(business.owner?._id || business.owner) === String(viewer._id);
+  if (business.approvalStatus === "pending" && !isOwner && viewer?.role !== "admin") {
+    throw new ApiError(404, "Clinic not found");
+  }
   const canManage = viewer?.role === "admin" || (
-    viewer?.role === "owner" && business.approvalStatus === "approved" &&
-    String(business.owner?._id || business.owner) === String(viewer._id) && canAccessOwnerCategory(viewer, business)
+    isOwner && business.approvalStatus === "approved" && canAccessOwnerCategory(viewer, business)
   );
   res.json(new ApiResponse(200, { business: publicBusiness(business, viewer?._id, canManage) }));
 });

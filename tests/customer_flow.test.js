@@ -81,6 +81,9 @@ test("Customer Flow - Multi-Service & Doctor Auto-Fallback Assignment", async (t
   const User = (await import("../src/modules/auth/auth.model.js")).default;
   const mongoose = (await import("mongoose")).default;
 
+  t.mock.method(mongoose.connection, "transaction", async callback => callback({}));
+  t.mock.method(Business, "updateOne", async () => ({ matchedCount: 1 }));
+
   const businessId = new mongoose.Types.ObjectId();
   const userId = new mongoose.Types.ObjectId();
 
@@ -113,12 +116,12 @@ test("Customer Flow - Multi-Service & Doctor Auto-Fallback Assignment", async (t
 
     const origBookingCreate = Booking.create;
     let createdPayload = null;
-    Booking.create = async (payload) => {
+    Booking.create = async ([payload]) => {
       createdPayload = payload;
-      return {
+      return [{
         ...payload,
         populate: async () => payload,
-      };
+      }];
     };
 
     try {
@@ -182,12 +185,12 @@ test("Customer Flow - Multi-Service & Doctor Auto-Fallback Assignment", async (t
 
     const origBookingCreate = Booking.create;
     let createdPayload = null;
-    Booking.create = async (payload) => {
+    Booking.create = async ([payload]) => {
       createdPayload = payload;
-      return {
+      return [{
         ...payload,
         populate: async () => payload,
-      };
+      }];
     };
 
     try {
@@ -243,12 +246,12 @@ test("Customer Flow - Multi-Service & Doctor Auto-Fallback Assignment", async (t
 
     const origBookingCreate = Booking.create;
     let createdPayload = null;
-    Booking.create = async (payload) => {
+    Booking.create = async ([payload]) => {
       createdPayload = payload;
-      return {
+      return [{
         ...payload,
         populate: async () => payload,
-      };
+      }];
     };
 
     try {

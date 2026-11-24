@@ -1,6 +1,20 @@
 import api from "./axios.js";
 
-export const getAllBusinesses = (params = {}) => api.get("/businesses", { params });
+export const getAllBusinesses = async (params = {}) => {
+  const response = await api.get("/businesses", { params });
+  if (params.page !== undefined || !response.data.data.nextPage) return response;
+
+  const businesses = new Map(response.data.data.businesses.map(business => [business._id, business]));
+  let page = response.data.data.nextPage;
+  while (page) {
+    const next = await api.get("/businesses", { params: { ...params, page } });
+    for (const business of next.data.data.businesses) businesses.set(business._id, business);
+    page = next.data.data.nextPage;
+  }
+  response.data.data.businesses = [...businesses.values()];
+  response.data.data.nextPage = null;
+  return response;
+};
 export const getMyBusinesses  = () => api.get("/businesses/mine");
 export const getBusiness      = (id) => api.get(`/businesses/${id}`);
 export const createBusiness   = (data) => api.post("/businesses", data);

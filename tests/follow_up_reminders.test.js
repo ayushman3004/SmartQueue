@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { deliverDueFollowUps, scheduleFollowUp } from '../src/modules/doctor/follow-up-reminder.service.js';
 import Prescription from '../src/modules/doctor/prescription.model.js';
+import { encryptPrescription } from '../src/modules/doctor/prescription-encryption.js';
 import User from '../src/modules/auth/auth.model.js';
 import Notification from '../src/modules/notification/notification.model.js';
 
@@ -16,8 +18,15 @@ test('follow-up reminders use the previous morning in IST or run immediately if 
 
 test('competing workers send one private inbox reminder and use WhatsApp only for the verified opted-in number', async t => {
   const due = new Date('2026-11-23T09:00:00Z');
+  const originalKey = process.env.PRESCRIPTION_ENCRYPTION_KEY;
+  process.env.PRESCRIPTION_ENCRYPTION_KEY = randomBytes(32).toString('hex');
+  t.after(() => {
+    if (originalKey === undefined) delete process.env.PRESCRIPTION_ENCRYPTION_KEY;
+    else process.env.PRESCRIPTION_ENCRYPTION_KEY = originalKey;
+  });
+  const record = { _id: 'first', patient: 'opt-in', doctor: 'doctor', booking: 'booking', business: 'clinic' };
   const reminders = [
-    { _id: 'first', patient: 'opt-in', followUpDate: '2026-11-24' },
+    { ...record, encryptedClinicalData: encryptPrescription(record, { followUpDate: '2026-11-24' }) },
     { _id: 'second', patient: 'changed-phone', followUpDate: '2026-11-24' },
   ];
   const pending = new Set(reminders.map(reminder => reminder._id));

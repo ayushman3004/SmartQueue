@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
 import { getBookingDateRange, getBookingDateError, getBusinessDate } from '../src/utils/bookingDates.js';
 import Business from '../src/modules/business/business.model.js';
 import Booking from '../src/booking/booking.model.js';
@@ -73,7 +74,9 @@ test('Slots remain available and bookings succeed through the entire last allowe
   assert.ok(result.slots.length > 0);
   t.mock.method(Booking, 'findOne', async () => null);
   t.mock.method(Booking, 'countDocuments', async () => 0);
-  t.mock.method(Booking, 'create', async (data) => ({ ...data, populate: async () => data }));
+  t.mock.method(mongoose.connection, 'transaction', async callback => callback({}));
+  t.mock.method(Business, 'updateOne', async () => ({ matchedCount: 1 }));
+  t.mock.method(Booking, 'create', async ([data]) => [{ ...data, populate: async () => data }]);
   const startTime = '2026-11-25T17:00:00+05:30';
   const created = await createBooking({ businessId: 'venue', userId: 'user', startTime });
   assert.equal(created.booking.startTime.toISOString(), new Date(startTime).toISOString());

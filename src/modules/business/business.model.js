@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const businessSchema = new mongoose.Schema(
   {
     adminTestKind: { type: String, enum: ["clinic"] },
+    bookingRevision: { type: Number, select: false },
     name: {
       type: String,
       required: [true, "Business name is required"],

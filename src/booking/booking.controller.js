@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { notifyUser } from '../modules/notification/notification.service.js';
 import * as bookingService from "./booking.service.js";
 import asyncHandler from "../../utils/asyncHandler.js";
@@ -26,7 +27,9 @@ export const book = asyncHandler(async (req, res) => {
     guestCount,
     paymentMethod,
   } = req.body;
-  if (!businessId || !startTime) throw new ApiError(400, "businessId and startTime are required");
+  if (!mongoose.isObjectIdOrHexString(businessId) || !startTime) {
+    throw new ApiError(400, "A valid clinic ID and startTime are required");
+  }
   if (isNaN(new Date(startTime).getTime())) throw new ApiError(400, "Invalid startTime format");
 
   const io = req.app.get("io");

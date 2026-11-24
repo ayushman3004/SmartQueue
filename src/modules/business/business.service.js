@@ -23,9 +23,24 @@ export const selectBusinessCategory = async (id, ownerId, category) => {
   return selected;
 };
 
-export const createBusiness = async (ownerId, data) => {
-  const payload = { ...data, owner: ownerId, categorySelectedAt: new Date() };
-  delete payload.adminTestKind;
+const editableBusinessFields = [
+  "name", "description", "category", "address", "phone", "location",
+  "coordinates", "timings", "email", "coverImage", "locationDetails",
+  "operatingHours", "averageServiceTime", "logo", "serviceTypes", "services",
+  "staff", "bookingSettings", "queueSettings", "basePrice", "pricing",
+];
+
+const editableBusinessData = (data) => Object.fromEntries(
+  editableBusinessFields.filter(field => Object.hasOwn(data, field)).map(field => [field, data[field]])
+);
+
+export const createBusiness = async (ownerId, data, role) => {
+  const payload = {
+    ...editableBusinessData(data),
+    owner: ownerId,
+    categorySelectedAt: new Date(),
+    ...(role !== "admin" && { approvalStatus: "pending", isActive: false, isOpen: false }),
+  };
   if (Array.isArray(payload.services) && payload.services.length > 0) {
     payload.services = payload.services
       .map(s => ({
@@ -75,6 +90,50 @@ export const calculateHaversineKm = (lat1, lon1, lat2, lon2) => {
   return Number((R * c).toFixed(2));
 };
 
+function literalSearch(value) {
+  if (value === undefined) return "";
+  if (typeof value !== "string" || value.length > 120) {
+    throw new ApiError(400, "Search terms must be text up to 120 characters");
+  }
+  return value.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function distanceExpression(lat, lng) {
+  const latRadians = lat * Math.PI / 180;
+  const lngRadians = lng * Math.PI / 180;
+  const radians = field => ({ $degreesToRadians: field });
+  const sineSquared = expression => ({ $pow: [{ $sin: expression }, 2] });
+  const halfDifference = (field, origin) => ({ $divide: [{ $subtract: [radians(field), origin] }, 2] });
+  const haversine = {
+    $add: [
+      sineSquared(halfDifference("$coordinates.lat", latRadians)),
+      {
+        $multiply: [
+          Math.cos(latRadians),
+          { $cos: radians("$coordinates.lat") },
+          sineSquared(halfDifference("$coordinates.lng", lngRadians)),
+        ],
+      },
+    ],
+  };
+  return {
+    $cond: [
+      {
+        $and: [
+          { $isNumber: "$coordinates.lat" }, { $isNumber: "$coordinates.lng" },
+          { $gte: ["$coordinates.lat", -90] }, { $lte: ["$coordinates.lat", 90] },
+          { $gte: ["$coordinates.lng", -180] }, { $lte: ["$coordinates.lng", 180] },
+          { $ne: ["$coordinates.lat", 0] }, { $ne: ["$coordinates.lng", 0] },
+        ],
+      },
+      { $round: [{ $multiply: [12742, { $asin: { $sqrt: { $min: [1, { $max: [0, haversine] }] } } }] }, 2] },
+      null,
+    ],
+  };
+}
+
+export const DISCOVERY_PAGE_SIZE = 50;
+
 export const getAllBusinesses = async (filters = {}) => {
   const match = filters.testOwner
     ? { $and: [{ $or: [{ adminTestKind: { $exists: false } }, { owner: filters.testOwner }] }] }
@@ -82,6 +141,7 @@ export const getAllBusinesses = async (filters = {}) => {
 
   if (!filters.includeAll) {
     match.isActive = true;
+    match.approvalStatus = { $nin: ["pending", "suspended"] };
     if (filters.onlyOpen !== false) {
       match.isOpen = true;
     }
@@ -92,43 +152,52 @@ export const getAllBusinesses = async (filters = {}) => {
   if (filters.category && filters.category !== "all" && !normalizeServiceCategory(filters.category)) return [];
   match.category = { $in: serviceCategories.clinic };
 
-  const hasCoords =
-    filters.lat !== undefined &&
-    filters.lat !== null &&
-    filters.lat !== "" &&
-    filters.lng !== undefined &&
-    filters.lng !== null &&
-    filters.lng !== "";
-
-  const userLat = hasCoords ? Number(filters.lat) : null;
-  const userLng = hasCoords ? Number(filters.lng) : null;
+  const location = literalSearch(filters.location);
+  const search = literalSearch(filters.search);
+  const userLat = Number(filters.lat);
+  const userLng = Number(filters.lng);
   const isValidUserCoords =
-    userLat !== null &&
-    userLng !== null &&
-    !isNaN(userLat) &&
-    !isNaN(userLng) &&
+    Number.isFinite(userLat) && Math.abs(userLat) <= 90 &&
+    Number.isFinite(userLng) && Math.abs(userLng) <= 180 &&
+    filters.lat !== "" && filters.lng !== "" && filters.lat != null && filters.lng != null &&
     !(userLat === 0 && userLng === 0);
 
-  if (filters.location && !isValidUserCoords) {
-    match.$or = [
-      { location: { $regex: filters.location, $options: "i" } },
-      { address: { $regex: filters.location, $options: "i" } },
-    ];
+  if (location && !isValidUserCoords) {
+    match.$or = ["location", "address"].map(field => ({ [field]: { $regex: location, $options: "i" } }));
+  }
+  if (search) {
+    const searchFilter = ["name", "description", "category", "location", "address"]
+      .map(field => ({ [field]: { $regex: search, $options: "i" } }));
+    (match.$and ??= []).push({ $or: searchFilter });
   }
 
-  if (filters.search) {
-    const searchRegex = { $regex: filters.search, $options: "i" };
-    match.$or = [
-      { name: searchRegex },
-      { description: searchRegex },
-      { category: searchRegex },
-      { location: searchRegex },
-      { address: searchRegex },
-    ];
+  const page = filters.page ?? 1;
+  const skip = (page - 1) * DISCOVERY_PAGE_SIZE;
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(skip)) {
+    throw new ApiError(400, "Invalid discovery page");
   }
+  const discovery = [{ $match: match }];
+  if (isValidUserCoords) {
+    discovery.push({ $set: { distanceKm: distanceExpression(userLat, userLng) } });
+    if (filters.onlyWithinRadius !== false && filters.onlyWithinRadius !== "false") {
+      const radius = Number(filters.radius);
+      const nearby = { distanceKm: { $gte: 0, $lte: Number.isFinite(radius) && radius > 0 ? radius : 30 } };
+      discovery.push({
+        $match: filters.testOwner
+          ? { $or: [nearby, { adminTestKind: { $exists: true }, owner: filters.testOwner }] }
+          : nearby,
+      });
+    }
+    discovery.push({ $set: { distanceUnknown: { $eq: ["$distanceKm", null] } } });
+  }
+  discovery.push(
+    { $sort: isValidUserCoords ? { distanceUnknown: 1, distanceKm: 1, _id: 1 } : { _id: 1 } },
+    { $skip: skip },
+    { $limit: DISCOVERY_PAGE_SIZE + 1 },
+  );
 
   const businesses = await Business.aggregate([
-    { $match: match },
+    ...discovery,
     {
       $lookup: {
         from: "queues",
@@ -165,6 +234,7 @@ export const getAllBusinesses = async (filters = {}) => {
         from: "users",
         localField: "owner",
         foreignField: "_id",
+        pipeline: [{ $project: { name: 1, avatar: 1, subscription: 1, role: 1 } }],
         as: "owner",
       },
     },
@@ -178,67 +248,29 @@ export const getAllBusinesses = async (filters = {}) => {
         from: "reviews",
         localField: "_id",
         foreignField: "businessId",
-        as: "reviewsList",
+        pipeline: [{ $group: { _id: null, count: { $sum: 1 }, average: { $avg: "$rating" } } }],
+        as: "reviewStats",
       },
     },
     {
       $addFields: {
-        reviewCount: { $size: "$reviewsList" },
-        totalReviews: { $size: "$reviewsList" },
-        averageRating: {
-          $cond: [
-            { $gt: [{ $size: "$reviewsList" }, 0] },
-            { $round: [{ $avg: "$reviewsList.rating" }, 1] },
-            0,
-          ],
-        },
+        reviewCount: { $ifNull: [{ $arrayElemAt: ["$reviewStats.count", 0] }, 0] },
+        totalReviews: { $ifNull: [{ $arrayElemAt: ["$reviewStats.count", 0] }, 0] },
+        averageRating: { $round: [{ $ifNull: [{ $arrayElemAt: ["$reviewStats.average", 0] }, 0] }, 1] },
       },
     },
     {
       $project: {
         queue: 0,
         queueData: 0,
-        reviewsList: 0,
-        "owner.password": 0,
-        "owner.ownerAccess": 0,
-        "owner.tokenVersion": 0,
-        "owner.__v": 0,
+        reviewStats: 0,
+        distanceUnknown: 0,
+        bookingRevision: 0,
       },
     },
-  ]);
+  ], { maxTimeMS: 2500 });
 
-  await enrichStaffAvailability(businesses);
-
-  if (isValidUserCoords) {
-    for (const b of businesses) {
-      if (b.coordinates?.lat && b.coordinates?.lng) {
-        b.distanceKm = calculateHaversineKm(userLat, userLng, b.coordinates.lat, b.coordinates.lng);
-      } else {
-        b.distanceKm = null;
-      }
-    }
-
-    const maxRadius = Number(filters.radius) > 0 ? Number(filters.radius) : 30;
-    const filterRadius = filters.onlyWithinRadius !== false && filters.onlyWithinRadius !== "false";
-
-    let result = businesses;
-    if (filterRadius) {
-      // Exclude venues that have no valid coordinates or exceed the maximum search radius
-      result = result.filter((b) =>
-        (b.adminTestKind && filters.testOwner && String(b.owner?._id || b.owner) === String(filters.testOwner)) ||
-        (b.distanceKm !== null && b.distanceKm <= maxRadius));
-    }
-
-    // Sort nearest first (lowest distanceKm first)
-    result.sort((a, b) => {
-      if (a.distanceKm === null && b.distanceKm === null) return 0;
-      if (a.distanceKm === null) return 1;
-      if (b.distanceKm === null) return -1;
-      return a.distanceKm - b.distanceKm;
-    });
-
-    return result;
-  }
+  await enrichStaffAvailability(businesses.slice(0, DISCOVERY_PAGE_SIZE));
 
   return businesses;
 };
@@ -261,7 +293,7 @@ export const enrichStaffAvailability = async (businesses) => {
         status: { $in: ["confirmed", "serving"] },
         startTime: { $lte: now },
         endTime: { $gte: now },
-      }).select("businessId assignedStaff serviceType startTime endTime");
+      }, null, { maxTimeMS: 2500 }).select("businessId assignedStaff serviceType startTime endTime");
     }
   } catch {
     // Non-critical fallback
@@ -376,17 +408,9 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
   const b = await Business.findOne(query);
   if (!normalizeServiceCategory(b?.category)) throw new ApiError(403, "Clinic not found or unauthorized");
 
-  // Prevent overwriting protected fields
-  const { owner: _owner, _id: _idField, __v: _version, createdAt: _createdAt, updatedAt: _updatedAt, ...safeData } = data;
-
-  delete safeData.adminTestKind;
-  if (userRole !== "admin") {
-    delete safeData.categorySelectedAt;
-    if (safeData.category && safeData.category !== b.category) throw new ApiError(403, "Ask the admin to change your business category.");
-    delete safeData.isActive;
-    delete safeData.approvalStatus;
-    delete safeData.subscription;
-    delete safeData.onboarding;
+  const safeData = editableBusinessData(data);
+  if (userRole !== "admin" && safeData.category && safeData.category !== b.category) {
+    throw new ApiError(403, "Ask the admin to change your business category.");
   }
 
   if (safeData.category && !normalizeServiceCategory(safeData.category)) throw new ApiError(400, "Only clinics are supported.");
@@ -430,7 +454,7 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
     validateDoctorRoster(safeData.staff);
   }
 
-  Object.assign(b, safeData);
+  b.set(safeData);
   return await b.save();
 };
 

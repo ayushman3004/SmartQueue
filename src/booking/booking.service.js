@@ -21,6 +21,9 @@ const FLEX_WINDOW = 10; // ±10 minutes flexibility
 export const getAvailableSlots = async (businessId, date) => {
   const business = await Business.findById(businessId);
   if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
+  if (business.isActive === false || ["pending", "suspended"].includes(business.approvalStatus)) {
+    throw new ApiError(403, "This clinic is not accepting appointments.");
+  }
 
   const dateError = getBookingDateError(date, business);
   if (dateError) {
@@ -180,107 +183,7 @@ export const createBooking = async ({
   const reqStart = new Date(startTime);
   const reqEnd = new Date(reqStart.getTime() + duration * 60000);
 
-  // 2. Check duplicate booking for this user
-  const duplicate = await Booking.findOne({
-    businessId,
-    userId,
-    startTime: reqStart,
-    status: { $nin: ["cancelled", "refunded"] },
-  });
-  if (duplicate) throw new ApiError(409, "You already have an active booking at this time.");
-
-  // 3. Staff Assignment (Doctor) with auto-fallback
-  const roster = Array.isArray(business.staff) ? business.staff : [];
-  const registeredDoctors = roster.filter(staff => staff.email && staff.doctorId);
-  const staffList = registeredDoctors.length ? registeredDoctors : roster;
-  const staffNameRequested = typeof preferredStaff === "string" ? preferredStaff.trim() : preferredStaff?.name?.trim();
-
-  let assignedStaff = null;
-
-  // Check if requested specific doctor is available
-  if (staffNameRequested && staffNameRequested.toLowerCase() !== "any") {
-    const candidate = staffList.find(
-      (s) => s.name.toLowerCase() === staffNameRequested.toLowerCase() && s.isAvailable !== false
-    );
-    if (candidate) {
-      const conflict = await Booking.findOne({
-        businessId,
-        status: { $nin: ["cancelled", "refunded"] },
-        "assignedStaff.name": candidate.name,
-        startTime: { $lt: reqEnd },
-        endTime: { $gt: reqStart },
-      });
-      if (!conflict) {
-        assignedStaff = {
-          staffId: candidate._id,
-          name: candidate.name,
-          role: candidate.role || "Doctor / Specialist",
-          specialties: candidate.specialties || "",
-          autoAssigned: false,
-        };
-      }
-    }
-  }
-
-  if (!assignedStaff) {
-    const activeDocs = staffList.filter((s) => s.isAvailable !== false);
-    const freeDocs = [];
-
-    for (const doc of activeDocs) {
-      const busy = await Booking.findOne({
-        businessId,
-        status: { $nin: ["cancelled", "refunded"] },
-        "assignedStaff.name": doc.name,
-        startTime: { $lt: reqEnd },
-        endTime: { $gt: reqStart },
-      });
-      if (!busy) {
-        const text = `${doc.role || ""} ${doc.specialties || ""} ${doc.name || ""}`.toLowerCase();
-        const isGP =
-          text.includes("general") ||
-          text.includes("physician") ||
-          text.includes("primary") ||
-          text.includes("family") ||
-          text.includes("mbbs") ||
-          text.includes("medicine");
-        freeDocs.push({ doc, isGP });
-      }
-    }
-
-    const chosen = freeDocs.find((d) => d.isGP)?.doc || freeDocs[0]?.doc;
-    if (chosen) {
-      assignedStaff = {
-        staffId: chosen._id,
-        name: chosen.name,
-        role: chosen.role || "General Physician",
-        specialties: chosen.specialties || "General Medicine & Primary Care",
-        autoAssigned: true,
-      };
-    } else {
-      assignedStaff = {
-        name: "Dr. On-Duty (General Physician)",
-        role: "General Physician",
-        specialties: "General Medicine & Primary Care",
-        autoAssigned: true,
-      };
-    }
-  }
-
-  // 4. Overall capacity check
-  const activeStaffCount = staffList.filter((s) => s.isAvailable !== false).length;
-  const maxCapacity = Math.max(activeStaffCount || 1, business.maxCapacity || 1);
-  const overlappingCount = await Booking.countDocuments({
-    businessId,
-    status: { $nin: ["cancelled", "refunded"] },
-    startTime: { $lt: reqEnd },
-    endTime: { $gt: reqStart },
-  });
-
-  if (overlappingCount >= maxCapacity) {
-    throw new ApiError(409, "All practitioners are fully booked for this time slot. Please select another slot.");
-  }
-
-  // 5. Apply Coupon if provided
+  // Apply an optional coupon before opening the booking transaction
   let discount = 0;
   if (couponCode) {
     try {
@@ -295,7 +198,7 @@ export const createBooking = async ({
 
   const finalAmount = Math.max(0, totalCost - discount);
 
-  // 6. Payment Processing: Pay at Counter only (All customer bookings are settled at counter)
+  // Customer bookings are settled at the counter.
   const selectedPaymentMethod = "counter";
   const paymentStatus = "pending";
   const bookingStatus = "confirmed";
@@ -303,26 +206,139 @@ export const createBooking = async ({
 
   const combinedServiceNames = selectedServicesList.map((s) => s.name).join(" + ");
 
-  const booking = await Booking.create({
-    businessId,
-    userId,
-    startTime: reqStart,
-    endTime: reqEnd,
-    duration,
-    serviceType: combinedServiceNames,
-    services: selectedServicesList,
-    assignedStaff,
-    isGroupBooking: !!isGroupBooking,
-    guestCount: guestCount || 1,
-    notes,
-    pricingLabel: pricingLabel || combinedServiceNames,
-    amount: finalAmount,
-    paidAmount,
-    paymentMethod: selectedPaymentMethod,
-    paymentStatus,
-    status: bookingStatus,
+  const booking = await mongoose.connection.transaction(async (session) => {
+    // Serialize reservations for this clinic. A conflicting transaction retries
+    // with a fresh snapshot before it can check capacity or insert a booking.
+    const lock = await Business.updateOne(
+      { _id: businessId, isActive: { $ne: false }, approvalStatus: { $nin: ["pending", "suspended"] } },
+      { $inc: { bookingRevision: 1 } },
+      { session, timestamps: false },
+    );
+    if (!lock.matchedCount) throw new ApiError(403, "This clinic is not accepting appointments.");
+
+    // Check duplicate booking for this user
+    const duplicate = await Booking.findOne({
+      businessId,
+      userId,
+      startTime: reqStart,
+      status: { $nin: ["cancelled", "refunded"] },
+    }, null, { session });
+    if (duplicate) throw new ApiError(409, "You already have an active booking at this time.");
+
+    // Assign an available doctor
+    const roster = Array.isArray(business.staff) ? business.staff : [];
+    const registeredDoctors = roster.filter(staff => staff.email && staff.doctorId);
+    const staffList = registeredDoctors.length ? registeredDoctors : roster;
+    const staffNameRequested = typeof preferredStaff === "string" ? preferredStaff.trim() : preferredStaff?.name?.trim();
+
+    let assignedStaff = null;
+
+    // Check if requested specific doctor is available
+    if (staffNameRequested && staffNameRequested.toLowerCase() !== "any") {
+      const candidate = staffList.find(
+        (s) => s.name.toLowerCase() === staffNameRequested.toLowerCase() && s.isAvailable !== false
+      );
+      if (candidate) {
+        const conflict = await Booking.findOne({
+          businessId,
+          status: { $nin: ["cancelled", "refunded"] },
+          "assignedStaff.name": candidate.name,
+          startTime: { $lt: reqEnd },
+          endTime: { $gt: reqStart },
+        }, null, { session });
+        if (!conflict) {
+          assignedStaff = {
+            staffId: candidate._id,
+            name: candidate.name,
+            role: candidate.role || "Doctor / Specialist",
+            specialties: candidate.specialties || "",
+            autoAssigned: false,
+          };
+        }
+      }
+    }
+
+    if (!assignedStaff) {
+      const activeDocs = staffList.filter((s) => s.isAvailable !== false);
+      const freeDocs = [];
+
+      for (const doc of activeDocs) {
+        const busy = await Booking.findOne({
+          businessId,
+          status: { $nin: ["cancelled", "refunded"] },
+          "assignedStaff.name": doc.name,
+          startTime: { $lt: reqEnd },
+          endTime: { $gt: reqStart },
+        }, null, { session });
+        if (!busy) {
+          const text = `${doc.role || ""} ${doc.specialties || ""} ${doc.name || ""}`.toLowerCase();
+          const isGP =
+            text.includes("general") ||
+            text.includes("physician") ||
+            text.includes("primary") ||
+            text.includes("family") ||
+            text.includes("mbbs") ||
+            text.includes("medicine");
+          freeDocs.push({ doc, isGP });
+        }
+      }
+
+      const chosen = freeDocs.find((d) => d.isGP)?.doc || freeDocs[0]?.doc;
+      if (chosen) {
+        assignedStaff = {
+          staffId: chosen._id,
+          name: chosen.name,
+          role: chosen.role || "General Physician",
+          specialties: chosen.specialties || "General Medicine & Primary Care",
+          autoAssigned: true,
+        };
+      } else {
+        assignedStaff = {
+          name: "Dr. On-Duty (General Physician)",
+          role: "General Physician",
+          specialties: "General Medicine & Primary Care",
+          autoAssigned: true,
+        };
+      }
+    }
+
+    // Check overall capacity
+    const activeStaffCount = staffList.filter((s) => s.isAvailable !== false).length;
+    const maxCapacity = Math.max(activeStaffCount || 1, business.maxCapacity || 1);
+    const overlappingCount = await Booking.countDocuments({
+      businessId,
+      status: { $nin: ["cancelled", "refunded"] },
+      startTime: { $lt: reqEnd },
+      endTime: { $gt: reqStart },
+    }, { session });
+
+    if (overlappingCount >= maxCapacity) {
+      throw new ApiError(409, "All practitioners are fully booked for this time slot. Please select another slot.");
+    }
+
+    const [booking] = await Booking.create([{
+      businessId,
+      userId,
+      startTime: reqStart,
+      endTime: reqEnd,
+      duration,
+      serviceType: combinedServiceNames,
+      services: selectedServicesList,
+      assignedStaff,
+      isGroupBooking: !!isGroupBooking,
+      guestCount: guestCount || 1,
+      notes,
+      pricingLabel: pricingLabel || combinedServiceNames,
+      amount: finalAmount,
+      paidAmount,
+      paymentMethod: selectedPaymentMethod,
+      paymentStatus,
+      status: bookingStatus,
+    }], { session });
+    return booking;
   });
 
+  booking.$session?.(null);
   if (io && bookingStatus === "confirmed") {
     io.to(`business:${businessId}`).emit("bookings:updated");
     io.to(`user:${userId}`).emit("booking:confirmed", { booking });
@@ -330,7 +346,7 @@ export const createBooking = async ({
 
   return {
     booking: await booking.populate("userId", "name email avatar"),
-    assignedStaff,
+    assignedStaff: booking.assignedStaff,
     adjusted: false,
     finalAmount,
     paymentMethod: selectedPaymentMethod,

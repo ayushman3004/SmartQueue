@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import test from 'node:test';
 import express from 'express';
 import jwt from 'jsonwebtoken';
@@ -9,6 +10,7 @@ import Queue from '../src/queue/queue.model.js';
 import Booking from '../src/booking/booking.model.js';
 import Prescription from '../src/modules/doctor/prescription.model.js';
 import { requireAssigned } from '../src/modules/doctor/doctor-access.js';
+import { readPrescription } from '../src/modules/doctor/prescription-encryption.js';
 
 const clinicId = '111111111111111111111111';
 const doctorId = '222222222222222222222222';
@@ -53,8 +55,17 @@ test('prescriptions are saved for the assigned patient and readable only by that
   let activeVisit = visit;
   t.mock.method(Booking, 'findById', () => ({ populate: async () => activeVisit }));
   let saved;
-  t.mock.method(Prescription, 'create', async data => { saved = { ...data, _id: rxId, createdAt: new Date() }; return { toObject: () => ({ ...saved }) }; });
-  function matches(filter) { return saved && (!filter.$or || filter.$or.some(clause => clause.doctor === saved.doctor || clause.patient === saved.patient)) && (!filter.patient || filter.patient === saved.patient) && (!filter.doctor || filter.doctor === saved.doctor); }
+  t.mock.method(Prescription, 'create', data => new Prescription({ ...data, _id: rxId }).save());
+  t.mock.method(Prescription.collection, 'insertOne', async document => {
+    saved = document;
+    return { insertedId: document._id };
+  });
+  function matches(filter) {
+    return saved &&
+      (!filter.$or || filter.$or.some(clause => clause.doctor === String(saved.doctor) || clause.patient === String(saved.patient))) &&
+      (!filter.patient || filter.patient === String(saved.patient)) &&
+      (!filter.doctor || filter.doctor === String(saved.doctor));
+  }
   t.mock.method(Prescription, 'find', filter => ({ sort: () => ({ select: async () => matches(filter) ? [saved] : [] }) }));
   t.mock.method(Prescription, 'findOne', async filter => matches(filter) ? saved : null);
   const events = [];
@@ -80,16 +91,36 @@ test('prescriptions are saved for the assigned patient and readable only by that
   activeVisit = { ...visit, assignedStaff: { staffId: otherDoctorId, name: staff.name } };
   assert.equal((await request(doctorId, '/prescriptions', input)).status, 403);
   activeVisit = visit;
+  const originalEncryptionKey = process.env.PRESCRIPTION_ENCRYPTION_KEY;
+  t.after(() => {
+    if (originalEncryptionKey === undefined) delete process.env.PRESCRIPTION_ENCRYPTION_KEY;
+    else process.env.PRESCRIPTION_ENCRYPTION_KEY = originalEncryptionKey;
+  });
+  delete process.env.PRESCRIPTION_ENCRYPTION_KEY;
+  assert.equal((await request(doctorId, '/prescriptions', input)).status, 503);
+  assert.equal(saved, undefined);
+  process.env.PRESCRIPTION_ENCRYPTION_KEY = randomBytes(32).toString('hex');
   const followUpDate = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
   const created = await request(doctorId, '/prescriptions', { ...input, followUpDate });
   assert.equal(created.status, 201);
   const prescription = (await created.json()).data.prescription;
   assert.equal(prescription.followUpDate, followUpDate);
+  assert.equal(prescription.diagnosis, input.diagnosis);
+  assert.equal(prescription.encryptedClinicalData, undefined);
   assert.equal(prescription.reminderNextRunAt, undefined);
   assert.ok(saved.reminderNextRunAt instanceof Date);
-  assert.equal(saved.patient, patientId);
-  assert.equal(saved.doctor, doctorId);
-  assert.equal((await (await request(patientId, '/prescriptions')).json()).data.prescriptions.length, 1);
+  assert.equal(String(saved.patient), patientId);
+  assert.equal(String(saved.doctor), doctorId);
+  assert.match(saved.encryptedClinicalData, /^v1\./);
+  for (const field of ['diagnosis', 'advice', 'followUpDate', 'patientName', 'doctorName', 'doctorId', 'clinicName']) {
+    assert.equal(saved[field], undefined);
+  }
+  assert.throws(() => readPrescription({ ...saved, _id: bookingId }), { statusCode: 500 });
+  assert.throws(() => readPrescription({ ...saved, patient: otherDoctorId }), { statusCode: 500 });
+  assert.equal(readPrescription({ _id: bookingId, diagnosis: 'Legacy data' }).diagnosis, 'Legacy data');
+  const records = (await (await request(patientId, '/prescriptions')).json()).data.prescriptions;
+  assert.equal(records.length, 1);
+  assert.equal(records[0].diagnosis, input.diagnosis);
   assert.equal((await (await request('stranger', '/prescriptions')).json()).data.prescriptions.length, 0);
   const path = `/prescriptions/${rxId}/pdf`;
   assert.equal((await request('stranger', path)).status, 404);
