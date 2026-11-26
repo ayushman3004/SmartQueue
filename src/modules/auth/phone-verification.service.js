@@ -83,7 +83,7 @@ export function createPhoneVerification({ config, store, provider, users = User,
   }
 
   return {
-    send(input) { return sendChallenge(details(input), input.ip); },
+    async send(input) { return sendChallenge(details(input), input.ip); },
     async sendLogin(input) {
       const { user, scope } = await loginScope(input.phone);
       return sendChallenge(scope, input.ip, Boolean(user));
