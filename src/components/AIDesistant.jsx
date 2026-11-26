@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from '../api/axios'
 
+const assistantRobot = '/serveq-assistant-robot.png'
+
 export default function AIDesistant() {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([{ role: 'bot', text: 'Hello! I am your serveQ assistant. How can I help you book today?' }])
@@ -45,10 +47,8 @@ export default function AIDesistant() {
               {/* Header */}
               <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50/80 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-950 text-teal-400 flex items-center justify-center shadow-sm">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
+                  <div className="w-10 h-10 shrink-0 rounded-xl bg-[#e5efe3] flex items-center justify-center ring-1 ring-[#d0e0d0]">
+                    <img src={assistantRobot} alt="" width="36" height="36" className="object-contain" />
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-zinc-950 tracking-tight">serveQ Assistant</h4>
@@ -128,14 +128,10 @@ export default function AIDesistant() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative w-14 h-14 rounded-full bg-zinc-950 text-white shadow-xl shadow-zinc-950/25 flex items-center justify-center border border-zinc-800 overflow-hidden group"
+        className="relative w-14 h-14 rounded-full bg-[#e5efe3] shadow-lg shadow-[#17392c]/25 flex items-center justify-center border border-[#a9c7ae] overflow-hidden"
         aria-label="Open AI Assistant"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        <svg className="w-6 h-6 text-white relative z-10 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-        </svg>
-        <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-teal-400 animate-radar" />
+        <img src={assistantRobot} alt="" width="50" height="50" className="object-contain pointer-events-none" />
       </motion.button>
     </div>
   )
