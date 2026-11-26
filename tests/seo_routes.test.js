@@ -31,7 +31,9 @@ test('Vercel and Nginx enforce matching browser security policies', () => {
   const header = key => headers.find(entry => entry.key === key)?.value
   const policy = header('Content-Security-Policy')
   const scriptSource = policy.split('; ').find(value => value.startsWith('script-src '))
-  const jsonLd = read('index.html').match(/<script type="application\/ld\+json">([\s\S]+?)<\/script>/)[1]
+  // HTML parsers normalize line endings before hashing inline script content.
+  const jsonLd = read('index.html').replace(/\r\n?/g, '\n')
+    .match(/<script type="application\/ld\+json">([\s\S]+?)<\/script>/)[1]
   assert.ok(scriptSource.includes(`'sha256-${createHash('sha256').update(jsonLd).digest('base64')}'`))
   assert.ok(!/unsafe-inline|unsafe-eval/.test(scriptSource))
   assert.ok(policy.includes("frame-ancestors 'none'"))
@@ -45,11 +47,12 @@ test('entry assets and icons bypass the old permanent-redirect cache', () => {
   assert.ok(html.includes('src="/assets/index-old.js?v=host-fix-1"'))
   assert.ok(html.includes('href="/assets/index-old.css?v=host-fix-1"'))
   assert.equal(routeHtml(html, publicPages[0]), html, 'asset query must not be appended twice')
-  const icons = [...read('index.html').matchAll(/href="(\/(?:favicon[^"/]*|apple-touch-icon\.png)[^"]*)"/g)]
+  const icons = [...read('index.html').matchAll(/href="(\/(?:favicon[^"/?]*|apple-touch-icon\.png)(?:\?[^"]*)?)"/g)]
   assert.ok(icons.length >= 8)
-  for (const [, url] of icons) {
-    assert.ok(url.includes('?v=host-fix-1'), url)
-    assert.ok(fs.existsSync(new URL(`../public${url.split('?')[0]}`, import.meta.url)), url)
+  for (const [, href] of icons) {
+    const { pathname, searchParams } = new URL(href, SITE_URL)
+    assert.match(searchParams.get('v') ?? '', /^[a-z\d-]+$/i, href)
+    assert.ok(fs.existsSync(new URL(`../public${pathname}`, import.meta.url)), href)
   }
 })
 
