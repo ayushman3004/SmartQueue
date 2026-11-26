@@ -28,16 +28,15 @@ export default function LandingPage() {
   }, [])
 
   return (
-    <div className="landing-page min-h-screen app-background-glow text-zinc-900 selection:bg-emerald-500/20 selection:text-emerald-900 relative">
+    <div className="landing-page app-background-glow selection:bg-emerald-500/20 selection:text-emerald-900 relative">
       <PublicNavbar />
 
-      {/* Full-screen statement; navigation stays in the header. */}
       <section className="landing-hero" aria-labelledby="landing-headline">
         <h1 id="landing-headline">
-          <span id="tour-welcome-hero" className="landing-headline-line"><span>Less waiting.</span></span>
-          <span className="landing-headline-line"><span>Better clinic visits.</span></span>
+          <span id="tour-welcome-hero" className="landing-headline-line">Less waiting.</span>{' '}
+          <span className="landing-headline-line">Better clinic visits.</span>
         </h1>
-        <p className="landing-hero-summary">Join a live clinic queue, get your digital prescription, and get automatic follow-up reminders in ServeQ.</p>
+        <p className="landing-hero-summary">Join a live clinic queue, view your digital prescription, and receive automatic follow-up reminders in ServeQ.</p>
       </section>
 
       <section id="problem-solution" className="waiting-comparison" aria-labelledby="waiting-comparison-title">
@@ -63,31 +62,28 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div id="tour-cta-banner" className="bg-zinc-950 text-white rounded-3xl p-6 sm:p-10 md:p-14 text-center sm:text-left flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl">
             <div className="space-y-3 max-w-xl">
-              <span className="text-[10px] font-black uppercase tracking-widest text-teal-400 bg-teal-950/80 px-3 py-1 rounded-full border border-teal-800">
-                Start Today
-              </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white">
                 Ready to skip the wait?
               </h2>
-              <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              <p className="text-sm text-zinc-400 leading-relaxed">
                 See your place in the clinic queue, get your prescription online, and receive automatic follow-up reminders in ServeQ.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto md:shrink-0">
               <button
                 type="button"
                 onClick={() => navigate('/customers')}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-teal-500 hover:bg-teal-400 text-zinc-950 text-xs font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all text-center cursor-pointer"
+                className="w-full sm:w-auto min-h-11 px-6 py-3.5 rounded-full bg-teal-500 hover:bg-teal-400 text-zinc-950 text-sm font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all text-center cursor-pointer"
               >
-                Get Started
+                Get started
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/business')}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider border border-zinc-700 active:scale-95 transition-all text-center cursor-pointer"
+                className="w-full sm:w-auto min-h-11 px-6 py-3.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold uppercase tracking-wider border border-zinc-700 active:scale-95 transition-all text-center cursor-pointer"
               >
-                For Business
+                For clinics
               </button>
             </div>
           </div>

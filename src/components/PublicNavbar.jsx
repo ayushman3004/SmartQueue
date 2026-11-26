@@ -12,6 +12,7 @@ export default function PublicNavbar() {
   const isHome = location.pathname === '/'
   const { user } = useAuth()
   const dashboardPath = user?.role === 'owner' ? '/hub/dashboard' : user?.role === 'admin' ? '/admin' : '/customers'
+  const tourButtonRef = useRef(null)
   const menuToggleRef = useRef(null)
   const reduceMotion = useReducedMotion()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -19,6 +20,11 @@ export default function PublicNavbar() {
   const startTour = () => {
     if (isHome) setTourTrigger((count) => count + 1)
     else navigate('/#take-tour')
+  }
+  const restoreTourFocus = () => {
+    const tourButton = tourButtonRef.current
+    if (tourButton?.getClientRects().length) tourButton.focus()
+    else menuToggleRef.current?.focus()
   }
 
   useEffect(() => {
@@ -44,11 +50,11 @@ export default function PublicNavbar() {
             <a href={isHome ? '#how-it-works' : '/#how-it-works'}>How it works</a>
             <NavLink to="/about" onClick={() => setMobileMenuOpen(false)}>About us</NavLink>
             <a href={isHome ? '#problem-solution' : '/#problem-solution'}>Why serveQ</a>
-            <a href={isHome ? '#security' : '/#security'}>Trust</a>
+            <a href={isHome ? '#security' : '/#security'}>Security & trust</a>
           </nav>
 
           <div className="landing-header-actions">
-            <button type="button" className="landing-tour-button" onClick={startTour}>
+            <button type="button" ref={tourButtonRef} className="landing-tour-button" onClick={startTour}>
               <Play size={13} aria-hidden="true" /> Take a tour
             </button>
             <span className="landing-header-divider" aria-hidden="true" />
@@ -83,7 +89,6 @@ export default function PublicNavbar() {
               transition={{ duration: reduceMotion ? 0 : 0.15 }}
               className="landing-mobile-navigation"
             >
-              <p>Explore serveQ</p>
               <a href={isHome ? '#how-it-works' : '/#how-it-works'} onClick={() => setMobileMenuOpen(false)}>How it works <ArrowRight size={16} aria-hidden="true" /></a>
               <Link to="/about" onClick={() => setMobileMenuOpen(false)}>About us <ArrowRight size={16} aria-hidden="true" /></Link>
               <a href={isHome ? '#problem-solution' : '/#problem-solution'} onClick={() => setMobileMenuOpen(false)}>Why serveQ <ArrowRight size={16} aria-hidden="true" /></a>
@@ -91,13 +96,13 @@ export default function PublicNavbar() {
               <div className="landing-mobile-actions">
                 <button type="button" onClick={() => { setMobileMenuOpen(false); startTour() }}><Play size={14} aria-hidden="true" /> Take a tour</button>
                 <Link to="/business" onClick={() => setMobileMenuOpen(false)}>For clinics <ArrowRight size={16} aria-hidden="true" /></Link>
-                <Link to={user ? dashboardPath : '/login'} onClick={() => setMobileMenuOpen(false)}>{user ? 'Dashboard' : 'Sign in'} <ArrowRight size={16} aria-hidden="true" /></Link>
+                <Link to={user ? dashboardPath : '/login'} className="landing-mobile-sign-in" onClick={() => setMobileMenuOpen(false)}>{user ? 'Dashboard' : 'Sign in'} <ArrowRight size={16} aria-hidden="true" /></Link>
               </div>
             </motion.nav>
           )}
         </AnimatePresence>
       </header>
 
-    {isHome && <WebsiteTour manualTrigger={tourTrigger} />}
+    {isHome && <WebsiteTour manualTrigger={tourTrigger} restoreFocus={restoreTourFocus} />}
   </>
 }

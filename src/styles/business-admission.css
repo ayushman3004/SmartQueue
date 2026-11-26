@@ -157,23 +157,25 @@
   text-align: center;
   max-width: 1100px;
   margin: auto;
-  padding: 95px 28px 105px;
+  padding: clamp(2.5rem, 10svh, 6rem) clamp(1rem, 4vw, 1.75rem);
 }
 .business-marketing-hero h1 {
-  font-size: clamp(60px, 9vw, 120px);
+  font-size: clamp(2rem, 10vw, 7.5rem);
   font-weight: 700;
-  line-height: 0.98;
-  letter-spacing: -0.065em;
-  margin: 30px 0;
+  line-height: 1.05;
+  letter-spacing: -.055em;
+  margin: clamp(1rem, 4vw, 1.875rem) 0;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 .business-marketing-hero em {
   font-style: normal;
   color: #758e72;
 }
 .business-marketing-hero > p:not(.admission-eyebrow) {
-  max-width: 630px;
-  margin: 30px auto;
-  font-size: 18px;
+  max-width: 54ch;
+  margin: clamp(1rem, 4vw, 1.875rem) auto;
+  font-size: clamp(1rem, .9rem + .35vw, 1.125rem);
 }
 .business-marketing-hero > span {
   display: block;
@@ -186,7 +188,7 @@
 .business-marketing :is(#pricing, #facilities, #apply) { scroll-margin-top: 24px; }
 .business-hero-actions { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 24px; }
 .business-pricing-link { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 600; }
-.business-marketing-hero > .business-starting-price { font-size: 13px; margin: 24px auto 0; }
+.business-marketing-hero > p.business-starting-price:not(.admission-eyebrow) { font-size: .875rem; margin: 1.5rem auto 0; }
 .business-pricing-heading { display: grid; grid-template-columns: 1.1fr 1fr; align-items: end; gap: 48px; margin-bottom: 32px; }
 .business-pricing-heading h2 { margin: 16px 0 0; }
 .business-pricing-heading > p { font-size: 14px; max-width: 450px; }
@@ -372,9 +374,6 @@
   }
   .admission-section {
     padding: 40px 24px;
-  }
-  .business-marketing-hero {
-    padding: 65px 22px;
   }
   .admission-form {
     padding: 45px 22px;

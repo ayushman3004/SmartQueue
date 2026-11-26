@@ -1,6 +1,14 @@
 .landing-details-heading { max-width: 660px; margin-bottom: 32px; }
 .landing-details-heading > p:first-child { font-size: 10px; letter-spacing: .15em; font-weight: 750; color: #315b45; margin-bottom: 12px; }
-.landing-details-heading > p:last-child { margin-top: 16px; font-size: 14px; line-height: 1.8; }
-.landing-page .landing-trust { background: #e6f0e8; border-block: 1px solid #c1d5c7; }.landing-trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }.landing-trust-grid article { border-top: 1px solid #b7cdbd; padding-top: 22px; }.landing-trust-icon { display: grid; place-items: center; width: 42px; height: 48px; background: #fffffc90; border: 1px solid #b7cdbd; border-radius: 22px 22px 6px 6px; color: #315b45; margin-bottom: 16px; }.landing-trust-grid h3 { font-size: 18px; }.landing-trust-grid p { font-size: 13px; line-height: 1.85; margin-top: 12px; }.landing-trust-grid .landing-trust-detail { font-size: 11px; }
-.landing-trust-bottom { margin-top: 28px; padding-top: 22px; border-top: 1px solid #b7cdbd; display: flex; align-items: center; justify-content: space-between; gap: 24px; }.landing-trust-bottom p { max-width: 620px; font-size: 12px; line-height: 1.8; }.landing-trust-bottom > a { display: inline-flex; align-items: center; gap: 12px; white-space: nowrap; color: #315b45; font-size: 12px; font-weight: 650; }
+.landing-details-heading > p:last-child { margin-top: 16px; font-size: 1rem; line-height: 1.65; }
+.landing-page .landing-trust { background: #e6f0e8; border-block: 1px solid #c1d5c7; }
+.landing-trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.landing-trust-grid article { border-top: 1px solid #b7cdbd; padding-top: 22px; }
+.landing-trust-icon { display: grid; place-items: center; width: 42px; height: 48px; background: #fffffc90; border: 1px solid #b7cdbd; border-radius: 22px 22px 6px 6px; color: #315b45; margin-bottom: 16px; }
+.landing-trust-grid h3 { font-size: 1.125rem; }
+.landing-trust-grid p { font-size: .9375rem; line-height: 1.65; margin-top: 12px; }
+.landing-trust-grid .landing-trust-detail { font-size: .8125rem; }
+.landing-trust-bottom { margin-top: 28px; padding-top: 22px; border-top: 1px solid #b7cdbd; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.landing-trust-bottom p { max-width: 65ch; font-size: .875rem; line-height: 1.65; }
+.landing-trust-bottom > a { display: inline-flex; flex-shrink: 0; align-items: center; gap: .75rem; min-height: 44px; color: #315b45; font-size: .875rem; font-weight: 650; }
 @media (max-width: 767px) { .landing-trust-grid { grid-template-columns: 1fr; }.landing-trust-bottom { flex-direction: column; align-items: flex-start; gap: 16px; } }

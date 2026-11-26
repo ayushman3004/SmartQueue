@@ -314,13 +314,13 @@ export default function LocationPickerModal({
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input
-                aria-label="Search for your location"
+                aria-label="Search by area, landmark, street, or postal code"
                 ref={searchInputRef}
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search area, landmark, street, or postal code..."
-                className="w-full pl-10 pr-10 py-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 focus:bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-[#049645] focus:ring-2 focus:ring-[#049645]/10 transition-all"
+                placeholder="Area or PIN code"
+                className={`w-full pl-10 ${searching || searchInput ? 'pr-12' : 'pr-3'} py-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 focus:bg-white text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-[#049645] focus:ring-2 focus:ring-[#049645]/10 transition-all`}
               />
               {searching ? (
                 <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#049645] animate-spin" />
@@ -329,7 +329,7 @@ export default function LocationPickerModal({
                   type="button"
                   onClick={() => setSearchInput('')}
                   aria-label="Clear location search"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                  className="absolute right-0.5 top-1/2 -translate-y-1/2 grid size-11 place-items-center text-zinc-400 hover:text-zinc-600 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
