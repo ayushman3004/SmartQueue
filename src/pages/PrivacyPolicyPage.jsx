@@ -191,7 +191,7 @@ export default function PrivacyPolicyPage() {
         <ul className="legal-list">
           <li>Creating and managing user accounts.</li>
           <li>Displaying available clinics and services.</li>
-          <li>Making digital prescriptions available to the patient and their prescribing doctor, and sending scheduled in-app follow-up reminders.</li>
+          <li>Making digital prescriptions available to the patient and their prescribing doctor, and sending scheduled in-app follow-up reminders. If you separately opt in with a verified WhatsApp number, supported clinics may send generic appointment reminders, follow-up reminders, and queue-turn alerts.</li>
           <li>Providing location-based discovery.</li>
           <li>Processing bookings and queue registrations.</li>
           <li>Managing live queue positions and estimated waiting times.</li>

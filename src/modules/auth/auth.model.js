@@ -62,6 +62,9 @@ const userSchema = new mongoose.Schema(
     whatsappConsentAt: Date,
     whatsappConsentVersion: String,
     whatsappConsentRevokedAt: Date,
+    clinicVisitWhatsAppConsent: {
+      enabled: Boolean, version: String, grantedAt: Date, revokedAt: Date, phoneProofAt: Date, phone: String, revision: Number,
+    },
     whatsappAudit: {
       type: [{ _id: false, action: String, at: Date, version: String }],
       select: false,
@@ -102,6 +105,7 @@ const userSchema = new mongoose.Schema(
       invitationIssuedAt: Date, invitationExpiresAt: Date, activatedAt: Date, firstLoginAt: Date,
       mustChangePassword: { type: Boolean, default: false }, passwordChangeDeadline: Date, passwordChangedAt: Date,
     },
+    clinicActivationRevision: { type: Number, select: false },
     subscription: {
       businessId: { type: mongoose.Schema.Types.ObjectId, ref: "Business", default: null },
       plan: {

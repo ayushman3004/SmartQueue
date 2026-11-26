@@ -11,6 +11,7 @@ import ApiResponse from "../../../utils/ApiResponse.js";
 
 const publicBusiness = (business, viewerId, manage = false) => {
   const value = business.toObject?.() || business;
+  const { queueRooms, whatsappQueueTurnAlerts, hasProQueueTools, ...publicValue } = value;
   const owner = value.owner?._id && typeof value.owner?.toHexString !== "function" ? {
     _id: value.owner._id,
     name: value.owner.name,
@@ -19,7 +20,8 @@ const publicBusiness = (business, viewerId, manage = false) => {
     role: value.owner.role,
   } : value.owner;
   return {
-    ...value,
+    ...publicValue,
+    ...(manage && { hasProQueueTools, ...(hasProQueueTools && { queueRooms, whatsappQueueTurnAlerts }) }),
     owner,
     ...(value.paymentConfiguration && !manage && {
       paymentConfiguration: {

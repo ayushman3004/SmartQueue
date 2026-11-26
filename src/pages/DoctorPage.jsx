@@ -142,11 +142,11 @@ function DoctorWorkspace() {
     }
   }, [clinicId, joinRoom, leaveRoom, refresh, socket])
 
-  async function act(kind, id, action) {
+  async function act(kind, id, action, serviceStep) {
     if (action === 'payment' && !window.confirm('Record this payment as received at the counter?')) return
     setBusy(true)
     setError('')
-    try { await doctorVisitAction(kind, id, action, { minutes: extension }); await refresh() }
+    try { await doctorVisitAction(kind, id, action, { minutes: extension, serviceStep }); await refresh() }
     catch (failure) { setError(errorText(failure)) }
     finally { setBusy(false) }
   }
@@ -158,6 +158,8 @@ function DoctorWorkspace() {
     const record = prescriptions?.records.find(item => String(item.booking) === String(booking))
     const controls = row.status !== 'completed' && id
     const active = ['serving', 'in-progress'].includes(row.status)
+    const serviceStep = row.serviceStep ?? 0
+    const showServiceProgress = data.clinic.hasServiceSequencing && active && row.services?.length > 1
     return <article key={row._id} className="space-y-3 rounded-2xl border border-zinc-200 p-4">
       <div className="flex flex-wrap justify-between gap-2">
         <h3 className="font-bold">{row.userId?.name || 'Patient'}</h3>
@@ -165,8 +167,10 @@ function DoctorWorkspace() {
       </div>
       <p className="break-words text-sm text-zinc-600">{[row.userId?.email, row.userId?.phone].filter(value => value && !value.endsWith('@accounts.serveq.invalid')).join(' · ')}</p>
       <p className="text-sm">{row.walkIn && 'Walk-in · '}{row.serviceType} · {row.serviceTime || row.duration} min · Payment {row.paymentStatus}</p>
+      {showServiceProgress && <p className="text-sm font-semibold">Service {serviceStep + 1} of {row.services.length} · {row.services[serviceStep]?.name}</p>}
       {!queue && <p className="text-sm text-zinc-600">{new Date(row.startTime).toLocaleString()}</p>}
       <div className="flex flex-wrap gap-2">
+        {controls && showServiceProgress && serviceStep < row.services.length - 1 && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, 'advance-service', serviceStep)}>Start next service</button>}
         {controls && active && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, queue ? 'next' : 'complete')}>{queue ? 'Complete and call next' : 'Complete consultation'}</button>}
         {controls && queue && row.walkIn && row.status === 'waiting' && data.queue[0] === row && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, 'start')}>Call next patient</button>}
         {controls && !queue && !row.walkIn && ['waiting', 'scheduled', 'confirmed'].includes(row.status) && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, 'start')}>Start consultation</button>}

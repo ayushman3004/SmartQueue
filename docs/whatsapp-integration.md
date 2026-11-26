@@ -18,9 +18,11 @@ one-time prescription write is the finalization boundary. Editing the form
 sends no request. The existing doctor assignment and clinic checks run before
 the insert, and private list and PDF endpoints remain protected by patient or
 prescriber identity. AES-GCM still encrypts clinical fields. The old reminder
-loop processes in-app follow-ups. The old optional WhatsApp follow-up sender is
-retired. The new integration sends authentication codes and prescription
-availability notices only.
+loop processes in-app follow-ups. The separate visit-notice worker sends generic
+appointment reminders for Basic and Pro, and follow-up reminders and optional
+queue-turn alerts for Pro. It uses a separate patient preference with fresh
+WhatsApp verification. Historical preferences and prescription consent do not
+authorize visit notices.
 
 The API verifies Cloudflare Turnstile in enforce mode for the
 `whatsapp_phone_otp` action, regardless of the public forms' configured mode.
@@ -84,6 +86,7 @@ WhatsApp-verified accounts. Redis or Turnstile failure stops verification.
 | `POST /api/auth/phone/signin/verify-otp` | `phone`, `otp`, `challengeId` | Consumes the challenge and starts a patient session after successful proof. |
 | `POST /api/queue/:businessId/walk-in` | `name`, `phone`, optional `whatsappConsent` | The clinic owner checks in the patient and receives the live queue position. |
 | `PATCH /api/auth/phone/whatsapp-consent` | `enabled`, `version: "prescription-v1"` for opt-in | Authenticated patient. Verification and opt-in are independent. Opt-out continues to work with sending disabled. |
+| `PATCH /api/auth/phone/whatsapp-visit-consent` | `enabled`, `version: "clinic-visit-v1"` for opt-in | Separate verified-patient preference for generic appointment, follow-up and queue-turn notices. Opt-out continues to work with sending disabled. |
 | `GET /api/auth/me` | Existing session | Adds the proof method, verification dates and current WhatsApp consent to the sanitized user. |
 | `GET /api/whatsapp/webhook` | Meta subscription challenge | Returns the exact challenge for the configured verification token. |
 | `POST /api/whatsapp/webhook` | Raw Meta JSON and `X-Hub-Signature-256` | Validates signature before updates. Filters configured business and sender IDs. Tracks monotonic sent, delivered, read and failed states using the provider ID or opaque callback. Incoming message bodies are ignored. |
@@ -175,6 +178,15 @@ reCAPTCHA CSP origins and retain Cloudflare Turnstile and Razorpay origins.
    `https://serveq.tech/profile#prescriptions`. For staging, use a staging
    template whose static URL points to a protected staging profile. The
    templates require Meta approval before production activation.
+   For visit notices, submit separate static **Utility** templates for
+   `WHATSAPP_APPOINTMENT_REMINDER_TEMPLATE`, `WHATSAPP_FOLLOW_UP_REMINDER_TEMPLATE`,
+   and `WHATSAPP_QUEUE_TURN_TEMPLATE`. Use a generic message and a static link to
+   the signed-in ServeQ app. Omit patient and clinic names, dates, visit details and
+   identifiers. Set an environment variable only after its template is approved.
+   Appointment reminders are due one day before the visit, or immediately if
+   booked within a day. Follow-ups use the same schedule as in-app reminders.
+   Queue-turn alerts expire after five minutes. Dispatch rechecks the plan,
+   the appointment or queue status, and the patient's current opt-in and phone proof.
 4. Set the Meta callback to
    `https://api.serveq.tech/api/whatsapp/webhook` and use
    `WHATSAPP_WEBHOOK_VERIFY_TOKEN` as the verify token. Subscribe the app to the

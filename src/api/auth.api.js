@@ -16,6 +16,7 @@ export const verifyWhatsAppPhoneOtp = data => api.post("/auth/phone/verify-otp",
 export const sendPhoneSignInOtp = (phone, turnstileToken) => api.post('/auth/phone/signin/send-otp', { phone, turnstileToken });
 export const verifyPhoneSignInOtp = data => api.post('/auth/phone/signin/verify-otp', data);
 export const setWhatsAppConsent = (enabled, version) => api.patch("/auth/phone/whatsapp-consent", { enabled, version });
+export const setVisitNoticeConsent = (enabled, version) => api.patch('/auth/phone/whatsapp-visit-consent', { enabled, version });
 export const sendEmailOtp = (email) => api.post("/auth/email/send-otp", { email });
 export const verifyEmailOtp = (email, otp) => api.post("/auth/email/verify-otp", { email, otp });
 

@@ -2168,14 +2168,11 @@ export default function BusinessOnboardingPage() {
                         <span className="text-xl font-black text-zinc-950">₹{SUBSCRIPTION_PLANS.BASIC.price.toLocaleString('en-IN')} <span className="text-xs font-normal text-zinc-500">/ mo</span></span>
                       </div>
                       <div>
-                        <h5 className="font-black text-base text-zinc-900">Basic Plan</h5>
-                        <p className="text-xs text-zinc-500 mt-0.5">Essential live queue & appointment tools for standard venues.</p>
+                        <h5 className="font-black text-base text-zinc-900">{SUBSCRIPTION_PLANS.BASIC.name}</h5>
+                        <p className="text-xs text-zinc-500 mt-0.5">{SUBSCRIPTION_PLANS.BASIC.tagline}</p>
                       </div>
                       <ul className="space-y-1.5 text-xs text-zinc-600">
-                        <li className="flex items-center gap-2">✓ Live virtual queue & slot bookings</li>
-                        <li className="flex items-center gap-2">✓ Up to 3 active staff members</li>
-                        <li className="flex items-center gap-2">✓ Pay at Counter with cash/UPI tracking</li>
-                        <li className="flex items-center gap-2">✓ Standard volume analytics</li>
+                        {SUBSCRIPTION_PLANS.BASIC.features.map(feature => <li key={feature}>✓ {feature}</li>)}
                       </ul>
                     </div>
                     <div className="pt-4 mt-4 border-t border-zinc-200/60">
@@ -2211,14 +2208,11 @@ export default function BusinessOnboardingPage() {
                         <span className="text-xl font-black text-zinc-950">₹{SUBSCRIPTION_PLANS.PRO.price.toLocaleString('en-IN')} <span className="text-xs font-normal text-zinc-500">/ mo</span></span>
                       </div>
                       <div>
-                        <h5 className="font-black text-base text-zinc-900">Pro Plan</h5>
-                        <p className="text-xs text-zinc-500 mt-0.5">Advanced automation & AI intelligence for busy venues.</p>
+                        <h5 className="font-black text-base text-zinc-900">{SUBSCRIPTION_PLANS.PRO.name}</h5>
+                        <p className="text-xs text-zinc-500 mt-0.5">{SUBSCRIPTION_PLANS.PRO.tagline}</p>
                       </div>
                       <ul className="space-y-1.5 text-xs text-zinc-600">
-                        <li className="flex items-center gap-2 font-semibold text-teal-950">✓ Everything in Basic, plus:</li>
-                        <li className="flex items-center gap-2">✓ Unlimited staff & specialists</li>
-                        <li className="flex items-center gap-2 text-teal-700 font-bold">✓ Advanced AI Intelligence</li>
-                        <li className="flex items-center gap-2">✓ Priority VIP queue passes</li>
+                        {SUBSCRIPTION_PLANS.PRO.features.map(feature => <li key={feature}>✓ {feature}</li>)}
                       </ul>
                     </div>
                     <div className="pt-4 mt-4 border-t border-zinc-200/60">

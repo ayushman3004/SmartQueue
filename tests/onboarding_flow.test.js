@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import mongoose from "mongoose";
 
 import Business from "../src/modules/business/business.model.js";
+import User from '../src/modules/auth/auth.model.js';
 import * as businessService from "../src/modules/business/business.service.js";
 import * as bookingService from "../src/booking/booking.service.js";
 import * as queueService from "../src/queue/queue.service.js";
@@ -182,6 +183,7 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
       category: "clinic",
       address: "123 High Street",
       owner: ownerId,
+      isActive: false,
       services: [{ name: "Cut", duration: 20, price: 200 }],
       paymentConfiguration: { paymentMode: "PAY_AT_BUSINESS" },
       onboarding: { status: "IN_PROGRESS", currentStep: 6, completedSteps: [1, 2, 3, 4, 5, 6] },
@@ -190,6 +192,9 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
 
     const origFindOne = Business.findOne;
     Business.findOne = async () => fakeBiz;
+    const transaction = t.mock.method(mongoose.connection, 'transaction', async run => run({}));
+    const lock = t.mock.method(User, 'findOneAndUpdate', async () => ({ role: 'owner', subscription: { plan: 'BASIC', status: 'ACTIVE' } }));
+    const count = t.mock.method(Business, 'countDocuments', async () => 2);
 
     try {
       const launched = await businessService.launchBusiness(businessId, ownerId);
@@ -198,6 +203,9 @@ test("Business Onboarding Flow - Model, Steps, and Policy Enforcement", async (t
       assert.equal(launched.isOpen, true);
     } finally {
       Business.findOne = origFindOne;
+      transaction.mock.restore();
+      lock.mock.restore();
+      count.mock.restore();
     }
   });
 

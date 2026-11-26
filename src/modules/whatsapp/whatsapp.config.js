@@ -52,5 +52,14 @@ export function whatsappConfig(env = process.env) {
     throw new Error('WHATSAPP_OTP_HMAC_SECRET must be independent of other application keys');
   }
   if (config.otpTemplate === config.documentTemplate) throw new Error('Use separate WhatsApp authentication and utility templates');
+  config.visitTemplates = Object.fromEntries(Object.entries({
+    appointment: env.WHATSAPP_APPOINTMENT_REMINDER_TEMPLATE?.trim(),
+    followUp: env.WHATSAPP_FOLLOW_UP_REMINDER_TEMPLATE?.trim(),
+    queueTurn: env.WHATSAPP_QUEUE_TURN_TEMPLATE?.trim(),
+  }).filter(([, name]) => name));
+  const templates = [config.otpTemplate, config.documentTemplate, ...Object.values(config.visitTemplates)];
+  if (templates.some(name => !templateName.test(name)) || new Set(templates).size !== templates.length) {
+    throw new Error('Configure distinct approved WhatsApp templates for each message type');
+  }
   return config;
 }

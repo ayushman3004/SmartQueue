@@ -47,13 +47,18 @@ export const generateBusinessAIAnalytics = async ({
   topCustomer = null,
   topEmployee = null,
   staffList = [],
+  peakHours,
+  collectedSales,
 }) => {
   // Deterministic fallback generator
   const getHeuristicAnalytics = () => {
     const cancelRate =
       bookingsCount > 0 ? Math.round((cancellationCount / bookingsCount) * 100) : 0;
 
-    const peakWindows = ["10:00 AM - 1:00 PM", "4:30 PM - 6:30 PM"];
+    const peakWindows = peakHours ?? ["10:00 AM - 1:00 PM", "4:30 PM - 6:30 PM"];
+    const peakHoursAnalysis = peakWindows.length
+      ? `The busiest hours were ${peakWindows.join(', ')}. Compare staff coverage with those hours.`
+      : 'Completed visits will appear in the peak-hour analysis as the clinic builds a history.';
 
     const sentiment =
       averageRating >= 4.5
@@ -97,11 +102,9 @@ export const generateBusinessAIAnalytics = async ({
         };
 
     const recommendations = [
-      `Peak traffic spikes during ${peakWindows.join(
-        " and "
-      )}. Ensure full floor coverage during these windows.`,
+      peakHoursAnalysis,
       cancelRate > 15
-        ? `Cancellation rate is ${cancelRate}%. Enable automated SMS & push reminders 20 minutes before time slots.`
+        ? `Cancellation rate is ${cancelRate}%. Review reminder settings and cancellation patterns.`
         : `Healthy cancellation rate (${cancelRate}%). Queue pacing and throughput are calibrated optimally.`,
       `Customer satisfaction score: ${
         averageRating ? averageRating.toFixed(1) : "5.0"
@@ -110,9 +113,8 @@ export const generateBusinessAIAnalytics = async ({
 
     return {
       peakHours: peakWindows,
-      peakHoursAnalysis: `Primary traffic surges occur between ${peakWindows[0]} and ${
-        peakWindows[1]
-      }. We recommend scheduling doctor shifts accordingly.`,
+      peakHoursAnalysis,
+      ...(collectedSales !== undefined && { revenueAnalysis: `Recorded collections total ₹${collectedSales.toLocaleString('en-IN')}. Compare collections with completed visits to identify unpaid balances.` }),
       cancellationRate: `${cancelRate}%`,
       sentimentSummary: sentiment,
       bestCustomer: resolvedBestCustomer,
@@ -128,11 +130,12 @@ export const generateBusinessAIAnalytics = async ({
   }
 
   const systemPrompt = `You are an elite operational analytics advisor for ${businessName} (Category: ${category}).
-Analyze the provided metrics and generate an actionable executive report.
+Analyze the provided metrics and generate an actionable executive report. Use only supplied visit hours and collections. If no peak hours are supplied, explain that more visit history is needed.
 Respond ONLY with a valid JSON object matching this schema (no markdown fences, no explanatory text):
 {
   "peakHours": ["string", "string"],
   "peakHoursAnalysis": "string",
+  "revenueAnalysis": "string",
   "cancellationRate": "string",
   "sentimentSummary": "string",
   "bestCustomer": {
@@ -158,6 +161,8 @@ Respond ONLY with a valid JSON object matching this schema (no markdown fences, 
 - Type: Medical Clinic
 - Total Bookings: ${bookingsCount}
 - Total Cancellations: ${cancellationCount}
+- Busiest completed visit hours: ${peakHours?.join(', ') || 'No data'}
+- Recorded collections (INR): ${collectedSales ?? 'No data'}
 - Average Customer Rating: ${averageRating}/5
 - Top Customer Data: ${topCustomer ? JSON.stringify(topCustomer) : "Frequent returning patron"}
 - Top Staff Performer: ${

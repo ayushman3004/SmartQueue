@@ -95,9 +95,11 @@ test("Business Flow - AI Analytics Deterministic Fallback", async (t) => {
     const Business = (await import("../src/modules/business/business.model.js")).default;
     const Booking = (await import("../src/booking/booking.model.js")).default;
     const Review = (await import("../src/modules/review/review.model.js")).default;
+    const User = (await import('../src/modules/auth/auth.model.js')).default;
     const mongoose = (await import("mongoose")).default;
 
     const ownerId = new mongoose.Types.ObjectId();
+    t.mock.method(User, 'findById', async () => ({ _id: ownerId, role: 'owner', subscription: { plan: 'BASIC', status: 'ACTIVE' } }));
     const businessId = new mongoose.Types.ObjectId();
     const custId1 = new mongoose.Types.ObjectId();
     const custId2 = new mongoose.Types.ObjectId();

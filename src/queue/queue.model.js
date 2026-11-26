@@ -42,6 +42,7 @@ const queueSchema = new mongoose.Schema(
             price: { type: Number, default: 0 },
           },
         ],
+        serviceStep: { type: Number, min: 0 },
         assignedStaff: {
           staffId: { type: mongoose.Schema.Types.ObjectId },
           name: { type: String, default: "" },

@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
+import { indexVisitNotices, visitNoticeSchema } from '../modules/whatsapp/visit-notice-outbox.js';
 
 const bookingSchema = new mongoose.Schema(
   {
+    whatsappVisitNotice: { type: visitNoticeSchema, select: false, transform: () => undefined },
     businessId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Business",
@@ -33,6 +35,7 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: "general",
     },
+    serviceStep: { type: Number, min: 0 },
     services: {
       type: [
         {
@@ -175,6 +178,7 @@ bookingSchema.index({ businessId: 1, status: 1, startTime: 1 }); // for filtered
 bookingSchema.index({ businessId: 1, extendedTime: 1, createdAt: 1 }); // for AI buffer history
 bookingSchema.index({ userId: 1, status: 1 }); // for getMyBookings
 bookingSchema.index({ status: 1, endTime: 1 }); // automatic completion of expired appointments
+indexVisitNotices(bookingSchema);
 
 const Booking = mongoose.models.Booking || mongoose.model("Booking", bookingSchema);
 if (!mongoose.models.Appointment) {

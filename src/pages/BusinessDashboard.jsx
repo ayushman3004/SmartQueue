@@ -105,6 +105,8 @@ export default function BusinessDashboard() {
   const [collectingPayment, setCollectingPayment] = useState(false)
   const [doctorCall, setDoctorCall] = useState(null)
   const [toggling, setToggling] = useState(false)
+  const [queueRoom, setQueueRoom] = useState('')
+  const [savingQueueTools, setSavingQueueTools] = useState(false)
 
   // Profile Edit State
   const [profileForm, setProfileForm] = useState({
@@ -178,7 +180,7 @@ export default function BusinessDashboard() {
         paymentMode: 'PAY_AT_BUSINESS',
         upiId: upiVpa.trim(),
       })
-      setBusiness(res.data.data.business)
+      setBusiness(previous => ({ ...previous, ...res.data.data.business }))
       feedback.success('Counter UPI VPA updated successfully!')
     } catch (err) {
       feedback.error(err.response?.data?.message || 'Failed to update counter UPI')
@@ -339,7 +341,7 @@ export default function BusinessDashboard() {
     setToggling(true)
     try {
       const res = await toggleBusiness(businessId)
-      setBusiness(res.data.data.business)
+      setBusiness(previous => ({ ...previous, ...res.data.data.business }))
       feedback.success(`Business is now ${res.data.data.business.isOpen ? 'OPEN' : 'CLOSED'}`)
     } catch (err) {
       feedback.error(err.response?.data?.message || 'Error toggling status')
@@ -389,7 +391,7 @@ export default function BusinessDashboard() {
     setSavingProfile(true)
     try {
       const res = await updateBusiness(businessId, profileForm)
-      setBusiness(res.data.data.business)
+      setBusiness(previous => ({ ...previous, ...res.data.data.business }))
       feedback.success("Business profile & services updated successfully!")
     } catch (err) {
       feedback.error(err.response?.data?.message || "Failed to update profile")
@@ -468,7 +470,7 @@ export default function BusinessDashboard() {
     setSavingServices(true)
     try {
       const res = await updateBusiness(businessId, { services: profileForm.services })
-      setBusiness(res.data.data.business)
+      setBusiness(previous => ({ ...previous, ...res.data.data.business }))
       feedback.success('Service catalog saved and deployed live!')
     } catch (err) {
       feedback.error(err.response?.data?.message || 'Failed to save services')
@@ -482,7 +484,7 @@ export default function BusinessDashboard() {
     setSavingStaff(true)
     try {
       const res = await updateBusiness(businessId, { staff: updatedStaff })
-      setBusiness(res.data.data.business)
+      setBusiness(previous => ({ ...previous, ...res.data.data.business }))
       if (clinicalOwner) await refreshDoctors().catch(() => feedback.error("Could not refresh doctor access."))
       feedback.success('Doctor roster updated successfully!')
       return true
@@ -553,7 +555,28 @@ export default function BusinessDashboard() {
   if (loading) return <BusinessDashboardSkeleton />
 
   const users = queue?.users || []
-  const serving = users.find((u) => u.status === 'serving')
+  const hasProQueueTools = business?.hasProQueueTools === true
+  const roomAssignments = hasProQueueTools ? business.queueRooms || [] : []
+  const roomNames = [...new Set(roomAssignments.map(room => room.name))]
+  const roomFor = (row) => {
+    const matches = (business?.staff || []).filter(member => member.name === row.assignedStaff?.name)
+    return matches.length === 1 ? roomAssignments.find(room => room.staffId === matches[0]._id)?.name : undefined
+  }
+  const queueRows = roomNames.includes(queueRoom) ? users.filter(row => roomFor(row) === queueRoom) : users
+  const serving = queueRows.find(row => row.status === 'serving')
+
+  async function saveProQueueTools(settings) {
+    setSavingQueueTools(true)
+    try {
+      const { data } = await updateBusiness(businessId, settings)
+      setBusiness(previous => ({ ...previous, ...data.data.business }))
+      feedback.success('Queue settings saved.')
+    } catch (error) {
+      feedback.error(error.response?.data?.message || 'Could not save queue settings.')
+    } finally {
+      setSavingQueueTools(false)
+    }
+  }
 
   const getOps3DTheme = (id) => {
     switch (id) {
@@ -1039,8 +1062,28 @@ export default function BusinessDashboard() {
               {isClinic && <div className="lg:col-span-12 rounded-2xl border border-[#c1d5c7] bg-[#e6f0e8] px-5 py-4 text-sm text-[#315b45]" role="status" aria-live="polite">
                 {doctorCall ? <><span className="font-semibold">{doctorCall.doctorName || 'Doctor'} called the next person.</span> <time className="text-xs" dateTime={doctorCall.calledAt}>{new Date(doctorCall.calledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></> : 'Doctors manage consultations. Collect payments here; updates appear when a doctor calls the next person.'}
               </div>}
-              {isClinic && business.isOpen && business.isActive && business.queueSettings?.allowWalkIns !== false && business.queueSettings?.enableLiveQueue !== false &&
+              {isClinic && business.isWithinClinicCapacity === false && <p className="lg:col-span-12 text-sm" role="status">New check-ins are paused at this clinic under the current subscription. Existing visits are still available below.</p>}
+              {isClinic && business.isWithinClinicCapacity !== false && business.isOpen && business.isActive && business.queueSettings?.allowWalkIns !== false && business.queueSettings?.enableLiveQueue !== false &&
                 <WalkInCheckIn key={businessId} businessId={businessId} onAdded={refreshQueue} />}
+              {hasProQueueTools && <details className="lg:col-span-12 rounded-2xl border border-zinc-200 bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-zinc-900">Consultation rooms and WhatsApp alerts</summary>
+                <form key={JSON.stringify(roomAssignments)} className="mt-4 space-y-3" onSubmit={event => {
+                  event.preventDefault()
+                  const form = new FormData(event.currentTarget)
+                  const queueRooms = (business.staff || []).flatMap(member => {
+                    const name = form.get(member._id)?.trim()
+                    return name ? [{ staffId: member._id, name }] : []
+                  })
+                  void saveProQueueTools({ queueRooms })
+                }}>
+                  <p className="text-sm text-zinc-600">Assign room names to doctors to filter the live queue by room.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">{(business.staff || []).map(member => <label key={member._id} className="grid gap-1 text-sm">
+                    <span>{member.name}</span><input name={member._id} maxLength={50} className="rounded-lg border border-zinc-300 px-3 py-2" defaultValue={roomAssignments.find(room => room.staffId === member._id)?.name || ''} placeholder="Room name" />
+                  </label>)}</div>
+                  {(business.staff || []).length > 0 && <button type="submit" disabled={savingQueueTools} className="business-primary">Save rooms</button>}
+                </form>
+                <label className="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={business.whatsappQueueTurnAlerts === true} disabled={savingQueueTools} onChange={event => void saveProQueueTools({ whatsappQueueTurnAlerts: event.target.checked })} />Send opted-in patients a WhatsApp alert when their turn starts</label>
+              </details>}
               {/* Active Serving Card */}
               <div className="lg:col-span-12">
                 <div className="business-surface bg-white border border-teal-200 rounded-3xl p-6 md:p-8 shadow-sm bg-gradient-to-r from-teal-50/60 to-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -1166,14 +1209,14 @@ export default function BusinessDashboard() {
                 <div className="venue-roster-header">
                   <div>
                     <h3>Queue roster</h3>
-                    <p>Total waiting customers: {users.filter(u => u.status === 'waiting').length}</p>
+                    <p>Waiting patients {queueRows.filter(row => row.status === 'waiting').length}</p>
                   </div>
-                  <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
-                    Live Synced
-                  </span>
+                  {roomNames.length > 0 && <label className="text-sm font-semibold">Room <select className="ml-2 rounded-lg border border-zinc-300 px-2 py-1" value={roomNames.includes(queueRoom) ? queueRoom : ''} onChange={event => setQueueRoom(event.target.value)}>
+                    <option value="">All rooms</option>{roomNames.map(room => <option key={room} value={room}>{room}</option>)}
+                  </select></label>}
                 </div>
 
-                {users.length === 0 ? (
+                {queueRows.length === 0 ? (
                   <div className="venue-queue-empty">
                     <span className="venue-empty-icon" aria-hidden="true"><Ticket size={24} strokeWidth={1.5} /></span>
                     <h4>No one is waiting</h4>
@@ -1195,7 +1238,7 @@ export default function BusinessDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100">
-                        {users.map((u, i) => (
+                        {queueRows.map((u, i) => (
                           <tr key={i} className={u.status === 'serving' ? 'bg-teal-50/40' : 'hover:bg-slate-50'}>
                             <td className="py-4 px-6 font-bold text-slate-400">{i + 1}</td>
                             <td className="py-4 px-6">
@@ -2265,7 +2308,7 @@ export default function BusinessDashboard() {
                           <h4 className="text-base font-black text-white">Peak Hours Window</h4>
 
                           <div className="flex flex-wrap gap-2 pt-1">
-                            {(analytics?.aiInsights?.peakHours || ['11:00 AM - 1:00 PM', '4:30 PM - 7:00 PM']).map((window, i) => (
+                            {(analytics?.aiInsights?.peakHours || []).map((window, i) => (
                               <span
                                 key={i}
                                 className="px-3 py-1.5 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-200 text-xs font-bold"
@@ -2276,9 +2319,9 @@ export default function BusinessDashboard() {
                           </div>
 
                           <p className="text-xs text-zinc-300 leading-relaxed pt-2">
-                            {analytics?.aiInsights?.peakHoursAnalysis ||
-                              'Midday and evening slots experience the highest footfall concentration. Keep consultation rooms staffed.'}
+                            {analytics?.aiInsights?.peakHoursAnalysis}
                           </p>
+                          {analytics?.aiInsights?.revenueAnalysis && <p className="text-xs text-zinc-300 leading-relaxed pt-2">{analytics.aiInsights.revenueAnalysis}</p>}
                         </div>
 
                         <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">

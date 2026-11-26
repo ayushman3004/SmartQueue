@@ -168,6 +168,8 @@ const businessSchema = new mongoose.Schema(
       queueClosingTime: { type: String, default: "20:00" },
       maxQueueCapacity: { type: Number, default: 30 },
     },
+    whatsappQueueTurnAlerts: { type: Boolean, default: false },
+    queueRooms: [{ _id: false, staffId: mongoose.Schema.Types.ObjectId, name: String }],
     paymentConfiguration: {
       paymentMode: {
         type: String,
@@ -236,6 +238,7 @@ const businessSchema = new mongoose.Schema(
 businessSchema.index({ owner: 1, adminTestKind: 1 }, {
   unique: true, partialFilterExpression: { adminTestKind: { $type: "string" } },
 });
+businessSchema.index({ owner: 1, isActive: 1, _id: 1 });
 
 const Business = mongoose.model("Business", businessSchema);
 export default Business;

@@ -13,7 +13,10 @@ import ApiError from "../../utils/ApiError.js";
 import { getRazorpayClient } from "../modules/payment/razorpay.service.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
 import { isBusinessSubscriptionActive } from "../modules/subscription/subscription.service.js";
+import { isWithinClinicCapacity } from '../modules/subscription/clinic-capacity.service.js';
 import { getBookingDateError, getBusinessDate } from "../utils/bookingDates.js";
+import { scheduleVisitNotice } from '../modules/whatsapp/visit-notice-outbox.js';
+import { nextServiceStep } from '../modules/doctor/service-sequencing.js';
 
 const RATE_PER_MINUTE = 20; // ₹20 per extra minute
 const FLEX_WINDOW = 10; // ±10 minutes flexibility
@@ -38,6 +41,7 @@ export const getAvailableSlots = async (businessId, date) => {
       "This venue is currently not accepting appointments because its ServeQ subscription is inactive."
     );
   }
+  if (!await isWithinClinicCapacity(business)) throw new ApiError(403, 'This clinic has reached its subscription capacity and cannot accept new appointments.');
 
   const avgTime = business.averageServiceTime || 10;
   const staffList = Array.isArray(business.staff) ? business.staff.filter((s) => s.isAvailable !== false) : [];
@@ -216,6 +220,7 @@ export const createBooking = async ({
       { session, timestamps: false },
     );
     if (!lock.matchedCount) throw new ApiError(403, "This clinic is not accepting appointments.");
+    if (!await isWithinClinicCapacity(business, session)) throw new ApiError(403, 'This clinic has reached its subscription capacity and cannot accept new appointments.');
 
     // Check duplicate booking for this user
     const duplicate = await Booking.findOne({
@@ -335,6 +340,7 @@ export const createBooking = async ({
       paymentMethod: selectedPaymentMethod,
       paymentStatus,
       status: bookingStatus,
+      whatsappVisitNotice: scheduleVisitNotice(new Date(reqStart.getTime() - 86_400_000), reqStart),
     }], { session });
     return booking;
   });
@@ -524,6 +530,20 @@ export const startService = async (bookingId, requesterId, requesterRole, doctor
 
   return booking;
 };
+
+export async function advanceAppointmentService(booking, expectedStep, doctor) {
+  const serviceStep = await nextServiceStep(booking, expectedStep, doctor);
+  if (booking.walkIn || await Queue.exists({ businessId: booking.businessId, 'users.bookingId': booking._id })) {
+    throw new ApiError(409, 'Continue this visit from the live queue.');
+  }
+  const assignment = booking.assignedStaff.staffId ? { 'assignedStaff.staffId': booking.assignedStaff.staffId }
+    : { 'assignedStaff.staffId': null, 'assignedStaff.name': booking.assignedStaff.name };
+  const result = await Booking.updateOne({
+    _id: booking._id, businessId: booking.businessId, status: booking.status, ...assignment,
+    serviceStep: expectedStep || { $in: [0, null] },
+  }, { $set: { serviceStep } });
+  if (!result.modifiedCount) throw new ApiError(409, 'The appointment changed. Refresh before moving to the next service.');
+}
 
 // ─── Complete Service ─────────────────────────────────────────
 export const completeService = async (bookingId, requesterId, requesterRole, doctor = null) => {

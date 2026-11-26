@@ -5,6 +5,7 @@ import Booking from "../../booking/booking.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import Review from "../review/review.model.js";
 import { isBusinessSubscriptionActive } from "../subscription/subscription.service.js";
+import { getActiveClinicPlan, isWithinClinicCapacity, saveClinicActivation } from '../subscription/clinic-capacity.service.js';
 
 export const isCategoryLocked = (business) => Boolean(business.categorySelectedAt || business.onboarding?.status === "COMPLETED" || business.onboarding?.completedSteps?.includes(1));
 
@@ -361,6 +362,8 @@ export const getBusinessById = async (id) => {
 
   await enrichStaffAvailability(bObj);
   bObj.isSubscriptionActive = await isBusinessSubscriptionActive(b);
+  bObj.isWithinClinicCapacity = bObj.isSubscriptionActive && await isWithinClinicCapacity(b);
+  bObj.hasProQueueTools = (await getActiveClinicPlan(b))?.id === 'PRO';
 
   // Compute real review stats from the reviews collection
   const reviews = await Review.find({ businessId: id }).select("rating");
@@ -409,6 +412,27 @@ export const updateBusiness = async (id, ownerId, data, userRole = null) => {
   if (!normalizeServiceCategory(b?.category)) throw new ApiError(403, "Clinic not found or unauthorized");
 
   const safeData = editableBusinessData(data);
+  const hasRoomUpdate = Object.hasOwn(data, 'queueRooms');
+  if ((hasRoomUpdate || data.whatsappQueueTurnAlerts === true) && (await getActiveClinicPlan(b))?.id !== 'PRO') {
+    throw new ApiError(403, 'Queue rooms and WhatsApp queue turn alerts require an active Pro subscription.');
+  }
+  if (Object.hasOwn(data, 'whatsappQueueTurnAlerts')) {
+    if (typeof data.whatsappQueueTurnAlerts !== 'boolean') throw new ApiError(400, 'Choose whether to enable WhatsApp queue turn alerts.');
+    safeData.whatsappQueueTurnAlerts = data.whatsappQueueTurnAlerts;
+  }
+  if (hasRoomUpdate) {
+    const roster = new Set((b.staff || []).map(member => String(member._id)));
+    if (!Array.isArray(data.queueRooms) || data.queueRooms.length > roster.size) throw new ApiError(400, 'Provide a room for each staff member.');
+    const assigned = new Set();
+    safeData.queueRooms = data.queueRooms.map(room => {
+      const { staffId, name } = room || {};
+      if (!roster.has(staffId) || assigned.has(staffId) || typeof name !== 'string' || !name.trim() || name.length > 50 || /[\u0000-\u001f\u007f]/.test(name)) {
+        throw new ApiError(400, 'Enter a valid room name for a staff member at this clinic.');
+      }
+      assigned.add(staffId);
+      return { staffId, name: name.trim() };
+    });
+  }
   if (userRole !== "admin" && safeData.category && safeData.category !== b.category) {
     throw new ApiError(403, "Ask the admin to change your business category.");
   }
@@ -881,44 +905,35 @@ export const saveOnboardingStep = async (id, ownerId, stepNumber, stepData) => {
 };
 
 export const launchBusiness = async (id, ownerId, io = null) => {
-  const b = await Business.findOne({ _id: id, owner: ownerId });
-  if (!normalizeServiceCategory(b?.category)) throw new ApiError(404, "Clinic not found or unauthorized");
-  if (!isCategoryLocked(b)) throw new ApiError(403, "Enable clinic access before continuing setup.");
-
-  if (b.onboarding?.status === "COMPLETED") {
-    return b; // Idempotent
-  }
-
-  // Comprehensive server-side pre-flight validations
-  if (!b.name || b.name.trim().length < 2) {
-    throw new ApiError(400, "Launch failed: Business must have a valid name");
-  }
-  if (!b.address && !b.location && !b.locationDetails?.city) {
-    throw new ApiError(400, "Launch failed: Business must have an address or city configured");
-  }
-  if (!Array.isArray(b.services) || b.services.length === 0) {
-    throw new ApiError(400, "Launch failed: Business must have at least one active service configured");
-  }
-  if (!b.paymentConfiguration?.paymentMode) {
-    b.paymentConfiguration = {
-      paymentMode: "PAY_AT_BUSINESS",
-      onlinePaymentStatus: "NOT_STARTED",
-      paymentProvider: "mock",
-      providerAccountReference: "",
-      upiId: "",
-      lastVerificationUpdate: new Date(),
-    };
-  }
-
-  // Complete onboarding and publish business
-  b.onboarding.status = "COMPLETED";
-  b.onboarding.completedAt = new Date();
-  b.onboarding.completedSteps = [1, 2, 3, 4, 5, 6, 7];
-  b.onboarding.currentStep = 7;
-  b.isActive = true;
-  b.isOpen = true;
-
-  await b.save();
+  const b = await saveClinicActivation({ _id: id, owner: ownerId }, clinic => {
+    if (!isCategoryLocked(clinic)) throw new ApiError(403, "Enable clinic access before continuing setup.");
+    if (clinic.onboarding?.status === "COMPLETED") return false;
+    if (!clinic.name || clinic.name.trim().length < 2) {
+      throw new ApiError(400, "Launch failed: Business must have a valid name");
+    }
+    if (!clinic.address && !clinic.location && !clinic.locationDetails?.city) {
+      throw new ApiError(400, "Launch failed: Business must have an address or city configured");
+    }
+    if (!Array.isArray(clinic.services) || clinic.services.length === 0) {
+      throw new ApiError(400, "Launch failed: Business must have at least one active service configured");
+    }
+    if (!clinic.paymentConfiguration?.paymentMode) {
+      clinic.paymentConfiguration = {
+        paymentMode: "PAY_AT_BUSINESS",
+        onlinePaymentStatus: "NOT_STARTED",
+        paymentProvider: "mock",
+        providerAccountReference: "",
+        upiId: "",
+        lastVerificationUpdate: new Date(),
+      };
+    }
+    clinic.onboarding.status = "COMPLETED";
+    clinic.onboarding.completedAt = new Date();
+    clinic.onboarding.completedSteps = [1, 2, 3, 4, 5, 6, 7];
+    clinic.onboarding.currentStep = 7;
+    clinic.isActive = true;
+    clinic.isOpen = true;
+  }, { requireSubscription: true });
 
   // Ensure Queue document exists if DB is connected
   if (mongoose.connection?.readyState === 1) {

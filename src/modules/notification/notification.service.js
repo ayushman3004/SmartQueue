@@ -4,12 +4,16 @@ import Notification from './notification.model.js';
 import Queue from '../../queue/queue.model.js';
 import Business from '../business/business.model.js';
 import ApiError from '../../../utils/ApiError.js';
+import { scheduleVisitNotice } from '../whatsapp/visit-notice-outbox.js';
 
 export const safeNotificationHref = value => typeof value === 'string' &&
   /^\/(?!\/)/.test(value) && !/[\\\s\u0000-\u001f]/.test(value) ? value : '';
 
-export async function createNotification({ recipient, type, title, message, href, eventKey }, io) {
-  const payload = { recipient, type, title, message, href: safeNotificationHref(href), eventKey };
+export async function createNotification({ recipient, type, title, message, href, eventKey, clinicForWhatsApp }, io) {
+  const now = new Date();
+  const payload = { recipient, type, title, message, href: safeNotificationHref(href), eventKey,
+    ...(clinicForWhatsApp && { clinicForWhatsApp, whatsappVisitNotice: scheduleVisitNotice(now, new Date(now.getTime() + 5 * 60_000), now) }),
+  };
   try {
     const notification = await Notification.create(payload);
     io?.to(`user:${recipient}`).emit('notification:created', notification);
@@ -43,7 +47,10 @@ export function turnNotificationPayload(business, entry) {
 }
 
 export async function notifyServingTurns(business, entries, io) {
-  await Promise.all(entries.filter(entry => entry.status === 'serving').map(entry => notifyUser(turnNotificationPayload(business, entry), io)));
+  await Promise.all(entries.filter(entry => entry.status === 'serving').map(entry => notifyUser({
+    ...turnNotificationPayload(business, entry),
+    ...(business.whatsappQueueTurnAlerts && { clinicForWhatsApp: business._id }),
+  }, io)));
 }
 
 // Recover a missed socket event or a turn that started before the inbox was opened.

@@ -60,6 +60,7 @@ export default function BusinessMarketingPage() {
               <p className="business-public-plan-tagline">{plan.tagline}</p>
               <p className="business-plan-includes">Included facilities</p>
               <ul>{plan.features.map((feature) => <li key={feature}><Check size={17} aria-hidden="true" /><span>{feature}</span></li>)}</ul>
+              {plan.plannedFeatures?.length > 0 && <div><p className="business-plan-includes">Planned features</p><ul>{plan.plannedFeatures.map(feature => <li key={feature}>{feature}</li>)}</ul></div>}
               <a href="#apply" className="admission-primary" aria-label={`Apply to join serveQ with the ${plan.name}`}>Apply to join <ArrowUpRight size={17} aria-hidden="true" /></a>
             </article>
           ))}

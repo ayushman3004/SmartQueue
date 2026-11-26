@@ -1,11 +1,12 @@
 class QueueNode {
-  constructor({ userId, bookingId, walkIn, serviceTime, serviceType, joinedAt, pricingLabel, paidAmount, paymentMethod, paymentStatus, services, assignedStaff }) {
+  constructor({ userId, bookingId, walkIn, serviceTime, serviceType, joinedAt, pricingLabel, paidAmount, paymentMethod, paymentStatus, services, assignedStaff, serviceStep }) {
     this.userId = userId;
     this.bookingId = bookingId || null;
     this.walkIn = walkIn;
     this.serviceTime = serviceTime; // in minutes
     this.serviceType = serviceType || "general";
     this.services = Array.isArray(services) ? services : [];
+    this.serviceStep = serviceStep;
     this.assignedStaff = assignedStaff || null;
     this.pricingLabel = pricingLabel || "";
     this.paidAmount = paidAmount || 0;
@@ -178,6 +179,7 @@ class QueueDS {
         serviceTime: current.serviceTime,
         serviceType: current.serviceType,
         services: current.services || [],
+        ...(current.serviceStep !== undefined && { serviceStep: current.serviceStep }),
         assignedStaff: current.assignedStaff || null,
         pricingLabel: current.pricingLabel,
         paidAmount: current.paidAmount,

@@ -1,5 +1,6 @@
 import { adminEmail, isAdminAccessRequired } from "../../../middleware/admin-access.middleware.js";
 import { effectiveSubscription } from '../../utils/subscription.js';
+import { hasVisitNoticeConsent } from '../../shared/visitNoticeConsent.js';
 import { phoneRevisionFilter, recentPhoneAuthorization, whatsappConsentVersion } from './phone-security.js';
 import { hasWhatsAppVerifiedPhone, hasVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import { ownerState, assertOwnerLogin, publicOwnerAccess } from "../business-application/owner-lifecycle.js";
@@ -289,6 +290,7 @@ export const sanitize = (user) => ({
   phoneVerifiedAt: hasVerifiedPhone(user) ? user.phoneVerification.verifiedAt : undefined,
   whatsappVerifiedAt: hasWhatsAppVerifiedPhone(user) ? user.whatsappVerifiedAt : undefined,
   whatsappConsent: Boolean(hasWhatsAppVerifiedPhone(user) && user.whatsappConsent && user.whatsappConsentVersion === whatsappConsentVersion),
+  clinicVisitWhatsAppConsent: hasVisitNoticeConsent(user),
   isEmailVerified: Boolean(user.isEmailVerified),
   bio: user.bio || "",
   location: user.location || "",

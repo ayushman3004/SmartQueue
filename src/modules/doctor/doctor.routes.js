@@ -18,9 +18,11 @@ import { sendBusinessNotice } from '../business-application/business-application
 import { hashPassword, comparePassword, generateToken, setTokenCookie, responseToken } from '../auth.utils.js';
 import { sanitize } from '../auth/auth.service.js';
 import { isBusinessSubscriptionActive } from '../subscription/subscription.service.js';
+import { getActiveClinicPlan } from '../subscription/clinic-capacity.service.js';
 import * as queueService from '../../queue/queue.service.js';
 import * as bookingService from '../../booking/booking.service.js';
 import { scheduleFollowUp } from './follow-up-reminder.service.js';
+import { scheduleVisitNotice } from '../whatsapp/visit-notice-outbox.js';
 import { prescriptionPdf } from './prescription.pdf.js';
 import { accountSecurityLimit, doctorAccessLimit } from '../../gateway/endpointRateLimits.js';
 
@@ -114,6 +116,7 @@ router.post('/password', allowRoles('doctor'), accountSecurityLimit, asyncHandle
 router.get('/dashboard', allowRoles('doctor', 'admin'), asyncHandler(async (req, res) => {
   const context = await doctorContext(req.user);
   if (!await isBusinessSubscriptionActive(context.business)) throw new ApiError(403, 'The clinic subscription is inactive. Contact your business owner.');
+  const hasServiceSequencing = (await getActiveClinicPlan(context.business))?.id === 'PRO';
   const queue = await Queue.findOne({ businessId: context.business._id }).populate('users.userId', 'name email phone');
   const legacyName = RegExp.escape(context.staff.name);
   const bookings = await Booking.find({
@@ -124,7 +127,7 @@ router.get('/dashboard', allowRoles('doctor', 'admin'), asyncHandler(async (req,
       { 'assignedStaff.staffId': null, 'assignedStaff.name': { $regex: `^${legacyName}$`, $options: 'i' } },
     ],
   }).sort({ startTime: -1 }).populate('userId', 'name email phone');
-  res.json({ data: { clinic: { _id: context.business._id, name: context.business.name }, doctor: { name: context.staff.name, doctorId: context.staff.doctorId }, queue: (queue?.users || []).filter(row => isAssignedToDoctor(row, context)), bookings: bookings.filter(row => isAssignedToDoctor(row, context)) } });
+  res.json({ data: { clinic: { _id: context.business._id, name: context.business.name, hasServiceSequencing }, doctor: { name: context.staff.name, doctorId: context.staff.doctorId }, queue: (queue?.users || []).filter(row => isAssignedToDoctor(row, context)), bookings: bookings.filter(row => isAssignedToDoctor(row, context)) } });
 }));
 const minutes = value => { const number = Number(value); if (!Number.isInteger(number) || number < 1 || number > 120) throw new ApiError(400, 'Extension must be 1-120 minutes.'); return number; };
 const notify = (req, businessId) => { req.app.get('io')?.to(`business:${businessId}`).emit('bookings:updated'); };
@@ -144,6 +147,7 @@ router.post('/queue/:patientId/:action', allowRoles('doctor', 'admin'), asyncHan
     const io = req.app.get('io');
     io?.to([ `business:${businessId}:admin`, `user:${ownerId}` ]).emit('doctor:called-next', event);
   } else if (req.params.action === 'start') await queueService.startWalkInVisit(patientId, context, req.app.get('io'));
+  else if (req.params.action === 'advance-service') await queueService.advanceQueueService(queue, patientId, req.body?.serviceStep, context, req.app.get('io'));
   else if (req.params.action === 'extend') await queueService.extendTime(businessId, req.params.patientId, minutes(req.body.minutes), ownerId, 'owner', req.app.get('io'), context);
   else if (req.params.action === 'payment') await queueService.collectQueuePayment(businessId, req.params.patientId, { _id: ownerId, role: 'owner' }, null, context);
   else throw new ApiError(400, 'Unknown queue action.');
@@ -159,6 +163,7 @@ router.post('/bookings/:bookingId/:action', allowRoles('doctor', 'admin'), async
   if (['cancelled', 'refunded'].includes(booking.status)) throw new ApiError(400, 'This booking is closed.');
   const ownerId = context.business.owner;
   if (req.params.action === 'start') await bookingService.startService(booking._id, ownerId, 'owner', context, req.app.get('io'));
+  else if (req.params.action === 'advance-service') await bookingService.advanceAppointmentService(booking, req.body?.serviceStep, context);
   else if (req.params.action === 'complete') await bookingService.completeService(booking._id, ownerId, 'owner', context);
   else if (req.params.action === 'extend') await bookingService.extendBooking(booking._id, minutes(req.body.minutes), ownerId, 'owner', req.app.get('io'), context);
   else if (req.params.action === 'payment') await bookingService.collectCounterPayment(booking._id, { _id: ownerId, role: 'owner' }, null, context);
@@ -176,6 +181,7 @@ router.post('/prescriptions', allowRoles('doctor', 'admin'), asyncHandler(async 
   const context = await doctorContext(req.user);
   const booking = await Booking.findById(validId(req.body.bookingId)).populate('userId', 'name');
   requireAssigned(booking, context);
+  if (!await isBusinessSubscriptionActive(context.business)) throw new ApiError(403, 'Clinic subscription inactive.');
   if (!['serving', 'completed', 'in-progress'].includes(booking.status)) throw new ApiError(400, 'Start the consultation before saving a prescription.');
   const fields = {};
   for (const key of ['symptoms', 'diagnosis', 'medications', 'investigations', 'advice', 'followUp']) {
@@ -185,9 +191,10 @@ router.post('/prescriptions', allowRoles('doctor', 'admin'), asyncHandler(async 
   }
   if (!fields.diagnosis) throw new ApiError(400, 'Enter the diagnosis.');
   const reminder = scheduleFollowUp(req.body.followUpDate);
+  const whatsappVisitNotice = reminder.reminderNextRunAt && scheduleVisitNotice(reminder.reminderNextRunAt, reminder.reminderExpiresAt);
   try {
     const notification = req.app.locals.whatsapp?.config.enabled ? schedulePrescriptionNotification() : undefined;
-    const prescription = await Prescription.create({ ...fields, ...reminder, whatsappNotification: notification, booking: booking._id, business: context.business._id, doctor: req.user._id, patient: booking.userId._id, doctorName: context.staff.name, doctorId: context.staff.doctorId, patientName: booking.userId.name, clinicName: context.business.name });
+    const prescription = await Prescription.create({ ...fields, ...reminder, whatsappVisitNotice, whatsappNotification: notification, booking: booking._id, business: context.business._id, doctor: req.user._id, patient: booking.userId._id, doctorName: context.staff.name, doctorId: context.staff.doctorId, patientName: booking.userId.name, clinicName: context.business.name });
     res.status(201).json({ data: { prescription: readPrescription(prescription), whatsappNotification: notification ? 'queued' : 'disabled' } });
   } catch (error) { if (error.code === 11000) throw new ApiError(409, 'A prescription is already saved for this consultation.'); throw error; }
 }));

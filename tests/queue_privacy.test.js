@@ -42,6 +42,7 @@ test("queue and clinic discovery expose only the signed-in patient's own visit d
     return { then: resolve => Promise.resolve(detail).then(resolve), populate: async () => detail };
   });
   t.mock.method(Business, "aggregate", async () => [{ ...business, activeQueue: [row] }]);
+  t.mock.method(Business, 'countDocuments', async () => 0);
   t.mock.method(Review, "find", () => ({ select: async () => [] }));
 
   const app = express();

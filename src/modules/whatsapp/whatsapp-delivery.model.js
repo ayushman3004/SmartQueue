@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const schema = new mongoose.Schema({
   _id: String,
-  kind: { type: String, enum: ['otp', 'prescription'], required: true },
+  kind: { type: String, enum: ['otp', 'prescription', 'visit_notice'], required: true },
   providerId: String,
   status: { type: String, default: 'pending' },
   rank: { type: Number, default: 0 },

@@ -200,16 +200,11 @@ export default function BookingPage() {
         return
       }
 
-      // If business subscription is inactive, do not fetch slots or allow booking
-      if (biz.isSubscriptionActive === false) {
-        setIsSubscriptionInactive(true)
-        setSlots([])
-        setLoading(false)
-        return
-      }
+      const intakePaused = biz.isSubscriptionActive === false || biz.isWithinClinicCapacity === false
+      if (intakePaused) setIsSubscriptionInactive(true)
 
       const [sRes, mRes] = await Promise.all([
-        (biz.bookingSettings?.enableAppointments === false
+        (intakePaused || biz.bookingSettings?.enableAppointments === false
           ? Promise.resolve({ data: { data: { slots: [] } } })
           : getAvailableSlots(selectedBizId, selectedDate)).catch((sErr) => {
           if (request === bookingRequest.current && sErr.response?.status === 403 && sErr.response?.data?.message?.includes('subscription')) {
@@ -1000,7 +995,7 @@ export default function BookingPage() {
                   )}
 
                   {/* Venue Subscription Inactive Notice */}
-                  {isSubscriptionInactive || business?.isSubscriptionActive === false ? (
+                  {isSubscriptionInactive || business?.isSubscriptionActive === false || business?.isWithinClinicCapacity === false ? (
                     <div className="py-12 px-6 text-center border border-amber-300 bg-amber-50/90 rounded-3xl space-y-4">
                       <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto shadow-xs">
                         <Building className="w-6 h-6" />
@@ -1008,8 +1003,7 @@ export default function BookingPage() {
                       <div className="space-y-1">
                         <h3 className="text-base font-black text-amber-950">Appointments & Queue Paused</h3>
                         <p className="text-xs text-amber-800 max-w-md mx-auto leading-relaxed">
-                          This venue does not currently have an active ServeQ subscription.
-                          Online appointments and virtual live queue entries are temporarily unavailable.
+                          This clinic is temporarily unable to accept new appointments or live queue entries.
                         </p>
                       </div>
                       <button

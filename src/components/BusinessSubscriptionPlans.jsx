@@ -47,6 +47,7 @@ export default function BusinessSubscriptionPlans({ onSuccess, onBusyChange }) {
           <p className="business-plan-price">₹{plan.price.toLocaleString('en-IN')} <span>/ month</span></p>
           <p className="text-sm leading-relaxed text-zinc-600">{plan.tagline}</p>
           <ul className="my-6 space-y-3">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm leading-relaxed"><Check size={16} className="mt-1 shrink-0" /><span>{feature}</span></li>)}</ul>
+          {plan.plannedFeatures?.length > 0 && <div className="mb-6 text-xs text-zinc-600"><p className="font-semibold">Planned features</p><ul className="mt-2 list-disc space-y-1 pl-4">{plan.plannedFeatures.map(feature => <li key={feature}>{feature}</li>)}</ul></div>}
           <button type="button" disabled={couponBusy || checkout.busy || Boolean(checkout.pending) || downgrade} onClick={() => checkout.subscribe(plan)} className="business-primary mt-auto w-full">{checkout.busy && checkout.selectedPlan === plan.id ? checkout.stage : downgrade ? 'Available after Pro expires' : current ? 'Renew for 30 days' : active ? 'Upgrade to Pro' : `Choose ${plan.name}`}</button>
         </section>
       })}</div>

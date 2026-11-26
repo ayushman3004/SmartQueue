@@ -4,6 +4,7 @@ import { sanitize } from '../auth/auth.service.js';
 import { ensureAdminWorkspace } from './admin-workspace.service.js';
 import mongoose from "mongoose";
 import { getBusinessSubscriptionCoupon, issueBusinessSubscriptionCoupon } from "../subscription/subscription-coupon.service.js";
+import { saveClinicActivation } from '../subscription/clinic-capacity.service.js';
 import User from "../auth/auth.model.js";
 import Business from "../business/business.model.js";
 import Booking from "../../booking/booking.model.js";
@@ -135,30 +136,27 @@ export const getBusinessDetail = asyncHandler(async (req, res) => {
 export const moderateBusiness = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { action, approvalStatus, isActive, isOpen } = req.body;
-  const business = await Business.findById(id);
-  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
-
-  if (action === "approve") {
-    business.approvalStatus = "approved";
-    business.isActive = true;
-  } else if (action === "suspend") {
-    business.approvalStatus = "suspended";
-    business.isActive = false;
-    business.isOpen = false;
-  } else if (action === "close") {
-    business.isOpen = false;
-  } else if (action === "open") {
-    business.isOpen = true;
-  } else {
-    if (approvalStatus !== undefined) business.approvalStatus = approvalStatus;
-    if (isActive !== undefined) {
-      business.isActive = Boolean(isActive);
-      if (!business.isActive) business.isOpen = false;
+  const business = await saveClinicActivation({ _id: id }, clinic => {
+    if (action === "approve") {
+      clinic.approvalStatus = "approved";
+      clinic.isActive = true;
+    } else if (action === "suspend") {
+      clinic.approvalStatus = "suspended";
+      clinic.isActive = false;
+      clinic.isOpen = false;
+    } else if (action === "close") {
+      clinic.isOpen = false;
+    } else if (action === "open") {
+      clinic.isOpen = true;
+    } else {
+      if (approvalStatus !== undefined) clinic.approvalStatus = approvalStatus;
+      if (isActive !== undefined) {
+        clinic.isActive = Boolean(isActive);
+        if (!clinic.isActive) clinic.isOpen = false;
+      }
+      if (isOpen !== undefined) clinic.isOpen = Boolean(isOpen);
     }
-    if (isOpen !== undefined) business.isOpen = Boolean(isOpen);
-  }
-
-  await business.save();
+  });
 
   const io = req.app.get("io");
   if (io) {
@@ -178,16 +176,10 @@ export const moderateBusiness = asyncHandler(async (req, res) => {
 
 export const toggleBusinessStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const business = await Business.findById(id);
-  if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
-
-  business.isActive = !business.isActive;
-  if (!business.isActive) {
-    business.isOpen = false;
-  } else {
-    business.isOpen = true;
-  }
-  await business.save();
+  const business = await saveClinicActivation({ _id: id }, clinic => {
+    clinic.isActive = !clinic.isActive;
+    clinic.isOpen = clinic.isActive;
+  });
 
   const io = req.app.get("io");
   if (io) {

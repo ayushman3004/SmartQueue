@@ -6,6 +6,7 @@ import { provisionWalkInAccount } from '../modules/auth/walk-in-account.service.
 import Business from '../modules/business/business.model.js';
 import { isClinic, isAssignedToDoctor, ref } from '../modules/doctor/doctor-access.js';
 import { isBusinessSubscriptionActive } from '../modules/subscription/subscription.service.js';
+import { isWithinClinicCapacity } from '../modules/subscription/clinic-capacity.service.js';
 import { canAccessOwnerCategory } from '../utils/ownerCategory.js';
 import { normalizePhoneNumber } from '../utils/phoneNumbers.js';
 import Queue from './queue.model.js';
@@ -34,6 +35,7 @@ export async function checkInWalkIn(businessId, actor, input) {
           !business.isActive || !business.isOpen || business.queueSettings?.enableLiveQueue === false || business.queueSettings?.allowWalkIns === false) {
           throw new ApiError(409, 'This clinic is currently closed for walk-in check-ins.');
         }
+        if (!await isWithinClinicCapacity(business, session)) throw new ApiError(403, 'This clinic has reached its subscription capacity and cannot accept new walk-ins.');
 
         const queue = await Queue.findOne({ businessId }).session(session) || new Queue({ businessId });
         const doctors = await User.find({ role: 'doctor', 'doctorAccess.status': 'ACTIVE', 'doctorAccess.businessId': businessId })

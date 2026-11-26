@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { clinicalFields, decryptPrescription, encryptPrescription } from './prescription-encryption.js';
+import { indexVisitNotices, visitNoticeSchema } from '../whatsapp/visit-notice-outbox.js';
 
 const requiresPlaintext = function () { return this.isNew || this.encryptedClinicalData === undefined; };
 const notificationSchema = new mongoose.Schema({
@@ -28,6 +29,7 @@ const schema = new mongoose.Schema({
   reminderNextRunAt: { type: Date, select: false },
   reminderExpiresAt: { type: Date, select: false },
   whatsappNotification: { type: notificationSchema, select: false },
+  whatsappVisitNotice: { type: visitNoticeSchema, select: false, transform: () => undefined },
 }, { timestamps: true });
 
 schema.pre('save', function () {
@@ -50,4 +52,5 @@ schema.index({ 'whatsappNotification.state': 1, 'whatsappNotification.leaseUntil
   partialFilterExpression: { 'whatsappNotification.leaseUntil': { $exists: true } },
 });
 schema.index({ booking: 1, doctor: 1 }, { unique: true });
+indexVisitNotices(schema);
 export default mongoose.model('Prescription', schema);

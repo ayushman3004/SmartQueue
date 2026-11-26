@@ -14,6 +14,7 @@ import { configureRateLimitStore } from "./src/gateway/rateLimitStore.js";
 
 import { configureWhatsApp, ensureWhatsAppIndexes } from "./src/modules/whatsapp/whatsapp.runtime.js";
 import { startPrescriptionNotificationWorker } from "./src/modules/whatsapp/prescription-notifications.js";
+import { startWhatsAppVisitNoticeWorker } from './src/modules/whatsapp/visit-notices.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -56,12 +57,13 @@ initSocket(io);
 connectDB().then(async () => {
   if (whatsapp) await ensureWhatsAppIndexes();
   const stopWhatsApp = whatsapp && startPrescriptionNotificationWorker(whatsapp);
+  const stopWhatsAppVisitNotices = startWhatsAppVisitNoticeWorker(whatsapp);
   let closing = false;
   const shutdown = async () => {
     if (closing) return;
     closing = true;
     try {
-      await stopWhatsApp?.();
+      await Promise.all([stopWhatsApp?.(), stopWhatsAppVisitNotices()]);
       await new Promise(resolve => io.close(resolve));
       rateLimitStore?.close();
       await mongoose.disconnect();

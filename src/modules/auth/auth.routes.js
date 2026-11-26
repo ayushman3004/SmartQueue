@@ -27,6 +27,8 @@ import {
 } from "../../gateway/endpointRateLimits.js";
 
 import { beginOAuth, validateOAuthState, oauthClientUrl, oauthResponseHeaders } from "./oauth-security.js";
+import { updateVisitNoticeConsent } from './whatsapp-visit-consent.service.js';
+import asyncHandler from '../../../utils/asyncHandler.js';
 
 const router = Router();
 router.use((_req, res, next) => {
@@ -56,6 +58,12 @@ router.post("/phone/send-otp", protect, requireWhatsApp, phoneOtpSendLimit,
 router.post("/phone/verify-otp", protect, requireWhatsApp, profileOtpVerifyLimit, verifyPhoneVerificationOtp);
 router.patch("/phone/whatsapp-consent", protect, accountSecurityLimit,
   (req, res, next) => req.body?.enabled === true ? requireWhatsApp(req, res, next) : next(), setWhatsAppConsent);
+router.patch('/phone/whatsapp-visit-consent', protect, accountSecurityLimit,
+  (req, res, next) => req.body?.enabled === true ? requireWhatsApp(req, res, next) : next(),
+  asyncHandler(async (req, res) => {
+    const data = await updateVisitNoticeConsent(req.user, req.body?.enabled, req.body?.version);
+    res.json({ success: true, data });
+  }));
 router.post("/email/send-otp", protect, emailOtpSendLimit, sendEmailVerificationOtp);
 router.post("/email/verify-otp", protect, profileOtpVerifyLimit, verifyEmailVerificationOtp);
 

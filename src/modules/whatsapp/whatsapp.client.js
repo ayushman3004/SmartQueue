@@ -53,5 +53,10 @@ export function createWhatsAppClient(config, request = fetch) {
       // A static URL in the approved template opens the authenticated profile.
       return send(phone, callback, { name: config.documentTemplate });
     },
+    visitNotice(kind, phone, callback) {
+      const name = config.visitTemplates?.[kind];
+      if (!name) throw new WhatsAppSendError('permanent');
+      return send(phone, callback, { name });
+    },
   };
 }

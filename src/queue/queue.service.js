@@ -12,6 +12,8 @@ import Booking from "../booking/booking.model.js";
 import ApiError from "../../utils/ApiError.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
 import { isBusinessSubscriptionActive } from "../modules/subscription/subscription.service.js";
+import { isWithinClinicCapacity } from '../modules/subscription/clinic-capacity.service.js';
+import { nextServiceStep } from '../modules/doctor/service-sequencing.js';
 import { cancelWalkIn } from './walk-in.service.js';
 
 //  JOIN QUEUE
@@ -36,6 +38,7 @@ export const joinQueue = async (businessId, userData, io = null, attempt = 0) =>
       "This venue is currently not accepting queue entries because its ServeQ subscription is inactive."
     );
   }
+  if (!await isWithinClinicCapacity(business)) throw new ApiError(403, 'This clinic has reached its subscription capacity and cannot accept new queue entries.');
 
   // Validate business queue preferences
   if (business.queueSettings?.enableLiveQueue === false) {
@@ -661,6 +664,19 @@ export async function startWalkInVisit(patientId, doctor, io) {
   });
   publishQueue(io, businessId, queue);
   await notifyServingTurns(doctor.business, queue.users, io);
+}
+
+export async function advanceQueueService(queue, patientId, expectedStep, doctor, io) {
+  if (ref(queue?.businessId) !== ref(doctor.business._id)) throw new ApiError(403, 'This patient is not assigned to you.');
+  const row = queue.users.find(entry => ref(entry.userId) === ref(patientId));
+  const serviceStep = await nextServiceStep(row, expectedStep, doctor);
+  row.serviceStep = serviceStep;
+  try { await queue.save(); }
+  catch (error) {
+    if (error.name !== 'VersionError') throw error;
+    throw new ApiError(409, 'The queue changed. Refresh before moving to the next service.');
+  }
+  publishQueue(io, queue.businessId, queue);
 }
 
 //  ESTIMATE WAIT TIME

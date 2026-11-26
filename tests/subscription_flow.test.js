@@ -23,7 +23,7 @@ test("Subscription Flow - Plan Specifications & Pricing", async (t) => {
     assert.equal(basic.price, 799);
     assert.equal(basic.amountInPaise, 79900);
     assert.equal(basic.durationDays, 30);
-    assert.ok(basic.features.length >= 4);
+    assert.equal(basic.maxActiveClinics, 3);
   });
 
   await t.test("Pro Plan is priced at ₹1,499 with 30-day duration", () => {
@@ -32,7 +32,7 @@ test("Subscription Flow - Plan Specifications & Pricing", async (t) => {
     assert.equal(pro.price, 1499);
     assert.equal(pro.amountInPaise, 149900);
     assert.equal(pro.durationDays, 30);
-    assert.ok(pro.features.length >= 5);
+    assert.equal(pro.maxActiveClinics, 5);
   });
 });
 
@@ -439,7 +439,7 @@ test("Subscription Flow - Live Queue Counter Payment & AI Insights Plan Gating",
       Business.findById = async () => ({
         _id: testBizId,
         owner: testOwnerId,
-        subscription: { plan: "BASIC", status: "ACTIVE" },
+        subscription: { plan: "PRO", status: "ACTIVE" },
       });
 
       User.findById = async () => ({

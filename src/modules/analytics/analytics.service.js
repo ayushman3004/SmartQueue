@@ -6,6 +6,7 @@ import Queue from "../../queue/queue.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import { generateBusinessAIAnalytics } from "../../../ai/openai.service.js";
 import { isClinic } from '../doctor/doctor-access.js';
+import { getActiveClinicPlan } from '../subscription/clinic-capacity.service.js';
 
 export const getBusinessAnalytics = async (businessId, requestingUserId, userRole, options = {}) => {
   const business = await Business.findById(businessId);
@@ -225,42 +226,8 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     }, null);
   }
 
-  // ─── 4. Check Plan for AI Insights (Exclusive to PRO plan subscribers) ─────
-  let isProPlan = false;
-  let ownerPlan = "BASIC";
-
-  if (userRole === "admin") {
-    isProPlan = true;
-    ownerPlan = "PRO";
-  } else if (
-    business.subscription?.status === "ACTIVE" &&
-    business.subscription?.plan === "PRO" &&
-    (!business.subscription.expiresAt || new Date(business.subscription.expiresAt) > new Date())
-  ) {
-    isProPlan = true;
-    ownerPlan = "PRO";
-  } else {
-    try {
-      const ownerUser = await mongoose.model("User").findById(business.owner).select("subscription role");
-      if (ownerUser && ownerUser.role === "admin") {
-        isProPlan = true;
-        ownerPlan = "PRO";
-      } else if (
-        ownerUser &&
-        (!ownerUser.subscription?.businessId || String(ownerUser.subscription.businessId) === String(business._id)) &&
-        ownerUser.subscription?.status === "ACTIVE" &&
-        ownerUser.subscription?.plan === "PRO" &&
-        (!ownerUser.subscription.expiresAt || new Date(ownerUser.subscription.expiresAt) > new Date())
-      ) {
-        isProPlan = true;
-        ownerPlan = "PRO";
-      } else {
-        ownerPlan = (!ownerUser?.subscription?.businessId || String(ownerUser.subscription.businessId) === String(business._id) ? ownerUser?.subscription?.plan : null) || business.subscription?.plan || "BASIC";
-      }
-    } catch {
-      ownerPlan = business.subscription?.plan || "BASIC";
-    }
-  }
+  const ownerPlan = userRole === 'admin' ? 'PRO' : (await getActiveClinicPlan(business))?.id || 'BASIC';
+  const isProPlan = ownerPlan === 'PRO';
 
   if (options.refresh && !isProPlan) {
     throw new ApiError(
@@ -271,6 +238,16 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
 
   let aiInsights = null;
   if (isProPlan) {
+    const clinicHour = new Intl.DateTimeFormat('en-IN', { hour: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Kolkata' });
+    const hourlyCounts = new Map();
+    for (const booking of completedBookings) {
+      const date = new Date(booking.startTime || booking.createdAt);
+      if (!Number.isFinite(date.getTime())) continue;
+      const hour = clinicHour.format(date);
+      hourlyCounts.set(hour, (hourlyCounts.get(hour) || 0) + 1);
+    }
+    const peakHours = [...hourlyCounts].sort(([hourA, countA], [hourB, countB]) => countB - countA || hourA.localeCompare(hourB))
+      .slice(0, 3).map(([hour]) => `${hour}:00–${String((Number(hour) + 1) % 24).padStart(2, '0')}:00 IST`);
     const rawAi = await generateBusinessAIAnalytics({
       businessName: business.name,
       category: business.category,
@@ -281,9 +258,12 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
       topCustomer,
       topEmployee,
       staffList,
+      peakHours,
+      collectedSales,
     });
     aiInsights = {
       ...rawAi,
+      peakHours,
       isLocked: false,
       restricted: false,
       plan: "PRO",

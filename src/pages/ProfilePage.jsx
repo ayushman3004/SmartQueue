@@ -1,4 +1,5 @@
-import { setWhatsAppConsent } from '../api/auth.api.js'
+import { setVisitNoticeConsent, setWhatsAppConsent } from '../api/auth.api.js'
+import { visitNoticeConsentVersion } from '../shared/visitNoticeConsent.js'
 import './ProfilePage.css'
 import Prescriptions from '../components/Prescriptions'
 import { usePrescriptions } from '../hooks/usePrescriptions'
@@ -132,6 +133,19 @@ export default function ProfilePage() {
       feedback.success(enabled ? 'WhatsApp notifications enabled.' : 'WhatsApp notifications disabled.')
     } catch (error) {
       feedback.error(error.response?.data?.message || 'Could not save the WhatsApp preference.')
+    } finally {
+      setSavingWhatsAppConsent(false)
+    }
+  }
+
+  async function handleVisitNoticeConsent(enabled) {
+    setSavingWhatsAppConsent(true)
+    try {
+      const { data } = await setVisitNoticeConsent(enabled, visitNoticeConsentVersion)
+      setUser(previous => ({ ...previous, clinicVisitWhatsAppConsent: data.data.enabled }))
+      feedback.success(enabled ? 'WhatsApp visit reminders enabled.' : 'WhatsApp visit reminders disabled.')
+    } catch (error) {
+      feedback.error(error.response?.data?.message || 'Could not save the visit reminder preference.')
     } finally {
       setSavingWhatsAppConsent(false)
     }
@@ -637,7 +651,7 @@ export default function ProfilePage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-bold uppercase tracking-wider text-[#617168]">
-                      Mobile Number (SMS Alerts)
+                      Mobile number
                     </label>
                     {isPhoneVerified ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#EAF7EE] text-[#16A34A] border border-[#CDEBD4]">
@@ -691,6 +705,13 @@ export default function ProfilePage() {
                   {isWhatsAppVerified && !user?.whatsappConsent && <button type="button" className="text-xs font-semibold text-teal-800 underline"
                     disabled={savingWhatsAppConsent} onClick={() => handleWhatsAppConsent(false)}>Stop notices agreed to at check-in</button>}
                   <p className="text-xs text-zinc-600">Optional. WhatsApp receives your number and a generic notice. Your prescription stays in ServeQ. You can turn notices off anytime.</p>
+                  <label className="mt-3 flex items-center gap-2 text-sm text-zinc-700">
+                    <input type="checkbox" checked={Boolean(user?.clinicVisitWhatsAppConsent)}
+                      disabled={savingWhatsAppConsent || (!isWhatsAppVerified && !user?.clinicVisitWhatsAppConsent)}
+                      onChange={event => handleVisitNoticeConsent(event.target.checked)} />
+                    Receive visit reminders and queue-turn alerts on WhatsApp where supported
+                  </label>
+                  <p className="text-xs text-zinc-600">WhatsApp receives your number and a generic reminder. Visit details stay in ServeQ. You can turn reminders off anytime.</p>
                 </div>}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
