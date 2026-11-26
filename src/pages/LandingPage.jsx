@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useSeo } from '../utils/useSeo'
 import { homePageMetadata } from '../seo/publicPages'
 import { SUBSCRIPTION_PLANS } from '../shared/subscriptionPlans'
+import BrandIntro from '../components/BrandIntro'
 import PublicNavbar from '../components/PublicNavbar'
 import HowServeQWorks from '../components/HowServeQWorks'
 import LandingTrust from '../components/LandingTrust'
@@ -57,6 +58,7 @@ export default function LandingPage() {
 
   return (
     <div className="landing-page app-background-glow selection:bg-emerald-500/20 selection:text-emerald-900 relative">
+      {!hash && <BrandIntro />}
       <PublicNavbar onTourJourneyStep={setTourJourneyStep} />
 
       <section className="landing-hero" aria-labelledby="landing-headline">

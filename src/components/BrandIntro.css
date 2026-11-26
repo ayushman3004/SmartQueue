@@ -1,0 +1,62 @@
+.brand-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #f5faf6;
+  pointer-events: none;
+  animation: brand-intro-veil 1320ms cubic-bezier(.23, 1, .32, 1) both;
+}
+
+.brand-intro-lockup {
+  position: relative;
+  width: min(65vw, 380px);
+}
+
+.brand-intro-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: brand-intro-logo 1320ms ease-out both;
+}
+
+.brand-intro-circle {
+  position: absolute;
+  border-radius: 50%;
+  animation: brand-intro-circle 900ms var(--delay) both;
+}
+
+@keyframes brand-intro-circle {
+  0% {
+    opacity: 0;
+    transform: translate(var(--from-x), var(--from-y)) scale(.66);
+    animation-timing-function: cubic-bezier(.23, 1, .32, 1);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translate(var(--drift-x), var(--drift-y)) scale(.78);
+    animation-timing-function: cubic-bezier(.77, 0, .175, 1);
+  }
+
+  94%, 100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes brand-intro-logo {
+  0%, 74% { opacity: 0; }
+  84%, 100% { opacity: 1; }
+}
+
+@keyframes brand-intro-veil {
+  0%, 86% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-intro { display: none; }
+}

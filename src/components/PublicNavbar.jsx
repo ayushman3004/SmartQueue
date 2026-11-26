@@ -43,7 +43,7 @@ export default function PublicNavbar({ onTourJourneyStep }) {
       <header className="public-navbar">
         <div className="landing-header-bar">
           <Link to="/" className="landing-header-brand" aria-label="serveQ home">
-            <img src="/serveq-logo.png" alt="serveQ" width="110" height="38" />
+            <img src="/serveq-logo.png" alt="ServeQ" width="1636" height="746" />
           </Link>
 
           <nav id="tour-header-nav" className="landing-header-nav" aria-label="Main navigation">

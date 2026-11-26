@@ -10,7 +10,7 @@ export default function Footer() {
       <path d="M0 40C140 112 280 108 440 34C540-12 620-12 720 34C930 138 1160 200 1440 94V160H0Z" />
     </svg>
     <div className="site-footer-body">
-      <div className="site-footer-brand"><Link to="/" aria-label="serveQ home"><img src="/serveq-logo.png" alt="serveQ" width="220" height="76" /></Link><p>A little less waiting.<br />A little more living.</p></div>
+      <div className="site-footer-brand"><Link to="/" aria-label="serveQ home"><img src="/serveq-logo.png" alt="ServeQ" width="1636" height="746" /></Link><p>A little less waiting.<br />A little more living.</p></div>
       <div className="site-footer-columns">
         <section className="site-footer-mobile" aria-labelledby="footer-mobile-title"><h2 id="footer-mobile-title">Take your place, on your phone.</h2><Link to="/customers" className="site-footer-qr" aria-label="Open serveQ customer portal"><img src="/serveq-qr.png" alt="Scan to open the serveQ customer portal on your phone" width="156" height="156" loading="lazy" /></Link><p>Scan to find a clinic.<br />No app download needed.</p><Link to="/customers" className="site-footer-inline">Get started <ArrowRight size={16} /></Link></section>
         <nav aria-labelledby="footer-explore-title"><h2 id="footer-explore-title">Explore serveQ</h2><ul><li><Link to="/about">About us</Link></li><li><Link to="/customers">Find a clinic</Link></li><li><Link to="/business">For clinics</Link></li><li><Link to="/subscription">Business plans</Link></li><li><Link to="/login">Sign in</Link></li><li><Link to="/profile">My account</Link></li></ul></nav>
