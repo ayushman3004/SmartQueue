@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import WebsiteTour from './WebsiteTour'
 import './PublicNavbar.css'
 
-export default function PublicNavbar() {
+export default function PublicNavbar({ onTourJourneyStep }) {
   const navigate = useNavigate()
   const location = useLocation()
   const isHome = location.pathname === '/'
@@ -103,6 +103,6 @@ export default function PublicNavbar() {
         </AnimatePresence>
       </header>
 
-    {isHome && <WebsiteTour manualTrigger={tourTrigger} restoreFocus={restoreTourFocus} />}
+    {isHome && <WebsiteTour manualTrigger={tourTrigger} restoreFocus={restoreTourFocus} onJourneyStep={onTourJourneyStep} />}
   </>
 }

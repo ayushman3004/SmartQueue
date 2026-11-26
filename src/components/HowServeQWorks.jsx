@@ -27,7 +27,7 @@ function VisitExample({ step }) {
   return <figure className="journey-ticket-example">
     <div className="journey-demo">
       <div className="journey-ticket-header"><div className="journey-demo-top"><span><ClipboardList size={16} aria-hidden="true" />{context}</span><span className="journey-demo-example">Example</span></div></div>
-      <div className="journey-business-demo">
+      <div className="journey-business-demo" data-tour-target={step === 'after' ? 'visit-history' : undefined}>
         {rows.map(([title, detail]) => <div key={title} className="journey-business-row"><div><strong>{title}</strong><p>{detail}</p></div></div>)}
       </div>
     </div>
@@ -43,13 +43,13 @@ function QueueExample({ step }) {
         <div className="journey-demo-top"><span><Ticket size={16} strokeWidth={1.5} />serveQ</span><span className="journey-demo-example">Sample pass</span></div>
         <div className="journey-demo-venue"><div><strong>Your chosen clinic</strong><p><MapPin size={12} />Consultation · Live queue</p></div><span className="journey-ticket-seal" aria-hidden="true"><Ticket size={25} strokeWidth={1.2} /></span></div>
       </div>
-      <div className="journey-ticket-main">
+      <div className="journey-ticket-main" data-tour-target="queue-pass">
         <div className="journey-token"><span>YOUR TOKEN</span><strong><span>#</span>24</strong></div>
         <div className="journey-ticket-status"><Clock size={26} strokeWidth={1.4} /><strong>{tracking ? 'Almost your turn' : 'You’re in line'}</strong><p>{tracking ? 'Stay nearby so you can return when called.' : 'Your place is saved.'}</p></div>
       </div>
       <div className="journey-ticket-details">
         <ol className="journey-ticket-progress" aria-label="Example queue progress">{['Joined', 'Getting closer', 'Your turn'].map((label, index) => <li key={label} data-complete={index <= progress} aria-current={index === progress ? 'step' : undefined}><span aria-hidden="true">{index < progress ? <CheckCircle2 size={13} /> : index + 1}</span><span>{label}</span></li>)}</ol>
-        <dl className="journey-stats"><div><dt><Users size={13} />People ahead</dt><dd>{tracking ? '1' : '3'}<span>{tracking ? ' person' : ' people'}</span></dd></div><div><dt><Clock size={13} />Estimated wait</dt><dd>{tracking ? '~5' : '~15'}<span> min</span></dd></div></dl>
+        <dl className="journey-stats" data-tour-target="queue-stats"><div><dt><Users size={13} />People ahead</dt><dd>{tracking ? '1' : '3'}<span>{tracking ? ' person' : ' people'}</span></dd></div><div><dt><Clock size={13} />Estimated wait</dt><dd>{tracking ? '~5' : '~15'}<span> min</span></dd></div></dl>
         <div className="journey-demo-message"><Bell size={14} strokeWidth={1.5} /><p>Follow your progress in My Queues.</p></div>
       </div>
     </div>
@@ -57,9 +57,11 @@ function QueueExample({ step }) {
   </figure>
 }
 
-export default function HowServeQWorks() {
-  const [audience, setAudience] = useState('customers')
-  const [selected, setSelected] = useState(0)
+export default function HowServeQWorks({ tourStep = null }) {
+  const [chosenAudience, setAudience] = useState('customers')
+  const [chosenStep, setSelected] = useState(0)
+  const audience = tourStep === null ? chosenAudience : 'customers'
+  const selected = tourStep ?? chosenStep
   const audienceRefs = useRef([])
   const STEPS = audience === 'customers' ? CUSTOMER_STEPS : BUSINESS_STEPS
   const tabRefs = useRef([])
@@ -84,7 +86,7 @@ export default function HowServeQWorks() {
       <div className="journey-tabs" role="tablist" aria-label="Your ServeQ journey">{STEPS.map((item, index) => <button key={item.id} type="button" role="tab" id={`${id}-tab-${index}`} aria-selected={selected === index} aria-controls={`${id}-panel-${index}`} tabIndex={selected === index ? 0 : -1} ref={(element) => { tabRefs.current[index] = element }} onClick={() => setSelected(index)} onKeyDown={(event) => handleKeyDown(event, index)}>{item.tab}</button>)}</div>
       {STEPS.map((item, index) => <div key={item.id} id={`${id}-panel-${index}`} role="tabpanel" aria-labelledby={`${id}-tab-${index}`} hidden={selected !== index} tabIndex={0} className="journey-panel" data-step={item.id}>
         {selected === index && <>
-          <div className="journey-copy"><h3>{step.title}</h3><p className="journey-summary">{step.summary}</p><p className="journey-description">{step.description}</p><Link to={step.to} className="journey-action">{step.action}<ArrowRight size={17} aria-hidden="true" /></Link>{step.note && <p className="journey-note">{step.note}</p>}</div>
+          <div className="journey-copy" data-tour-target={step.id === 'join' ? 'visit-options' : undefined}><h3>{step.title}</h3><p className="journey-summary">{step.summary}</p><p className="journey-description">{step.description}</p><Link to={step.to} className="journey-action">{step.action}<ArrowRight size={17} aria-hidden="true" /></Link>{step.note && <p className="journey-note">{step.note}</p>}</div>
           <div className="journey-visual">{Object.hasOwn(EXAMPLES, step.id) ? <VisitExample step={step.id} /> : <QueueExample step={step.id} />}</div>
         </>}
       </div>)}

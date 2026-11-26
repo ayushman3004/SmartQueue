@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowRight, CalendarDays, ClipboardList, Stethoscope } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useSeo } from '../utils/useSeo'
@@ -45,6 +45,7 @@ const CLINIC_PLANS = [
 
 export default function LandingPage() {
   const { hash } = useLocation()
+  const [tourJourneyStep, setTourJourneyStep] = useState(null)
   useSeo(homePageMetadata)
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function LandingPage() {
 
   return (
     <div className="landing-page app-background-glow selection:bg-emerald-500/20 selection:text-emerald-900 relative">
-      <PublicNavbar />
+      <PublicNavbar onTourJourneyStep={setTourJourneyStep} />
 
       <section className="landing-hero" aria-labelledby="landing-headline">
         <h1 id="landing-headline">
@@ -65,7 +66,7 @@ export default function LandingPage() {
         </h1>
         <p className="landing-hero-summary">Book a visit or join a live queue. Track your turn and find your prescription in ServeQ.</p>
         <div className="landing-actions">
-          <Link to="/customers" className="landing-action landing-action-primary">Find a clinic <ArrowRight size={17} aria-hidden="true" /></Link>
+          <Link to="/customers" data-tour-target="find-clinic" className="landing-action landing-action-primary">Find a clinic <ArrowRight size={17} aria-hidden="true" /></Link>
           <Link to="/business" className="landing-action">For clinic teams</Link>
         </div>
       </section>
@@ -86,7 +87,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <HowServeQWorks />
+      <HowServeQWorks tourStep={tourJourneyStep} />
 
       <section id="clinic-plans" className="landing-plans" aria-labelledby="landing-plans-title">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
