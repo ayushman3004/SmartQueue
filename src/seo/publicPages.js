@@ -1,9 +1,21 @@
 export const SITE_URL = 'https://www.serveq.tech'
 
+export const homePageMetadata = {
+  path: '/',
+  title: 'Clinic Queues, Appointments & Digital Prescriptions',
+  description: 'Book a clinic visit or join a live queue. Follow your wait, check in at the clinic, and find digital prescriptions and reminders in ServeQ.',
+}
+
+export const businessLandingMetadata = {
+  path: '/business',
+  title: 'Manage Clinic Queues, Walk-ins & Appointments',
+  description: 'Manage walk-ins, appointments, live queues and counter payments. Give doctors an assigned-visit workspace and compare ServeQ Basic and Pro plans.',
+}
+
 // Shared by the router, build output and sitemap so discovery cannot drift.
 export const publicPages = [
-  { path: '/', title: 'Clinic Queues, Digital Prescriptions & Follow-up Reminders', description: 'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic in-app follow-up reminders.' },
-  { path: '/business', title: 'ServeQ for Clinics — Apply to Join', description: 'Manage patient queues, appointments, and digital prescriptions. Send automatic in-app follow-up reminders.' },
+  homePageMetadata,
+  businessLandingMetadata,
   { path: '/support', title: 'Help & Support — ServeQ', description: 'Get in touch with the ServeQ support team for help with your queues, appointments, and business account.' },
   { path: '/privacy', title: 'Privacy Policy — serveQ', description: 'Learn how serveQ collects, uses, stores, processes, and protects your personal information, venue data, and payment details.' },
   { path: '/terms', title: 'Terms and Conditions', description: 'Review the terms and conditions for using serveQ, including virtual queue tokens, appointments, cancellations, and venue management.' },

@@ -15,8 +15,8 @@ const steps = [
     example: ['Clinics', 'Search by clinic name or area'],
   },
   {
-    title: 'Join a live queue',
-    description: 'Open a clinic that is accepting queue entries, choose a service, and join the line from your phone.',
+    title: 'Join online or check in',
+    description: 'Join a participating clinic’s live queue from your phone. If you arrive without a booking, the clinic team can check you in at the counter.',
     icon: Ticket,
     example: ['Live queue', 'Choose a service and join'],
   },
@@ -34,7 +34,7 @@ const steps = [
   },
   {
     title: 'Find your prescriptions',
-    description: 'When your doctor saves a prescription, open My Profile or History to view or download it. You’ll also see any scheduled follow-up reminders in ServeQ.',
+    description: 'Open My Profile or History to view a saved prescription and check scheduled follow-ups. For a walk-in registered at the clinic, sign in with the same mobile number using WhatsApp where available.',
     icon: ClipboardList,
     example: ['My Profile → Prescriptions', 'View or download a saved prescription'],
   },

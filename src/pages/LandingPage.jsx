@@ -1,31 +1,58 @@
 import { useEffect } from 'react'
-import { ArrowRight, Check, Clock, ClipboardList, Users } from 'lucide-react'
-import { useNavigate, Link } from 'react-router-dom'
+import { ArrowRight, CalendarDays, ClipboardList, Stethoscope } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 import { useSeo } from '../utils/useSeo'
+import { homePageMetadata } from '../seo/publicPages'
+import { SUBSCRIPTION_PLANS } from '../shared/subscriptionPlans'
 import PublicNavbar from '../components/PublicNavbar'
-import './LandingPage.css'
 import HowServeQWorks from '../components/HowServeQWorks'
 import LandingTrust from '../components/LandingTrust'
+import './LandingPage.css'
 
-const WAITING_PROBLEMS = [
-  { title: '“How much longer will it take?”', problem: 'You arrive without knowing how many people are ahead. A quick visit becomes an uncertain wait.', solutionTitle: 'Know where you stand.', solution: 'Check the live queue and estimated wait on your phone. See your progress as staff serve customers.', Icon: Clock },
-  { title: 'Your day stops in the waiting room.', problem: 'You stay nearby just to protect your place, with little time for anything else.', solutionTitle: 'Keep your place. Keep your freedom.', solution: 'Join a clinic queue online and wait somewhere comfortable. Stay close enough to return when called.', Icon: Users },
-  { title: 'Staff spend time managing the line.', problem: 'Handwritten lists and repeated “am I next?” questions make it harder to focus on the service.', solutionTitle: 'One clear queue for everyone.', solution: 'Staff view waiting customers, call the next token, and mark visits complete from one dashboard. Customers follow their own queue status.', Icon: ClipboardList },
+const WORKSPACES = [
+  {
+    audience: 'Patients',
+    title: 'Choose how you visit',
+    description: 'Book an appointment, join a live queue online, or check in at the clinic. Follow your queue position and estimated wait from your phone.',
+    Icon: CalendarDays,
+  },
+  {
+    audience: 'Clinic teams',
+    title: 'Manage arrivals and counter payments',
+    description: 'Register walk-ins alongside scheduled appointments, see who is waiting, and record cash or UPI QR payments at the counter.',
+    Icon: ClipboardList,
+  },
+  {
+    audience: 'Doctors',
+    title: 'Manage assigned visits and follow-ups',
+    description: 'Call the next assigned patient, update the visit, and save a digital prescription with a follow-up date patients can see in ServeQ.',
+    Icon: Stethoscope,
+  },
+]
+
+const CLINIC_PLANS = [
+  {
+    plan: SUBSCRIPTION_PLANS.BASIC,
+    title: 'Basic',
+    description: 'Appointments, walk-in check-in, live queues, counter payments, and digital prescriptions.',
+  },
+  {
+    plan: SUBSCRIPTION_PLANS.PRO,
+    title: 'Pro',
+    description: 'Everything in Basic, plus room-based queue views, multi-service visits with the assigned doctor, and AI insights into peak hours and revenue.',
+  },
 ]
 
 export default function LandingPage() {
-  const navigate = useNavigate()
-  useSeo({
-    title: 'Clinic Queues, Digital Prescriptions & Follow-up Reminders',
-    description: 'Help patients spend less time waiting with live clinic queues, digital prescriptions, and automatic in-app follow-up reminders.',
-    robots: 'index, follow',
-    canonical: 'https://www.serveq.tech',
-  })
+  const { hash } = useLocation()
+  useSeo(homePageMetadata)
 
   useEffect(() => {
-    const target = window.location.hash.slice(1)
-    if (target && target !== 'take-tour') document.getElementById(target)?.scrollIntoView()
-  }, [])
+    const target = hash.slice(1)
+    if (!target || target === 'take-tour') return
+    const frame = requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView())
+    return () => cancelAnimationFrame(frame)
+  }, [hash])
 
   return (
     <div className="landing-page app-background-glow selection:bg-emerald-500/20 selection:text-emerald-900 relative">
@@ -36,60 +63,77 @@ export default function LandingPage() {
           <span id="tour-welcome-hero" className="landing-headline-line">Less waiting.</span>{' '}
           <span className="landing-headline-line">Better clinic visits.</span>
         </h1>
-        <p className="landing-hero-summary">Join a live clinic queue, view your digital prescription, and receive automatic follow-up reminders in ServeQ.</p>
+        <p className="landing-hero-summary">Book a visit or join a live queue. Track your turn and find your prescription in ServeQ.</p>
+        <div className="landing-actions">
+          <Link to="/customers" className="landing-action landing-action-primary">Find a clinic <ArrowRight size={17} aria-hidden="true" /></Link>
+          <Link to="/business" className="landing-action">For clinic teams</Link>
+        </div>
       </section>
 
-      <section id="problem-solution" className="waiting-comparison" aria-labelledby="waiting-comparison-title">
+      <section id="problem-solution" className="landing-workspaces" aria-labelledby="landing-workspaces-title">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <header className="waiting-comparison-heading"><p>THE PROBLEM & THE SOLUTION</p><h2 id="waiting-comparison-title">Waiting shouldn’t take over your day.</h2><p>Less uncertainty for patients and a more organized day for clinic staff.</p></header>
-          <div className="waiting-comparison-columns" aria-hidden="true"><span>The problem</span><span>The serveQ solution</span></div>
-          <div className="waiting-comparison-rows">
-            {WAITING_PROBLEMS.map(({ title, problem, solutionTitle, solution, Icon: _Icon }) => <article key={title} className="waiting-comparison-row">
-              <div className="waiting-problem"><span className="waiting-mobile-label">The problem</span><span className="waiting-comparison-icon" aria-hidden="true"><_Icon size={21} strokeWidth={1.5} /></span><div><h3>{title}</h3><p>{problem}</p></div></div>
-              <span className="waiting-comparison-arrow" aria-hidden="true"><ArrowRight size={18} /></span>
-              <div className="waiting-solution"><span className="waiting-mobile-label">The serveQ solution</span><span className="waiting-comparison-icon" aria-hidden="true"><Check size={21} strokeWidth={1.5} /></span><div><h3>{solutionTitle}</h3><p>{solution}</p></div></div>
-            </article>)}
-          </div>
-          <div className="waiting-comparison-bottom"><p>Wait estimates can change as services progress. Keep checking your queue before heading back.</p><Link to="/customers">Try a better way to wait <ArrowRight size={16} /></Link></div>
+          <header className="landing-section-heading">
+            <h2 id="landing-workspaces-title">From check-in to follow-up</h2>
+          </header>
+          <ul className="landing-workspace-list">
+            {WORKSPACES.map(({ audience, title, description, Icon: _Icon }) => (
+              <li key={audience}>
+                <div className="landing-workspace-role"><span><_Icon size={21} strokeWidth={1.5} aria-hidden="true" /></span>{audience}</div>
+                <div><h3>{title}</h3><p>{description}</p></div>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
       <HowServeQWorks />
+
+      <section id="clinic-plans" className="landing-plans" aria-labelledby="landing-plans-title">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <header className="landing-section-heading">
+            <h2 id="landing-plans-title">Plans for your clinic</h2>
+          </header>
+          <div className="landing-plan-grid">
+            {CLINIC_PLANS.map(({ plan, title, description }) => (
+              <article className="landing-plan" key={plan.id}>
+                <h3>{title}</h3>
+                <p className="landing-plan-price"><strong>₹{plan.price.toLocaleString('en-IN')}</strong><span> per {plan.durationDays} days</span></p>
+                <p className="landing-plan-capacity">Up to {plan.maxActiveClinics} active clinics</p>
+                <p>{description}</p>
+              </article>
+            ))}
+          </div>
+          <p className="landing-plan-note">At supported clinics, patients can opt in to WhatsApp appointment reminders. Pro also supports follow-up reminders and queue-turn alerts where configured.</p>
+          <Link to="/business#pricing" className="landing-action landing-action-primary">Compare clinic plans <ArrowRight size={17} aria-hidden="true" /></Link>
+        </div>
+      </section>
+
       <LandingTrust />
 
-      {/* ── Call To Action Banner ── */}
-      <section className="py-16 sm:py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div id="tour-cta-banner" className="bg-zinc-950 text-white rounded-3xl p-6 sm:p-10 md:p-14 text-center sm:text-left flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl">
-            <div className="space-y-3 max-w-xl">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white">
-                Ready to skip the wait?
-              </h2>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                See your place in the clinic queue, get your prescription online, and receive automatic follow-up reminders in ServeQ.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto md:shrink-0">
-              <button
-                type="button"
-                onClick={() => navigate('/customers')}
-                className="w-full sm:w-auto min-h-11 px-6 py-3.5 rounded-full bg-teal-500 hover:bg-teal-400 text-zinc-950 text-sm font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all text-center cursor-pointer"
-              >
-                Get started
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/business')}
-                className="w-full sm:w-auto min-h-11 px-6 py-3.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold uppercase tracking-wider border border-zinc-700 active:scale-95 transition-all text-center cursor-pointer"
-              >
-                For clinics
-              </button>
-            </div>
+      <section id="mission-vision" aria-label="Mission and vision">
+        <div className="landing-purpose-grid max-w-6xl mx-auto px-4 sm:px-6">
+          <div>
+            <h2>Mission</h2>
+            <p>To give people back their time by reducing unnecessary waiting and making appointment booking simple and accessible. Through reliable, innovative queue management solutions, ServeQ helps service providers work efficiently, deliver better customer experiences, and create lasting value for the people and communities they serve.</p>
+          </div>
+          <div>
+            <h2>Vision</h2>
+            <p>To build a world where accessing a service fits into life—where people spend less time in queues and more time on what matters.</p>
           </div>
         </div>
       </section>
 
+      <section>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div id="tour-cta-banner" className="landing-cta">
+            <div>
+              <h2>Bring ServeQ to your clinic</h2>
+              <p>Apply to join. Once approved, choose a plan and set up your services, doctors, and opening hours.</p>
+            </div>
+            <Link to="/business#apply" className="landing-action landing-action-primary">Apply to join <ArrowRight size={17} aria-hidden="true" /></Link>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

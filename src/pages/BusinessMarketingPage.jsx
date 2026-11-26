@@ -1,16 +1,19 @@
-import { Link } from "react-router-dom";
+import { useEffect } from 'react';
+import { Link, useLocation } from "react-router-dom";
 import { CalendarDays, Users, Clock3, ArrowUpRight, ArrowLeft, Check } from "lucide-react";
 import BusinessApplicationPage from "./BusinessApplicationPage";
 import { useSeo } from "../utils/useSeo";
 import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
+import { businessLandingMetadata } from '../seo/publicPages';
 import "../styles/business-admission.css";
 export default function BusinessMarketingPage() {
-  useSeo({
-    title: "ServeQ for Clinics — Apply to join",
-    description:
-      "Manage patient queues, appointments, and digital prescriptions. Send automatic in-app follow-up reminders.",
-    canonical: "https://www.serveq.tech/business",
-  });
+  const { hash } = useLocation();
+  useSeo(businessLandingMetadata);
+  useEffect(() => {
+    if (!hash) return;
+    const frame = requestAnimationFrame(() => document.getElementById(hash.slice(1))?.scrollIntoView());
+    return () => cancelAnimationFrame(frame);
+  }, [hash]);
   const plans = Object.values(SUBSCRIPTION_PLANS);
   return (
     <div className="admission business-marketing">
@@ -36,7 +39,7 @@ export default function BusinessMarketingPage() {
           <em>Better follow-up.</em>
         </h1>
         <p>
-          Help patients spend less time waiting. Manage clinic queues and appointments, issue digital prescriptions, and send automatic follow-up reminders.
+          Register walk-ins, manage appointments and collect counter payments. Give doctors a workspace for assigned visits, digital prescriptions and follow-ups.
         </p>
         <div className="business-hero-actions">
           <a href="#apply" className="admission-primary">
@@ -102,16 +105,20 @@ export default function BusinessMarketingPage() {
         <div className="admission-grid">
           {[
             [
-              "Live queues",
-              "Call the next customer, manage the waiting list and keep everyone updated.",
+              "Walk-ins and live queues",
+              "Register patients at the counter and track their place alongside live queue entries. Doctors call patients assigned to them.",
             ],
             [
               "Appointments",
               "Set service durations, operating hours and available booking slots.",
             ],
             [
-              "Staff & services",
-              "Organise your team, configure your services and track daily operations.",
+              "Counter payments",
+              "Record cash or UPI QR payments for visits at the clinic.",
+            ],
+            [
+              "Pro queue and reporting tools",
+              "View queues by room, progress through multiple services with the assigned doctor, and review AI insights into peak hours and revenue.",
             ],
           ].map(([title, copy]) => (
             <article key={title}>
@@ -161,8 +168,8 @@ export default function BusinessMarketingPage() {
               "Doctors can write prescriptions after consultations and patients can access them in their accounts.",
             ],
             [
-              "Automatic follow-up reminders",
-              "Set a follow-up date on the prescription. Patients receive an in-app reminder and can opt in to WhatsApp updates.",
+              "Follow-up reminders",
+              "Set a follow-up date to remind patients in ServeQ. Pro clinics can also send WhatsApp follow-up reminders to patients who opt in, where configured.",
             ],
           ].map(([title, copy]) => (
             <article key={title}>
