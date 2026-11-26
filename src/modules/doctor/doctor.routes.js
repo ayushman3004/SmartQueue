@@ -143,7 +143,8 @@ router.post('/queue/:patientId/:action', allowRoles('doctor', 'admin'), asyncHan
     const event = { businessId, doctorName: context.staff.name, calledAt: new Date().toISOString() };
     const io = req.app.get('io');
     io?.to([ `business:${businessId}:admin`, `user:${ownerId}` ]).emit('doctor:called-next', event);
-  } else if (req.params.action === 'extend') await queueService.extendTime(businessId, req.params.patientId, minutes(req.body.minutes), ownerId, 'owner', req.app.get('io'), context);
+  } else if (req.params.action === 'start') await queueService.startWalkInVisit(patientId, context, req.app.get('io'));
+  else if (req.params.action === 'extend') await queueService.extendTime(businessId, req.params.patientId, minutes(req.body.minutes), ownerId, 'owner', req.app.get('io'), context);
   else if (req.params.action === 'payment') await queueService.collectQueuePayment(businessId, req.params.patientId, { _id: ownerId, role: 'owner' }, null, context);
   else throw new ApiError(400, 'Unknown queue action.');
   if (req.params.action === 'payment') publishQueue(req.app.get('io'), businessId, await Queue.findOne({ businessId }));

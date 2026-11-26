@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { getQueue, join, leave, callNext, estimate, extend, cancelDelay, assignStaff, collectPayment } from "./queue.controller.js";
+import { getQueue, join, leave, callNext, estimate, extend, cancelDelay, assignStaff, collectPayment, walkIn } from "./queue.controller.js";
 import { protect, optionalAuth, allowRoles } from "../../middleware/auth.middleware.js";
+import { walkInLimit } from '../gateway/endpointRateLimits.js';
 
 const router = Router();
 router.use((_req, res, next) => {
@@ -20,9 +21,10 @@ router.delete("/:businessId/leave", protect, allowRoles("customer", "admin"), le
 router.post("/:businessId/cancel-delay", protect, allowRoles("customer", "admin"), cancelDelay);
 
 // Owner only — management
-router.post("/:businessId/next", protect, allowRoles("owner", "admin"), callNext);
-router.post("/:businessId/extend", protect, allowRoles("owner", "admin"), extend);
-router.post("/:businessId/assign-staff", protect, allowRoles("owner", "admin"), assignStaff);
+router.post('/:businessId/walk-in', protect, allowRoles('owner', 'admin'), walkInLimit, walkIn);
+router.post("/:businessId/next", protect, allowRoles("admin"), callNext);
+router.post("/:businessId/extend", protect, allowRoles("admin"), extend);
+router.post("/:businessId/assign-staff", protect, allowRoles("admin"), assignStaff);
 router.post("/:businessId/users/:userId/collect-payment", protect, allowRoles("owner", "admin"), collectPayment);
 
 export default router;

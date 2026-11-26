@@ -21,6 +21,7 @@ const queueSchema = new mongoose.Schema(
           ref: "Booking",
           default: null,
         },
+        walkIn: { type: Boolean },
         status: {
           type: String,
           enum: ["waiting", "serving", "done"],
@@ -77,7 +78,7 @@ const queueSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true, optimisticConcurrency: ['users'] }
 );
 
 const Queue = mongoose.model("Queue", queueSchema);

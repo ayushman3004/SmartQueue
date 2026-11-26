@@ -28,6 +28,9 @@ const profileOtpIp = byIp("profile-otp-send", 20, fiveMinutes);
 export const emailOtpSendLimit = [profileOtpIp, profileOtpUser, byIdentity("email-otp-send:email", 3, fiveMinutes, profileEmail)];
 export const phoneOtpSendLimit = [profileOtpIp, profileOtpUser, byIdentity("phone-otp-send:phone", 3, fiveMinutes, profilePhone)];
 export const profileOtpVerifyLimit = byIdentity("profile-otp-verify:user", 10, fiveMinutes);
+const signInPhone = req => normalizePhoneNumber(req.body?.phone);
+export const phoneSignInSendLimit = [byIp('phone-signin-send', 15, fiveMinutes), byIdentity('phone-signin-send:phone', 3, fiveMinutes, signInPhone)];
+export const phoneSignInVerifyLimit = [byIp('phone-signin-verify', 30, fiveMinutes), byIdentity('phone-signin-verify:phone', 10, fiveMinutes, signInPhone)];
 
 export const resetSendLimit = [byIp("reset-send", 20, fiveMinutes), byIdentity("reset-send:email", 3, fiveMinutes, submittedEmail)];
 export const resetVerifyLimit = [byIp("reset-verify", 30, fiveMinutes), byIdentity("reset-verify:email", 8, fiveMinutes, submittedEmail)];
@@ -35,6 +38,7 @@ export const resetCompleteLimit = [byIp("reset-complete", 20, fiveMinutes), byId
 
 export const accountSecurityLimit = byIdentity("account-security:user", 5, minute);
 export const doctorAccessLimit = byIdentity("doctor-access:user", 5, minute);
+export const walkInLimit = byIdentity('walk-in:user', 30, minute);
 export const paymentSettingsLimit = byIdentity("payment-settings:user", 5, minute);
 export const paymentOrderLimit = byIdentity("payment-order:user", 10, minute);
 export const legacyOrderLimit = byIp("legacy-payment-order", 15);

@@ -1,11 +1,15 @@
 import mongoose from "mongoose";
 import SubscriptionCoupon from "../src/modules/subscription/subscription-coupon.model.js";
+import User, { whatsappPhoneIndex, whatsappPhoneIndexOptions } from '../src/modules/auth/auth.model.js';
 
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGO_URI);
     // Enforce one initial coupon per business even if automatic indexing is disabled.
-    await SubscriptionCoupon.createIndexes();
+    await Promise.all([
+      SubscriptionCoupon.createIndexes(),
+      User.collection.createIndex(whatsappPhoneIndex, whatsappPhoneIndexOptions),
+    ]);
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
     // Drop legacy obsolete unique index that blocks repeated bookings/queue joins

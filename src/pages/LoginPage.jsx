@@ -7,6 +7,7 @@ import {
   Clock3,
   Eye,
   EyeOff,
+  Smartphone,
   Ticket,
 } from "lucide-react";
 import "../styles/customer-auth.css";
@@ -21,6 +22,7 @@ import { isValidEmail, validatePasswordStrength } from "../utils/validators";
 import { useDebounce } from "../hooks/useDebounce";
 import { safeReturnTo } from "../utils/authRedirect";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
+import VerifyContactModal from '../components/VerifyContactModal.jsx';
 
 export default function LoginPage() {
   const [feedback, feedbackScope] = useInlineFeedback();
@@ -36,6 +38,7 @@ export default function LoginPage() {
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [ownerMismatch, setOwnerMismatch] = useState(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showPhoneSignIn, setShowPhoneSignIn] = useState(false);
 
   // Debounced password validation for signup requirements
   const debouncedPassword = useDebounce(form.password, 250);
@@ -410,6 +413,16 @@ export default function LoginPage() {
           <div className="customer-auth-divider">
             <span>or</span>
           </div>
+          {tab === 'signin' && <button type="button" className="customer-auth-google" disabled={loading} onClick={() => {
+            if (!acceptPrivacy) {
+              feedback.error('Accept the Privacy Policy to continue.');
+              return;
+            }
+            feedback.dismiss();
+            setShowPhoneSignIn(true);
+          }}>
+            <Smartphone size={19} aria-hidden="true" /> Sign in with phone
+          </button>}
           <button
             type="button"
             className="customer-auth-google"
@@ -448,6 +461,11 @@ export default function LoginPage() {
         initialEmail={form.email}
         className="customer-auth-recovery"
       />
+      {showPhoneSignIn && <VerifyContactModal signIn onClose={() => setShowPhoneSignIn(false)} onSuccess={user => {
+        setShowPhoneSignIn(false);
+        logIn(user);
+        navigate(safeReturnTo(searchParams.get('returnTo')), { replace: true });
+      }} />}
     </div>
   );
 }

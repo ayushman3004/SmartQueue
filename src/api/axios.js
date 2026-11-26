@@ -28,6 +28,7 @@ const api = axios.create({
 
 const cookieSessionEndpoints = new Set([
   "/auth/signup", "/auth/signin", "/auth/change-password", "/auth/email/verify-otp", "/doctors/password",
+  '/auth/phone/signin/verify-otp',
 ]);
 api.interceptors.request.use((config) => {
   if (config.method === "post" && cookieSessionEndpoints.has(config.url)) {

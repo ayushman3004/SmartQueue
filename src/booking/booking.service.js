@@ -1,4 +1,5 @@
 import { publishQueue } from "../queue/queue.view.js";
+import { cancelWalkIn } from '../queue/walk-in.service.js';
 import { notifyUser, turnNotificationPayload } from '../modules/notification/notification.service.js';
 import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
 import { isClinic, isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
@@ -475,6 +476,7 @@ export const startService = async (bookingId, requesterId, requesterRole, doctor
   const booking = await Booking.findById(bookingId);
   if (!booking) throw new ApiError(404, "Booking not found");
   if (doctor) requireAssigned(booking, doctor);
+  if (booking.walkIn) throw new ApiError(409, 'Start this walk-in from the doctor’s live queue.');
 
   const business = await Business.findById(booking.businessId);
   if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
@@ -741,6 +743,7 @@ export const getBusinessBookings = async (businessId, requesterId, requesterRole
   if (requesterRole !== "admin" && business.owner.toString() !== requesterId.toString()) {
     throw new ApiError(403, "Access denied: not the owner of this business");
   }
+  if (requesterRole === 'owner') throw new ApiError(403, 'Patient visits are available on the doctor dashboard.');
 
   return await Booking.find({ businessId })
     .populate("userId", "name email avatar phone")
@@ -750,6 +753,7 @@ export const getBusinessBookings = async (businessId, requesterId, requesterRole
 export const cancelBooking = async (bookingId, userId, io = null) => {
   const booking = await Booking.findOne({ _id: bookingId, userId });
   if (!booking) throw new ApiError(404, "Booking not found");
+  if (booking.walkIn) return { booking: (await cancelWalkIn(bookingId, userId, io)).booking, refunded: 0, refundId: null };
   if (["cancelled", "refunded"].includes(booking.status)) {
     throw new ApiError(400, "Booking is already cancelled");
   }

@@ -2,6 +2,7 @@ import api from "./axios.js";
 
 export const getQueue  = (businessId) => api.get(`/queue/${businessId}`);
 export const joinQueue = (businessId, data) => api.post(`/queue/${businessId}/join`, data);
+export const checkInWalkIn = (businessId, data) => api.post(`/queue/${businessId}/walk-in`, data);
 export const leaveQueue = (businessId) => api.delete(`/queue/${businessId}/leave`);
 export const callNext  = (businessId) => api.post(`/queue/${businessId}/next`);
 export const getWaitEstimate = (businessId) => api.get(`/queue/estimate/${businessId}`);

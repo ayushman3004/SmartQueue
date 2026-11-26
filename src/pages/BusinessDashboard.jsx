@@ -2,6 +2,7 @@ import { useDialog } from '../hooks/useDialog'
 import NotificationCenter from '../components/NotificationCenter'
 import AdminWorkspaceSwitcher from '../components/AdminWorkspaceSwitcher'
 import DoctorAccessControls from '../components/DoctorAccessControls'
+import WalkInCheckIn from '../components/WalkInCheckIn'
 import { getDoctorAccess } from '../api/doctor.api'
 import './BusinessDashboard.css'
 import { useEffect, useState, useCallback, useMemo } from 'react'
@@ -142,8 +143,10 @@ export default function BusinessDashboard() {
     try {
       await collectCounterPayment(bookingId)
       feedback.success('Counter payment recorded as collected!')
-      const bkRes = await getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } }))
-      setBookings(bkRes.data.data.bookings || [])
+      if (user?.role === 'admin') {
+        const bkRes = await getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } }))
+        setBookings(bkRes.data.data.bookings || [])
+      }
     } catch (err) {
       feedback.error(err.response?.data?.message || 'Failed to record counter payment')
     } finally { setCollectingPayment(false) }
@@ -158,8 +161,10 @@ export default function BusinessDashboard() {
       if (res.data?.data?.queue) {
         setQueue(res.data.data.queue)
       }
-      const bkRes = await getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } }))
-      setBookings(bkRes.data.data.bookings || [])
+      if (user?.role === 'admin') {
+        const bkRes = await getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } }))
+        setBookings(bkRes.data.data.bookings || [])
+      }
     } catch (err) {
       feedback.error(err.response?.data?.message || 'Failed to record queue payment')
     } finally { setCollectingPayment(false) }
@@ -184,7 +189,9 @@ export default function BusinessDashboard() {
 
   const isClinic = ['clinic', 'healthcare', 'doctor'].includes(business?.category)
   const clinicalOwner = isClinic && user?.role === 'owner'
-  const visibleTab = activeTab
+  const visibleTab = clinicalOwner && activeTab === 'appointments' ? 'queue' : activeTab
+  const refreshQueue = useCallback(() => getQueue(businessId)
+    .then(res => setQueue(res.data.data.queue)).catch(() => {}), [businessId])
   useEffect(() => {
     if (clinicalOwner) refreshDoctors().catch(() => feedback.error('Could not load doctor access.'))
   }, [clinicalOwner, refreshDoctors, feedback])
@@ -195,7 +202,7 @@ export default function BusinessDashboard() {
       const [bRes, qRes, bkRes] = await Promise.all([
         getBusiness(businessId),
         getQueue(businessId).catch(() => ({ data: { data: { queue: { users: [] } } } })),
-        getBusinessBookings(businessId).catch(() => ({ data: { data: { bookings: [] } } })),
+        user?.role === 'admin' ? getBusinessBookings(businessId).catch(() => null) : null,
       ])
 
       const biz = bRes.data.data.business
@@ -227,7 +234,7 @@ export default function BusinessDashboard() {
       setBusiness(biz)
       setUpiVpa(biz.paymentConfiguration?.upiId || '')
       setQueue(qRes.data.data.queue)
-      setBookings(bkRes.data.data.bookings || [])
+      setBookings(bkRes?.data.data.bookings || [])
       setProfileForm({
         name: biz.name || '',
         description: biz.description || '',
@@ -255,7 +262,7 @@ export default function BusinessDashboard() {
     const unsub = socket && subscribeToQueueChanges(socket, setQueue, businessId)
 
     const handleBookingUpdate = () => {
-      getBusinessBookings(businessId).then(res => setBookings(res.data.data.bookings || [])).catch(() => { })
+      if (user?.role === 'admin') getBusinessBookings(businessId).then(res => setBookings(res.data.data.bookings || [])).catch(() => { })
       getBusinessAnalytics(businessId).then(res => setAnalytics(res.data.data)).catch(() => { })
     }
 
@@ -639,7 +646,7 @@ export default function BusinessDashboard() {
               label: 'Hub Settings',
               icon: Settings,
             },
-          ].map((item) => {
+          ].filter(item => !clinicalOwner || item.id !== 'appointments').map((item) => {
             const isActive = visibleTab === item.id
             const IconComponent = item.icon
             return (
@@ -1006,12 +1013,12 @@ export default function BusinessDashboard() {
                   {users.filter((u) => u.status === 'waiting').length} waiting
                 </p>
               </div>
-              <div className="bg-white/80 backdrop-blur-xs border border-[#BDE8CB] rounded-2xl p-3 text-center min-w-[95px] shadow-2xs">
+              {!clinicalOwner && <div className="bg-white/80 backdrop-blur-xs border border-[#BDE8CB] rounded-2xl p-3 text-center min-w-[95px] shadow-2xs">
                 <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Bookings</p>
                 <p className="font-black text-sm text-[#16A34A] mt-0.5">
                   {bookings.length} slots
                 </p>
-              </div>
+              </div>}
               <div className="bg-white/80 backdrop-blur-xs border border-[#BDE8CB] rounded-2xl p-3 text-center min-w-[95px] shadow-2xs">
                 <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Staff</p>
                 <p className="font-black text-sm text-zinc-900 mt-0.5">
@@ -1032,6 +1039,8 @@ export default function BusinessDashboard() {
               {isClinic && <div className="lg:col-span-12 rounded-2xl border border-[#c1d5c7] bg-[#e6f0e8] px-5 py-4 text-sm text-[#315b45]" role="status" aria-live="polite">
                 {doctorCall ? <><span className="font-semibold">{doctorCall.doctorName || 'Doctor'} called the next person.</span> <time className="text-xs" dateTime={doctorCall.calledAt}>{new Date(doctorCall.calledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></> : 'Doctors manage consultations. Collect payments here; updates appear when a doctor calls the next person.'}
               </div>}
+              {isClinic && business.isOpen && business.isActive && business.queueSettings?.allowWalkIns !== false && business.queueSettings?.enableLiveQueue !== false &&
+                <WalkInCheckIn key={businessId} businessId={businessId} onAdded={refreshQueue} />}
               {/* Active Serving Card */}
               <div className="lg:col-span-12">
                 <div className="business-surface bg-white border border-teal-200 rounded-3xl p-6 md:p-8 shadow-sm bg-gradient-to-r from-teal-50/60 to-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -1047,9 +1056,9 @@ export default function BusinessDashboard() {
                       <h3 className="text-2xl font-black text-zinc-950 mt-1">
                         {serving ? (serving.userId?.name || 'Customer') : 'No active session currently'}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      {!clinicalOwner && <p className="text-xs text-slate-500 mt-0.5">
                         Service: <span className="font-semibold text-zinc-800">{serving?.serviceType || 'N/A'}</span> • Target Duration: {serving?.serviceTime || business.averageServiceTime} mins
-                      </p>
+                      </p>}
 
                       {/* Prominent Assigned Doctor / Specialist Display */}
                       {serving && (
@@ -1093,7 +1102,7 @@ export default function BusinessDashboard() {
                             </span>
                           )}
 
-                          {business.staff && business.staff.length > 0 && (
+                          {!clinicalOwner && business.staff && business.staff.length > 0 && (
                             <select
                               value={serving.assignedStaff?.name || ''}
                               onChange={(e) => handleAssignQueueStaff(serving.userId?._id || serving.userId, e.target.value)}
@@ -1168,7 +1177,7 @@ export default function BusinessDashboard() {
                   <div className="venue-queue-empty">
                     <span className="venue-empty-icon" aria-hidden="true"><Ticket size={24} strokeWidth={1.5} /></span>
                     <h4>No one is waiting</h4>
-                    <p>Customers joining online will appear here in real time.</p>
+                    <p>New check-ins appear here in real time.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -1177,7 +1186,7 @@ export default function BusinessDashboard() {
                         <tr>
                           <th className="py-3.5 px-6">#</th>
                           <th className="py-3.5 px-6">Customer</th>
-                          <th className="py-3.5 px-6">Service</th>
+                          {!clinicalOwner && <th className="py-3.5 px-6">Service</th>}
                           <th className="py-3.5 px-6">{'Assigned Doctor'}</th>
                           <th className="py-3.5 px-6">Duration</th>
                           <th className="py-3.5 px-6">Est. Start Time</th>
@@ -1191,9 +1200,10 @@ export default function BusinessDashboard() {
                             <td className="py-4 px-6 font-bold text-slate-400">{i + 1}</td>
                             <td className="py-4 px-6">
                               <p className="font-bold text-zinc-900">{u.userId?.name || 'Walk-in / App User'}</p>
-                              <p className="text-[10px] text-slate-400">{u.userId?.email || 'N/A'}</p>
+                              {u.walkIn && <p className="text-[10px] text-slate-600">Walk-in</p>}
+                              {!clinicalOwner && u.userId?.email && <p className="text-[10px] text-slate-400">{u.userId.email}</p>}
                             </td>
-                            <td className="py-4 px-6 font-medium text-slate-700">{u.serviceType || 'general'}</td>
+                            {!clinicalOwner && <td className="py-4 px-6 font-medium text-slate-700">{u.serviceType || 'general'}</td>}
                             <td className="py-4 px-6">
                               {u.assignedStaff?.name ? (
                                 <div>
@@ -1208,7 +1218,7 @@ export default function BusinessDashboard() {
                                   <p className="text-[10px] text-teal-700 font-medium">
                                     {u.assignedStaff.role || 'Doctor / Specialist'}
                                   </p>
-                                  {business.staff && business.staff.length > 1 && (
+                                  {!clinicalOwner && business.staff && business.staff.length > 1 && (
                                     <select
                                       value={u.assignedStaff.name}
                                       onChange={(e) => handleAssignQueueStaff(u.userId?._id || u.userId, e.target.value)}
@@ -1222,7 +1232,7 @@ export default function BusinessDashboard() {
                                     </select>
                                   )}
                                 </div>
-                              ) : business.staff && business.staff.length > 0 ? (
+                              ) : !clinicalOwner && business.staff && business.staff.length > 0 ? (
                                 <div>
                                   <div className="flex items-center gap-1.5 mb-1">
                                     <span className="font-bold text-zinc-800 text-xs">{business.staff[0].name}</span>
@@ -2278,7 +2288,7 @@ export default function BusinessDashboard() {
                       </div>
 
                       {/* 2. BEST CUSTOMER SPOTLIGHT */}
-                      <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+                      {!clinicalOwner && <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-md">
@@ -2307,7 +2317,7 @@ export default function BusinessDashboard() {
                         <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-400">
                           Retention advice: Priority queueing recommendation
                         </div>
-                      </div>
+                      </div>}
 
                       {/* 3. BEST EMPLOYEE */}
                       <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">

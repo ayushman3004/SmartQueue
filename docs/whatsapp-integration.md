@@ -7,8 +7,11 @@ SPA on Vercel. Passport handles Google OAuth with a signed, nonce-bound state
 and the same ServeQ session as local email/password sign-in. Email OTP,
 password recovery, account activation and RBAC remain in their existing
 modules. The former Firebase client and Admin SDK handled profile SMS proof
-only. WhatsApp verifies contact information for an existing authenticated
-account. It never issues a login token or links an account by phone.
+only. WhatsApp verifies contact information for authenticated users and lets
+patients sign in with a verified phone or a phone reserved at clinic check-in.
+The one-time code opens the same patient account the clinic used for the visit.
+Walk-in check-in writes the account, visit and queue entry in one MongoDB
+transaction. The database must be a replica set or sharded cluster.
 
 MongoDB stores users, clinic bookings and finalized prescriptions. The
 one-time prescription write is the finalization boundary. Editing the form
@@ -41,10 +44,11 @@ WhatsApp-verified accounts. Redis or Turnstile failure stops verification.
 2. The worker polls that indexed outbox and publishes BullMQ jobs containing
    only the internal prescription ID and version. MongoDB owns delivery state
    and atomically claims due records across worker replicas.
-3. Before dispatch, the worker checks the current phone proof and current
-   versioned consent. Both must precede the original prescription save. A
-   revoked preference or changed and reverified phone cancels the old notice.
-4. Meta receives the verified phone, a generic template and a random callback
+3. Before dispatch, the worker checks current phone proof and account consent,
+   or consent recorded for that specific walk-in at check-in. The latter can
+   send a generic notice before the patient's first sign-in. A phone change or
+   consent withdrawal after the visit's opt-in cancels its pending notice.
+4. Meta receives the destination phone, a generic template and a random callback
    UUID. The static button points to `https://serveq.tech/profile#prescriptions`.
    Authentication and record authorization happen in ServeQ. The message
    contains no record ID, clinic or patient name, or clinical details.
@@ -76,6 +80,9 @@ WhatsApp-verified accounts. Redis or Turnstile failure stops verification.
 | --- | --- | --- |
 | `POST /api/auth/phone/send-otp` | `phone`, `turnstileToken` | Authenticated. Returns `challengeId`, server-selected `purpose` and `resendAfterSeconds`. Accepted requests return identical wording even when Meta rejects a number. |
 | `POST /api/auth/phone/verify-otp` | `phone`, `otp`, `challengeId`, `purpose` | Authenticated in the same session. Returns the updated public user profile. |
+| `POST /api/auth/phone/signin/send-otp` | `phone`, `turnstileToken` | Starts patient sign-in. The response shape is the same for known and unknown numbers. |
+| `POST /api/auth/phone/signin/verify-otp` | `phone`, `otp`, `challengeId` | Consumes the challenge and starts a patient session after successful proof. |
+| `POST /api/queue/:businessId/walk-in` | `name`, `phone`, optional `whatsappConsent` | The clinic owner checks in the patient and receives the live queue position. |
 | `PATCH /api/auth/phone/whatsapp-consent` | `enabled`, `version: "prescription-v1"` for opt-in | Authenticated patient. Verification and opt-in are independent. Opt-out continues to work with sending disabled. |
 | `GET /api/auth/me` | Existing session | Adds the proof method, verification dates and current WhatsApp consent to the sanitized user. |
 | `GET /api/whatsapp/webhook` | Meta subscription challenge | Returns the exact challenge for the configured verification token. |
@@ -162,8 +169,9 @@ reCAPTCHA CSP origins and retain Cloudflare Turnstile and Razorpay origins.
    the body and button parameters. Set the language to match configuration.
    [Meta authentication templates](https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/authentication-templates/authentication-templates)
 3. Submit `serveq_document_ready` as a **Utility** template. Use generic text
-   such as “A new document is available in your ServeQ account. Sign in
-   securely to view or download it.” Set a static **View Document** URL
+   such as “A new document is available in ServeQ. Sign in with your mobile
+   number to view or download it, check follow-ups, and book your next visit.”
+   Set a static **View Document** URL
    `https://serveq.tech/profile#prescriptions`. For staging, use a staging
    template whose static URL points to a protected staging profile. The
    templates require Meta approval before production activation.

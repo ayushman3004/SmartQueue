@@ -1,5 +1,4 @@
 import { createTurnstileProtection } from '../../../middleware/turnstile.middleware.js';
-import User, { whatsappPhoneIndex, whatsappPhoneIndexOptions } from '../auth/auth.model.js';
 import Prescription from '../doctor/prescription.model.js';
 import { createPhoneVerification } from '../auth/phone-verification.service.js';
 import { whatsappConfig } from './whatsapp.config.js';
@@ -21,6 +20,5 @@ export function configureWhatsApp(app, redis, env = process.env) {
 }
 
 export async function ensureWhatsAppIndexes() {
-  await User.collection.createIndex(whatsappPhoneIndex, whatsappPhoneIndexOptions);
   await Promise.all([Delivery.createIndexes(), Prescription.createIndexes()]);
 }

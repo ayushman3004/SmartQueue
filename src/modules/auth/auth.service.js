@@ -5,6 +5,7 @@ import { hasWhatsAppVerifiedPhone, hasVerifiedPhone, normalizePhoneNumber } from
 import { ownerState, assertOwnerLogin, publicOwnerAccess } from "../business-application/owner-lifecycle.js";
 import { validateInvitation } from "../business-application/business-application.service.js";
 import User from "./auth.model.js";
+import { walkInEmailDomain } from './walk-in-account.service.js';
 import ApiError from "../../../utils/ApiError.js";
 import {
   hashPassword,
@@ -20,7 +21,7 @@ export const register = async ({ name, email, password, role }) => {
   if (!name || !email || !password) throw new ApiError(400, "Name, email, and password are required");
 
   const normEmail = (email || "").trim().toLowerCase();
-  if (!normEmail || !EMAIL_REGEX.test(normEmail)) {
+  if (!normEmail || !EMAIL_REGEX.test(normEmail) || normEmail.endsWith(walkInEmailDomain)) {
     throw new ApiError(400, "Invalid email format. Please provide a valid email address (e.g. name@example.com)");
   }
 
@@ -219,7 +220,7 @@ export const updateProfile = async (userId, data, authTime) => {
   }
   if (changes.email !== undefined) {
     changes.email = changes.email.toLowerCase().trim();
-    if (!EMAIL_REGEX.test(changes.email)) throw new ApiError(400, "Invalid email.");
+    if (changes.email && (!EMAIL_REGEX.test(changes.email) || changes.email.endsWith(walkInEmailDomain))) throw new ApiError(400, "Invalid email.");
   }
   if (changes.phone !== undefined) {
     changes.phone = normalizePhoneNumber(changes.phone, { allowEmpty: true });
@@ -227,8 +228,12 @@ export const updateProfile = async (userId, data, authTime) => {
   }
 
   const query = User.findById(userId);
-  const user = await (changes.phone === undefined ? query : query.select("+whatsappAudit"));
+  const user = await (changes.phone === undefined ? query : query.select('+whatsappAudit +walkInAccount'));
   if (!user) throw new ApiError(404, "User not found");
+  if (changes.email === "") {
+    if (!user.email?.endsWith(walkInEmailDomain)) throw new ApiError(400, "Invalid email.");
+    delete changes.email;
+  }
   if (changes.email !== undefined && changes.email !== user.email) {
     if (user.role === "admin" && isAdminAccessRequired() && changes.email !== adminEmail(process.env.CLOUDFLARE_ADMIN_ACCESS_EMAIL)) {
       throw new ApiError(403, "Administrator email is managed through Cloudflare Access.");
@@ -240,6 +245,7 @@ export const updateProfile = async (userId, data, authTime) => {
 
   if (changes.email !== undefined && changes.email !== user.email) user.isEmailVerified = false;
   if (changes.phone !== undefined && changes.phone !== normalizePhoneNumber(user.phone || "", { allowEmpty: true })) {
+    if (user.walkInAccount) throw new ApiError(400, 'Verify your new number on WhatsApp to change your sign-in phone.');
     const previouslyVerified = hasVerifiedPhone(user);
     if (previouslyVerified && !recentPhoneAuthorization(authTime)) {
       throw new ApiError(403, "Sign in again before changing your verified phone number.");
@@ -252,7 +258,7 @@ export const updateProfile = async (userId, data, authTime) => {
     user.whatsappFollowUpPhone = "";
     if (previouslyVerified || user.whatsappConsent) {
       const at = new Date();
-      if (user.whatsappConsent) user.whatsappConsentRevokedAt = at;
+      user.whatsappConsentRevokedAt = at;
       user.whatsappAudit = [...(user.whatsappAudit || []), { action: "phone_changed", at }].slice(-20);
     }
     user.whatsappConsent = false;
@@ -272,7 +278,7 @@ export const updateProfile = async (userId, data, authTime) => {
 export const sanitize = (user) => ({
   _id: user._id,
   name: user.name,
-  email: user.email,
+  email: user.email?.endsWith(walkInEmailDomain) ? "" : user.email,
   avatar: user.avatar,
   role: user.role,
   walletBalance: user.walletBalance ?? 0,

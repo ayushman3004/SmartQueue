@@ -46,6 +46,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    walkInAccount: { type: Boolean, default: false, select: false },
     isPhoneVerified: {
       type: Boolean,
       default: false,

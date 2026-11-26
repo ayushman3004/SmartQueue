@@ -26,9 +26,9 @@ router.get("/slots/:businessId", protect, getSlots);
 
 // Owner routes
 router.get("/:businessId/all", protect, allowRoles("owner", "admin"), businessBookings);
-router.post("/extend/:id", protect, allowRoles("owner", "admin"), extend);
-router.patch("/:id/start", protect, allowRoles("owner", "admin"), startService);
-router.patch("/:id/complete", protect, allowRoles("owner", "admin"), completeService);
-router.patch("/:id/collect-payment", protect, allowRoles("owner", "admin"), collectPayment);
+router.post("/extend/:id", protect, allowRoles("admin"), extend);
+router.patch("/:id/start", protect, allowRoles("admin"), startService);
+router.patch("/:id/complete", protect, allowRoles("admin"), completeService);
+router.patch("/:id/collect-payment", protect, allowRoles("admin"), collectPayment);
 
 export default router;

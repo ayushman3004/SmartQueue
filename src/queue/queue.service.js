@@ -1,8 +1,8 @@
-import { publishQueue, queueForViewer } from "./queue.view.js";
+import { publishQueue, queueForViewer, queueForOwner } from "./queue.view.js";
 import { canAccessOwnerCategory } from "../utils/ownerCategory.js";
 import { notifyUser, notifyServingTurns } from '../modules/notification/notification.service.js';
 import { assertTestVenueAccess } from '../modules/admin/admin-workspace.service.js';
-import { isClinic, isAssignedToDoctor, requireAssigned } from "../modules/doctor/doctor-access.js";
+import { isClinic, isAssignedToDoctor, requireAssigned, ref } from "../modules/doctor/doctor-access.js";
 import mongoose from "mongoose";
 import Queue from "./queue.model.js";
 import QueueDS from "./queue.ds.js";
@@ -12,9 +12,10 @@ import Booking from "../booking/booking.model.js";
 import ApiError from "../../utils/ApiError.js";
 import { validateCoupon } from "../modules/coupon/coupon.service.js";
 import { isBusinessSubscriptionActive } from "../modules/subscription/subscription.service.js";
+import { cancelWalkIn } from './walk-in.service.js';
 
 //  JOIN QUEUE
-export const joinQueue = async (businessId, userData, io = null) => {
+export const joinQueue = async (businessId, userData, io = null, attempt = 0) => {
   let queueDoc = await Queue.findOne({ businessId });
   if (!queueDoc) {
     queueDoc = new Queue({ businessId, users: [] });
@@ -42,16 +43,15 @@ export const joinQueue = async (businessId, userData, io = null) => {
   }
 
   const maxCap = business.queueSettings?.maxQueueCapacity || 50;
+  //  Prevent duplicate joins
+  if (queueDoc.users.some((u) => (u.userId?._id || u.userId)?.toString() === userData.userId?.toString())) {
+    throw new ApiError(400, "You are already in this queue");
+  }
   if (queueDoc.users.length >= maxCap) {
     throw new ApiError(400, `Live queue has reached maximum capacity of ${maxCap} patrons.`);
   }
 
   const queueDS = QueueDS.fromArray(queueDoc.users);
-
-  //  Prevent duplicate joins
-  if (queueDoc.users.some((u) => (u.userId?._id || u.userId)?.toString() === userData.userId?.toString())) {
-    throw new ApiError(400, "You are already in this queue");
-  }
 
   // 1. Process multiple services or fallback to single service
   let selectedServicesList = [];
@@ -212,7 +212,7 @@ export const joinQueue = async (businessId, userData, io = null) => {
 
   const staffKey = (assignedStaff?.name || "").toLowerCase().trim();
   const staffCurrentlyServing = queueDoc.users.some(
-    (u) => u.status === "serving" && (u.assignedStaff?.name || "").toLowerCase().trim() === staffKey
+    (u) => (u.assignedStaff?.name || "").toLowerCase().trim() === staffKey
   ) || currentlyServingStaff.includes(staffKey);
 
   const initialStatus = staffCurrentlyServing ? "waiting" : "serving";
@@ -290,7 +290,14 @@ export const joinQueue = async (businessId, userData, io = null) => {
   });
 
   queueDoc.users = queueDS.toArray();
-  await queueDoc.save();
+  try {
+    await queueDoc.save();
+  } catch (error) {
+    if (!['VersionError', 'DocumentNotFoundError'].includes(error.name) && error.code !== 11000) throw error;
+    if (createdBooking) await Booking.deleteOne({ _id: createdBooking._id });
+    if (attempt < 2) return joinQueue(businessId, userData, io, attempt + 1);
+    throw new ApiError(409, 'The live queue changed. Try joining again.');
+  }
   await notifyServingTurns(business, queueDoc.users, io);
 
   if (io) {
@@ -311,6 +318,7 @@ export const leaveQueue = async (businessId, userId, io = null) => {
   const leavingUser = queueDoc.users.find(
     (u) => (u.userId?._id || u.userId)?.toString() === userId.toString()
   );
+  if (leavingUser?.walkIn) return (await cancelWalkIn(leavingUser.bookingId, userId)).queue;
 
   if (leavingUser) {
     try {
@@ -350,7 +358,7 @@ export const leaveQueue = async (businessId, userId, io = null) => {
 };
 
 // ⏭️ CALL NEXT
-export const callNext = async (businessId, requesterId, requesterRole, io, staffName, targetUserId, autoCompleteAt = null, doctor = null) => {
+export const callNext = async (businessId, requesterId, requesterRole, io, staffName, targetUserId, autoCompleteAt = null, doctor = null, attempt = 0) => {
   const business = await Business.findById(businessId);
   if (!isClinic(business)) throw new ApiError(404, "Clinic not found");
 
@@ -366,6 +374,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
     const tId = targetUserId.toString();
     previousHead = queue.users.find((u) => (u.userId?._id || u.userId)?.toString() === tId);
   }
+  if (attempt && !previousHead) return queue;
   if (doctor) {
     requireAssigned(previousHead, doctor);
     if (previousHead.status !== "serving") throw new ApiError(409, "This consultation is no longer active.");
@@ -386,6 +395,7 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
   if (!previousHead) {
     previousHead = queue.users.find((u) => u.status === "serving") || queue.users[0];
   }
+  if (previousHead.walkIn && previousHead.status !== 'serving') throw new ApiError(409, 'Call the patient before completing the visit.');
   const uId = previousHead.userId?._id || previousHead.userId;
 
   // Calculate earnings and details for the finished user
@@ -505,9 +515,19 @@ export const callNext = async (businessId, requesterId, requesterRole, io, staff
   // Dequeue user and update queue state
   const queueDS = QueueDS.fromArray(queue.users);
   queueDS.remove(uId);
+  if (doctor) {
+    const next = queueDS.toArray().find(row => isAssignedToDoctor(row, doctor));
+    if (next?.walkIn) startWalkInNode(queueDS.map.get(ref(next.userId)));
+    queueDS.recalculate();
+  }
 
   queue.users = queueDS.toArray();
-  await queue.save();
+  try { await queue.save(); }
+  catch (error) {
+    if (error.name !== 'VersionError') throw error;
+    if (attempt < 2) return callNext(businessId, requesterId, requesterRole, io, staffName, uId, autoCompleteAt, doctor, attempt + 1);
+    throw new ApiError(409, 'The queue changed. Refresh before calling the next patient.');
+  }
   await notifyServingTurns(business, queue.users, io);
 
   // Update any newly serving users' bookings to serving in database
@@ -585,7 +605,11 @@ export const getQueue = async (businessId, io = null, viewer = null) => {
   assertTestVenueAccess(business, viewer?._id);
   let queue = await Queue.findOne({ businessId });
   if (!queue) {
-    queue = await Queue.create({ businessId, users: [] });
+    try { queue = await Queue.create({ businessId, users: [] }); }
+    catch (error) {
+      if (error.code !== 11000) throw error;
+      queue = await Queue.findOne({ businessId });
+    }
   }
 
   const queueDS = QueueDS.fromArray(queue.users);
@@ -603,10 +627,41 @@ export const getQueue = async (businessId, io = null, viewer = null) => {
     viewer?.role === "owner" && business.approvalStatus === "approved" &&
     String(business.owner) === String(viewer._id) && canAccessOwnerCategory(viewer, business)
   );
-  return managesQueue
-    ? queue.populate("users.userId", "name email phone")
-    : queueForViewer(queue, viewer?.role === "customer" ? viewer._id : undefined);
+  if (viewer?.role === 'admin') return queue.populate('users.userId', 'name email phone');
+  if (managesQueue) return queueForOwner(await queue.populate('users.userId', 'name'));
+  return queueForViewer(queue, viewer?.role === 'customer' ? viewer._id : undefined);
 };
+
+function startWalkInNode(node) {
+  node.status = 'serving';
+  node.estimatedStartTime = new Date();
+}
+
+export async function startWalkInVisit(patientId, doctor, io) {
+  const businessId = doctor.business._id;
+  const queue = await mongoose.connection.transaction(async session => {
+    const current = await Queue.findOne({ businessId }).session(session);
+    const first = current?.users.find(row => isAssignedToDoctor(row, doctor));
+    if (!first?.walkIn || first.status !== 'waiting' || ref(first.userId) !== ref(patientId)) {
+      throw new ApiError(409, 'Call the first waiting patient when your queue is free.');
+    }
+    const busy = await Booking.exists({ businessId, 'assignedStaff.staffId': doctor.staff._id,
+      status: { $in: ['serving', 'in-progress'] } }).session(session);
+    if (busy) throw new ApiError(409, 'Complete your active consultation before calling the next patient.');
+    const queueDS = QueueDS.fromArray(current.users);
+    const node = queueDS.map.get(ref(patientId));
+    startWalkInNode(node);
+    queueDS.recalculate();
+    const startTime = node.estimatedStartTime;
+    const booking = await Booking.findOneAndUpdate({ _id: first.bookingId, businessId, status: 'waiting', 'assignedStaff.staffId': doctor.staff._id },
+      { $set: { status: 'serving', startTime, endTime: new Date(startTime.getTime() + node.serviceTime * 60_000) } }, { session });
+    if (!booking) throw new ApiError(409, 'This visit has already changed.');
+    current.users = queueDS.toArray();
+    return current.save({ session });
+  });
+  publishQueue(io, businessId, queue);
+  await notifyServingTurns(doctor.business, queue.users, io);
+}
 
 //  ESTIMATE WAIT TIME
 export const estimateWaitTime = async (businessId, userId) => {

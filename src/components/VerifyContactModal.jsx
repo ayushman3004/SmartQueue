@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Smartphone, X } from 'lucide-react'
 import { useDialog } from '../hooks/useDialog'
-import { sendWhatsAppPhoneOtp, verifyWhatsAppPhoneOtp } from '../api/auth.api.js'
+import { sendWhatsAppPhoneOtp, verifyWhatsAppPhoneOtp, sendPhoneSignInOtp, verifyPhoneSignInOtp } from '../api/auth.api.js'
 import TurnstileWidget from './TurnstileWidget.jsx'
 import { normalizePhoneNumber } from '../utils/phoneNumbers.js'
 
@@ -9,7 +9,7 @@ const countryCodes = [['+91', 'India'], ['+1', 'US / Canada'], ['+44', 'United K
 const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
 const digits = value => value.replace(/\D/g, '').slice(0, 6)
 
-export default function VerifyContactModal({ onClose, value, onSuccess }) {
+export default function VerifyContactModal({ onClose, value, onSuccess, signIn = false }) {
   const normalized = normalizePhoneNumber(value)
   const [country, setCountry] = useState(() => normalized ? countryCodes.find(([code]) => normalized.startsWith(code))?.[0] || '' : '+91')
   const [number, setNumber] = useState(() => normalized ? normalized.slice(country.length) : value || '')
@@ -37,7 +37,8 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
     setPending('send')
     setError('')
     try {
-      const { data } = await sendWhatsAppPhoneOtp(phone, token)
+      const send = signIn ? sendPhoneSignInOtp : sendWhatsAppPhoneOtp
+      const { data } = await send(phone, token)
       setChallenge(data.data)
       setOtp('')
       setCooldown(data.data.resendAfterSeconds)
@@ -58,7 +59,8 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
     setPending('verify')
     setError('')
     try {
-      const { data } = await verifyWhatsAppPhoneOtp({ phone, otp, challengeId: challenge.challengeId, purpose: challenge.purpose })
+      const verifyOtp = signIn ? verifyPhoneSignInOtp : verifyWhatsAppPhoneOtp
+      const { data } = await verifyOtp({ phone, otp, challengeId: challenge.challengeId, purpose: challenge.purpose })
       onSuccess(data.data.user)
     } catch (failure) {
       setOtp('')
@@ -76,9 +78,11 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
         className="absolute right-5 top-5 rounded-full bg-slate-100 p-2 text-slate-700 disabled:opacity-50"><X size={16} /></button>
       <header className="space-y-2">
         <Smartphone className="text-teal-700" size={24} aria-hidden="true" />
-        <h2 id="verify-phone-heading" className="text-xl font-bold">Verify your phone on WhatsApp</h2>
+        <h2 id="verify-phone-heading" className="text-xl font-bold">{signIn ? 'Sign in with your phone' : 'Verify your phone on WhatsApp'}</h2>
         <p className="text-sm text-slate-600">
-          {challenge ? <>Enter the six-digit code sent to <strong>{phone}</strong>.</> : 'Enter the mobile number you use on WhatsApp.'}
+          {challenge && (signIn ? <>If this number is linked to an account, a six-digit code will arrive on WhatsApp at <strong>{phone}</strong>.</>
+            : <>Enter the six-digit code sent to <strong>{phone}</strong>.</>)}
+          {!challenge && (signIn ? 'Use the mobile number you gave at the clinic.' : 'Enter the mobile number you use on WhatsApp.')}
         </p>
       </header>
       {!siteKey && <p role="status" className="text-sm text-slate-600">Phone verification is temporarily unavailable.</p>}
@@ -108,7 +112,7 @@ export default function VerifyContactModal({ onClose, value, onSuccess }) {
           </label>
           <button type="submit" disabled={busy || otp.length !== 6}
             className="w-full rounded-xl bg-zinc-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
-            {pending === 'verify' ? 'Verifying…' : 'Verify phone'}
+            {pending === 'verify' ? 'Verifying…' : signIn ? 'Sign in' : 'Verify phone'}
           </button>
           <button type="button" disabled={busy} className="text-sm underline" onClick={() => {
             setChallenge(null)

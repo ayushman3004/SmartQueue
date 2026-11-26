@@ -1,7 +1,8 @@
 class QueueNode {
-  constructor({ userId, bookingId, serviceTime, serviceType, joinedAt, pricingLabel, paidAmount, paymentMethod, paymentStatus, services, assignedStaff }) {
+  constructor({ userId, bookingId, walkIn, serviceTime, serviceType, joinedAt, pricingLabel, paidAmount, paymentMethod, paymentStatus, services, assignedStaff }) {
     this.userId = userId;
     this.bookingId = bookingId || null;
+    this.walkIn = walkIn;
     this.serviceTime = serviceTime; // in minutes
     this.serviceType = serviceType || "general";
     this.services = Array.isArray(services) ? services : [];
@@ -65,13 +66,15 @@ class QueueDS {
       const staffKey = (current.assignedStaff?.name || "__unassigned__").toLowerCase().trim();
 
       if (!staffFinishMap.has(staffKey)) {
-        // First active patron in line for this specific staff member is serving
-        if (current.status !== "serving" || !current.estimatedStartTime) {
+        // A walk-in waits for the doctor to call them, even when the doctor has no active visit.
+        if (current.walkIn && current.status !== "serving") {
+          current.estimatedStartTime = new Date(now);
+        } else if (current.status !== "serving" || !current.estimatedStartTime) {
           current.estimatedStartTime = new Date(now);
         } else {
           current.estimatedStartTime = new Date(current.estimatedStartTime);
         }
-        current.status = "serving";
+        if (!current.walkIn) current.status = 'serving';
 
         const duration = Math.max(1, Number(current.serviceTime) || 15);
         const finishMs = current.estimatedStartTime.getTime() + (duration + BUFFER) * 60000;
@@ -170,6 +173,7 @@ class QueueDS {
       arr.push({
         userId: current.userId,
         bookingId: current.bookingId || null,
+        ...(current.walkIn && { walkIn: true }),
         status: current.status,
         serviceTime: current.serviceTime,
         serviceType: current.serviceType,

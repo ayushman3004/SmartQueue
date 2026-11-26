@@ -12,6 +12,11 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    walkIn: { type: Boolean },
+    walkInWhatsApp: {
+      type: new mongoose.Schema({ phone: String, consentAt: Date }, { _id: false }),
+      select: false,
+    },
     startTime: {
       type: Date,
       required: true,

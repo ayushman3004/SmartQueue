@@ -1,7 +1,8 @@
 import * as queueService from "./queue.service.js";
 import asyncHandler from "../../utils/asyncHandler.js";
 import ApiResponse from "../../utils/ApiResponse.js";
-import { publishQueue, queueForViewer } from "./queue.view.js";
+import { publishQueue, queueForViewer, queueForOwner } from "./queue.view.js";
+import { checkInWalkIn } from './walk-in.service.js';
 
 // GET /api/queue/:businessId
 export const getQueue = asyncHandler(async (req, res) => {
@@ -43,6 +44,17 @@ export const leave = asyncHandler(async (req, res) => {
   publishQueue(io, businessId, queue);
   io?.to(`user:${req.user._id}`).emit("queue:left", { businessId, userId: req.user._id });
   res.json(new ApiResponse(200, { queue: queueForViewer(queue, req.user._id) }, "Left queue successfully"));
+});
+
+export const walkIn = asyncHandler(async (req, res) => {
+  const { businessId } = req.params;
+  const { queue, booking } = await checkInWalkIn(businessId, req.user, req.body);
+  const io = req.app.get('io');
+  publishQueue(io, businessId, queue);
+  io?.to(`user:${booking.userId}`).emit('queue:joined', { businessId, userId: booking.userId });
+  io?.to(`user:${booking.userId}`).emit('booking:confirmed', { booking: { _id: booking._id, businessId } });
+  const position = queue.users.findIndex(row => String(row.bookingId) === String(booking._id)) + 1;
+  res.status(201).json(new ApiResponse(201, { position }, 'Patient added to the queue.'));
 });
 
 // POST /api/queue/:businessId/next (owner or admin only)
@@ -131,6 +143,6 @@ export const collectPayment = asyncHandler(async (req, res) => {
     io
   );
 
-  res.json(new ApiResponse(200, { queue }, "Counter payment recorded and verified as paid"));
+  res.json(new ApiResponse(200, { queue: req.user.role === 'owner' ? queueForOwner(queue) : queue }, "Counter payment recorded and verified as paid"));
 });
 

@@ -8,7 +8,7 @@ export const completeOverdueBookings = async (io, now = new Date()) => {
   const queues = await Queue.find({ 'users.0': { $exists: true } });
   for (const queue of queues) {
     const isDue = (user) => {
-      if (user.status !== 'serving') return false;
+      if (user.status !== 'serving' || user.walkIn) return false;
       const start = user.estimatedStartTime || user.joinedAt;
       const finish = new Date(start).getTime() + Math.max(1, Number(user.serviceTime) || 15) * 60000;
       return Number.isFinite(finish) && finish <= now.getTime();
@@ -35,6 +35,7 @@ export const completeOverdueBookings = async (io, now = new Date()) => {
   }
 
   const dueBookings = await Booking.find({
+    walkIn: { $ne: true },
     status: { $in: ['confirmed', 'scheduled', 'delayed', 'serving', 'in-progress', 'waiting'] },
     endTime: { $lte: now },
   });

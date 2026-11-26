@@ -3,8 +3,9 @@ import { Queue, Worker } from 'bullmq';
 import { createClient } from 'redis';
 import Prescription from '../doctor/prescription.model.js';
 import User from '../auth/auth.model.js';
-import { hasWhatsAppVerifiedPhone } from '../../utils/phoneNumbers.js';
+import { hasVerifiedPhone, hasWhatsAppVerifiedPhone, normalizePhoneNumber } from '../../utils/phoneNumbers.js';
 import { whatsappConsentVersion } from '../auth/phone-security.js';
+import Booking from '../../booking/booking.model.js';
 import Delivery, { beginDelivery, markDeliveryRejected, recordDelivery } from './whatsapp-delivery.model.js';
 
 const queueName = 'serveq-whatsapp-documents-v1';
@@ -26,6 +27,13 @@ export function eligiblePrescriptionRecipient(user, scheduledAt) {
     (!user.whatsappConsentRevokedAt || new Date(user.whatsappConsentRevokedAt) < new Date(user.whatsappConsentAt));
 }
 
+export function eligibleWalkInRecipient(user, consent, scheduledAt) {
+  return user?.role === 'customer' && Boolean(consent?.consentAt) && consent.consentAt <= scheduledAt &&
+    normalizePhoneNumber(user.phone) === consent.phone &&
+    (hasVerifiedPhone(user) || (user.walkInAccount && user.phoneVerification?.phone === consent.phone)) &&
+    (!user.whatsappConsentRevokedAt || user.whatsappConsentRevokedAt < consent.consentAt);
+}
+
 export async function dispatchPrescription({ id, version }, { store, provider, now = new Date() }) {
   const due = { _id: id, [field('version')]: version, [field('state')]: 'pending',
     [field('nextAt')]: { $lte: now }, [field('expiresAt')]: { $gt: now } };
@@ -33,7 +41,7 @@ export async function dispatchPrescription({ id, version }, { store, provider, n
   const leaseUntil = new Date(now.getTime() + leaseMs);
   const record = await Prescription.findOneAndUpdate(due, { $set: {
     [field('state')]: 'claimed', [field('lease')]: lease, [field('leaseUntil')]: leaseUntil,
-  } }, { returnDocument: 'after' }).select('patient +whatsappNotification').lean();
+  } }, { returnDocument: 'after' }).select('patient booking business +whatsappNotification').lean();
   if (!record) return;
   const owned = { _id: id, [field('lease')]: lease };
   const outbox = record.whatsappNotification;
@@ -44,8 +52,14 @@ export async function dispatchPrescription({ id, version }, { store, provider, n
     });
   }
 
-  const lookup = () => User.findById(record.patient).select('role phone isPhoneVerified phoneVerification whatsappVerifiedAt whatsappConsent whatsappConsentAt whatsappConsentRevokedAt whatsappConsentVersion').lean();
-  if (!eligiblePrescriptionRecipient(await lookup(), outbox.createdAt)) return finish('skipped', null, 'ineligible');
+  const lookup = () => User.findById(record.patient).select('role phone isPhoneVerified phoneVerification whatsappVerifiedAt whatsappConsent whatsappConsentAt whatsappConsentRevokedAt whatsappConsentVersion +walkInAccount').lean();
+  const initialPatient = await lookup();
+  const visit = eligiblePrescriptionRecipient(initialPatient, outbox.createdAt) ? null : await Booking.findOne({
+    _id: record.booking, userId: record.patient, businessId: record.business, walkIn: true,
+  }).select('+walkInWhatsApp').lean();
+  const eligible = user => eligiblePrescriptionRecipient(user, outbox.createdAt) ||
+    eligibleWalkInRecipient(user, visit?.walkInWhatsApp, outbox.createdAt);
+  if (!eligible(initialPatient)) return finish('skipped', null, 'ineligible');
   if (!await store.reserveMessage()) return finish('pending', new Date(now.getTime() + 15 * 60_000), 'budget');
   await beginDelivery(lease, 'prescription');
 
@@ -57,13 +71,13 @@ export async function dispatchPrescription({ id, version }, { store, provider, n
   if (!transition.modifiedCount) return;
 
   const patient = await lookup();
-  if (!eligiblePrescriptionRecipient(patient, outbox.createdAt)) {
+  if (!eligible(patient)) {
     await markDeliveryRejected(lease, 'skipped');
     return finish('skipped', null, 'ineligible');
   }
 
   let providerId;
-  try { providerId = await provider.document(patient.phone, lease); }
+  try { providerId = await provider.document(normalizePhoneNumber(patient.phone), lease); }
   catch (error) {
     const outcome = error.outcome || 'unknown';
     await markDeliveryRejected(lease, outcome);

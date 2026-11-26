@@ -4,6 +4,8 @@ import passport from "passport";
 import {
   signup,
   signin,
+  sendPhoneSignInOtp,
+  verifyPhoneSignInOtp,
   googleCallback,
   getMe,
   logout,
@@ -21,7 +23,7 @@ import {
 import { protect } from "../../../middleware/auth.middleware.js";
 import {
   accountSecurityLimit, emailOtpSendLimit, phoneOtpSendLimit, profileOtpVerifyLimit,
-  resetCompleteLimit, resetSendLimit, resetVerifyLimit, signInLimit, signupLimit,
+  resetCompleteLimit, resetSendLimit, resetVerifyLimit, signInLimit, signupLimit, phoneSignInSendLimit, phoneSignInVerifyLimit,
 } from "../../gateway/endpointRateLimits.js";
 
 import { beginOAuth, validateOAuthState, oauthClientUrl, oauthResponseHeaders } from "./oauth-security.js";
@@ -46,6 +48,9 @@ router.post("/change-password", protect, accountSecurityLimit, changePasswordHan
 const requireWhatsApp = (req, res, next) => req.app.locals.whatsapp?.config.enabled
   ? next()
   : res.status(503).json({ message: "WhatsApp phone verification is temporarily unavailable." });
+router.post('/phone/signin/send-otp', requireWhatsApp, phoneSignInSendLimit,
+  (req, res, next) => req.app.locals.whatsapp.verifyTurnstile(req, res, next), sendPhoneSignInOtp);
+router.post('/phone/signin/verify-otp', requireWhatsApp, phoneSignInVerifyLimit, verifyPhoneSignInOtp);
 router.post("/phone/send-otp", protect, requireWhatsApp, phoneOtpSendLimit,
   (req, res, next) => req.app.locals.whatsapp.verifyTurnstile(req, res, next), sendPhoneVerificationOtp);
 router.post("/phone/verify-otp", protect, requireWhatsApp, profileOtpVerifyLimit, verifyPhoneVerificationOtp);

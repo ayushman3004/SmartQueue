@@ -26,6 +26,18 @@ export const signin = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, { user, ...responseToken(req, token) }, "Logged in successfully"));
 });
 
+export const sendPhoneSignInOtp = asyncHandler(async (req, res) => {
+  const { challengeId, resendAfterSeconds } = await req.app.locals.whatsapp.phone.sendLogin({ phone: req.body?.phone, ip: ipKey(req) });
+  res.json(new ApiResponse(200, { challengeId, resendAfterSeconds }, 'If your account uses this number, a code will arrive on WhatsApp.'));
+});
+
+export const verifyPhoneSignInOtp = asyncHandler(async (req, res) => {
+  const user = await req.app.locals.whatsapp.phone.verifyLogin(req.body || {});
+  const token = generateToken(user);
+  setTokenCookie(res, token, req);
+  res.json(new ApiResponse(200, { user: authService.sanitize(user), ...responseToken(req, token) }, 'Logged in successfully'));
+});
+
 export const checkAdminAccess = asyncHandler(async (req, res) => {
   if (req.adminAccess && !await User.exists({ email: req.adminAccess.email, role: "admin" })) {
     throw new ApiError(403, "Administrator access is required.");

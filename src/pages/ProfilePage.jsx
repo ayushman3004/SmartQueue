@@ -5,7 +5,7 @@ import { usePrescriptions } from '../hooks/usePrescriptions'
 import { normalizePhoneNumber } from '../utils/phoneNumbers'
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate, Link } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { PageNotificationStatus } from '../modules/notification/NotificationStatus'
 import NotificationCenter from '../components/NotificationCenter'
 import { useNotificationFeedback } from '../modules/notification/useNotificationFeedback'
@@ -60,7 +60,11 @@ export default function ProfilePage() {
   const { user, setUser, logOut } = useAuth()
   const { currentLocation, openLocationModal, showLocationModal, updateLocation } = useCustomerLocation()
   const navigate = useNavigate()
+  const { hash } = useLocation()
   const prescriptions = usePrescriptions(user?.role === 'customer' ? user._id : null)
+  useEffect(() => {
+    if (hash === '#prescriptions') document.getElementById('prescriptions')?.scrollIntoView()
+  }, [hash, user?._id])
 
   useSeo({
     title: 'Profile & Account Security — serveQ',
@@ -426,7 +430,7 @@ export default function ProfilePage() {
         </motion.div>
 
         {/* ── PRIORITY: EMAIL VERIFICATION WITH OTP BANNER ── */}
-        {!isEmailVerified && (
+        {!isEmailVerified && (form.email || user?.email) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -684,6 +688,8 @@ export default function ProfilePage() {
                       onChange={event => handleWhatsAppConsent(event.target.checked)} />
                     Receive prescription availability notices on WhatsApp
                   </label>
+                  {isWhatsAppVerified && !user?.whatsappConsent && <button type="button" className="text-xs font-semibold text-teal-800 underline"
+                    disabled={savingWhatsAppConsent} onClick={() => handleWhatsAppConsent(false)}>Stop notices agreed to at check-in</button>}
                   <p className="text-xs text-zinc-600">Optional. WhatsApp receives your number and a generic notice. Your prescription stays in ServeQ. You can turn notices off anytime.</p>
                 </div>}
 

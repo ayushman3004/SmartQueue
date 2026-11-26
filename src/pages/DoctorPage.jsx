@@ -6,6 +6,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { signin } from '../api/auth.api'
 import { changeDoctorPassword, doctorVisitAction, getDoctorDashboard, getPrescriptionNotification, savePrescription } from '../api/doctor.api'
 import { useAuth } from '../context/AuthContext'
+import { useSocket } from '../context/SocketContext'
 import Prescriptions from '../components/Prescriptions'
 import { prescriptionFields, usePrescriptions } from '../hooks/usePrescriptions'
 import '../styles/business-admission.css'
@@ -86,6 +87,7 @@ function DoctorPassword() {
 }
 
 function DoctorWorkspace() {
+  const { socket, joinRoom, leaveRoom } = useSocket()
   const { user, logOut } = useAuth()
   const [data, setData] = useState(null)
   const [loadError, setLoadError] = useState('')
@@ -122,6 +124,23 @@ function DoctorWorkspace() {
     const timer = setInterval(refresh, 10000)
     return () => clearInterval(timer)
   }, [refresh])
+  const clinicId = data?.clinic._id
+  useEffect(() => {
+    if (!clinicId || !socket) return
+    const reconnect = () => { joinRoom(clinicId); void refresh() }
+    const queueChanged = event => { if (String(event?.businessId) === clinicId) void refresh() }
+    const bookingsChanged = () => { void refresh() }
+    joinRoom(clinicId)
+    socket.on('connect', reconnect)
+    socket.on('queue:updated', queueChanged)
+    socket.on('bookings:updated', bookingsChanged)
+    return () => {
+      leaveRoom(clinicId)
+      socket.off('connect', reconnect)
+      socket.off('queue:updated', queueChanged)
+      socket.off('bookings:updated', bookingsChanged)
+    }
+  }, [clinicId, joinRoom, leaveRoom, refresh, socket])
 
   async function act(kind, id, action) {
     if (action === 'payment' && !window.confirm('Record this payment as received at the counter?')) return
@@ -144,12 +163,13 @@ function DoctorWorkspace() {
         <h3 className="font-bold">{row.userId?.name || 'Patient'}</h3>
         <span className="text-sm capitalize text-emerald-900">{row.status?.replaceAll('_', ' ')}</span>
       </div>
-      <p className="break-words text-sm text-zinc-600">{[row.userId?.email, row.userId?.phone].filter(Boolean).join(' · ')}</p>
-      <p className="text-sm">{row.serviceType} · {row.serviceTime || row.duration} min · Payment {row.paymentStatus}</p>
+      <p className="break-words text-sm text-zinc-600">{[row.userId?.email, row.userId?.phone].filter(value => value && !value.endsWith('@accounts.serveq.invalid')).join(' · ')}</p>
+      <p className="text-sm">{row.walkIn && 'Walk-in · '}{row.serviceType} · {row.serviceTime || row.duration} min · Payment {row.paymentStatus}</p>
       {!queue && <p className="text-sm text-zinc-600">{new Date(row.startTime).toLocaleString()}</p>}
       <div className="flex flex-wrap gap-2">
         {controls && active && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, queue ? 'next' : 'complete')}>{queue ? 'Complete and call next' : 'Complete consultation'}</button>}
-        {controls && !queue && ['waiting', 'scheduled', 'confirmed'].includes(row.status) && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, 'start')}>Start consultation</button>}
+        {controls && queue && row.walkIn && row.status === 'waiting' && data.queue[0] === row && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, 'start')}>Call next patient</button>}
+        {controls && !queue && !row.walkIn && ['waiting', 'scheduled', 'confirmed'].includes(row.status) && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, 'start')}>Start consultation</button>}
         {controls && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, 'extend')}>Extend {extension} min</button>}
         {controls && row.paymentStatus === 'pending' && (!row.paymentMethod || ['counter', 'PAY_AT_BUSINESS'].includes(row.paymentMethod)) && <button type="button" className={button} disabled={busy} onClick={() => act(kind, id, 'payment')}>Record counter payment</button>}
         {booking && !record && (active || row.status === 'completed') && <button type="button" className={button} onClick={() => { setVisit({ booking, name: row.userId?.name || 'Patient' }); setError('') }}>Write prescription</button>}

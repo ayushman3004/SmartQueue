@@ -5,6 +5,7 @@ import Review from "../review/review.model.js";
 import Queue from "../../queue/queue.model.js";
 import ApiError from "../../../utils/ApiError.js";
 import { generateBusinessAIAnalytics } from "../../../ai/openai.service.js";
+import { isClinic } from '../doctor/doctor-access.js';
 
 export const getBusinessAnalytics = async (businessId, requestingUserId, userRole, options = {}) => {
   const business = await Business.findById(businessId);
@@ -15,10 +16,11 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
     throw new ApiError(403, "Access denied: you can only view analytics for your own business");
   }
 
+  const privatePatients = userRole === 'owner' && isClinic(business);
   // Fetch bookings, reviews, and active queue
   const [totalBookings, allBookings, reviews] = await Promise.all([
     Booking.countDocuments({ businessId }),
-    Booking.find({ businessId }).populate("userId", "name email phone").sort({ createdAt: -1 }),
+    Booking.find({ businessId }).populate('userId', privatePatients ? '_id' : 'name email phone').sort({ createdAt: -1 }),
     Review.find({ businessId }).sort({ createdAt: -1 }).limit(10),
   ]);
 
@@ -26,7 +28,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
   let liveQueueUsers = [];
   try {
     if (Queue && mongoose.connection.readyState === 1) {
-      const qDoc = await Queue.findOne({ businessId }).populate("users.userId", "name email phone");
+      const qDoc = await Queue.findOne({ businessId });
       if (qDoc && Array.isArray(qDoc.users)) {
         liveQueueUsers = qDoc.users.filter(
           (u) => u.status === "waiting" || u.status === "serving"
@@ -185,7 +187,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
 
   // ─── 2. Identify Top / Best Customer ────────────────────────────────────────
   const customerMap = new Map();
-  earnedBookings.forEach((b) => {
+  (privatePatients ? [] : earnedBookings).forEach((b) => {
     const uId = b.userId?._id?.toString() || b.userId?.toString();
     if (!uId) return;
     if (!customerMap.has(uId)) {
@@ -275,7 +277,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
       bookingsCount: totalBookings,
       cancellationCount: cancelledBookingsCount,
       averageRating: avgRating,
-      recentReviews: reviews,
+      recentReviews: privatePatients ? [] : reviews,
       topCustomer,
       topEmployee,
       staffList,

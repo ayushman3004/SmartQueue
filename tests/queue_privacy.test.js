@@ -79,7 +79,10 @@ test("queue and clinic discovery expose only the signed-in patient's own visit d
     assert.equal(rows[0].bookingId, row.bookingId);
     assert.equal(rows[0].paidAmount, row.paidAmount);
   }
-  assert.equal((await get(queuePath, owner)).queue.users[0].userId.email, row.userId.email);
+  const [ownerRow] = (await get(queuePath, owner)).queue.users;
+  assert.deepEqual(ownerRow.userId, { _id: person._id, name: row.userId.name });
+  assert.equal(ownerRow.bookingId, undefined);
+  assert.equal(ownerRow.serviceType, undefined);
   business.approvalStatus = "suspended";
   assert.deepEqual((await get(queuePath, owner)).queue.users, [anonymous]);
 
