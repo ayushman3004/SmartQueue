@@ -27,7 +27,6 @@ export const SocketProvider = ({ children, setUser, user }) => {
 
   useEffect(() => {
     const onConnect = () => {
-      console.log("Socket connected:", socket.id);
       setConnected(true);
     };
 
