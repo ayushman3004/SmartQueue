@@ -154,11 +154,14 @@ test("business admission HTTP boundaries", async (t) => {
     "an activation session can read itself but cannot modify profile or pay",
     async () => {
       const authorization = token(ownerId, 1, "activation");
-      const me = await request("/auth/me", { method: "GET", authorization });
-      assert.equal(me.status, 200);
-      assert.equal((await me.json()).data.user.ownerAccess.status, "INVITED");
+      for (const path of ["/auth/me", "/auth/me?optional=1"]) {
+        const me = await request(path, { method: "GET", authorization });
+        assert.equal(me.status, 200);
+        assert.equal((await me.json()).data.user.ownerAccess.status, "INVITED");
+      }
       for (const [path, method] of [
         ["/auth/me", "PATCH"],
+        ["/auth/me?optional=1", "PATCH"],
         ["/subscriptions/create-order", "POST"],
         ["/businesses/mine", "GET"],
       ]) {

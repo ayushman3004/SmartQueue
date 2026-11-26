@@ -29,6 +29,7 @@ import {
 import { beginOAuth, validateOAuthState, oauthClientUrl, oauthResponseHeaders } from "./oauth-security.js";
 import { updateVisitNoticeConsent } from './whatsapp-visit-consent.service.js';
 import asyncHandler from '../../../utils/asyncHandler.js';
+import ApiResponse from '../../../utils/ApiResponse.js';
 
 const router = Router();
 router.use((_req, res, next) => {
@@ -40,7 +41,16 @@ router.use((_req, res, next) => {
 router.post("/signup", signupLimit, signup);
 router.post("/signin", signInLimit, signin);
 router.post("/logout", logout);
-router.get("/me", protect, getMe);
+router.get("/me", (req, res, next) => {
+  if (req.query.optional !== "1") return protect(req, res, next);
+  // The browser's startup probe expects a signed-out response with no profile.
+  return protect(req, res, error => {
+    if (error?.statusCode === 401 || ["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(error?.name)) {
+      return res.json(new ApiResponse(200, { user: null }));
+    }
+    return next(error);
+  });
+}, getMe);
 router.patch("/me", protect, updateMe);
 router.post("/upgrade-to-owner", protect, accountSecurityLimit, upgradeToOwner);
 

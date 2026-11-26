@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { publishFeedback, sessionNotificationScope, setFeedbackAccount } from "../modules/notification/browser-feedback";
-import { getMe } from "../api/auth.api.js";
+import { getBrowserSession } from "../api/auth.api.js";
 import api from "../api/axios.js";
 import { clearBrowserBearer, logoutBrowserSession } from "../utils/browserSession.js";
 import {
@@ -56,11 +56,12 @@ export const AuthProvider = ({ children }) => {
     if (window.location.pathname === "/auth/callback") return;
     clearBrowserBearer(api, localStorage);
     const revision = sessionRevision.current;
-    getMe()
+    getBrowserSession()
       .then((res) => {
         if (revision !== sessionRevision.current) return;
-        setUser(res.data.data.user);
-        localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
+        const sessionUser = res.data.data.user;
+        setUser(sessionUser);
+        if (sessionUser) localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
       })
       .catch(() => {
         if (revision === sessionRevision.current) setUser(null);

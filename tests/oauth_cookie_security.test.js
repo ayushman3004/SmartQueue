@@ -53,6 +53,17 @@ test('OAuth uses browser-bound state and HttpOnly cookie sessions', async t => {
   };
   const finish = (state, cookie) => request(`/api/auth/google/callback?code=fake-provider-code&state=${encodeURIComponent(state)}`, { headers: cookie ? { cookie } : {} });
 
+  await t.test('browser startup reports signed-out sessions without changing the protected profile response', async () => {
+    const expired = jwt.sign({ id: user._id, exp: 1 }, process.env.JWT_SECRET);
+    for (const headers of [{}, { cookie: 'token=invalid' }, { cookie: `token=${expired}` }]) {
+      const response = await request('/api/auth/me?optional=1', { headers });
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.deepEqual((await response.json()).data, { user: null });
+    }
+    assert.equal((await request('/api/auth/me')).status, 401);
+  });
+
   await t.test('OAuth start generates unique state and a short-lived protected cookie', async () => {
     const first = await start('owner');
     const second = await start();
@@ -105,6 +116,10 @@ test('OAuth uses browser-bound state and HttpOnly cookie sessions', async t => {
     const data = await profile.json();
     assert.equal(data.data.user._id, user._id);
     assert.equal(JSON.stringify(data).includes(rawToken), false);
+    const browserSession = await request('/api/auth/me?optional=1', { headers: { cookie: sessionCookie } });
+    assert.equal(browserSession.status, 200);
+    assert.equal(browserSession.headers.get('cache-control'), 'no-store');
+    assert.deepEqual((await browserSession.json()).data, data.data);
     assert.match((await finish(transaction.state)).headers.get('location'), /oauth_state_invalid/);
   });
 
@@ -139,6 +154,9 @@ test('OAuth uses browser-bound state and HttpOnly cookie sessions', async t => {
     const cookie = logout.headers.get('set-cookie');
     const reusedCookie = await request('/api/auth/me', { headers: { cookie: sessionCookie } });
     assert.equal(reusedCookie.status, 401);
+    const signedOutSession = await request('/api/auth/me?optional=1', { headers: { cookie: sessionCookie } });
+    assert.equal(signedOutSession.status, 200);
+    assert.deepEqual((await signedOutSession.json()).data, { user: null });
     const independent = await start();
     const fresh = await finish(independent.state, independent.cookie);
     const freshSession = fresh.headers.getSetCookie().find(value => value.startsWith('token=')).split(';')[0];
