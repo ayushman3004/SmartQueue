@@ -40,6 +40,7 @@ import PublicGuidePage from './pages/PublicGuidePage'
 import { guidePages } from './seo/publicPages'
 
 const LoadingScreen = () => <AppLoadingSkeleton />
+const MIN_INITIAL_LOADING_MS = 5000
 
 const AliasRedirect = ({ to }) => {
   const { search, hash } = useLocation()
@@ -67,9 +68,14 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 export default function App() {
   useMobileViewport()
+  const [initialLoading, setInitialLoading] = useState(true)
   const { user, loading: authLoading } = useAuth()
   const { socket, joinUser, connected } = useSocket()
   const location = useLocation()
+  useEffect(() => {
+    const timer = setTimeout(() => setInitialLoading(false), MIN_INITIAL_LOADING_MS)
+    return () => clearTimeout(timer)
+  }, [])
   // A new screen or dashboard tab starts at its content, rather than a stale footer offset.
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
@@ -160,7 +166,7 @@ export default function App() {
       '/queue', '/queue/:businessId', '/booking', '/booking/:businessId']
       .some(path => matchPath({ path, end: true }, location.pathname)))
 
-  if (authLoading) {
+  if (initialLoading || authLoading) {
     return <LoadingScreen />
   }
 
