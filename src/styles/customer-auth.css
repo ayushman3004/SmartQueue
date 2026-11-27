@@ -353,6 +353,9 @@
   color: var(--auth-text);
   background: transparent;
 }
+.customer-auth-google + .customer-auth-google {
+  margin-top: 12px;
+}
 .customer-auth-google svg {
   flex-shrink: 0;
 }
