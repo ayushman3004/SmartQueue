@@ -6,6 +6,7 @@ const STORAGE_KEY = 'serveq-brand-intro-seen'
 const LOGO = '/serveq-logo.png'
 const LOGO_WIDTH = 1636
 const LOGO_HEIGHT = 746
+const INTRO_DURATION_MS = 2600
 let introSeen = false
 
 // The circle bounds are measured in the cropped logo's pixel coordinates.
@@ -52,7 +53,7 @@ export default function BrandIntro() {
         // The in-memory flag remains set.
       }
       setVisible(true)
-      timeout = window.setTimeout(dismiss, 1500)
+      timeout = window.setTimeout(dismiss, INTRO_DURATION_MS + 250)
     }, () => {})
 
     return () => {
@@ -69,6 +70,7 @@ export default function BrandIntro() {
   return createPortal(
     <div
       className="brand-intro"
+      style={{ '--brand-intro-duration': `${INTRO_DURATION_MS}ms` }}
       aria-hidden="true"
       onAnimationEnd={(event) => {
         if (event.target === event.currentTarget) setVisible(false)
@@ -89,7 +91,7 @@ export default function BrandIntro() {
               '--from-y': from[1],
               '--drift-x': drift[0],
               '--drift-y': drift[1],
-              '--delay': `${index * 28}ms`,
+              '--delay': `${index * 50}ms`,
             }}
           />
         ))}
