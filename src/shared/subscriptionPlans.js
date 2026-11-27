@@ -5,8 +5,8 @@ export const SUBSCRIPTION_PLANS = {
   BASIC: {
     id: "BASIC",
     name: "Basic — Essential Clinic Operations",
-    price: 799,
-    amountInPaise: 79900,
+    price: 999,
+    amountInPaise: 99900,
     interval: "monthly",
     durationDays: 30,
     maxActiveClinics: BASIC_CLINIC_LIMIT,
@@ -28,8 +28,8 @@ export const SUBSCRIPTION_PLANS = {
   PRO: {
     id: "PRO",
     name: "Pro — Advanced Clinic Management",
-    price: 1499,
-    amountInPaise: 149900,
+    price: 1999,
+    amountInPaise: 199900,
     interval: "monthly",
     durationDays: 30,
     maxActiveClinics: PRO_CLINIC_LIMIT,

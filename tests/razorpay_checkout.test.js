@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { loadRazorpayCheckout, openRazorpayCheckout } from '../src/utils/razorpayCheckout.js'
 
 const options = {
-  order: { id: 'order_subscription_test', amount: 79900, currency: 'INR' },
+  order: { id: 'order_subscription_test', amount: 99900, currency: 'INR' },
   keyId: 'rzp_test_unit', plan: { name: 'Basic Plan' }, user: { name: 'Test Owner' },
 }
 
@@ -40,7 +40,7 @@ test('checkout loads the SDK, retries script failures, and launches the server o
   const result = openRazorpayCheckout(options)
   assert.equal(instance.opened, true)
   assert.equal(captured.order_id, options.order.id)
-  assert.equal(captured.amount, 79900)
+  assert.equal(captured.amount, 99900)
   const payment = { razorpay_order_id: options.order.id, razorpay_payment_id: 'pay_unit', razorpay_signature: 'signed' }
   captured.handler(payment)
   assert.deepEqual(await result, payment)

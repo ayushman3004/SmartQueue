@@ -30,9 +30,9 @@ test('signed Razorpay subscription webhook integration', async t => {
   let sequence = 0;
   const reset = () => {
     sequence++;
-    purchase = { _id: 'purchase', orderId: `order_webhook${sequence}`, owner: 'owner', plan: 'BASIC', amount: 79900 };
+    purchase = { _id: 'purchase', orderId: `order_webhook${sequence}`, owner: 'owner', plan: 'BASIC', amount: 99900 };
     user = { _id: 'owner', role: 'owner', subscription: {}, save: async () => {} };
-    payment = { id: `pay_webhook${sequence}`, order_id: purchase.orderId, status: 'captured', amount: 79900, currency: 'INR' };
+    payment = { id: `pay_webhook${sequence}`, order_id: purchase.orderId, status: 'captured', amount: 99900, currency: 'INR' };
     syncFails = false;
     activations = 0;
   };
@@ -109,13 +109,23 @@ test('signed Razorpay subscription webhook integration', async t => {
 
   await t.test('uses stored purchase pricing and preserves remaining renewal days', async () => {
     reset();
-    purchase.amount = 99900;
-    payment.amount = 99900;
+    purchase.amount = 79900;
+    payment.amount = 79900;
     const expiry = Date.now() + 86400000;
     user.subscription = { plan: 'BASIC', status: 'ACTIVE', expiresAt: new Date(expiry) };
     assert.equal((await post(event())).status, 200);
     assert.equal(+user.subscription.expiresAt, expiry + 30 * 86400000);
-    assert.equal(user.subscription.amount, 999);
+    assert.equal(user.subscription.amount, 799);
+  });
+
+  await t.test('accepts a signed Pro payment at the new price', async () => {
+    reset();
+    purchase.plan = 'PRO';
+    purchase.amount = 199900;
+    payment.amount = 199900;
+    assert.equal((await post(event('order.paid'))).status, 200);
+    assert.equal(user.subscription.plan, 'PRO');
+    assert.equal(user.subscription.amount, 1999);
   });
 
   await t.test('rejects wrong capture details, owner notes, plan notes and partially paid orders', async () => {

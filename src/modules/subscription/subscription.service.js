@@ -28,7 +28,7 @@ export const createSubscriptionOrder = async (userId, planId) => {
   const normalizedPlanId = String(planId || "").toUpperCase();
   const plan = SUBSCRIPTION_PLANS[normalizedPlanId];
   if (!plan) {
-    throw new ApiError(400, "Invalid plan selected. Choose either BASIC (₹799) or PRO (₹1,499).");
+    throw new ApiError(400, `Invalid plan selected. Choose either BASIC (₹${SUBSCRIPTION_PLANS.BASIC.price.toLocaleString("en-IN")}) or PRO (₹${SUBSCRIPTION_PLANS.PRO.price.toLocaleString("en-IN")}).`);
   }
 
   if (user.subscription?.plan === "PRO" && user.subscription.status === "ACTIVE" &&

@@ -9,6 +9,7 @@ export const prescriptionFields = [
 
 export function usePrescriptions(accountId, revision = 0) {
   const [result, setResult] = useState(null)
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     if (!accountId) return
     let active = true
@@ -18,7 +19,7 @@ export function usePrescriptions(accountId, revision = 0) {
       if (active) setResult({ accountId, records: [], error: 'Could not load prescriptions.' })
     })
     return () => { active = false }
-  }, [accountId, revision])
-  return accountId && result?.accountId === accountId ? result : null
+  }, [accountId, revision, attempt])
+  return accountId && result?.accountId === accountId ? { ...result, retry: () => { setResult(null); setAttempt(value => value + 1) } } : null
 }
 

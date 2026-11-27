@@ -65,7 +65,7 @@ export default function ProfilePage() {
   const prescriptions = usePrescriptions(user?.role === 'customer' ? user._id : null)
   useEffect(() => {
     if (hash === '#prescriptions') document.getElementById('prescriptions')?.scrollIntoView()
-  }, [hash, user?._id])
+  }, [hash, user?._id, user?.role])
 
   useSeo({
     title: 'Profile & Account Security — serveQ',
@@ -442,6 +442,12 @@ export default function ProfilePage() {
             </div>
           </div>
         </motion.div>
+
+        {isCustomer && (
+          <div id="prescriptions" className="scroll-mt-24">
+            <Prescriptions result={prescriptions} title="Saved prescriptions" />
+          </div>
+        )}
 
         {/* ── PRIORITY: EMAIL VERIFICATION WITH OTP BANNER ── */}
         {!isEmailVerified && (form.email || user?.email) && (
@@ -1011,7 +1017,6 @@ export default function ProfilePage() {
             <span>Sign Out</span>
           </button>
         </div>
-          {user?.role === 'customer' && <div id="prescriptions"><Prescriptions result={prescriptions} /></div>}
         </main>
       </div>
 

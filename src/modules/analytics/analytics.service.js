@@ -7,6 +7,7 @@ import ApiError from "../../../utils/ApiError.js";
 import { generateBusinessAIAnalytics } from "../../../ai/openai.service.js";
 import { isClinic } from '../doctor/doctor-access.js';
 import { getActiveClinicPlan } from '../subscription/clinic-capacity.service.js';
+import { SUBSCRIPTION_PLANS } from '../../shared/subscriptionPlans.js';
 
 export const getBusinessAnalytics = async (businessId, requestingUserId, userRole, options = {}) => {
   const business = await Business.findById(businessId);
@@ -275,7 +276,7 @@ export const getBusinessAnalytics = async (businessId, requestingUserId, userRol
       requiredPlan: "PRO",
       currentPlan: ownerPlan,
       message:
-        "AI Operational Insights and Predictive Rush Forecasting are exclusive to ServeQ Pro Plan subscribers. Upgrade from Basic to Pro (₹1,499/mo) to unlock real-time AI analytics, VIP regular analysis, and automated staff optimization.",
+        `AI Operational Insights and Predictive Rush Forecasting are exclusive to ServeQ Pro Plan subscribers. Upgrade from Basic to Pro (₹${SUBSCRIPTION_PLANS.PRO.price.toLocaleString("en-IN")}/mo) to unlock real-time AI analytics, VIP regular analysis, and automated staff optimization.`,
     };
   }
 

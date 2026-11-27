@@ -773,7 +773,7 @@ export default function BusinessOnboardingPage() {
     if (!business?._id) return
 
     if (!hasActiveSubscription(user?.subscription) && !hasActiveSubscription(business?.subscription)) {
-      feedback.error('An active ServeQ subscription (Basic ₹799 or Pro ₹1,499) is required to launch your business.')
+      feedback.error(`An active ServeQ subscription (Basic ₹${SUBSCRIPTION_PLANS.BASIC.price.toLocaleString('en-IN')} or Pro ₹${SUBSCRIPTION_PLANS.PRO.price.toLocaleString('en-IN')}) is required to launch your business.`)
       setSubscriptionModalOpen(true)
       return
     }
@@ -2153,7 +2153,7 @@ export default function BusinessOnboardingPage() {
                   )}
                 </div>
 
-                {/* Two Plans: Basic (₹799) & Pro (₹1,499) */}
+                {/* Subscription plans */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                   {/* Basic Plan */}
                   <div className={`p-5 rounded-2xl border-2 transition-all flex flex-col justify-between ${user?.subscription?.status === 'ACTIVE' && user.subscription.plan === 'BASIC'

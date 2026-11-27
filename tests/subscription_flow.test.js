@@ -17,20 +17,20 @@ import SubscriptionOrder from "../src/modules/subscription/subscription-order.mo
 import { getRazorpayClient } from "../src/modules/payment/razorpay.service.js";
 
 test("Subscription Flow - Plan Specifications & Pricing", async (t) => {
-  await t.test("Basic Plan is priced at ₹799 with 30-day duration", () => {
+  await t.test("Basic Plan is priced at ₹999 with 30-day duration", () => {
     const basic = SUBSCRIPTION_PLANS.BASIC;
     assert.ok(basic);
-    assert.equal(basic.price, 799);
-    assert.equal(basic.amountInPaise, 79900);
+    assert.equal(basic.price, 999);
+    assert.equal(basic.amountInPaise, 99900);
     assert.equal(basic.durationDays, 30);
     assert.equal(basic.maxActiveClinics, 3);
   });
 
-  await t.test("Pro Plan is priced at ₹1,499 with 30-day duration", () => {
+  await t.test("Pro Plan is priced at ₹1,999 with 30-day duration", () => {
     const pro = SUBSCRIPTION_PLANS.PRO;
     assert.ok(pro);
-    assert.equal(pro.price, 1499);
-    assert.equal(pro.amountInPaise, 149900);
+    assert.equal(pro.price, 1999);
+    assert.equal(pro.amountInPaise, 199900);
     assert.equal(pro.durationDays, 30);
     assert.equal(pro.maxActiveClinics, 5);
   });
@@ -56,7 +56,7 @@ test("Subscription checkout creates real orders, binds payments, and retries wit
   User.findById = async () => user;
   Business.updateMany = async (filter, update) => { cascade = update.$set; };
   client.orders.create = async (options) => ({ id: "order_sub_real", ...options });
-  client.payments.fetch = async () => ({ id: "pay_sub_real", order_id: "order_sub_real", amount: 79900, currency: "INR", status: paymentStatus });
+  client.payments.fetch = async () => ({ id: "pay_sub_real", order_id: "order_sub_real", amount: 99900, currency: "INR", status: paymentStatus });
   SubscriptionOrder.create = async (data) => { purchase = { _id: "purchase_1", ...data }; return purchase; };
   SubscriptionOrder.findOne = async (filter) => filter.owner === purchase.owner ? purchase : null;
   SubscriptionOrder.findOneAndUpdate = async (_filter, update) => Object.assign(purchase, update.$set);
@@ -64,7 +64,7 @@ test("Subscription checkout creates real orders, binds payments, and retries wit
   const payload = { plan: "BASIC", razorpayOrderId: "order_sub_real", razorpayPaymentId: "pay_sub_real", razorpaySignature: sign("order_sub_real", "pay_sub_real") };
   await t.test("creates a persisted order using the catalog amount", async () => {
     const result = await createSubscriptionOrder(user._id, "basic");
-    assert.equal(result.order.id, "order_sub_real"); assert.equal(result.order.amount, 79900); assert.equal(purchase.owner, user._id);
+    assert.equal(result.order.id, "order_sub_real"); assert.equal(result.order.amount, 99900); assert.equal(purchase.amount, 99900); assert.equal(purchase.owner, user._id);
   });
   await t.test("rejects mock signatures and a plan that does not match the purchase", async () => {
     await assert.rejects(() => verifySubscriptionPayment(user._id, { ...payload, razorpaySignature: "mock_signature_verified" }), /signature/);
@@ -102,14 +102,20 @@ test("Subscription checkout creates real orders, binds payments, and retries wit
   await t.test("honors the recorded amount for orders created before the price change", async () => {
     const oldPurchase = { ...purchase };
     const oldSubscription = user.subscription;
-    purchase.amount = 99900;
+    purchase.amount = 79900;
     purchase.activatedAt = null;
     purchase.paymentId = undefined;
-    client.payments.fetch = async () => ({ order_id: purchase.orderId, amount: 99900, currency: "INR", status: "captured" });
+    client.payments.fetch = async () => ({ order_id: purchase.orderId, amount: 79900, currency: "INR", status: "captured" });
     const result = await verifySubscriptionPayment(user._id, payload);
-    assert.equal(result.subscription.amount, 999);
+    assert.equal(result.subscription.amount, 799);
     purchase = oldPurchase;
     user.subscription = oldSubscription;
+  });
+  await t.test("creates and persists Pro orders at the new price", async () => {
+    const result = await createSubscriptionOrder(user._id, "PRO");
+    assert.equal(result.order.amount, 199900);
+    assert.equal(purchase.amount, 199900);
+    assert.equal(purchase.plan, "PRO");
   });
   await t.test("payment provider failure never returns a mock order", async () => {
     client.orders.create = async () => { throw new Error("provider down"); };
@@ -153,7 +159,8 @@ test("Subscription Flow - Get Current Subscription", async (t) => {
       const result = await getCurrentSubscription("owner_12345");
       assert.equal(result.subscription.plan, "BASIC");
       assert.equal(result.subscription.status, "ACTIVE");
-      assert.equal(result.currentPlan.price, 799);
+      assert.equal(result.currentPlan.price, 999);
+      assert.equal(result.subscription.amount, 799);
       assert.ok(result.availablePlans.BASIC);
       assert.ok(result.availablePlans.PRO);
     });

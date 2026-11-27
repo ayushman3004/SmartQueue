@@ -56,7 +56,7 @@ node scripts/prepare-business-admission.js
 
 This checks transaction-capable topology and creates the application collection/indexes without modifying existing accounts. It is idempotent. Review and resolve duplicate-index errors instead of dropping application records. Normal Mongoose index initialization also applies on connection when auto-indexing is enabled. Existing users without `ownerAccess.applicationId` are treated as legacy active accounts; no bulk migration is required and no customer roles change. Existing JWTs without a version are version zero until password replacement or recovery invalidates them.
 
-Deploy backend and frontend together. Vercel rewrites for `/hub/*` and `/admin/*` route direct visits to the private app shell. Pricing remains the shared existing ₹799 / ₹1,499 per 30-day period, with manual renewal; no new billing integration is introduced here.
+Deploy backend and frontend together. Vercel rewrites for `/hub/*` and `/admin/*` route direct visits to the private app shell. Pricing is ₹999 / ₹1,999 per 30-day period, with manual renewal; no new billing integration is introduced here.
 
 Required existing environment:
 
