@@ -29,11 +29,6 @@ export const getAvailableSlots = async (businessId, date) => {
     throw new ApiError(403, "This clinic is not accepting appointments.");
   }
 
-  const dateError = getBookingDateError(date, business);
-  if (dateError) {
-    throw new ApiError(business.bookingSettings?.enableAppointments === false ? 403 : 400, dateError);
-  }
-
   const isSubscribed = await isBusinessSubscriptionActive(business);
   if (!isSubscribed) {
     throw new ApiError(
@@ -42,6 +37,11 @@ export const getAvailableSlots = async (businessId, date) => {
     );
   }
   if (!await isWithinClinicCapacity(business)) throw new ApiError(403, 'This clinic has reached its subscription capacity and cannot accept new appointments.');
+
+  const dateError = getBookingDateError(date, business);
+  if (dateError) {
+    throw new ApiError(business.bookingSettings?.enableAppointments === false ? 403 : 400, dateError);
+  }
 
   const avgTime = business.averageServiceTime || 10;
   const staffList = Array.isArray(business.staff) ? business.staff.filter((s) => s.isAvailable !== false) : [];
@@ -891,4 +891,3 @@ export const collectCounterPayment = async (bookingId, staffUser, io = null, doc
 
   return booking;
 };
-
